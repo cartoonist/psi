@@ -1,3 +1,14 @@
+# Binary directory
+bin/
+
+# Generated Makefiles
+src/.d/
+
+# Generated source codes
+src/*.pb.cc
+src/*.pb.h
+
+## GitHub defaults ##
 # Compiled Object files
 *.slo
 *.lo
