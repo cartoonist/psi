@@ -16,17 +16,18 @@ PROTO_SRCS   := $(subst ${PROTODIR}, ${SRCDIR}, ${PROTOS:%.proto=%.pb.cc})
 COMPILE.proto = protoc -I=${PROTODIR}/ --cpp_out=${SRCDIR}/
 
 # Specifying phony targets.
-.PHONY: all clean dist-clean
+.PHONY: all test clean dist-clean
 # Specifying precious targets.
 .PRECIOUS: ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h
-
-vpath %.proto ${PROTODIR}
 
 all: ${PROTO_SRCS}
 	make -C ${SRCDIR}
 
-${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: %.proto
+${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: ${PROTODIR}/%.proto
 	${COMPILE.proto} $<
+
+test: all
+	make -C ${TESTDIR}
 
 clean:
 	make -C ${SRCDIR} $@
