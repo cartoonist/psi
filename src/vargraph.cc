@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Mon Nov 14, 2016  00:16
+ * Last modified: Wed Nov 16, 2016  09:31
  *
  * Description: VarGraph class implementation.
  *
@@ -29,27 +29,6 @@
 
 namespace grem
 {
-  VarGraph::VarGraph(std::ifstream &ifs, std::string &name_) : name(name_)
-  { this->load_file(ifs); }
-
-  VarGraph::VarGraph(std::ifstream &ifs) : name("")
-  { this->load_file(ifs); }
-
-  VarGraph::VarGraph(std::string &filename, std::string &name_) : name(name_)
-  { this->load_file(filename); }
-
-  VarGraph::VarGraph(const char *filename, std::string &name_) : name(name_)
-  { this->load_file(filename); }
-
-  VarGraph::VarGraph(std::string &filename) : name("")
-  { this->load_file(filename); }
-
-  VarGraph::VarGraph(const char *filename) : name("")
-  { this->load_file(filename); }
-
-  VarGraph::VarGraph(vg::Graph &vg_graph, std::string &name_) : name(name_)
-  { this->extend(vg_graph); }
-
   void
     VarGraph::extend(vg::Graph &vg_graph)
   {
@@ -86,108 +65,6 @@ namespace grem
     }
 
     // TODO: add paths.
-  }
-
-  unsigned int
-    VarGraph::nodes_size() const
-  {
-    return this->vg_graph.node_size();
-  }
-
-  const vg::Node&
-    VarGraph::node_at(unsigned int idx) const
-  {
-    return this->vg_graph.node(idx);
-  }
-
-  vg::Node*
-    VarGraph::mutable_node_at(unsigned int idx)
-  {
-    return this->vg_graph.mutable_node(idx);
-  }
-
-  const vg::Node&
-    VarGraph::node_by(id_t node_id) const
-  {
-    return *(this->nodes_by_id.at(node_id));
-  }
-
-  vg::Node*
-    VarGraph::mutable_node_by(id_t node_id)
-  {
-    return this->nodes_by_id.at(node_id);
-  }
-
-  unsigned int
-    VarGraph::edges_size() const
-  {
-    return this->vg_graph.edge_size();
-  }
-
-  const vg::Edge&
-    VarGraph::edge_at(unsigned int idx) const
-  {
-    return this->vg_graph.edge(idx);
-  }
-
-  vg::Edge*
-    VarGraph::mutable_edge_at(unsigned int idx)
-  {
-    return this->vg_graph.mutable_edge(idx);
-  }
-
-  const std::vector< vg::Edge* >&
-    VarGraph::fwd_edges(id_t node_id) const
-  {
-    return this->edges_by_id.at(node_id);
-  }
-
-  std::vector< vg::Edge* >&
-    VarGraph::mutable_fwd_edges(id_t node_id)
-  {
-    return this->edges_by_id.at(node_id);
-  }
-
-  const std::vector< vg::Edge* >&
-    VarGraph::bwd_edges(id_t node_id) const
-  {
-    return this->redges_by_id.at(node_id);
-  }
-
-  std::vector< vg::Edge* >&
-    VarGraph::mutable_bwd_edges(id_t node_id)
-  {
-    return this->redges_by_id.at(node_id);
-  }
-
-  unsigned int
-    VarGraph::paths_size() const
-  {
-    return this->vg_graph.path_size();
-  }
-
-  const vg::Path&
-    VarGraph::path_at(unsigned int idx) const
-  {
-    return this->vg_graph.path(idx);
-  }
-
-  vg::Path*
-    VarGraph::mutable_path_at(unsigned int idx)
-  {
-    return this->vg_graph.mutable_path(idx);
-  }
-
-  const std::string&
-    VarGraph::get_name() const
-  {
-    return this->name;
-  }
-
-  vg::Graph&
-    VarGraph::get_vg_graph()
-  {
-    return this->vg_graph;
   }
 
   void
