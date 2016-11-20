@@ -4,7 +4,7 @@
  * Filename: types.h
  *
  * Created: Fri Nov 11, 2016  09:40
- * Last modified: Mon Nov 14, 2016  00:38
+ * Last modified: Tue Nov 15, 2016  15:35
  *
  * Description: Types header file.
  *
@@ -22,17 +22,39 @@
 #include <cstdint>
 
 #include <seqan/sequence.h>
+#include <seqan/index.h>
 
 namespace grem
 {
   typedef int64_t id_t;
 
+  typedef seqan::StringSet< seqan::CharString >                     CharStringSet;
+  typedef seqan::Dna5QString                                        DnaSeq;
+  typedef seqan::StringSet< DnaSeq >                                DnaSeqSet;
+  typedef seqan::Index< DnaSeqSet, seqan::IndexWotd<> >             DnaSeqSetIndex;
+  typedef seqan::Iterator< DnaSeqSetIndex, seqan::TopDown<> >::Type DnaSSIndexIter;
+
   typedef struct
   {
-    seqan::StringSet< seqan::CharString > ids;
-    seqan::StringSet< seqan::Dna5String > seqs;
-    seqan::StringSet< seqan::CharString > quals;
+    CharStringSet ids;
+    DnaSeqSet     seqs;
+    CharStringSet quals;
   } ReadsChunk;
+}
+
+namespace seqan
+{
+  /* Saving memory by overriding SAValue type:
+   *
+   * NOTE -- CURRENT LIMITATION:
+   *   (unlimited) number of reads of length at most (2^16=65536).
+   *
+   */
+  template<>
+  struct SAValue< grem::DnaSeqSet >
+  {
+    typedef Pair<long unsigned int, uint16_t, Tag<Pack_> > Type;
+  };
 }
 
 #endif  // TYPES_H__

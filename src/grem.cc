@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Nov 14, 2016  01:02
+ * Last modified: Fri Nov 18, 2016  01:00
  *
  * Description: GREM main function.
  *
@@ -21,15 +21,21 @@
 #include <ios>
 #include <fstream>
 #include <string>
+#include <functional>
 
 #include <seqan/seq_io.h>
 
 #include "vargraph.h"
+#include "traverser.h"
 #include "types.h"
 #include "release.h"
 
 using namespace seqan;
 using namespace grem;
+
+// TODO: Documentation.
+// TODO: Memory footprint.
+// TODO: Logging.
 
 
 int main(int argc, char *argv[])
@@ -63,6 +69,26 @@ int main(int argc, char *argv[])
   {
     std::string graph_name = "graph-1";
     VarGraph vargraph(toCString(vgPath), graph_name);
+
+    while (true)
+    {
+      ReadsChunk reads;
+
+      readRecords(reads.ids, reads.seqs, reads.quals, readInFile, chkSize);
+      if (length(reads.ids) == 0) break;
+
+      GraphTraverser< PathTraverser > gtraverser(vargraph);
+      for (unsigned int i = 0; i < vargraph.nodes_size(); ++i)
+      {
+        vg::Position s_point;
+        s_point.set_node_id(vargraph.node_at(i).id());
+        s_point.set_offset(0);
+        gtraverser.add_start(s_point);
+      }
+      std::function< void(vg::Alignment &) > write = [](vg::Alignment &aln){ return; };
+      PathTraverser::Param params(reads, seedLen);
+      gtraverser.traverse(params, write);
+    }
   }
   catch(std::ios::failure &e)
   {
@@ -72,23 +98,6 @@ int main(int argc, char *argv[])
               << e.what() << std::endl;
     exit(EXIT_FAILURE);
   }
-
-  while (true)
-  {
-    ReadsChunk reads;
-
-    readRecords(reads.ids, reads.seqs, reads.quals, readInFile, chkSize);
-    if (length(reads.ids) == 0) break;
-
-    for (unsigned int i = 0; i < length(reads.ids); ++i)
-    {
-      std::cout << reads.ids[i]   << '\t'
-                << reads.seqs[i]  << '\t'
-                << reads.quals[i] << std::endl;
-    }
-  }
-
-  std::cout << seedLen << std::endl;
 
   return EXIT_SUCCESS;
 }
