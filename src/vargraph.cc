@@ -19,7 +19,6 @@
 #include <functional>
 #include <iostream>
 #include <ios>
-#include <sstream>
 #include <exception>
 
 #include <stream/src/stream.hpp>
@@ -121,9 +120,9 @@ namespace grem
     }
     else if (this->has_node(node))
     {
-      std::stringstream ss;
-      ss << "node ID " << node->id() << " appears multiple times. Skipping.";
-      throw std::runtime_error(ss.str());
+      std::string msg = "node ID " + std::to_string(node->id()) +
+                        " appears multiple times. Skipping.";
+      throw std::runtime_error(msg);
     }
 
     vg::Node *new_node = this->vg_graph.add_node();
@@ -143,11 +142,12 @@ namespace grem
   {
     if (this->has_edge(edge))
     {
-      std::stringstream ss;
-      ss << "edge " << edge->from() << (edge->from_start() ? " start" : " end")
-        << " <-> " << edge->to() << (edge->to_end() ? " end" : " start")
-        << " appears multiple times. Skipping.";
-      throw std::runtime_error(ss.str());
+      std::string msg = "edge " + std::to_string(edge->from()) +
+                        (edge->from_start() ? " start" : " end") +
+                        " <-> " + std::to_string(edge->to()) +
+                        (edge->to_end() ? " end" : " start") +
+                        " appears multiple times. Skipping.";
+      throw std::runtime_error(msg);
     }
 
     vg::Edge *new_edge = this->vg_graph.add_edge();
