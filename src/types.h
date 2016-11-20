@@ -42,4 +42,19 @@ namespace grem
   } ReadsChunk;
 }
 
+namespace seqan
+{
+  /* Saving memory by overriding SAValue type:
+   *
+   * NOTE -- CURRENT LIMITATION:
+   *   (unlimited) number of reads of length at most (2^16=65536).
+   *
+   */
+  template<>
+  struct SAValue< grem::DnaSeqSet >
+  {
+    typedef Pair<long unsigned int, uint16_t, Tag<Pack_> > Type;
+  };
+}
+
 #endif  // TYPES_H__
