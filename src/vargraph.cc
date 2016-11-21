@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Wed Nov 16, 2016  09:31
+ * Last modified: Mon Nov 21, 2016  02:42
  *
  * Description: VarGraph class implementation.
  *
@@ -31,9 +31,9 @@ namespace grem
   void
     VarGraph::extend(vg::Graph &vg_graph)
   {
-    for (id_t i = 0; i < this->vg_graph.node_size(); ++i)
+    for (id_t i = 0; i < vg_graph.node_size(); ++i)
     {
-      vg::Node *node = this->vg_graph.mutable_node(i);
+      vg::Node *node = vg_graph.mutable_node(i);
 
       try
       {
@@ -47,9 +47,9 @@ namespace grem
       }
     }
 
-    for (id_t i = 0; i < this->vg_graph.edge_size(); ++i)
+    for (id_t i = 0; i < vg_graph.edge_size(); ++i)
     {
-      vg::Edge *edge = this->vg_graph.mutable_edge(i);
+      vg::Edge *edge = vg_graph.mutable_edge(i);
 
       try
       {
