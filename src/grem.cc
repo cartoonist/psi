@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Fri Nov 18, 2016  01:00
+ * Last modified: Mon Nov 21, 2016  01:29
  *
  * Description: GREM main function.
  *
@@ -24,6 +24,7 @@
 #include <functional>
 
 #include <seqan/seq_io.h>
+#include <easyloggingpp/src/easylogging++.h>
 
 #include "vargraph.h"
 #include "traverser.h"
@@ -36,6 +37,8 @@ using namespace grem;
 // TODO: Documentation.
 // TODO: Memory footprint.
 // TODO: Logging.
+
+INITIALIZE_EASYLOGGINGPP
 
 
 int main(int argc, char *argv[])
