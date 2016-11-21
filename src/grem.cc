@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Nov 21, 2016  03:00
+ * Last modified: Mon Nov 21, 2016  03:01
  *
  * Description: GREM main function.
  *
@@ -97,7 +97,11 @@ int main(int argc, char *argv[])
           gtraverser.add_start(s_point);
         }
       }
-      std::function< void(vg::Alignment &) > write = [](vg::Alignment &aln){ return; };
+
+      long int found = 0;
+      std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
+        std::cout << found << " seeds found." << std::endl;
+      };
       PathTraverser::Param params(reads, seedLen);
       gtraverser.traverse(params, write);
     }
