@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Nov 21, 2016  02:19
+ * Last modified: Mon Nov 21, 2016  02:26
  *
  * Description: GREM main function.
  *
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
   unsigned int seedLen = std::stoul(argv[3]);
   unsigned int chkSize = std::stoul(argv[4]);
 
+  LOG(INFO) << "Opening file '" << toCString(fqPath) << "'...";
   SeqFileIn readInFile;
   if (!open(readInFile, toCString(fqPath)))
   {
@@ -72,6 +73,7 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
+  LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "'...";
   try
   {
     std::string graph_name = "graph-1";
