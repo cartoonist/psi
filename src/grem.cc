@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Nov 21, 2016  01:41
+ * Last modified: Mon Nov 21, 2016  02:19
  *
  * Description: GREM main function.
  *
@@ -43,6 +43,10 @@ INITIALIZE_EASYLOGGINGPP
 
 int main(int argc, char *argv[])
 {
+  el::Configurations log_conf;
+  log_conf.setToDefault();
+  el::Loggers::reconfigureLogger("default", log_conf);
+
   // TODO: get command-line arguments. Now, assuming:
   //
   // Usage: GREM fastq vg length chunksize
