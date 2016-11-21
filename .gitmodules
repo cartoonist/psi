@@ -1,3 +1,6 @@
 [submodule "ext/stream"]
 	path = ext/stream
 	url = https://github.com/vgteam/stream.git
+[submodule "ext/easyloggingpp"]
+	path = ext/easyloggingpp
+	url = https://github.com/easylogging/easyloggingpp.git
