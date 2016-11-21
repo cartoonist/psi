@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Nov 21, 2016  01:29
+ * Last modified: Mon Nov 21, 2016  01:41
  *
  * Description: GREM main function.
  *
@@ -36,7 +36,7 @@ using namespace grem;
 
 // TODO: Documentation.
 // TODO: Memory footprint.
-// TODO: Logging.
+// TODO: Logging: replace all iostream calls with logging APIs.
 
 INITIALIZE_EASYLOGGINGPP
 
