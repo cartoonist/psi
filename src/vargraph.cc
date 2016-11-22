@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Mon Nov 21, 2016  02:42
+ * Last modified: Tue Nov 22, 2016  20:06
  *
  * Description: VarGraph class implementation.
  *
@@ -22,6 +22,7 @@
 #include <exception>
 
 #include <stream/src/stream.hpp>
+#include <easyloggingpp/src/easylogging++.h>
 
 #include "vargraph.h"
 #include "release.h"
@@ -81,7 +82,9 @@ namespace grem
     };
     // Handle count callback function.
     std::function< void(uint64_t) > handle_count = [](uint64_t count) {
-      std::cout << "Count: " << count << std::endl;
+#ifndef NDEBUG
+      LOG(INFO) << "Loading " << count << " graph(s)...";
+#endif
     };
 
     stream::for_each(ifs, extend_graph, handle_count);

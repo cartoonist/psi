@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Mon Nov 21, 2016  00:13
+ * Last modified: Tue Nov 22, 2016  19:30
  *
  * Description: Traversers class implementations.
  *
@@ -25,8 +25,8 @@ namespace grem
    *  NOTE: These methods should be specialized for any other PathTraverser
    *        classes.
    **/
-  std::vector< PathTraverser >
-    move_forward(PathTraverser &ptrav)
+  void
+    move_forward(PathTraverser &ptrav, std::vector< PathTraverser > &new_ptravs)
   {
     if (ptrav.finished)
       throw std::runtime_error("cannot move forward on a finalized path.");
@@ -43,40 +43,34 @@ namespace grem
       ptrav.finished = true;
     }
 
-    std::vector< PathTraverser > new_travs;
-
-    if (ptrav.finished) return new_travs;
+    if (ptrav.finished) return;
     else
     {
       auto it = edges.begin();
-      vg::Edge *first_edge = *it;
-      ptrav.c_locus.set_node_id(first_edge->to());
+      ptrav.c_locus.set_node_id((*it)->to());
       ptrav.c_locus.set_offset(0);
       ++it;
 
       for (; it != edges.end(); ++it)
       {
-        vg::Edge *other_edge = *it;
         vg::Position new_pos;
-        new_pos.set_node_id(other_edge->to());
+        new_pos.set_node_id((*it)->to());
         new_pos.set_offset(0);
-        new_travs.push_back(PathTraverser(ptrav, new_pos));
+        new_ptravs.push_back(PathTraverser(ptrav, new_pos));
       }
     }
 
-    return new_travs;
+    return;
   }
 
   bool
     is_finished(PathTraverser &ptrav)
   { return ptrav.finished; }
 
-  std::vector< PathTraverser::Output >
-    get_results(PathTraverser &ptrav)
+  void
+    get_results(PathTraverser &ptrav, std::vector< PathTraverser::Output > &results)
   {
-    std::vector< PathTraverser::Output > seq_list;
-    ptrav.get_results(seq_list);
-    return seq_list;
+    ptrav.get_results(results);
   }
 
   /**  PathTraverser  **/
@@ -134,9 +128,9 @@ namespace grem
       if(!this->go_down(this->iters_state[i], c)) to_be_deleted.push_back(i);
     }
 
-    for (auto it = to_be_deleted.begin(); it != to_be_deleted.end(); ++it)
+    for (auto idx : to_be_deleted)
     {
-      this->iters_state.erase(this->iters_state.begin()+(*it));
+      this->iters_state.erase(this->iters_state.begin()+idx);
     }
   }
 
@@ -236,23 +230,31 @@ namespace grem
       path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
       while (!path_traversers.empty())
       {
-        for (auto it = path_traversers.begin(); it != path_traversers.end(); ++it)
+        std::vector< int > to_be_deleted;
+        for (unsigned int i = 0; i < path_traversers.size(); ++i)
         {
-          TPathTraverser ptrav = *it;
+          TPathTraverser &ptrav = path_traversers[i];
           if (is_finished(ptrav))
           {
-            std::vector< vg::Alignment > seeds = get_results(ptrav);
+            std::vector< vg::Alignment > seeds;
+            get_results(ptrav, seeds);
             for (auto s : seeds) callback(s);
-            it = --(path_traversers.erase(it));
+            to_be_deleted.push_back(i);
           }
           else
           {
-            auto new_ptravs = move_forward(ptrav);
+            std::vector< PathTraverser > new_ptravs;
+            move_forward(ptrav, new_ptravs);
             for (auto npt : new_ptravs)
             {
               path_traversers.push_back(npt);
             }
           }
+        }
+
+        for (auto idx : to_be_deleted)
+        {
+          path_traversers.erase(path_traversers.begin()+idx);
         }
       }
     }

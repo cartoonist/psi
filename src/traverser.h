@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Sun Nov 20, 2016  23:55
+ * Last modified: Tue Nov 22, 2016  15:48
  *
  * Description: Traversers class definitions.
  *
@@ -70,9 +70,9 @@ namespace grem
       // TODO: Move/copy assignment operators.
 
       // Traverse interface functions (are friends!)
-      friend std::vector< PathTraverser >         move_forward(PathTraverser &ptrav);
-      friend bool                                 is_finished(PathTraverser &ptrav);
-      friend std::vector< PathTraverser::Output > get_results(PathTraverser &ptrav);
+      friend void move_forward(PathTraverser &ptrav, std::vector< PathTraverser > &new_ptravs);
+      friend bool is_finished(PathTraverser &ptrav);
+      friend void get_results(PathTraverser &ptrav, std::vector< PathTraverser::Output > &results);
 
       // Attributes getters and setters
       inline const VarGraph *             get_vargraph()
