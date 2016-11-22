@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Tue Nov 22, 2016  19:30
+ * Last modified: Tue Nov 22, 2016  20:34
  *
  * Description: Traversers class implementations.
  *
@@ -34,11 +34,10 @@ namespace grem
     ptrav.one_node_forward();
 
     id_t c_node_id = ptrav.c_locus.node_id();
-    auto edges = ptrav.vargraph->fwd_edges(c_node_id);
 
     if (ptrav.path.length() == ptrav.parameters->get_seed_len() ||
         ptrav.iters_state.empty() ||
-        edges.empty())
+        !ptrav.vargraph->has_fwd_edge(c_node_id))
     {
       ptrav.finished = true;
     }
@@ -46,6 +45,7 @@ namespace grem
     if (ptrav.finished) return;
     else
     {
+      auto edges = ptrav.vargraph->fwd_edges(c_node_id);
       auto it = edges.begin();
       ptrav.c_locus.set_node_id((*it)->to());
       ptrav.c_locus.set_offset(0);
