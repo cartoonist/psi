@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Tue Nov 22, 2016  20:34
+ * Last modified: Wed Nov 23, 2016  00:17
  *
  * Description: Traversers class implementations.
  *
@@ -35,7 +35,7 @@ namespace grem
 
     id_t c_node_id = ptrav.c_locus.node_id();
 
-    if (ptrav.path.length() == ptrav.parameters->get_seed_len() ||
+    if (ptrav.is_seed_hit() ||
         ptrav.iters_state.empty() ||
         !ptrav.vargraph->has_fwd_edge(c_node_id))
     {
@@ -67,10 +67,17 @@ namespace grem
     is_finished(PathTraverser &ptrav)
   { return ptrav.finished; }
 
+  bool
+    is_valid(PathTraverser &ptrav)
+  {
+    return ptrav.is_seed_hit();
+  }
+
   void
     get_results(PathTraverser &ptrav, std::vector< PathTraverser::Output > &results)
   {
-    ptrav.get_results(results);
+    if (is_valid(ptrav))
+      ptrav.get_results(results);
   }
 
   /**  PathTraverser  **/
@@ -100,6 +107,12 @@ namespace grem
     c_locus(new_locus), iters_state(other.iters_state), path(other.path),
     finished(false)
   {}
+
+  bool
+    PathTraverser::is_seed_hit()
+  {
+    return (this->path.length() == this->parameters->seed_len);
+  }
 
   bool
     PathTraverser::go_down(IterState &its, seqan::Value<DnaSeq>::Type c)

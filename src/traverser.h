@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Tue Nov 22, 2016  15:48
+ * Last modified: Wed Nov 23, 2016  00:10
  *
  * Description: Traversers class definitions.
  *
@@ -72,6 +72,7 @@ namespace grem
       // Traverse interface functions (are friends!)
       friend void move_forward(PathTraverser &ptrav, std::vector< PathTraverser > &new_ptravs);
       friend bool is_finished(PathTraverser &ptrav);
+      friend bool is_valid(PathTraverser &ptrav);
       friend void get_results(PathTraverser &ptrav, std::vector< PathTraverser::Output > &results);
 
       // Attributes getters and setters
@@ -107,6 +108,7 @@ namespace grem
       bool                     finished;
 
       // Internal methods
+      bool is_seed_hit();
       bool go_down(IterState &its, seqan::Value<DnaSeq>::Type c);
       void go_down_all(seqan::Value<DnaSeq>::Type c);
       void extend_path(unsigned int visit_len);
