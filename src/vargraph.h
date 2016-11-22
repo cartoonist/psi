@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Tue Nov 22, 2016  20:25
+ * Last modified: Tue Nov 22, 2016  20:48
  *
  * Description: VarGraph class definition.
  *
@@ -64,6 +64,7 @@ namespace grem
       { return this->vg_graph.node_size(); }
 
       bool                                   has_node(vg::Node *node) const;
+      bool                                   has_node(id_t node_id) const;
 
       inline const vg::Node&                 node_at(unsigned int idx) const
       { return this->vg_graph.node(idx); }
@@ -89,6 +90,7 @@ namespace grem
       { return this->vg_graph.mutable_edge(idx); }
 
       bool                                   has_fwd_edge(vg::Node *node) const;
+      bool                                   has_fwd_edge(id_t node_id) const;
 
       inline const std::vector< vg::Edge* >& fwd_edges(id_t node_id) const
       { return this->edges_by_id.at(node_id); }
@@ -97,6 +99,7 @@ namespace grem
       { return this->edges_by_id.at(node_id); }
 
       bool                                   has_bwd_edge(vg::Node *node) const;
+      bool                                   has_bwd_edge(id_t node_id) const;
 
       inline const std::vector< vg::Edge* >& bwd_edges(id_t node_id) const
       { return this->redges_by_id.at(node_id); }
