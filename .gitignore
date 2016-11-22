@@ -8,6 +8,9 @@ src/.d/
 src/*.pb.cc
 src/*.pb.h
 
+# Easyloggingpp log files
+logs/
+
 ## GitHub defaults ##
 # Compiled Object files
 *.slo
