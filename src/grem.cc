@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Tue Nov 22, 2016  21:56
+ * Last modified: Tue Nov 22, 2016  22:08
  *
  * Description: GREM main function.
  *
@@ -114,7 +114,9 @@ int main(int argc, char *argv[])
       std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
 #ifndef NDEBUG
         LOG(INFO) << ++found << " seeds found: "
-                  << aln.name() << " @ " << aln.path().name();
+                  << aln.name() << "[" << aln.path().name() << "]@("
+                  << aln.path().mapping(0).position().node_id() << ", "
+                  << aln.path().mapping(0).position().offset() << ")";
 #endif
       };
 
