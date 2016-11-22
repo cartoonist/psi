@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Mon Nov 21, 2016  00:13
+ * Last modified: Tue Nov 22, 2016  19:30
  *
  * Description: Traversers class implementations.
  *
@@ -128,9 +128,9 @@ namespace grem
       if(!this->go_down(this->iters_state[i], c)) to_be_deleted.push_back(i);
     }
 
-    for (auto it = to_be_deleted.begin(); it != to_be_deleted.end(); ++it)
+    for (auto idx : to_be_deleted)
     {
-      this->iters_state.erase(this->iters_state.begin()+(*it));
+      this->iters_state.erase(this->iters_state.begin()+idx);
     }
   }
 
@@ -230,24 +230,31 @@ namespace grem
       path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
       while (!path_traversers.empty())
       {
-        for (auto it = path_traversers.begin(); it != path_traversers.end(); ++it)
+        std::vector< int > to_be_deleted;
+        for (unsigned int i = 0; i < path_traversers.size(); ++i)
         {
-          if (is_finished(*it))
+          TPathTraverser &ptrav = path_traversers[i];
+          if (is_finished(ptrav))
           {
             std::vector< vg::Alignment > seeds;
-            get_results(*it, seeds);
+            get_results(ptrav, seeds);
             for (auto s : seeds) callback(s);
-            it = --(path_traversers.erase(it));
+            to_be_deleted.push_back(i);
           }
           else
           {
             std::vector< PathTraverser > new_ptravs;
-            move_forward(*it, new_ptravs);
+            move_forward(ptrav, new_ptravs);
             for (auto npt : new_ptravs)
             {
               path_traversers.push_back(npt);
             }
           }
+        }
+
+        for (auto idx : to_be_deleted)
+        {
+          path_traversers.erase(path_traversers.begin()+idx);
         }
       }
     }
