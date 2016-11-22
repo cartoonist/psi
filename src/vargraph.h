@@ -63,6 +63,8 @@ namespace grem
       inline unsigned int                    nodes_size() const
       { return this->vg_graph.node_size(); }
 
+      bool                                   has_node(vg::Node *node) const;
+
       inline const vg::Node&                 node_at(unsigned int idx) const
       { return this->vg_graph.node(idx); }
 
@@ -78,17 +80,23 @@ namespace grem
       inline unsigned int                    edges_size() const
       { return this->vg_graph.edge_size(); }
 
+      bool                                   has_edge(vg::Edge *edge) const;
+
       inline const vg::Edge&                 edge_at(unsigned int idx) const
       { return this->vg_graph.edge(idx); }
 
       inline vg::Edge*                       mutable_edge_at(unsigned int idx)
       { return this->vg_graph.mutable_edge(idx); }
 
+      bool                                   has_fwd_edge(vg::Node *node) const;
+
       inline const std::vector< vg::Edge* >& fwd_edges(id_t node_id) const
       { return this->edges_by_id.at(node_id); }
 
       inline std::vector< vg::Edge* >&       mutable_fwd_edges(id_t node_id)
       { return this->edges_by_id.at(node_id); }
+
+      bool                                   has_bwd_edge(vg::Node *node) const;
 
       inline const std::vector< vg::Edge* >& bwd_edges(id_t node_id) const
       { return this->redges_by_id.at(node_id); }
@@ -124,11 +132,7 @@ namespace grem
       void load_file(std::ifstream &ifs);
       void load_file(std::string &filename);
       void load_file(const char *filename);
-      bool has_node(vg::Node *node);
       void add_node(vg::Node *node);
-      bool has_fwd_edge(vg::Node *node);
-      bool has_bwd_edge(vg::Node *node);
-      bool has_edge(vg::Edge *edge);
       void add_edge(vg::Edge *edge);
   };
 }

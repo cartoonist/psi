@@ -105,7 +105,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_node(vg::Node *node)
+    VarGraph::has_node(vg::Node *node) const
   {
     auto got = this->nodes_by_id.find(node->id());
 
@@ -115,7 +115,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_fwd_edge(vg::Node *node)
+    VarGraph::has_fwd_edge(vg::Node *node) const
   {
     auto got = this->edges_by_id.find(node->id());
 
@@ -125,7 +125,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_bwd_edge(vg::Node *node)
+    VarGraph::has_bwd_edge(vg::Node *node) const
   {
     auto got = this->redges_by_id.find(node->id());
 
@@ -154,7 +154,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_edge(vg::Edge *edge)
+    VarGraph::has_edge(vg::Edge *edge) const
   {
     // TODO: check for duplication. It needs map<pair<id_t,id_t>,vg::Edge*>.
     return false;
