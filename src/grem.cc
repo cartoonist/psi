@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Nov 21, 2016  03:14
+ * Last modified: Tue Nov 22, 2016  19:42
  *
  * Description: GREM main function.
  *
@@ -37,6 +37,7 @@ using namespace grem;
 // TODO: Documentation.
 // TODO: Memory footprint.
 // TODO: Logging: replace all iostream calls with logging APIs.
+// TODO: Logging messages.
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -63,7 +64,10 @@ int main(int argc, char *argv[])
   unsigned int seedLen = std::stoul(argv[3]);
   unsigned int chkSize = std::stoul(argv[4]);
 
+#ifndef NDEBUG
   LOG(INFO) << "Opening file '" << toCString(fqPath) << "'...";
+#endif
+
   SeqFileIn readInFile;
   if (!open(readInFile, toCString(fqPath)))
   {
@@ -73,7 +77,10 @@ int main(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
+#ifndef NDEBUG
   LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "'...";
+#endif
+
   try
   {
     std::string graph_name = "graph-1";
@@ -96,14 +103,19 @@ int main(int argc, char *argv[])
           s_point.set_node_id(node.id());
           s_point.set_offset(j);
 //        s_point.set_offset(0);
+
           gtraverser.add_start(s_point);
         }
       }
 
       long int found = 0;
       std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
-        std::cout << found << " seeds found." << std::endl;
+#ifndef NDEBUG
+        LOG(INFO) << ++found << " seeds found: "
+                  << aln.name() << " @ " << aln.path().name();
+#endif
       };
+
       PathTraverser::Param params(reads, seedLen);
       gtraverser.traverse(params, write);
     }
