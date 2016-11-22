@@ -49,16 +49,14 @@ namespace grem
     else
     {
       auto it = edges.begin();
-      vg::Edge *first_edge = *it;
-      ptrav.c_locus.set_node_id(first_edge->to());
+      ptrav.c_locus.set_node_id((*it)->to());
       ptrav.c_locus.set_offset(0);
       ++it;
 
       for (; it != edges.end(); ++it)
       {
-        vg::Edge *other_edge = *it;
         vg::Position new_pos;
-        new_pos.set_node_id(other_edge->to());
+        new_pos.set_node_id((*it)->to());
         new_pos.set_offset(0);
         new_travs.push_back(PathTraverser(ptrav, new_pos));
       }
@@ -238,8 +236,7 @@ namespace grem
       {
         for (auto it = path_traversers.begin(); it != path_traversers.end(); ++it)
         {
-          TPathTraverser ptrav = *it;
-          if (is_finished(ptrav))
+          if (is_finished(*it))
           {
             std::vector< vg::Alignment > seeds = get_results(ptrav);
             for (auto s : seeds) callback(s);
