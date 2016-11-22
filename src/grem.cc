@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Tue Nov 22, 2016  19:42
+ * Last modified: Tue Nov 22, 2016  21:56
  *
  * Description: GREM main function.
  *
@@ -30,6 +30,8 @@
 #include "traverser.h"
 #include "types.h"
 #include "release.h"
+
+//#undef NDEBUG
 
 using namespace seqan;
 using namespace grem;
