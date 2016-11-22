@@ -4,7 +4,7 @@
  * Filename: release.h
  *
  * Created: Sun Nov 13, 2016  00:08
- * Last modified: Sun Nov 13, 2016  12:26
+ * Last modified: Wed Nov 23, 2016  00:53
  *
  * Description: Release information.
  *
@@ -21,7 +21,7 @@
 
 namespace grem
 {
-  const char * const VERSION = "0.0.1";
+  const char * const VERSION = "0.0.1.dev";
   const char * const PACKAGE = "grem";
 }
 
