@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Tue Nov 22, 2016  20:06
+ * Last modified: Tue Nov 22, 2016  20:27
  *
  * Description: VarGraph class implementation.
  *
@@ -110,6 +110,26 @@ namespace grem
     auto got = this->nodes_by_id.find(node->id());
 
     if (got == this->nodes_by_id.end()) return false;
+
+    return true;
+  }
+
+  bool
+    VarGraph::has_fwd_edge(vg::Node *node)
+  {
+    auto got = this->edges_by_id.find(node->id());
+
+    if (got == this->edges_by_id.end()) return false;
+
+    return true;
+  }
+
+  bool
+    VarGraph::has_bwd_edge(vg::Node *node)
+  {
+    auto got = this->redges_by_id.find(node->id());
+
+    if (got == this->redges_by_id.end()) return false;
 
     return true;
   }

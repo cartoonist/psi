@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Wed Nov 16, 2016  09:33
+ * Last modified: Tue Nov 22, 2016  20:25
  *
  * Description: VarGraph class definition.
  *
@@ -126,6 +126,8 @@ namespace grem
       void load_file(const char *filename);
       bool has_node(vg::Node *node);
       void add_node(vg::Node *node);
+      bool has_fwd_edge(vg::Node *node);
+      bool has_bwd_edge(vg::Node *node);
       bool has_edge(vg::Edge *edge);
       void add_edge(vg::Edge *edge);
   };
