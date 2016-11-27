@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Wed Nov 23, 2016  00:17
+ * Last modified: Thu Dec 01, 2016  15:17
  *
  * Description: Traversers class implementations.
  *
@@ -239,6 +239,10 @@ namespace grem
   {
     for (auto locus : this->starting_points)
     {
+#ifndef NDEBUG
+      TIMED_SCOPE(startingPointTimer, "starting-point");
+#endif
+
       std::vector< TPathTraverser > path_traversers;
       path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
       while (!path_traversers.empty())

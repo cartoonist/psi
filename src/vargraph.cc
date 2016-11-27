@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Tue Nov 22, 2016  20:50
+ * Last modified: Thu Dec 01, 2016  15:18
  *
  * Description: VarGraph class implementation.
  *
@@ -68,6 +68,10 @@ namespace grem
   void
     VarGraph::load_file(std::ifstream &ifs)
   {
+#ifndef NDEBUG
+    TIMED_FUNC(loadGraphTimer);
+#endif
+
     if (!ifs.is_open())
     {
       throw std::ios_base::failure("could not open the file.");

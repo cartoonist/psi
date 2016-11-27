@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Sun Nov 27, 2016  17:44
+ * Last modified: Sun Nov 27, 2016  19:44
  *
  * Description: GREM main function.
  *
@@ -46,6 +46,8 @@ INITIALIZE_EASYLOGGINGPP
 
 int main(int argc, char *argv[])
 {
+  START_EASYLOGGINGPP(argc, argv);
+
   el::Configurations log_conf;
   log_conf.setToDefault();
   el::Loggers::reconfigureLogger("default", log_conf);
@@ -87,21 +89,33 @@ int main(int argc, char *argv[])
     {
       ReadsChunk reads;
 
-      readRecords(reads.ids, reads.seqs, reads.quals, readInFile, chkSize);
+      {
+#ifndef NDEBUG
+        TIMED_SCOPE(loadChunkTimer, "load-chunk");
+#endif
+        readRecords(reads.ids, reads.seqs, reads.quals, readInFile, chkSize);
+      }
+
       if (length(reads.ids) == 0) break;
 
       GraphTraverser< PathTraverser > gtraverser(vargraph);
-      for (unsigned int i = 0; i < vargraph.nodes_size(); ++i)
-      {
-        const vg::Node &node = vargraph.node_at(i);
-        for (unsigned int j = 0; j < node.sequence().length(); ++j)
-        {
-          vg::Position s_point;
-          s_point.set_node_id(node.id());
-          s_point.set_offset(j);
-//        s_point.set_offset(0);
 
-          gtraverser.add_start(s_point);
+      {
+#ifndef NDEBUG
+        TIMED_SCOPE(addStartsTimer, "add-starts");
+#endif
+        for (unsigned int i = 0; i < vargraph.nodes_size(); ++i)
+        {
+          const vg::Node &node = vargraph.node_at(i);
+          for (unsigned int j = 0; j < node.sequence().length(); ++j)
+          {
+            vg::Position s_point;
+            s_point.set_node_id(node.id());
+            s_point.set_offset(j);
+//          s_point.set_offset(0);
+
+            gtraverser.add_start(s_point);
+          }
         }
       }
 
