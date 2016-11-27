@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Tue Nov 22, 2016  22:08
+ * Last modified: Sun Nov 27, 2016  17:44
  *
  * Description: GREM main function.
  *
@@ -49,6 +49,10 @@ int main(int argc, char *argv[])
   el::Configurations log_conf;
   log_conf.setToDefault();
   el::Loggers::reconfigureLogger("default", log_conf);
+
+  // Verify that the version of the library that we linked against is
+  // compatible with the version of the headers we compiled against.
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   // TODO: get command-line arguments. Now, assuming:
   //
@@ -132,6 +136,9 @@ int main(int argc, char *argv[])
               << e.what() << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  // Delete all global objects allocated by libprotobuf.
+  google::protobuf::ShutdownProtobufLibrary();
 
   return EXIT_SUCCESS;
 }
