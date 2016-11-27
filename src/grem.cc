@@ -24,7 +24,6 @@
 #include <functional>
 
 #include <seqan/seq_io.h>
-#include <easyloggingpp/src/easylogging++.h>
 
 #include "vargraph.h"
 #include "traverser.h"
@@ -32,6 +31,7 @@
 #include "release.h"
 
 //#undef NDEBUG
+#include <easyloggingpp/src/easylogging++.h>
 
 using namespace seqan;
 using namespace grem;
@@ -58,40 +58,31 @@ int main(int argc, char *argv[])
   //
   // Usage: GREM fastq vg length chunksize
 
-  if (argc != 5)
-  {
-    std::cerr << "[" << PACKAGE << "] Error: "
-              << "too few or too many arguments." << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  if (argc != 5) LOG(FATAL) << "too few or too many arguments.";
 
   CharString fqPath    = argv[1];
   CharString vgPath    = argv[2];
   unsigned int seedLen = std::stoul(argv[3]);
   unsigned int chkSize = std::stoul(argv[4]);
 
-#ifndef NDEBUG
   LOG(INFO) << "Opening file '" << toCString(fqPath) << "'...";
-#endif
 
   SeqFileIn readInFile;
   if (!open(readInFile, toCString(fqPath)))
   {
-    std::cerr << "[" << PACKAGE << "] Error: "
-              << "could not open the file '" << toCString(fqPath)
-              << "'." << std::endl;
-    exit(EXIT_FAILURE);
+    LOG(FATAL) << "could not open the file '" << toCString(fqPath) << "'.";
   }
-
-#ifndef NDEBUG
-  LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "'...";
-#endif
 
   try
   {
+    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "'...";
+
     std::string graph_name = "graph-1";
     VarGraph vargraph(toCString(vgPath), graph_name);
 
+    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "': Done.";
+
+    long int found = 0;
     while (true)
     {
       ReadsChunk reads;
@@ -114,27 +105,21 @@ int main(int argc, char *argv[])
         }
       }
 
-      long int found = 0;
       std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
-#ifndef NDEBUG
-        LOG(INFO) << ++found << " seeds found: "
-                  << aln.name() << "[" << aln.path().name() << "]@("
-                  << aln.path().mapping(0).position().node_id() << ", "
-                  << aln.path().mapping(0).position().offset() << ")";
-#endif
+        ++found;
+        if (found % 1000 == 0) LOG(DEBUG) << found << " seeds found so far.";
       };
 
       PathTraverser::Param params(reads, seedLen);
       gtraverser.traverse(params, write);
     }
+
+    LOG(INFO) << "Total number of " << found << " seeds found.";
   }
   catch(std::ios::failure &e)
   {
-    std::cerr << "[" << PACKAGE << "] Error: "
-              << "failed to open the file '" << toCString(vgPath)
-              << "'." << std::endl << "Caught an ios_base::failure: "
-              << e.what() << std::endl;
-    exit(EXIT_FAILURE);
+    LOG(ERROR) << "failed to open the file '" << toCString(vgPath) << "'.";
+    LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
   }
 
   // Delete all global objects allocated by libprotobuf.

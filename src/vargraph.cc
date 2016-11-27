@@ -42,9 +42,8 @@ namespace grem
       }
       catch(std::runtime_error &e)
       {
-        std::cerr << "[" << PACKAGE << "] Warning: "
-                  << "handling a std::runtime_error." << std::endl
-                  << "While adding a node: " << e.what() << std::endl;
+        LOG(WARNING) << "handling a std::runtime_error "
+                     << "while adding a node: " << e.what();
       }
     }
 
@@ -58,9 +57,8 @@ namespace grem
       }
       catch(std::runtime_error &e)
       {
-        std::cerr << "[" << PACKAGE << "] Warning: "
-                  << "handling a std::runtime_error." << std::endl
-                  << "While adding an edge: " << e.what() << std::endl;
+        LOG(WARNING) << "handling a std::runtime_error "
+                     << "while adding an edge: " << e.what();
       }
     }
 
@@ -82,9 +80,7 @@ namespace grem
     };
     // Handle count callback function.
     std::function< void(uint64_t) > handle_count = [](uint64_t count) {
-#ifndef NDEBUG
-      LOG(INFO) << "Loading " << count << " graph(s)...";
-#endif
+      LOG(DEBUG) << "Loading " << count << " graph(s)...";
     };
 
     stream::for_each(ifs, extend_graph, handle_count);
