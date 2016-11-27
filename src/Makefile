@@ -19,7 +19,8 @@ CXXFLAGS      = -O3
 LIBS_CFLAGS  := -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \
 	        $(shell pkg-config --cflags protobuf)
-LDFLAG       := -lrt \
+LDFLAG       := -fopenmp \
+	        -lrt \
 	        $(shell pkg-config --libs protobuf)
 
 ##  Specifying source files to automatically generate dependencies:
