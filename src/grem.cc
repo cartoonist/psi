@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Dec 01, 2016  15:17
+ * Last modified: Thu Dec 01, 2016  16:46
  *
  * Description: GREM main function.
  *
@@ -24,6 +24,7 @@
 #include <functional>
 
 #include <seqan/seq_io.h>
+#include <seqan/arg_parse.h>
 
 #include "vargraph.h"
 #include "traverser.h"
@@ -38,12 +39,15 @@ using namespace grem;
 
 // TODO: Documentation.
 // TODO: Memory footprint.
-// TODO: Logging: replace all iostream calls with logging APIs.
 // TODO: Logging messages.
 // TODO: Source codes line limit: 88.
 // TODO: performance logs' level should be DEBUG.
 
 INITIALIZE_EASYLOGGINGPP
+
+// Forwards
+void                               setup_argparser(seqan::ArgumentParser & parser);
+seqan::ArgumentParser::ParseResult parse_args(GremOptions & options, int argc, char *argv[]);
 
 
 int main(int argc, char *argv[])
@@ -58,16 +62,18 @@ int main(int argc, char *argv[])
   // compatible with the version of the headers we compiled against.
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  // TODO: get command-line arguments. Now, assuming:
-  //
-  // Usage: GREM fastq vg length chunksize
+  // Parse the command line.
+  GremOptions options;
+  auto res = parse_args(options, argc, argv);
+  // If parsing was not successful then exit with code 1 if there were errors.
+  // Otherwise, exit with code 0 (e.g. help was printed).
+  if (res != seqan::ArgumentParser::PARSE_OK)
+    return res == seqan::ArgumentParser::PARSE_ERROR;
 
-  if (argc != 5) LOG(FATAL) << "too few or too many arguments.";
-
-  CharString fqPath    = argv[1];
-  CharString vgPath    = argv[2];
-  unsigned int seedLen = std::stoul(argv[3]);
-  unsigned int chkSize = std::stoul(argv[4]);
+  CharString const & fqPath    = options.fq_path;
+  CharString const & vgPath    = options.rf_path;
+  unsigned int const & seedLen = options.seed_len;
+  unsigned int const & chkSize = options.chunk_size;
 
   LOG(INFO) << "Opening file '" << toCString(fqPath) << "'...";
 
@@ -142,4 +148,69 @@ int main(int argc, char *argv[])
   google::protobuf::ShutdownProtobufLibrary();
 
   return EXIT_SUCCESS;
+}
+
+
+  void
+setup_argparser(seqan::ArgumentParser & parser)
+{
+  // positional arguments.
+  std::string POSARG1 = "VG_FILE";
+
+  // add usage line.
+  addUsageLine(parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"");
+
+  // vg file -- positional argument.
+  seqan::ArgParseArgument vgfile_arg(seqan::ArgParseArgument::INPUT_FILE, POSARG1);
+  setValidValues(vgfile_arg, "vg");
+  addArgument(parser, vgfile_arg);
+
+  // reads in FASTQ format -- **required** option.
+  seqan::ArgParseOption fqfile_arg("f", "fastq", "Reads in FASTQ format.",
+                                   seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE");
+  setValidValues(fqfile_arg, "fq fastq");
+  addOption(parser, fqfile_arg);
+  setRequired(parser, "f");
+
+  // seed length -- **required** option.
+  addOption(parser, seqan::ArgParseOption("l", "seed-length", "Seed length.",
+                                          seqan::ArgParseArgument::INTEGER, "INT"));
+  setRequired(parser, "l");
+
+  // chunk size -- **required** option.
+  addOption(parser, seqan::ArgParseOption("c", "chunk-size", "Reads chunk size.",
+                                          seqan::ArgParseArgument::INTEGER, "INT"));
+  setRequired(parser, "c");
+
+  // verbosity options -- HANDLED BY EASYLOGGING++
+  addOption(parser, seqan::ArgParseOption("v", "verbose",
+                                          "Activates maximum verbosity."));
+}
+
+
+  seqan::ArgumentParser::ParseResult
+parse_args(GremOptions & options, int argc, char *argv[])
+{
+  // setup ArgumentParser.
+  seqan::ArgumentParser parser("grem");
+  setup_argparser(parser);
+
+  // Embedding program's meta data and build information.
+  setShortDescription(parser, SHORT_DESC);
+  setVersion(parser, VERSION);
+  setDate(parser, __DATE__);
+  addDescription(parser, LONG_DESC);
+
+  // parse command line.
+  auto res = seqan::parse(parser, argc, argv);
+
+  // only extract options if the program will continue after parse_args()
+  if (res != seqan::ArgumentParser::PARSE_OK) return res;
+
+  getOptionValue(options.fq_path, parser, "fastq");
+  getOptionValue(options.seed_len, parser, "seed-length");
+  getOptionValue(options.chunk_size, parser, "chunk-size");
+  getArgumentValue(options.rf_path, parser, 0);
+
+  return seqan::ArgumentParser::PARSE_OK;
 }

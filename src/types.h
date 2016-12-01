@@ -4,7 +4,7 @@
  * Filename: types.h
  *
  * Created: Fri Nov 11, 2016  09:40
- * Last modified: Tue Nov 15, 2016  15:35
+ * Last modified: Thu Dec 01, 2016  16:08
  *
  * Description: Types header file.
  *
@@ -40,6 +40,14 @@ namespace grem
     DnaSeqSet     seqs;
     CharStringSet quals;
   } ReadsChunk;
+
+  typedef struct
+  {
+    unsigned int seed_len;
+    unsigned int chunk_size;
+    seqan::CharString rf_path;
+    seqan::CharString fq_path;
+  } GremOptions;
 }
 
 namespace seqan
