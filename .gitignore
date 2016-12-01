@@ -3,6 +3,7 @@ bin/
 
 # Generated Makefiles
 src/.d/
+test/.d/
 
 # Generated source codes
 src/*.pb.cc
