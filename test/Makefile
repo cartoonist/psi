@@ -17,7 +17,7 @@ $(shell mkdir -p ${DPMDIR} >/dev/null)
 CXX          ?= g++
 # Compiler flags.
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${LIBS_CFLAGS}
-CXXFLAGS      = -g
+CXXFLAGS      = -O3
 LIBS_CFLAGS  := -I ${SRCDIR}/ \
 	        -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \

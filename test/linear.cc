@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Thu Dec 01, 2016  17:13
+ * Last modified: Fri Dec 02, 2016  01:12
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -24,7 +24,7 @@
 #include "../src/types.h"
 #include "../src/release.h"
 
-#undef NDEBUG
+//#undef NDEBUG
 #include <easyloggingpp/src/easylogging++.h>
 
 using namespace std;
@@ -150,7 +150,12 @@ int main(int argc, char *argv[])
   CharString ref_id;
   DnaSeq     ref_seq;
 
-  readRecord(ref_id, ref_seq, refInFile);
+  {
+#ifndef NDEBUG
+    TIMED_SCOPE(loadRefTimer, "load-ref");
+#endif
+    readRecord(ref_id, ref_seq, refInFile);
+  }
 
   SeqFileIn readsInFile;
   if (!open(readsInFile, toCString(options.fq_path)))
@@ -162,7 +167,17 @@ int main(int argc, char *argv[])
   bool found;
   while (true)
   {
-    readRecords(reads.ids, reads.seqs, reads.quals, readsInFile, options.chunk_size);
+#ifndef NDEBUG
+    TIMED_SCOPE(readChunkTimer, "read-chunk");
+#endif
+
+    {
+#ifndef NDEBUG
+      TIMED_SCOPE(loadReadsTimer, "load-reads");
+#endif
+      readRecords(reads.ids, reads.seqs, reads.quals, readsInFile, options.chunk_size);
+    }
+
     if (length(reads.ids) == 0)
     {
       LOG(INFO) << "All reads are processed.";
@@ -176,6 +191,10 @@ int main(int argc, char *argv[])
     DnaSeqSetIndex reads_index(reads.seqs);
     for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
     {
+#ifndef NDEBUG
+      TIMED_SCOPE(startPointTimer, "start-point");
+#endif
+
       IterState iter_state = {DnaSSIndexIter(reads_index), 0, 0};
       // Explicit is better than implicit.
       if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
