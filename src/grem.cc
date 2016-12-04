@@ -4,9 +4,9 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Dec 01, 2016  16:46
+ * Last modified: Sun Dec 04, 2016  20:59
  *
- * Description: GREM main function.
+ * Description: grem main function.
  *
  * Copyright (c) 2016, Ali Ghaffaari
  *

@@ -28,7 +28,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGET       := ${BINDIR}/GREM
+TARGET       := ${BINDIR}/grem
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -41,7 +41,7 @@ MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MF $@
 # building target.
 all: ${TARGET}
 
-${BINDIR}/GREM: grem.o vargraph.o traverser.o vg.pb.o
+${BINDIR}/grem: grem.o vargraph.o traverser.o vg.pb.o
 	${LINK} $^
 
 # general rule for compiling cc files.
