@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Sun Dec 04, 2016  20:59
+ * Last modified: Mon Dec 05, 2016  01:54
  *
  * Description: grem main function.
  *
@@ -92,11 +92,16 @@ int main(int argc, char *argv[])
 
     LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "': Done.";
 
+    ReadsChunk reads;
     long int found = 0;
+    GraphTraverser< PathTraverser > gtraverser(vargraph);
+    gtraverser.add_all_loci();
+    std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
+      ++found;
+      if (found % 1000 == 0) LOG(DEBUG) << found << " seeds found so far.";
+    };
     while (true)
     {
-      ReadsChunk reads;
-
       {
 #ifndef NDEBUG
         TIMED_SCOPE(loadChunkTimer, "load-chunk");
@@ -106,40 +111,21 @@ int main(int argc, char *argv[])
 
       if (length(reads.ids) == 0) break;
 
-      GraphTraverser< PathTraverser > gtraverser(vargraph);
-
-      {
-#ifndef NDEBUG
-        TIMED_SCOPE(addStartsTimer, "add-starts");
-#endif
-        for (unsigned int i = 0; i < vargraph.nodes_size(); ++i)
-        {
-          const vg::Node &node = vargraph.node_at(i);
-          for (unsigned int j = 0; j < node.sequence().length(); ++j)
-          {
-            vg::Position s_point;
-            s_point.set_node_id(node.id());
-            s_point.set_offset(j);
-//          s_point.set_offset(0);
-
-            gtraverser.add_start(s_point);
-          }
-        }
-      }
-
-      std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
-        ++found;
-        if (found % 1000 == 0) LOG(DEBUG) << found << " seeds found so far.";
-      };
-
       PathTraverser::Param params(reads, seedLen);
       gtraverser.traverse(params, write);
+
+      clear(reads.ids);
+      clear(reads.seqs);
+      clear(reads.quals);
     }
 
     LOG(INFO) << "Total number of " << found << " seeds found.";
   }
   catch(std::ios::failure &e)
   {
+    // FIXME: It may capture more general exceptions. This try/catch block is for
+    //        exceptions thrown by VarGraph ctor. It should surround that line. In order
+    //        to do so default ctor should be defined for VarGraph class.
     LOG(ERROR) << "failed to open the file '" << toCString(vgPath) << "'.";
     LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
   }

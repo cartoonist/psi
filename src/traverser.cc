@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Thu Dec 01, 2016  15:17
+ * Last modified: Thu Dec 08, 2016  17:38
  *
  * Description: Traversers class implementations.
  *
@@ -237,42 +237,71 @@ namespace grem
     GraphTraverser<TPathTraverser>::traverse(typename TPathTraverser::Param trav_params,
         std::function< void(typename TPathTraverser::Output &) > callback)
   {
+    std::vector< TPathTraverser > path_traversers;
+    std::vector< int > deleted_paths_idx;
+    std::vector< vg::Alignment > seeds;
+    std::vector< PathTraverser > new_ptravs;
     for (auto locus : this->starting_points)
     {
 #ifndef NDEBUG
       TIMED_SCOPE(startingPointTimer, "starting-point");
 #endif
 
-      std::vector< TPathTraverser > path_traversers;
       path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
       while (!path_traversers.empty())
       {
-        std::vector< int > to_be_deleted;
         for (unsigned int i = 0; i < path_traversers.size(); ++i)
         {
           TPathTraverser &ptrav = path_traversers[i];
           if (is_finished(ptrav))
           {
-            std::vector< vg::Alignment > seeds;
+            // XXX: HEAVYWEIGHTED FUNCTION CALL.
             get_results(ptrav, seeds);
             for (auto s : seeds) callback(s);
-            to_be_deleted.push_back(i);
+            deleted_paths_idx.push_back(i);
+            seeds.clear();
           }
           else
           {
-            std::vector< PathTraverser > new_ptravs;
+            // FIXME: passing `path_traversers` causes SIGSEGV. Why?
             move_forward(ptrav, new_ptravs);
             for (auto npt : new_ptravs)
             {
               path_traversers.push_back(npt);
             }
+            new_ptravs.clear();
           }
         }
 
-        for (auto idx : to_be_deleted)
+        for (auto idx : deleted_paths_idx)
         {
           path_traversers.erase(path_traversers.begin()+idx);
         }
+
+        deleted_paths_idx.clear();
+      }
+
+      assert(path_traversers.empty());
+    }
+  }
+
+  template <class TPathTraverser>
+  void
+    GraphTraverser<TPathTraverser>::add_all_loci()
+  {
+#ifndef NDEBUG
+    TIMED_FUNC(addAllLociTimer);
+#endif
+    for (unsigned int i = 0; i < this->vargraph->nodes_size(); ++i)
+    {
+      const vg::Node &node = this->vargraph->node_at(i);
+      for (unsigned int j = 0; j < node.sequence().length(); ++j)
+      {
+        vg::Position s_point;
+        s_point.set_node_id(node.id());
+        s_point.set_offset(j);
+
+        this->add_start(s_point);
       }
     }
   }

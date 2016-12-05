@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Thu Dec 01, 2016  15:17
+ * Last modified: Mon Dec 05, 2016  01:54
  *
  * Description: Traversers class definitions.
  *
@@ -140,6 +140,7 @@ namespace grem
         { this->starting_points.push_back(locus); }
         void traverse(typename TPathTraverser::Param trav_params,
                       std::function< void(typename TPathTraverser::Output &) > callback);
+        void add_all_loci();
       private:
         // Attributes
         const VarGraph *             vargraph;
