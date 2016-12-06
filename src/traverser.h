@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Mon Dec 05, 2016  01:54
+ * Last modified: Wed Dec 07, 2016  02:09
  *
  * Description: Traversers class definitions.
  *
@@ -22,11 +22,11 @@
 #include <vector>
 #include <functional>
 
-#include <easyloggingpp/src/easylogging++.h>
-
 #include "vg.pb.h"
 #include "vargraph.h"
 #include "types.h"
+
+#include <easyloggingpp/src/easylogging++.h>
 
 // TODO: refactor: types (const, * and &).
 
@@ -47,9 +47,7 @@ namespace grem
           Param(const ReadsChunk &reads_, unsigned int seed_len_) :
             reads(reads_), reads_index(reads.seqs), seed_len(seed_len_)
           {
-#ifndef NDEBUG
             TIMED_FUNC(readsIndexTimer);
-#endif
           }
 
           // Attributes getters and setters

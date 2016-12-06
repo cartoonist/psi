@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Fri Dec 02, 2016  01:12
+ * Last modified: Wed Dec 07, 2016  02:05
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -24,7 +24,6 @@
 #include "../src/types.h"
 #include "../src/release.h"
 
-//#undef NDEBUG
 #include <easyloggingpp/src/easylogging++.h>
 
 using namespace std;

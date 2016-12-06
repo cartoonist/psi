@@ -4,7 +4,7 @@
  * Filename: types.h
  *
  * Created: Fri Nov 11, 2016  09:40
- * Last modified: Thu Dec 01, 2016  16:08
+ * Last modified: Tue Dec 06, 2016  22:36
  *
  * Description: Types header file.
  *
@@ -23,6 +23,8 @@
 
 #include <seqan/sequence.h>
 #include <seqan/index.h>
+
+#include "base.h"
 
 namespace grem
 {

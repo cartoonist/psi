@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Thu Dec 01, 2016  15:18
+ * Last modified: Wed Dec 07, 2016  02:08
  *
  * Description: VarGraph class implementation.
  *
@@ -22,10 +22,11 @@
 #include <exception>
 
 #include <stream/src/stream.hpp>
-#include <easyloggingpp/src/easylogging++.h>
 
 #include "vargraph.h"
 #include "release.h"
+
+#include <easyloggingpp/src/easylogging++.h>
 
 namespace grem
 {
@@ -68,9 +69,7 @@ namespace grem
   void
     VarGraph::load_file(std::ifstream &ifs)
   {
-#ifndef NDEBUG
     TIMED_FUNC(loadGraphTimer);
-#endif
 
     if (!ifs.is_open())
     {

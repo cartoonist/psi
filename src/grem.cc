@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Dec 05, 2016  01:54
+ * Last modified: Wed Dec 07, 2016  02:08
  *
  * Description: grem main function.
  *
@@ -31,7 +31,6 @@
 #include "types.h"
 #include "release.h"
 
-//#undef NDEBUG
 #include <easyloggingpp/src/easylogging++.h>
 
 using namespace seqan;
@@ -103,9 +102,7 @@ int main(int argc, char *argv[])
     while (true)
     {
       {
-#ifndef NDEBUG
         TIMED_SCOPE(loadChunkTimer, "load-chunk");
-#endif
         readRecords(reads.ids, reads.seqs, reads.quals, readInFile, chkSize);
       }
 

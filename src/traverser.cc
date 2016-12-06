@@ -243,9 +243,7 @@ namespace grem
     std::vector< PathTraverser > new_ptravs;
     for (auto locus : this->starting_points)
     {
-#ifndef NDEBUG
       TIMED_SCOPE(startingPointTimer, "starting-point");
-#endif
 
       path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
       while (!path_traversers.empty())
@@ -289,9 +287,8 @@ namespace grem
   void
     GraphTraverser<TPathTraverser>::add_all_loci()
   {
-#ifndef NDEBUG
     TIMED_FUNC(addAllLociTimer);
-#endif
+
     for (unsigned int i = 0; i < this->vargraph->nodes_size(); ++i)
     {
       const vg::Node &node = this->vargraph->node_at(i);
