@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Wed Dec 07, 2016  02:05
+ * Last modified: Thu Dec 08, 2016  16:55
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -150,9 +150,7 @@ int main(int argc, char *argv[])
   DnaSeq     ref_seq;
 
   {
-#ifndef NDEBUG
     TIMED_SCOPE(loadRefTimer, "load-ref");
-#endif
     readRecord(ref_id, ref_seq, refInFile);
   }
 
@@ -166,14 +164,10 @@ int main(int argc, char *argv[])
   bool found;
   while (true)
   {
-#ifndef NDEBUG
     TIMED_SCOPE(readChunkTimer, "read-chunk");
-#endif
 
     {
-#ifndef NDEBUG
       TIMED_SCOPE(loadReadsTimer, "load-reads");
-#endif
       readRecords(reads.ids, reads.seqs, reads.quals, readsInFile, options.chunk_size);
     }
 
@@ -185,29 +179,33 @@ int main(int argc, char *argv[])
 
     LOG(INFO) << "Reading " << options.chunk_size << " reads...";
 
-    found = true;
-    unsigned int i;
-    DnaSeqSetIndex reads_index(reads.seqs);
-    for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
     {
-#ifndef NDEBUG
-      TIMED_SCOPE(startPointTimer, "start-point");
-#endif
+      TIMED_SCOPE(traverseTimer, "traverse");
 
-      IterState iter_state = {DnaSSIndexIter(reads_index), 0, 0};
-      // Explicit is better than implicit.
-      if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
-
-      found = true;
-      for (i = pos; iter_state.ref_len < options.seed_len; ++i)
+      unsigned int i;
+      DnaSeqSetIndex reads_index(reads.seqs);
+      for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
       {
-        if(!go_down(iter_state, ref_seq[i]))
+        IterState iter_state = {DnaSSIndexIter(reads_index), 0, 0};
+        // Explicit is better than implicit.
+        if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
+
+        found = true;
+        for (i = pos; iter_state.ref_len < options.seed_len; ++i)
         {
-          found = false;
-          break;
+          if(!go_down(iter_state, ref_seq[i]))
+          {
+            found = false;
+            break;
+          }
+        }
+        if (found) LOG(INFO) << "Seed hit: " << pos;
+
+        if (pos % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
+        {
+          PERFORMANCE_CHECKPOINT(traverseTimer);
         }
       }
-      if (found) LOG(INFO) << "Seed hit: " << pos;
     }
 
     clear(reads.ids);

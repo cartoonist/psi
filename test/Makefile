@@ -16,7 +16,8 @@ $(shell mkdir -p ${DPMDIR} >/dev/null)
 # Compiler.
 CXX          ?= g++
 # Compiler flags.
-CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${LIBS_CFLAGS}
+MACROS       ?= -DGREM_DEBUG=1
+CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
 CXXFLAGS      = -O3
 LIBS_CFLAGS  := -I ${SRCDIR}/ \
 	        -I ${EXTDIR}/ \
