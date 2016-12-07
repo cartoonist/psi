@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Thu Dec 08, 2016  16:55
+ * Last modified: Thu Dec 08, 2016  17:00
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -25,6 +25,8 @@
 #include "../src/release.h"
 
 #include <easyloggingpp/src/easylogging++.h>
+
+#define SEEDHITS_REPORT_BUF 100000
 
 using namespace std;
 using namespace seqan;
@@ -162,6 +164,7 @@ int main(int argc, char *argv[])
 
   ReadsChunk reads;
   bool found;
+  unsigned int nof_found = 0;
   while (true)
   {
     TIMED_SCOPE(readChunkTimer, "read-chunk");
@@ -199,7 +202,12 @@ int main(int argc, char *argv[])
             break;
           }
         }
-        if (found) LOG(INFO) << "Seed hit: " << pos;
+        if (found)
+        {
+          ++nof_found;
+          if (nof_found % SEEDHITS_REPORT_BUF == 0)
+            LOG(INFO) << nof_found << " seed hits so far.";
+        }
 
         if (pos % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
         {
