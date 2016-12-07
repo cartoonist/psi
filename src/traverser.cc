@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Thu Dec 08, 2016  17:38
+ * Last modified: Thu Dec 08, 2016  16:45
  *
  * Description: Traversers class implementations.
  *
@@ -237,14 +237,15 @@ namespace grem
     GraphTraverser<TPathTraverser>::traverse(typename TPathTraverser::Param trav_params,
         std::function< void(typename TPathTraverser::Output &) > callback)
   {
+    TIMED_FUNC(traverseTimer);
+    unsigned int locus_counter = 0;
+
     std::vector< TPathTraverser > path_traversers;
     std::vector< int > deleted_paths_idx;
     std::vector< vg::Alignment > seeds;
     std::vector< PathTraverser > new_ptravs;
     for (auto locus : this->starting_points)
     {
-      TIMED_SCOPE(startingPointTimer, "starting-point");
-
       path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
       while (!path_traversers.empty())
       {
@@ -280,6 +281,13 @@ namespace grem
       }
 
       assert(path_traversers.empty());
+
+      ++locus_counter;
+      if (locus_counter % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
+      {
+        locus_counter = 0;
+        PERFORMANCE_CHECKPOINT(traverseTimer);
+      }
     }
   }
 

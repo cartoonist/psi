@@ -4,7 +4,7 @@
  * Filename: base.h
  *
  * Created: Tue Dec 06, 2016  22:37
- * Last modified: Wed Dec 07, 2016  02:07
+ * Last modified: Thu Dec 08, 2016  16:45
  *
  * Description: grem base definitions.
  *
@@ -29,5 +29,8 @@
 // Disable Easylogging++ performance tracking logs.
 #define ELPP_DISABLE_PERFORMANCE_TRACKING
 #endif
+
+// Add a checkpoint for performance tracker when this number of loci is traversed.
+#define TRAVERSE_CHECKPOINT_LOCI_NO 100000
 
 #endif  // BASE_H__
