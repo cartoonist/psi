@@ -12,6 +12,10 @@ src/*.pb.h
 # Easyloggingpp log files
 logs/
 
+# Performance reports
+**/callgrind.out.*
+**/perf.data
+
 ## GitHub defaults ##
 # Compiled Object files
 *.slo
