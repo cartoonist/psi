@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Thu Dec 08, 2016  17:00
+ * Last modified: Thu Dec 08, 2016  18:22
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -25,8 +25,6 @@
 #include "../src/release.h"
 
 #include <easyloggingpp/src/easylogging++.h>
-
-#define SEEDHITS_REPORT_BUF 100000
 
 using namespace std;
 using namespace seqan;

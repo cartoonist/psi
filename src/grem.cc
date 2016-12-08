@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Dec 08, 2016  15:27
+ * Last modified: Thu Dec 08, 2016  18:22
  *
  * Description: grem main function.
  *
@@ -98,7 +98,10 @@ int main(int argc, char *argv[])
     gtraverser.add_all_loci();
     std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
       ++found;
-      if (found % 1000 == 0) LOG(DEBUG) << found << " seeds found so far.";
+      if (found % SEEDHITS_REPORT_BUF == 0)
+      {
+        LOG(DEBUG) << found << " seeds found so far.";
+      }
     };
     while (true)
     {
