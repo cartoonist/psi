@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Wed Dec 07, 2016  02:08
+ * Last modified: Thu Dec 08, 2016  15:27
  *
  * Description: grem main function.
  *
@@ -41,6 +41,7 @@ using namespace grem;
 // TODO: Logging messages.
 // TODO: Source codes line limit: 88.
 // TODO: performance logs' level should be DEBUG.
+// TODO: handle 'N's.
 
 INITIALIZE_EASYLOGGINGPP
 
