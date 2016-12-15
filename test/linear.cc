@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Thu Dec 08, 2016  18:22
+ * Last modified: Thu Dec 15, 2016  18:18
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -21,8 +21,8 @@
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 
-#include "../src/types.h"
-#include "../src/release.h"
+#include "types.h"
+#include "release.h"
 
 #include <easyloggingpp/src/easylogging++.h>
 
@@ -90,6 +90,9 @@ parse_args(GremOptions & options, int argc, char *argv[])
   // Embedding program's meta data and build information.
   setShortDescription(parser, "Find seed hits for a linear sequence.");
   setVersion(parser, VERSION);
+  // TODO: Set date to the date of the commit at HEAD.
+  //       Use `-D` option of gcc to define a macro equal to the date of the commit at
+  //       HEAD which is captured by git command.
   setDate(parser, __DATE__);
   addDescription(parser,
                  "Instead of using graph, this simple program uses a linear reference "
