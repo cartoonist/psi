@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Wed Dec 07, 2016  02:09
+ * Last modified: Mon Dec 19, 2016  11:13
  *
  * Description: Traversers class definitions.
  *
@@ -36,7 +36,12 @@ namespace grem
   {
     public:
       // Member typedefs and classes
-      typedef vg::Alignment Output;
+      typedef struct
+      {
+        vg::Position      seed_locus;
+        seqan::CharString read_id;
+        unsigned int      read_pos;
+      } Output;
       // Traverse parameters
       class Param
       {
@@ -92,8 +97,8 @@ namespace grem
       inline vg::Position                 get_c_locus()
       { return this->c_locus; }
 
-      inline const vg::Path &             get_path()
-      { return this->path; }
+      inline unsigned int                 get_path_length()
+      { return this->path_length; }
 
     private:
       // Internal typedefs and classes
@@ -108,14 +113,13 @@ namespace grem
       vg::Position             s_locus;         // starting locus
       vg::Position             c_locus;         // current locus
       std::vector< IterState > iters_state;
-      vg::Path                 path;
+      unsigned int             path_length;
       bool                     finished;
 
       // Internal methods
       bool is_seed_hit();
       bool go_down(IterState &its, seqan::Value<DnaSeq>::Type c);
       void go_down_all(seqan::Value<DnaSeq>::Type c);
-      void extend_path(unsigned int visit_len);
       void one_node_forward();
       void get_results(std::vector< PathTraverser::Output > &results);
   };
@@ -143,6 +147,11 @@ namespace grem
         // Attributes
         const VarGraph *             vargraph;
         std::vector< vg::Position >  starting_points;
+
+        // internal methods
+        void traverse_from_locus(typename TPathTraverser::Param & trav_params,
+            std::function< void(typename TPathTraverser::Output &) > & callback,
+            const vg::Position & locus);
     };
 }
 

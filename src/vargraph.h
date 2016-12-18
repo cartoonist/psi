@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Tue Nov 22, 2016  20:48
+ * Last modified: Sun Dec 18, 2016  22:15
  *
  * Description: VarGraph class definition.
  *
@@ -35,31 +35,36 @@ namespace grem
     public:
       // Constructors
       VarGraph(std::ifstream &ifs, std::string &name_) : name(name_)
-      { this->load_file(ifs); }
+      { this->extend_from_file(ifs); }
 
       VarGraph(std::ifstream &ifs) : name("")
-      { this->load_file(ifs); }
+      { this->extend_from_file(ifs); }
 
       VarGraph(std::string &filename, std::string &name_) : name(name_)
-      { this->load_file(filename); }
+      { this->extend_from_file(filename); }
 
       VarGraph(const char *filename, std::string &name_) : name(name_)
-      { this->load_file(filename); }
+      { this->extend_from_file(filename); }
 
       VarGraph(std::string &filename) : name("")
-      { this->load_file(filename); }
+      { this->extend_from_file(filename); }
 
       VarGraph(const char *filename) : name("")
-      { this->load_file(filename); }
+      { this->extend_from_file(filename); }
 
       VarGraph(vg::Graph &vg_graph, std::string &name_) : name(name_)
       { this->extend(vg_graph); }
 
-      // TODO: Default constructor.
+      VarGraph() : name("") {}
+
       // TODO: Move/copy constructors.
       // TODO: Move/copy assignment operators.
+      // TODO: Destructor.
       // Public methods
       void                                   extend(vg::Graph &vg_graph);
+      void                                   extend_from_file(std::ifstream &ifs);
+      void                                   extend_from_file(std::string &filename);
+      void                                   extend_from_file(const char *filename);
       inline unsigned int                    nodes_size() const
       { return this->vg_graph.node_size(); }
 
@@ -132,9 +137,6 @@ namespace grem
       std::unordered_map< id_t, std::vector< vg::Edge* >>      redges_by_id;
 
       // internal methods
-      void load_file(std::ifstream &ifs);
-      void load_file(std::string &filename);
-      void load_file(const char *filename);
       void add_node(vg::Node *node);
       void add_edge(vg::Edge *edge);
   };

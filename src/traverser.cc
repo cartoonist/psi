@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Thu Dec 08, 2016  16:45
+ * Last modified: Mon Dec 19, 2016  13:22
  *
  * Description: Traversers class implementations.
  *
@@ -56,11 +56,9 @@ namespace grem
         vg::Position new_pos;
         new_pos.set_node_id((*it)->to());
         new_pos.set_offset(0);
-        new_ptravs.push_back(PathTraverser(ptrav, new_pos));
+        new_ptravs.push_back(PathTraverser(ptrav, std::move(new_pos)));
       }
     }
-
-    return;
   }
 
   bool
@@ -88,7 +86,7 @@ namespace grem
   PathTraverser::PathTraverser(const VarGraph *graph, PathTraverser::Param *trav_params,
                                vg::Position start) :
     vargraph(graph), parameters(trav_params), s_locus(start), c_locus(start),
-    finished(false)
+    path_length(0), finished(false)
   {
     this->iters_state.push_back(
         IterState({
@@ -111,7 +109,7 @@ namespace grem
   bool
     PathTraverser::is_seed_hit()
   {
-    return (this->path.length() == this->parameters->seed_len);
+    return (this->path_length == this->parameters->seed_len);
   }
 
   bool
@@ -127,37 +125,25 @@ namespace grem
       return false;
     }
 
-    this->path.set_length(this->path.length() + 1);
-
     return true;
   }
 
   void
     PathTraverser::go_down_all(seqan::Value<DnaSeq>::Type c)
   {
-    std::vector<int> to_be_deleted;
+    static std::vector<int> to_be_deleted;
     for (unsigned int i = 0; i < this->iters_state.size(); ++i)
     {
       if(!this->go_down(this->iters_state[i], c)) to_be_deleted.push_back(i);
     }
 
+    if (to_be_deleted.size() < this->iters_state.size()) ++this->path_length;
+
     for (auto idx : to_be_deleted)
     {
       this->iters_state.erase(this->iters_state.begin()+idx);
     }
-  }
-
-  void
-    PathTraverser::extend_path(unsigned int visit_len)
-  {
-    if (visit_len == 0)
-      throw std::runtime_error("cannot extend a path by the length of zero.");
-
-    auto new_mapping = this->path.add_mapping();
-    new_mapping->set_allocated_position(new vg::Position(this->c_locus));
-    auto new_edit = new_mapping->add_edit();
-    new_edit->set_from_length(visit_len);
-    new_mapping->set_rank(this->path.mapping_size());
+    to_be_deleted.clear();
   }
 
   void
@@ -171,13 +157,11 @@ namespace grem
     for (i = 0;
         i < seqan::length(partseq) &&
         !this->iters_state.empty() &&
-        this->path.length() < this->parameters->get_seed_len();
+        this->path_length < this->parameters->get_seed_len();
         ++i)
     {
       this->go_down_all(partseq[i]);
     }
-
-    this->extend_path(i);
   }
 
   void
@@ -189,20 +173,12 @@ namespace grem
       seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
       for (unsigned i = 0; i < length(saPositions); ++i)
       {
-        // Create a new alignment.
-        vg::Alignment new_aln;
-        // Set alignment name to the read ID.
-        seqan::CharString rid = this->parameters->reads.ids[saPositions[i].i1];
-        new_aln.set_name(seqan::toCString(rid));
-        // Set alignment's 'sequence' field.
-        seqan::String<char, seqan::CStyle> seq_cstr = seqan::representative(its.iter);
-        new_aln.set_sequence(seq_cstr);
-        // Set alignment's 'path' field.
-        auto new_path = new vg::Path(this->path);
-        new_path->set_name(std::to_string(saPositions[i].i2));
-        new_aln.set_allocated_path(new_path);
-        // Process the new alignment.
-        results.push_back(std::move(new_aln));
+        PathTraverser::Output seed_hit;
+        seed_hit.seed_locus = this->s_locus;
+        seed_hit.read_id = this->parameters->reads.ids[saPositions[i].i1];
+        seed_hit.read_pos = saPositions[i].i2;
+
+        results.push_back(std::move(seed_hit));
       }
     }
   }
@@ -234,53 +210,16 @@ namespace grem
 
   template <class TPathTraverser>
   void
-    GraphTraverser<TPathTraverser>::traverse(typename TPathTraverser::Param trav_params,
+    GraphTraverser<TPathTraverser>::traverse(
+        typename TPathTraverser::Param trav_params,
         std::function< void(typename TPathTraverser::Output &) > callback)
   {
     TIMED_FUNC(traverseTimer);
     unsigned int locus_counter = 0;
 
-    std::vector< TPathTraverser > path_traversers;
-    std::vector< int > deleted_paths_idx;
-    std::vector< vg::Alignment > seeds;
-    std::vector< PathTraverser > new_ptravs;
     for (auto locus : this->starting_points)
     {
-      path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
-      while (!path_traversers.empty())
-      {
-        for (unsigned int i = 0; i < path_traversers.size(); ++i)
-        {
-          TPathTraverser &ptrav = path_traversers[i];
-          if (is_finished(ptrav))
-          {
-            // XXX: HEAVYWEIGHTED FUNCTION CALL.
-            get_results(ptrav, seeds);
-            for (auto s : seeds) callback(s);
-            deleted_paths_idx.push_back(i);
-            seeds.clear();
-          }
-          else
-          {
-            // FIXME: passing `path_traversers` causes SIGSEGV. Why?
-            move_forward(ptrav, new_ptravs);
-            for (auto npt : new_ptravs)
-            {
-              path_traversers.push_back(npt);
-            }
-            new_ptravs.clear();
-          }
-        }
-
-        for (auto idx : deleted_paths_idx)
-        {
-          path_traversers.erase(path_traversers.begin()+idx);
-        }
-
-        deleted_paths_idx.clear();
-      }
-
-      assert(path_traversers.empty());
+      this->traverse_from_locus(trav_params, callback, locus);
 
       ++locus_counter;
       if (locus_counter % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
@@ -308,6 +247,50 @@ namespace grem
 
         this->add_start(s_point);
       }
+    }
+  }
+
+  template < class TPathTraverser >
+  void
+    GraphTraverser<TPathTraverser>::traverse_from_locus(
+        typename TPathTraverser::Param & trav_params,
+        std::function< void(typename TPathTraverser::Output &) > & callback,
+        const vg::Position & locus)
+  {
+    static std::vector< TPathTraverser > path_traversers;
+    static std::vector< int > deleted_paths_idx;
+    static std::vector< typename TPathTraverser::Output > seeds;
+    static std::vector< TPathTraverser > new_ptravs;
+
+    path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
+    while (!path_traversers.empty())
+    {
+      for (unsigned int i = 0; i < path_traversers.size(); ++i)
+      {
+        TPathTraverser &ptrav = path_traversers[i];
+        if (is_finished(ptrav))
+        {
+          get_results(ptrav, seeds);
+          for (auto s : seeds) callback(s);
+          deleted_paths_idx.push_back(i);
+          seeds.clear();
+        }
+        else
+        {
+          move_forward(ptrav, new_ptravs);
+          path_traversers.reserve(path_traversers.size() + new_ptravs.size());
+          std::move(std::begin(new_ptravs), std::end(new_ptravs),
+                    std::back_inserter(path_traversers));
+          new_ptravs.clear();
+        }
+      }
+
+      for (auto idx : deleted_paths_idx)
+      {
+        path_traversers.erase(path_traversers.begin()+idx);
+      }
+
+      deleted_paths_idx.clear();
     }
   }
 }
