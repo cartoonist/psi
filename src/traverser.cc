@@ -304,6 +304,9 @@ namespace grem
     static std::vector< typename TPathTraverser::Output > seeds;
     static std::vector< TPathTraverser > new_ptravs;
 
+    static long unsigned int total_nof_ptravs = 0;
+    static double      avg_path_lengths = 0;
+
     path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
     while (!path_traversers.empty())
     {
@@ -312,6 +315,18 @@ namespace grem
         TPathTraverser &ptrav = path_traversers[i];
         if (is_finished(ptrav))
         {
+#ifndef NDEBUG
+          // XXX: compute average go downs.
+          avg_path_lengths = avg_path_lengths * total_nof_ptravs /
+            (total_nof_ptravs + 1) + ptrav.get_path_length() / (total_nof_ptravs + 1);
+          ++total_nof_ptravs;
+          if (total_nof_ptravs % AVG_GODOWNS_SAMPLES == 0)
+          {
+            LOG(DEBUG) << "Average number of go downs (" << AVG_GODOWNS_SAMPLES
+                       << " samples): " << avg_path_lengths;
+          }
+#endif
+
           get_results(ptrav, seeds);
           for (auto s : seeds) callback(s);
           deleted_paths_idx.push_back(i);

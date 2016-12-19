@@ -4,7 +4,7 @@
  * Filename: base.h
  *
  * Created: Tue Dec 06, 2016  22:37
- * Last modified: Thu Dec 08, 2016  18:24
+ * Last modified: Mon Dec 19, 2016  13:06
  *
  * Description: grem base definitions.
  *
@@ -34,5 +34,7 @@
 #define TRAVERSE_CHECKPOINT_LOCI_NO 100000
 // Report the number of seed hits when it exceeds this number.
 #define SEEDHITS_REPORT_BUF 100000
+// Report the average number of go downs when it exceeds this number of samples.
+#define AVG_GODOWNS_SAMPLES 10000
 
 #endif  // BASE_H__
