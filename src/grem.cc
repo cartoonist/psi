@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Dec 08, 2016  18:22
+ * Last modified: Mon Dec 19, 2016  01:43
  *
  * Description: grem main function.
  *
@@ -46,6 +46,8 @@ using namespace grem;
 INITIALIZE_EASYLOGGINGPP
 
 // Forwards
+void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
+void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
 void                               setup_argparser(seqan::ArgumentParser & parser);
 seqan::ArgumentParser::ParseResult parse_args(GremOptions & options, int argc, char *argv[]);
 
@@ -70,66 +72,48 @@ int main(int argc, char *argv[])
   if (res != seqan::ArgumentParser::PARSE_OK)
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
-  CharString const & fqPath    = options.fq_path;
-  CharString const & vgPath    = options.rf_path;
-  unsigned int const & seedLen = options.seed_len;
-  unsigned int const & chkSize = options.chunk_size;
+  CharString const & fqpath    = options.fq_path;
+  CharString const & vgpath    = options.rf_path;
+  unsigned int const & seedlen = options.seed_len;
+  unsigned int const & chksize = options.chunk_size;
 
-  LOG(INFO) << "Opening file '" << toCString(fqPath) << "'...";
+  SeqFileIn reads_infile;
+  open_fastq(fqpath, reads_infile);
+  VarGraph vargraph;
+  load_graph(vgpath, vargraph);
 
-  SeqFileIn readInFile;
-  if (!open(readInFile, toCString(fqPath)))
-  {
-    LOG(FATAL) << "could not open the file '" << toCString(fqPath) << "'.";
-  }
+  GraphTraverser< PathTraverser > gtraverser(vargraph);
+  gtraverser.add_all_loci();
 
-  try
-  {
-    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "'...";
-
-    std::string graph_name = "graph-1";
-    VarGraph vargraph(toCString(vgPath), graph_name);
-
-    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgPath) << "': Done.";
-
-    ReadsChunk reads;
-    long int found = 0;
-    GraphTraverser< PathTraverser > gtraverser(vargraph);
-    gtraverser.add_all_loci();
-    std::function< void(vg::Alignment &) > write = [&found](vg::Alignment &aln){
-      ++found;
-      if (found % SEEDHITS_REPORT_BUF == 0)
-      {
-        LOG(DEBUG) << found << " seeds found so far.";
-      }
-    };
-    while (true)
+  long int found = 0;
+  std::function< void(PathTraverser::Output &) > write = [&found]
+    (PathTraverser::Output & seed_hit){
+    ++found;
+    if (found % SEEDHITS_REPORT_BUF == 0)
     {
-      {
-        TIMED_SCOPE(loadChunkTimer, "load-chunk");
-        readRecords(reads.ids, reads.seqs, reads.quals, readInFile, chkSize);
-      }
+      LOG(DEBUG) << found << " seeds found so far.";
+    }
+  };
 
-      if (length(reads.ids) == 0) break;
-
-      PathTraverser::Param params(reads, seedLen);
-      gtraverser.traverse(params, write);
-
-      clear(reads.ids);
-      clear(reads.seqs);
-      clear(reads.quals);
+  ReadsChunk reads;
+  while (true)
+  {
+    {
+      TIMED_SCOPE(loadChunkTimer, "load-chunk");
+      readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
     }
 
-    LOG(INFO) << "Total number of " << found << " seeds found.";
+    if (length(reads.ids) == 0) break;
+
+    PathTraverser::Param params(reads, seedlen);
+    gtraverser.traverse(params, write);
+
+    clear(reads.ids);
+    clear(reads.seqs);
+    clear(reads.quals);
   }
-  catch(std::ios::failure &e)
-  {
-    // FIXME: It may capture more general exceptions. This try/catch block is for
-    //        exceptions thrown by VarGraph ctor. It should surround that line. In order
-    //        to do so default ctor should be defined for VarGraph class.
-    LOG(ERROR) << "failed to open the file '" << toCString(vgPath) << "'.";
-    LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
-  }
+
+  LOG(INFO) << "Total number of " << found << " seeds found.";
 
   // Delete all global objects allocated by libprotobuf.
   google::protobuf::ShutdownProtobufLibrary();
@@ -138,7 +122,38 @@ int main(int argc, char *argv[])
 }
 
 
-  void
+  inline void
+open_fastq(const CharString & fqpath, SeqFileIn & infile)
+{
+  LOG(INFO) << "Opening file '" << toCString(fqpath) << "'...";
+
+  if (!open(infile, toCString(fqpath)))
+  {
+    LOG(FATAL) << "could not open the file '" << toCString(fqpath) << "'.";
+  }
+}
+
+
+  inline void
+load_graph(const CharString & vgpath, VarGraph & vargraph)
+{
+  try
+  {
+    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgpath) << "'...";
+
+    vargraph.extend_from_file(toCString(vgpath));
+
+    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgpath) << "': Done.";
+  }
+  catch(std::ios::failure &e)
+  {
+    LOG(ERROR) << "failed to open the file '" << toCString(vgpath) << "'.";
+    LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
+  }
+}
+
+
+  inline void
 setup_argparser(seqan::ArgumentParser & parser)
 {
   // positional arguments.
@@ -175,7 +190,7 @@ setup_argparser(seqan::ArgumentParser & parser)
 }
 
 
-  seqan::ArgumentParser::ParseResult
+  inline seqan::ArgumentParser::ParseResult
 parse_args(GremOptions & options, int argc, char *argv[])
 {
   // setup ArgumentParser.

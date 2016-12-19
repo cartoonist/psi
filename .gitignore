@@ -16,6 +16,9 @@ logs/
 **/callgrind.out.*
 **/perf.data
 
+# ctags
+tags
+
 ## GitHub defaults ##
 # Compiled Object files
 *.slo
