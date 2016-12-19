@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Mon Dec 19, 2016  13:22
+ * Last modified: Mon Dec 19, 2016  13:24
  *
  * Description: Traversers class implementations.
  *
@@ -100,11 +100,53 @@ namespace grem
     PathTraverser(&graph, &trav_params, start)
   {}
 
+  PathTraverser::PathTraverser(const PathTraverser & other)
+  {
+    this->vargraph = other.vargraph;
+    this->parameters = other.parameters;
+    this->s_locus = other.s_locus;
+    this->c_locus = other.c_locus;
+    this->iters_state = other.iters_state;
+    this->path_length = other.path_length;
+    this->finished = other.finished;
+  }
+
+  PathTraverser::PathTraverser(PathTraverser && other) noexcept
+  {
+    this->vargraph = other.vargraph;
+    this->parameters = other.parameters;
+    this->s_locus = std::move(other.s_locus);
+    this->c_locus = std::move(other.c_locus);
+    this->iters_state = std::move(other.iters_state);
+    this->path_length = other.path_length;
+    this->finished = other.finished;
+  }
+
+  PathTraverser & PathTraverser::operator=(const PathTraverser & other)
+  {
+    PathTraverser tmp(other);
+    *this = std::move(tmp);
+    return *this;
+  }
+
+  PathTraverser & PathTraverser::operator=(PathTraverser && other) noexcept
+  {
+    this->vargraph = other.vargraph;
+    this->parameters = other.parameters;
+    this->s_locus = std::move(other.s_locus);
+    this->c_locus = std::move(other.c_locus);
+    this->iters_state = std::move(other.iters_state);
+    this->path_length = other.path_length;
+    this->finished = other.finished;
+
+    return *this;
+  }
+
   PathTraverser::PathTraverser(const PathTraverser &other, vg::Position new_locus) :
-    vargraph(other.vargraph), parameters(other.parameters), s_locus(other.s_locus),
-    c_locus(new_locus), iters_state(other.iters_state), path(other.path),
-    finished(false)
-  {}
+    PathTraverser(other)
+  {
+    this->c_locus = new_locus;
+  }
 
   bool
     PathTraverser::is_seed_hit()

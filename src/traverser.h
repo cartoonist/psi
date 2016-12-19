@@ -74,9 +74,12 @@ namespace grem
       // Constructors
       PathTraverser(const VarGraph *graph, PathTraverser::Param *trav_params, vg::Position start);
       PathTraverser(const VarGraph &graph, PathTraverser::Param &trav_params, vg::Position start);
+      PathTraverser(const PathTraverser & other);
+      PathTraverser(PathTraverser && other) noexcept;
+      ~PathTraverser() noexcept {}
+      PathTraverser & operator=(const PathTraverser & other);
+      PathTraverser & operator=(PathTraverser && other) noexcept;
       PathTraverser(const PathTraverser &other, vg::Position new_locus);
-      // TODO: Move/copy constructors.
-      // TODO: Move/copy assignment operators.
 
       // Traverse interface functions (are friends!)
       friend void move_forward(PathTraverser &ptrav, std::vector< PathTraverser > &new_ptravs);
