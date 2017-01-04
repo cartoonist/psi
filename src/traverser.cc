@@ -322,13 +322,13 @@ namespace grem
         if (is_finished(ptrav))
         {
 #ifndef NDEBUG
-          // XXX: compute average go downs.
-          avg_path_lengths = avg_path_lengths * total_nof_ptravs /
-            (total_nof_ptravs + 1) + ptrav.get_path_length() / (total_nof_ptravs + 1);
+          // XXX: compute average path length.
+          avg_path_lengths = avg_path_lengths * (total_nof_ptravs / (total_nof_ptravs+1))
+                             + ptrav.get_path_length() / (total_nof_ptravs + 1);
           ++total_nof_ptravs;
           if (total_nof_ptravs % AVG_GODOWNS_SAMPLES == 0)
           {
-            LOG(DEBUG) << "Average number of go downs (" << AVG_GODOWNS_SAMPLES
+            LOG(DEBUG) << "Average traversed path length (from " << AVG_GODOWNS_SAMPLES
                        << " samples): " << avg_path_lengths;
           }
 #endif

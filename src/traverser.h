@@ -90,19 +90,19 @@ namespace grem
       friend void get_results(PathTraverser &ptrav, std::vector< PathTraverser::Output > &results);
 
       // Attributes getters and setters
-      inline const VarGraph *             get_vargraph()
+      inline const VarGraph *              get_vargraph()
       { return this->vargraph; }
 
-      inline const PathTraverser::Param * get_paramters()
+      inline const PathTraverser::Param *  get_paramters()
       { return this->parameters; }
 
-      inline vg::Position                 get_s_locus()
+      inline vg::Position                  get_s_locus()
       { return this->s_locus; }
 
-      inline vg::Position                 get_c_locus()
+      inline vg::Position                  get_c_locus()
       { return this->c_locus; }
 
-      inline unsigned int                 get_path_length()
+      inline unsigned int                  get_path_length()
       { return this->path_length; }
 
     private:
