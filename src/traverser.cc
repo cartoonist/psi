@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Mon Dec 19, 2016  13:24
+ * Last modified: Mon Dec 19, 2016  16:38
  *
  * Description: Traversers class implementations.
  *
@@ -83,7 +83,8 @@ namespace grem
   // explicit instantiation of GraphTraverser for PathTraverser.
   template class GraphTraverser< PathTraverser >;
 
-  PathTraverser::PathTraverser(const VarGraph *graph, PathTraverser::Param *trav_params,
+  PathTraverser::PathTraverser(const VarGraph *graph,
+                               PathTraverser::Param *trav_params,
                                vg::Position start) :
     vargraph(graph), parameters(trav_params), s_locus(start), c_locus(start),
     path_length(0), finished(false)
@@ -215,7 +216,7 @@ namespace grem
       seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
       for (unsigned i = 0; i < length(saPositions); ++i)
       {
-        PathTraverser::Output seed_hit;
+        PathTraverser::SeedHit seed_hit;
         seed_hit.seed_locus = this->s_locus;
         seed_hit.read_id = this->parameters->reads.ids[saPositions[i].i1];
         seed_hit.read_pos = saPositions[i].i2;

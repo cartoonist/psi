@@ -41,7 +41,9 @@ namespace grem
         vg::Position      seed_locus;
         seqan::CharString read_id;
         unsigned int      read_pos;
-      } Output;
+      } SeedHit;
+
+      typedef SeedHit Output;
       // Traverse parameters
       class Param
       {
