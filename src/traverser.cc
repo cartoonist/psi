@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Mon Dec 19, 2016  16:38
+ * Last modified: Wed Jan 04, 2017  13:04
  *
  * Description: Traversers class implementations.
  *
@@ -82,6 +82,10 @@ namespace grem
 
   // explicit instantiation of GraphTraverser for PathTraverser.
   template class GraphTraverser< PathTraverser >;
+#ifndef NDEBUG
+  // initializing static variable `PathTraverser::total_go_down`.
+  unsigned long long int PathTraverser::total_go_down = 0;
+#endif
 
   PathTraverser::PathTraverser(const VarGraph *graph,
                                PathTraverser::Param *trav_params,
@@ -158,6 +162,9 @@ namespace grem
   bool
     PathTraverser::go_down(IterState &its, seqan::Value<DnaSeq>::Type c)
   {
+#ifndef NDEBUG
+    ++PathTraverser::total_go_down;
+#endif
     if (its.boffset == 0) {
       if (!seqan::goDown(its.iter, c)) return false;
 

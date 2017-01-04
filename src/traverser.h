@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Mon Dec 19, 2016  11:13
+ * Last modified: Wed Jan 04, 2017  12:49
  *
  * Description: Traversers class definitions.
  *
@@ -105,6 +105,14 @@ namespace grem
       inline unsigned int                  get_path_length()
       { return this->path_length; }
 
+#ifndef NDEBUG
+      static inline unsigned long long int get_total_go_down()
+      { return PathTraverser::total_go_down; }
+
+      static inline void                   reset_total_go_down()
+      { PathTraverser::total_go_down = 0; }
+#endif
+
     private:
       // Internal typedefs and classes
       typedef struct {
@@ -120,6 +128,9 @@ namespace grem
       std::vector< IterState > iters_state;
       unsigned int             path_length;
       bool                     finished;
+#ifndef NDEBUG
+      static unsigned long long int total_go_down;
+#endif
 
       // Internal methods
       bool is_seed_hit();
