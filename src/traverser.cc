@@ -275,14 +275,19 @@ namespace grem
 
   template <class TPathTraverser>
   void
-    GraphTraverser<TPathTraverser>::add_all_loci()
+    GraphTraverser<TPathTraverser>::add_all_loci(unsigned int step)
   {
+    // TODO: mention in the documentation that the `step` is approximately preserved in
+    //       the whole graph. This means that for example add_all_loci(2) would add
+    //       the first loci in each node and then add other loci with distance 2 (every
+    //       other loci) within the node. So at the end, it won't necessarily preserve
+    //       this distance between inter-node loci.
     TIMED_FUNC(addAllLociTimer);
 
     for (unsigned int i = 0; i < this->vargraph->nodes_size(); ++i)
     {
       const vg::Node &node = this->vargraph->node_at(i);
-      for (unsigned int j = 0; j < node.sequence().length(); ++j)
+      for (unsigned int j = 0; j < node.sequence().length(); j += step)
       {
         vg::Position s_point;
         s_point.set_node_id(node.id());

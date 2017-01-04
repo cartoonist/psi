@@ -4,7 +4,7 @@
  * Filename: types.h
  *
  * Created: Fri Nov 11, 2016  09:40
- * Last modified: Tue Dec 06, 2016  22:36
+ * Last modified: Wed Jan 04, 2017  11:11
  *
  * Description: Types header file.
  *
@@ -47,6 +47,7 @@ namespace grem
   {
     unsigned int seed_len;
     unsigned int chunk_size;
+    unsigned int start_every;
     seqan::CharString rf_path;
     seqan::CharString fq_path;
   } GremOptions;

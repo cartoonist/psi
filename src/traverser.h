@@ -147,7 +147,7 @@ namespace grem
         { this->starting_points.push_back(locus); }
         void traverse(typename TPathTraverser::Param trav_params,
                       std::function< void(typename TPathTraverser::Output &) > callback);
-        void add_all_loci();
+        void add_all_loci(unsigned int step=1);
       private:
         // Attributes
         const VarGraph *             vargraph;

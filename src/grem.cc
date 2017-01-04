@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Dec 19, 2016  01:43
+ * Last modified: Wed Jan 04, 2017  11:13
  *
  * Description: grem main function.
  *
@@ -72,10 +72,11 @@ int main(int argc, char *argv[])
   if (res != seqan::ArgumentParser::PARSE_OK)
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
-  CharString const & fqpath    = options.fq_path;
-  CharString const & vgpath    = options.rf_path;
-  unsigned int const & seedlen = options.seed_len;
-  unsigned int const & chksize = options.chunk_size;
+  CharString const & fqpath       = options.fq_path;
+  CharString const & vgpath       = options.rf_path;
+  unsigned int const & seedlen    = options.seed_len;
+  unsigned int const & chksize    = options.chunk_size;
+  unsigned int const & start_step = options.start_every;
 
   SeqFileIn reads_infile;
   open_fastq(fqpath, reads_infile);
@@ -83,7 +84,7 @@ int main(int argc, char *argv[])
   load_graph(vgpath, vargraph);
 
   GraphTraverser< PathTraverser > gtraverser(vargraph);
-  gtraverser.add_all_loci();
+  gtraverser.add_all_loci(start_step);
 
   long int found = 0;
   std::function< void(PathTraverser::Output &) > write = [&found]
@@ -184,6 +185,14 @@ setup_argparser(seqan::ArgumentParser & parser)
                                           seqan::ArgParseArgument::INTEGER, "INT"));
   setRequired(parser, "c");
 
+  // starting points
+  addOption(parser, seqan::ArgParseOption("e", "start-every", "Start from every given "
+                                          "number of loci in all nodes. If it is set to"
+                                          " 1, it means start from all positions in a "
+                                          "node.", seqan::ArgParseArgument::INTEGER,
+                                          "INT"));
+  setDefaultValue(parser, "e", 1);
+
   // verbosity options -- HANDLED BY EASYLOGGING++
   addOption(parser, seqan::ArgParseOption("v", "verbose",
                                           "Activates maximum verbosity."));
@@ -212,6 +221,7 @@ parse_args(GremOptions & options, int argc, char *argv[])
   getOptionValue(options.fq_path, parser, "fastq");
   getOptionValue(options.seed_len, parser, "seed-length");
   getOptionValue(options.chunk_size, parser, "chunk-size");
+  getOptionValue(options.start_every, parser, "start-every");
   getArgumentValue(options.rf_path, parser, 0);
 
   return seqan::ArgumentParser::PARSE_OK;
