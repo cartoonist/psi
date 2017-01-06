@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Wed Jan 04, 2017  11:13
+ * Last modified: Fri Jan 06, 2017  03:32
  *
  * Description: grem main function.
  *
@@ -192,6 +192,16 @@ setup_argparser(seqan::ArgumentParser & parser)
                                           "node.", seqan::ArgParseArgument::INTEGER,
                                           "INT"));
   setDefaultValue(parser, "e", 1);
+
+  // log file -- HANDLED BY EASYLOGGING++
+  seqan::ArgParseOption logfile_arg("", "default-log-file",
+                                    "Sets default log file for existing and future loggers.",
+                                    seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE");
+  addOption(parser, logfile_arg);
+
+  // set logging flag -- HANDLED BY EASYLOGGING++
+  addOption(parser, seqan::ArgParseOption("", "logging-flags", "Sets logging flag.",
+                                          seqan::ArgParseArgument::INTEGER, "INT"));
 
   // verbosity options -- HANDLED BY EASYLOGGING++
   addOption(parser, seqan::ArgParseOption("v", "verbose",
