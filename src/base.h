@@ -4,7 +4,7 @@
  * Filename: base.h
  *
  * Created: Tue Dec 06, 2016  22:37
- * Last modified: Mon Dec 19, 2016  13:06
+ * Last modified: Fri Jan 06, 2017  05:11
  *
  * Description: grem base definitions.
  *
@@ -21,6 +21,8 @@
 
 // Easylogging++ performance tracker in microseconds.
 #define ELPP_PERFORMANCE_MICROSECONDS
+// Prevent creation of default empty log file during pre-processing.
+#define ELPP_NO_DEFAULT_LOG_FILE
 
 // Define/Undefine NDEBUG according to GREM_DEBUG value.
 #undef NDEBUG

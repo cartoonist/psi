@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Fri Jan 06, 2017  03:32
+ * Last modified: Fri Jan 06, 2017  05:16
  *
  * Description: grem main function.
  *
@@ -56,10 +56,6 @@ int main(int argc, char *argv[])
 {
   START_EASYLOGGINGPP(argc, argv);
 
-  el::Configurations log_conf;
-  log_conf.setToDefault();
-  el::Loggers::reconfigureLogger("default", log_conf);
-
   // Verify that the version of the library that we linked against is
   // compatible with the version of the headers we compiled against.
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -77,6 +73,13 @@ int main(int argc, char *argv[])
   unsigned int const & seedlen    = options.seed_len;
   unsigned int const & chksize    = options.chunk_size;
   unsigned int const & start_step = options.start_every;
+  CharString const & logpath      = options.log_path;
+  bool nolog                      = options.nolog;
+
+  el::Configurations log_conf;
+  log_conf.setToDefault();
+  if (!nolog) log_conf.setGlobally(el::ConfigurationType::Filename, toCString(logpath));
+  el::Loggers::reconfigureLogger("default", log_conf);
 
   SeqFileIn reads_infile;
   open_fastq(fqpath, reads_infile);
@@ -193,15 +196,15 @@ setup_argparser(seqan::ArgumentParser & parser)
                                           "INT"));
   setDefaultValue(parser, "e", 1);
 
-  // log file -- HANDLED BY EASYLOGGING++
-  seqan::ArgParseOption logfile_arg("", "default-log-file",
+  // log file
+  seqan::ArgParseOption logfile_arg("L", "log-file",
                                     "Sets default log file for existing and future loggers.",
                                     seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE");
   addOption(parser, logfile_arg);
+  setDefaultValue(parser, "L", "logs/grem.log");
 
-  // set logging flag -- HANDLED BY EASYLOGGING++
-  addOption(parser, seqan::ArgParseOption("", "logging-flags", "Sets logging flag.",
-                                          seqan::ArgParseArgument::INTEGER, "INT"));
+  // no log to file
+  addOption(parser, seqan::ArgParseOption("Q", "no-log", "Disable writing logs to file."));
 
   // verbosity options -- HANDLED BY EASYLOGGING++
   addOption(parser, seqan::ArgParseOption("v", "verbose",
@@ -232,6 +235,8 @@ parse_args(GremOptions & options, int argc, char *argv[])
   getOptionValue(options.seed_len, parser, "seed-length");
   getOptionValue(options.chunk_size, parser, "chunk-size");
   getOptionValue(options.start_every, parser, "start-every");
+  getOptionValue(options.log_path, parser, "log-file");
+  options.nolog = isSet(parser, "no-log");
   getArgumentValue(options.rf_path, parser, 0);
 
   return seqan::ArgumentParser::PARSE_OK;

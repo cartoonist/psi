@@ -4,7 +4,7 @@
  * Filename: types.h
  *
  * Created: Fri Nov 11, 2016  09:40
- * Last modified: Wed Jan 04, 2017  11:11
+ * Last modified: Fri Jan 06, 2017  04:51
  *
  * Description: Types header file.
  *
@@ -50,6 +50,8 @@ namespace grem
     unsigned int start_every;
     seqan::CharString rf_path;
     seqan::CharString fq_path;
+    seqan::CharString log_path;
+    bool nolog;
   } GremOptions;
 }
 
