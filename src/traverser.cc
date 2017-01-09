@@ -4,7 +4,7 @@
  * Filename: traverser.cc
  *
  * Created: Mon Nov 14, 2016  01:13
- * Last modified: Wed Jan 04, 2017  13:04
+ * Last modified: Mon Jan 09, 2017  13:27
  *
  * Description: Traversers class implementations.
  *
@@ -330,8 +330,8 @@ namespace grem
         {
 #ifndef NDEBUG
           // XXX: compute average path length.
-          avg_path_lengths = avg_path_lengths * (total_nof_ptravs / (total_nof_ptravs+1))
-                             + ptrav.get_path_length() / (total_nof_ptravs + 1);
+          avg_path_lengths = avg_path_lengths * (total_nof_ptravs / (total_nof_ptravs+1.0))
+                             + ptrav.get_path_length() / (total_nof_ptravs+1.0);
           ++total_nof_ptravs;
           if (total_nof_ptravs % AVG_GODOWNS_SAMPLES == 0)
           {
