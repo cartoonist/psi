@@ -4,7 +4,7 @@
  * Filename: base.h
  *
  * Created: Tue Dec 06, 2016  22:37
- * Last modified: Fri Jan 06, 2017  05:11
+ * Last modified: Fri Jan 20, 2017  03:37
  *
  * Description: grem base definitions.
  *
@@ -35,8 +35,9 @@
 // Add a checkpoint for performance tracker when this number of loci is traversed.
 #define TRAVERSE_CHECKPOINT_LOCI_NO 100000
 // Report the number of seed hits when it exceeds this number.
-#define SEEDHITS_REPORT_BUF 100000
+#define SEEDHITS_REPORT_BUF 100000000000
 // Report the average number of go downs when it exceeds this number of samples.
-#define AVG_GODOWNS_SAMPLES 10000
+// FIXME: go down or avg. path length?
+#define AVG_GODOWNS_SAMPLES 1000000
 
 #endif  // BASE_H__
