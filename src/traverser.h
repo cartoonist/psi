@@ -276,6 +276,9 @@ namespace grem
 #ifndef NDEBUG
           PathTraverser::inc_total_go_down(1);
 #endif
+          // XXX: assume "N" as a mismatch.
+          if (c == 'N' || c == 'n') return false;
+
           if (its.boffset == 0) {
             if (!seqan::goDown(its.iter, c)) return false;
 
