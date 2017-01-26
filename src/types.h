@@ -33,8 +33,10 @@ namespace grem
   typedef seqan::StringSet< seqan::CharString >                     CharStringSet;
   typedef seqan::Dna5QString                                        DnaSeq;
   typedef seqan::StringSet< DnaSeq >                                DnaSeqSet;
-  typedef seqan::Index< DnaSeqSet, seqan::IndexWotd<> >             DnaSeqSetIndex;
-  typedef seqan::Iterator< DnaSeqSetIndex, seqan::TopDown<> >::Type DnaSSIndexIter;
+  template< typename TIndex >
+    using DnaSeqSetIndex = seqan::Index< DnaSeqSet, TIndex >;
+  template< typename TIndex, typename TSpec >
+    using DnaSSIndexIter = typename seqan::Iterator< DnaSeqSetIndex< TIndex >, TSpec >::Type;
 
   typedef struct
   {
