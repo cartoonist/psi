@@ -4,7 +4,7 @@
  * Filename: types.h
  *
  * Created: Fri Nov 11, 2016  09:40
- * Last modified: Fri Jan 06, 2017  04:51
+ * Last modified: Wed Jan 11, 2017  23:28
  *
  * Description: Types header file.
  *
@@ -33,8 +33,10 @@ namespace grem
   typedef seqan::StringSet< seqan::CharString >                     CharStringSet;
   typedef seqan::Dna5QString                                        DnaSeq;
   typedef seqan::StringSet< DnaSeq >                                DnaSeqSet;
-  typedef seqan::Index< DnaSeqSet, seqan::IndexWotd<> >             DnaSeqSetIndex;
-  typedef seqan::Iterator< DnaSeqSetIndex, seqan::TopDown<> >::Type DnaSSIndexIter;
+  template< typename TIndex >
+    using DnaSeqSetIndex = seqan::Index< DnaSeqSet, TIndex >;
+  template< typename TIndex, typename TSpec >
+    using DnaSSIndexIter = typename seqan::Iterator< DnaSeqSetIndex< TIndex >, TSpec >::Type;
 
   typedef struct
   {
@@ -43,15 +45,28 @@ namespace grem
     CharStringSet quals;
   } ReadsChunk;
 
+  enum class IndexType {
+    Sa = 1,
+    Esa,
+    Wotd,
+    Dfi,
+    QGram,
+    FM
+  };
+
   typedef struct
   {
     unsigned int seed_len;
     unsigned int chunk_size;
     unsigned int start_every;
+    IndexType index;
     seqan::CharString rf_path;
     seqan::CharString fq_path;
     seqan::CharString log_path;
+    bool nologfile;
     bool nolog;
+    bool quiet;
+    bool nocolor;
   } GremOptions;
 }
 
