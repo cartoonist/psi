@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Fri Jan 27, 2017  03:05
+ * Last modified: Fri Jan 27, 2017  03:06
  *
  * Description: grem main function.
  *
@@ -47,8 +47,11 @@ using namespace grem;
 INITIALIZE_EASYLOGGINGPP
 
 // Forwards
+template<typename TIndex, typename TIterSpec>
+  void     find_seeds(GremOptions & options);
 void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
 void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
+IndexType                          index_from_str(std::string str);
 void                               setup_argparser(seqan::ArgumentParser & parser);
 seqan::ArgumentParser::ParseResult parse_args(GremOptions & options, int argc, char *argv[]);
 void                               config_logger(GremOptions & options);
@@ -76,6 +79,29 @@ int main(int argc, char *argv[])
   config_logger("default", options);
   config_logger("performance", options);
 
+  if (options.index == IndexType::Esa)
+  {
+    find_seeds<seqan::IndexEsa<>, seqan::TopDown<>>(options);
+  }
+  else if (options.index == IndexType::Wotd)
+  {
+    find_seeds<seqan::IndexWotd<>, seqan::TopDown<>>(options);
+  }
+  else
+  {
+    throw std::runtime_error("Index not implemented.");
+  }
+
+  // Delete all global objects allocated by libprotobuf.
+  google::protobuf::ShutdownProtobufLibrary();
+
+  return EXIT_SUCCESS;
+}
+
+template<typename TIndex, typename TIterSpec >
+  void
+find_seeds(GremOptions & options)
+{
   CharString const & fqpath       = options.fq_path;
   CharString const & vgpath       = options.rf_path;
   unsigned int const & seedlen    = options.seed_len;
@@ -87,12 +113,12 @@ int main(int argc, char *argv[])
   VarGraph vargraph;
   load_graph(vgpath, vargraph);
 
-  GraphTraverser< PathTraverser > gtraverser(vargraph);
+  GraphTraverser< PathTraverser< TIndex, TIterSpec >> gtraverser(vargraph);
   gtraverser.add_all_loci(start_step);
 
   long int found = 0;
-  std::function< void(PathTraverser::Output &) > write = [&found]
-    (PathTraverser::Output & seed_hit){
+  std::function< void(typename PathTraverser< TIndex, TIterSpec >::Output &) > write = [&found]
+    (typename PathTraverser< TIndex, TIterSpec >::Output & seed_hit){
     ++found;
     if (found % SEEDHITS_REPORT_BUF == 0)
     {
@@ -110,7 +136,7 @@ int main(int argc, char *argv[])
 
     if (length(reads.ids) == 0) break;
 
-    PathTraverser::Param params(reads, seedlen);
+    typename PathTraverser< TIndex, TIterSpec >::Param params(reads, seedlen);
     gtraverser.traverse(params, write);
 
     clear(reads.ids);
@@ -118,12 +144,11 @@ int main(int argc, char *argv[])
     clear(reads.quals);
   }
 
-  LOG(INFO) << "Total number of " << found << " seeds found.";
-
-  // Delete all global objects allocated by libprotobuf.
-  google::protobuf::ShutdownProtobufLibrary();
-
-  return EXIT_SUCCESS;
+  LOG(INFO) << "Total number of seeds found: " << found;
+#ifndef NDEBUG
+  LOG(INFO) << "Total number of 'godown' operations: "
+            << PathTraverser< TIndex, TIterSpec >::inc_total_go_down(0);
+#endif
 }
 
 
@@ -155,6 +180,20 @@ load_graph(const CharString & vgpath, VarGraph & vargraph)
     LOG(ERROR) << "failed to open the file '" << toCString(vgpath) << "'.";
     LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
   }
+}
+
+
+  inline IndexType
+index_from_str(std::string str)
+{
+  if (str == "SA") return IndexType::Sa;
+  if (str == "ESA") return IndexType::Esa;
+  if (str == "WOTD") return IndexType::Wotd;
+  if (str == "DFI") return IndexType::Dfi;
+  if (str == "QGRAM") return IndexType::QGram;
+  if (str == "FM") return IndexType::FM;
+
+  throw std::runtime_error("Undefined index type.");
 }
 
 
@@ -196,6 +235,12 @@ setup_argparser(seqan::ArgumentParser & parser)
                                           "node.", seqan::ArgParseArgument::INTEGER,
                                           "INT"));
   setDefaultValue(parser, "e", 1);
+
+  // index
+  addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
+                                          seqan::ArgParseArgument::STRING, "INDEX"));
+  setValidValues(parser, "i", "SA ESA WOTD DFI QGRAM FM");
+  setDefaultValue(parser, "i", "WOTD");
 
   // log file
   seqan::ArgParseOption logfile_arg("L", "log-file",
@@ -241,16 +286,21 @@ parse_args(GremOptions & options, int argc, char *argv[])
   // only extract options if the program will continue after parse_args()
   if (res != seqan::ArgumentParser::PARSE_OK) return res;
 
+  std::string indexname;
+
   getOptionValue(options.fq_path, parser, "fastq");
   getOptionValue(options.seed_len, parser, "seed-length");
   getOptionValue(options.chunk_size, parser, "chunk-size");
   getOptionValue(options.start_every, parser, "start-every");
+  getOptionValue(indexname, parser, "index");
   getOptionValue(options.log_path, parser, "log-file");
   options.nologfile = isSet(parser, "no-log-file");
   options.quiet = isSet(parser, "quiet");
   options.nocolor = isSet(parser, "no-color");
   options.nolog = isSet(parser, "disable-log");
   getArgumentValue(options.rf_path, parser, 0);
+
+  options.index = index_from_str(indexname);
 
   return seqan::ArgumentParser::PARSE_OK;
 }
