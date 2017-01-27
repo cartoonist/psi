@@ -32,7 +32,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGET       := ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/test_bfs ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -43,9 +43,12 @@ MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MF $@
 .PHONY: all clean dist-clean
 
 # building target.
-all: ${TARGET}
+all: ${TARGETS}
 
 ${BINDIR}/test_linear: linear.o
+	${LINK} $^
+
+${BINDIR}/test_bfs: bfs.o ${SRCDIR}/vg.pb.o ${SRCDIR}/vargraph.o
 	${LINK} $^
 
 # general rule for compiling cc files.
