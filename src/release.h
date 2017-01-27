@@ -4,7 +4,7 @@
  * Filename: release.h
  *
  * Created: Sun Nov 13, 2016  00:08
- * Last modified: Thu Dec 01, 2016  16:27
+ * Last modified: Fri Jan 27, 2017  02:43
  *
  * Description: Release information.
  *
@@ -25,6 +25,11 @@ namespace grem
   const char * const PACKAGE = "grem";
   const char * const SHORT_DESC = "Graph REad Mapper";
   const char * const LONG_DESC = "Map DNA reads to a reference graph.";
+  const char * const BANNER =
+    "\n"
+    " ┌─┐┬─┐┌─┐┌┬┐\n"
+    " │ ┬├┬┘├┤ │││\n"
+    " └─┘┴└─└─┘┴ ┴\n";
 }
 
 #endif  // RELEASE_H__

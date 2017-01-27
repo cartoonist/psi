@@ -20,6 +20,7 @@
 #include <iostream>
 #include <ios>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <functional>
 
@@ -280,8 +281,17 @@ parse_args(GremOptions & options, int argc, char *argv[])
   setDate(parser, __DATE__);
   addDescription(parser, LONG_DESC);
 
+  std::ostringstream hold_buf;
   // parse command line.
-  auto res = seqan::parse(parser, argc, argv);
+  auto res = seqan::parse(parser, argc, argv, hold_buf, std::cerr);
+  // print the banner in help or version messages.
+  if (res == seqan::ArgumentParser::PARSE_HELP ||
+      res == seqan::ArgumentParser::PARSE_VERSION)
+  {
+    std::cout << BANNER << std::endl;
+  }
+  // print the buffer.
+  std::cout << hold_buf.str();
 
   // only extract options if the program will continue after parse_args()
   if (res != seqan::ArgumentParser::PARSE_OK) return res;
