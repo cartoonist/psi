@@ -53,7 +53,10 @@ namespace grem
     seqan::CharString rf_path;
     seqan::CharString fq_path;
     seqan::CharString log_path;
+    bool nologfile;
     bool nolog;
+    bool quiet;
+    bool nocolor;
   } GremOptions;
 }
 
