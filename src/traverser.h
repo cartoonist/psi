@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Fri Jan 20, 2017  12:07
+ * Last modified: Sun Jan 29, 2017  03:12
  *
  * Description: Traversers template class.
  *
@@ -457,15 +457,15 @@ namespace grem
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
-          unsigned long int prenode_level = 0;
+          id_t prenode_level = 0;
           std::string seq;
           while (!at_end(itr))
           {
-            if (prenode_level != itr.level())
+            if (prenode_level != level(itr))
             {
               prenode_remain = remain_estimate;
               remain_estimate = 0;
-              prenode_level = itr.level();
+              prenode_level = level(itr);
             }
 
             seq = this->vargraph->node_by(*itr).sequence();
