@@ -127,6 +127,22 @@ namespace grem
       }
       this->visiting_buffer.pop_front();
       this->itr_value = this->visiting_buffer.front().first;
+      if (this->visiting_buffer.front().second != plevel)
+      {
+        for (auto vn_it = this->visited.begin();
+             vn_it != this->visited.end();
+             /* noop */)
+        {
+          if ((*vn_it).second == plevel)
+          {
+            this->visited.erase(vn_it++);
+          }
+          else
+          {
+            ++vn_it;
+          }
+        }
+      }
 
       return *this;
     }
