@@ -4,7 +4,7 @@
  * Filename: vargraph_iter.h
  *
  * Created: Wed Jan 18, 2017  14:40
- * Last modified: Fri Jan 20, 2017  01:16
+ * Last modified: Mon Jan 30, 2017  23:27
  *
  * Description: Variation graph iterator for traversing the graph.
  *
@@ -33,7 +33,8 @@ namespace grem
   template<typename TGraph, typename TSpec>
     bool at_end(Iterator<TGraph, TSpec> it);
   template<typename TGraph, typename TSpec>
-    Iterator<TGraph, TSpec> begin(const TGraph & g);
+    Iterator<TGraph, TSpec> begin(const TGraph & g,
+        typename TSpec::Value start=0);
   template<typename TGraph, typename TSpec>
     typename TSpec::Level level(Iterator<TGraph, TSpec> & it);
 
@@ -41,13 +42,15 @@ namespace grem
     class Iterator
     {
       friend bool at_end<TGraph, TSpec>(Iterator<TGraph, TSpec> it);
-      friend Iterator<TGraph, TSpec> begin<TGraph, TSpec>(const TGraph & g);
+      friend Iterator<TGraph, TSpec> begin<TGraph, TSpec>(const TGraph & g,
+                                                          typename TSpec::Value start);
 
       public:
-        Iterator(const TGraph & vargraph) : Iterator(&vargraph) {}
-        Iterator(const TGraph * _vargraph_ptr)
+        Iterator(const TGraph & vargraph, typename TSpec::Value start=0) :
+          Iterator(&vargraph, start) {}
+        Iterator(const TGraph * _vargraph_ptr, typename TSpec::Value start=0)
         {
-          *this = begin<TGraph, TSpec>(*_vargraph_ptr);  // use move assign.
+          *this = begin<TGraph, TSpec>(*_vargraph_ptr, start);  // use move assign.
         }
 
         typename TSpec::Value operator*() { return this->itr_value; }
@@ -155,12 +158,16 @@ namespace grem
 
   template<>
     Iterator<VarGraph, BfsIterator<>>
-    begin(const VarGraph & g)
+    begin(const VarGraph & g, BfsIterator<>::Value start)
     {
       Iterator<VarGraph, BfsIterator<>> begin_it;
+      BfsIterator<>::Value start_node_id;
+      if (start != 0) start_node_id = start;
+      else start_node_id = g.node_at(0).id();
+
       begin_it.vargraph_ptr = &g;
-      begin_it.visiting_buffer.push_back(std::make_pair(g.node_at(0).id(), 0));
-      begin_it.visited.insert(std::make_pair(g.node_at(0).id(), 0));
+      begin_it.visiting_buffer.push_back(std::make_pair(start_node_id, 0));
+      begin_it.visited.insert(std::make_pair(start_node_id, 0));
       begin_it.itr_value = begin_it.visiting_buffer.front().first;
 
       return begin_it;
