@@ -4,7 +4,7 @@
  * Filename: bfs.cc
  *
  * Created: Wed Jan 18, 2017  16:07
- * Last modified: Fri Jan 20, 2017  03:13
+ * Last modified: Sun Jan 29, 2017  23:09
  *
  * Description: Test variation graph iterator class.
  *
@@ -27,14 +27,15 @@
 
 #include <easyloggingpp/src/easylogging++.h>
 
-using namespace grem;
-
 INITIALIZE_EASYLOGGINGPP
+
+using namespace grem;
 
 typedef struct
 {
   std::string vgpath;
   unsigned long int step;
+  grem::id_t start;
 } Options;
 
 
@@ -96,6 +97,7 @@ parse_args(Options & options, int argc, char *argv[])
   if (res != seqan::ArgumentParser::PARSE_OK) return res;
 
   getOptionValue(options.step, parser, "start-every");
+  getOptionValue(options.start, parser, "start-node");
   getArgumentValue(options.vgpath, parser, 0);
 
   return seqan::ArgumentParser::PARSE_OK;
@@ -114,19 +116,19 @@ int main(int argc, char *argv[])
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
   VarGraph vargraph(options.vgpath);
-  Iterator<VarGraph, BfsIterator<>> itr(vargraph);
+  Iterator<VarGraph, BfsIterator<>> itr(vargraph, options.start);
 
   unsigned long int prenode_remain = 0;
   unsigned long int remain_estimate = 0;
-  unsigned long int prenode_level = 0;
+  grem::id_t prenode_level = 0;
   std::string seq;
   while (!at_end(itr))
   {
-    if (prenode_level != itr.level())
+    if (prenode_level != level(itr))
     {
       prenode_remain = remain_estimate;
       remain_estimate = 0;
-      prenode_level = itr.level();
+      prenode_level = level(itr);
     }
 
     seq = vargraph.node_by(*itr).sequence();
