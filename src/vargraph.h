@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Sun Dec 18, 2016  22:15
+ * Last modified: Thu Jan 19, 2017  12:34
  *
  * Description: VarGraph class definition.
  *
@@ -33,6 +33,9 @@ namespace grem
   class VarGraph
   {
     public:
+      // typedefs
+      typedef vg::Node Node;
+
       // Constructors
       VarGraph(std::ifstream &ifs, std::string &name_) : name(name_)
       { this->extend_from_file(ifs); }

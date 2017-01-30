@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Thu Jan 26, 2017  23:35
+ * Last modified: Sun Jan 29, 2017  03:12
  *
  * Description: Traversers template class.
  *
@@ -432,8 +432,12 @@ namespace grem
           //       the first loci in each node and then add other loci with distance 2 (every
           //       other loci) within the node. So at the end, it won't necessarily preserve
           //       this distance between inter-node loci.
+          // **UPDATE** This algorithm use better approximation.
+          // TODO: Add documentation.
           TIMED_FUNC(addAllLociTimer);
 
+          // TODO: Old method -- remove
+          /*
           for (unsigned int i = 0; i < this->vargraph->nodes_size(); ++i)
           {
             const vg::Node &node = this->vargraph->node_at(i);
@@ -445,6 +449,54 @@ namespace grem
 
               this->add_start(s_point);
             }
+          }
+          */
+
+          // New algorithm
+          Iterator<VarGraph, BfsIterator<>> itr(this->vargraph);
+
+          unsigned long int prenode_remain = 0;
+          unsigned long int remain_estimate = 0;
+          id_t prenode_level = 0;
+          std::string seq;
+          while (!at_end(itr))
+          {
+            if (prenode_level != level(itr))
+            {
+              prenode_remain = remain_estimate;
+              remain_estimate = 0;
+              prenode_level = level(itr);
+            }
+
+            seq = this->vargraph->node_by(*itr).sequence();
+
+            unsigned long int cursor = (step - prenode_remain) % step;
+            while (cursor < seq.length())
+            {
+              vg::Position s_point;
+              s_point.set_node_id(*itr);
+              s_point.set_offset(cursor);
+              this->add_start(s_point);
+
+              cursor += step;
+            }
+
+            unsigned long int new_remain;
+            if (step - prenode_remain > seq.length())
+            {
+              new_remain = prenode_remain + seq.length();
+            }
+            else
+            {
+              new_remain = (seq.length() - step + prenode_remain) % step;
+            }
+
+            if (remain_estimate < new_remain)
+            {
+              remain_estimate = new_remain;
+            }
+
+            ++itr;
           }
         }
 
