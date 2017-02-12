@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Fri Jan 27, 2017  03:06
+ * Last modified: Fri Feb 03, 2017  01:03
  *
  * Description: grem main function.
  *
@@ -23,6 +23,7 @@
 #include <sstream>
 #include <string>
 #include <functional>
+#include <unordered_set>
 
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
@@ -33,6 +34,8 @@
 #include "release.h"
 
 #include <easyloggingpp/src/easylogging++.h>
+
+INITIALIZE_EASYLOGGINGPP
 
 using namespace seqan;
 using namespace grem;
@@ -45,14 +48,13 @@ using namespace grem;
 // TODO: handle 'N's.
 // TODO: comments' first letter?
 
-INITIALIZE_EASYLOGGINGPP
-
 // Forwards
 template<typename TIndex, typename TIterSpec>
   void     find_seeds(GremOptions & options);
 void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
 void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
 IndexType                          index_from_str(std::string str);
+std::string                        index_to_str(IndexType index);
 void                               setup_argparser(seqan::ArgumentParser & parser);
 seqan::ArgumentParser::ParseResult parse_args(GremOptions & options, int argc, char *argv[]);
 void                               config_logger(GremOptions & options);
@@ -63,10 +65,6 @@ int main(int argc, char *argv[])
 {
   START_EASYLOGGINGPP(argc, argv);
 
-  // Verify that the version of the library that we linked against is
-  // compatible with the version of the headers we compiled against.
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
   // Parse the command line.
   GremOptions options;
   auto res = parse_args(options, argc, argv);
@@ -75,10 +73,20 @@ int main(int argc, char *argv[])
   if (res != seqan::ArgumentParser::PARSE_OK)
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
+  // Verify that the version of the library that we linked against is
+  // compatible with the version of the headers we compiled against.
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
   /* Configure loggers */
   config_logger(options);
   config_logger("default", options);
   config_logger("performance", options);
+
+  LOG(INFO) << "Parameters:";
+  LOG(INFO) << "- Seed length: " << options.seed_len;
+  LOG(INFO) << "- Reads index type: " << index_to_str(options.index);
+  LOG(INFO) << "- Starting points interval: " << options.start_every;
+  LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
 
   if (options.index == IndexType::Esa)
   {
@@ -118,34 +126,38 @@ find_seeds(GremOptions & options)
   gtraverser.add_all_loci(start_step);
 
   long int found = 0;
-  std::function< void(typename PathTraverser< TIndex, TIterSpec >::Output &) > write = [&found]
-    (typename PathTraverser< TIndex, TIterSpec >::Output & seed_hit){
+  std::unordered_set< std::string > covered_reads;
+  std::function< void(typename PathTraverser< TIndex, TIterSpec >::Output &) > write =
+    [&found, &covered_reads] (typename PathTraverser< TIndex, TIterSpec >::Output & seed_hit){
     ++found;
-    if (found % SEEDHITS_REPORT_BUF == 0)
-    {
-      LOG(DEBUG) << found << " seeds found so far.";
-    }
+    covered_reads.insert(toCString(seed_hit.read_id));
   };
 
   ReadsChunk reads;
-  while (true)
+
+  TIMED_BLOCK(t, "seed-finding")
   {
+    while (true)
     {
-      TIMED_SCOPE(loadChunkTimer, "load-chunk");
-      readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
+      {
+        TIMED_SCOPE(loadChunkTimer, "load-chunk");
+        readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
+      }
+
+      if (length(reads.ids) == 0) break;
+
+      typename PathTraverser< TIndex, TIterSpec >::Param params(reads, seedlen);
+      gtraverser.traverse(params, write);
+
+      clear(reads.ids);
+      clear(reads.seqs);
+      clear(reads.quals);
     }
-
-    if (length(reads.ids) == 0) break;
-
-    typename PathTraverser< TIndex, TIterSpec >::Param params(reads, seedlen);
-    gtraverser.traverse(params, write);
-
-    clear(reads.ids);
-    clear(reads.seqs);
-    clear(reads.quals);
   }
 
   LOG(INFO) << "Total number of seeds found: " << found;
+  LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
+  LOG(INFO) << "Total number of starting points: " << gtraverser.get_starting_points().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
             << PathTraverser< TIndex, TIterSpec >::inc_total_go_down(0);
@@ -193,6 +205,20 @@ index_from_str(std::string str)
   if (str == "DFI") return IndexType::Dfi;
   if (str == "QGRAM") return IndexType::QGram;
   if (str == "FM") return IndexType::FM;
+
+  throw std::runtime_error("Undefined index type.");
+}
+
+
+  inline std::string
+index_to_str(IndexType index)
+{
+  if (index == IndexType::Sa) return std::string("SA");
+  if (index == IndexType::Esa) return std::string("ESA");
+  if (index == IndexType::Wotd) return std::string("WOTD");
+  if (index == IndexType::Dfi) return std::string("DFI");
+  if (index == IndexType::QGram) return std::string("QGRAM");
+  if (index == IndexType::FM) return std::string("FM");
 
   throw std::runtime_error("Undefined index type.");
 }
@@ -320,6 +346,8 @@ config_logger(GremOptions & options)
 {
   // Configure color output.
   if (!options.nocolor) el::Loggers::addFlag(el::LoggingFlag::ColoredTerminalOutput);
+  // Configure time format.
+  el::Loggers::addFlag(el::LoggingFlag::FixedTimeFormat);
 }
 
   inline void

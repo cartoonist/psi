@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Sun Dec 18, 2016  21:48
+ * Last modified: Tue Jan 31, 2017  17:17
  *
  * Description: VarGraph class implementation.
  *
@@ -69,7 +69,7 @@ namespace grem
   void
     VarGraph::extend_from_file(std::ifstream &ifs)
   {
-    TIMED_FUNC(loadGraphTimer);
+    TIMED_SCOPE(loadGraphTimer, "load-graph");
 
     if (!ifs.is_open())
     {

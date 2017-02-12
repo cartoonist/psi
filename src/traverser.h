@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Sun Jan 29, 2017  03:12
+ * Last modified: Fri Feb 03, 2017  01:37
  *
  * Description: Traversers template class.
  *
@@ -122,10 +122,12 @@ namespace grem
 
           public:
           // Constructors
-          Param(const ReadsChunk &reads_, unsigned int seed_len_) :
-            reads(reads_), reads_index(reads.seqs), seed_len(seed_len_)
+          Param(const ReadsChunk &reads_, unsigned int seed_len_)
           {
-            TIMED_FUNC(readsIndexTimer);
+            TIMED_SCOPE(readsIndexTimer, "index-read");
+            this->reads = reads_;
+            this->reads_index = DnaSeqSetIndex< TIndex >(reads.seqs);
+            this->seed_len = seed_len_;
           }
 
           // Attributes getters and setters
@@ -404,7 +406,7 @@ namespace grem
         inline void traverse(typename TPathTraverser::Param trav_params,
                       std::function< void(typename TPathTraverser::Output &) > callback)
         {
-          TIMED_FUNC(traverseTimer);
+          TIMED_SCOPE(traverseTimer, "traverse");
           unsigned int locus_counter = 0;
           unsigned int nof_reports = 0;
 
@@ -417,10 +419,8 @@ namespace grem
             {
               locus_counter = 0;
               ++nof_reports;
-              CLOG(INFO, "performance") << "Traversed "
-                                        << nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO
-                                        << " starting points:";
-              PERFORMANCE_CHECKPOINT(traverseTimer);
+              PERFORMANCE_CHECKPOINT_WITH_ID(traverseTimer,
+                  std::to_string(nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO));
             }
           }
         }
@@ -434,7 +434,7 @@ namespace grem
           //       this distance between inter-node loci.
           // **UPDATE** This algorithm use better approximation.
           // TODO: Add documentation.
-          TIMED_FUNC(addAllLociTimer);
+          TIMED_SCOPE(addAllLociTimer, "add-starts");
 
           // TODO: Old method -- remove
           /*
@@ -500,6 +500,11 @@ namespace grem
           }
         }
 
+        inline std::vector< vg::Position > const & get_starting_points()
+        {
+          return this->starting_points;
+        }
+
       private:
         // Attributes
         const VarGraph *             vargraph;
@@ -510,14 +515,19 @@ namespace grem
             std::function< void(typename TPathTraverser::Output &) > & callback,
             const vg::Position & locus)
         {
+          // TODO: Thread unsafe!
+          //       Possible solution: non-static variable passed by caller.
           static std::vector< TPathTraverser > path_traversers;
           static std::vector< int > deleted_paths_idx;
           static std::vector< typename TPathTraverser::Output > seeds;
           static std::vector< TPathTraverser > new_ptravs;
 
 #ifndef NDEBUG
-          static long unsigned int total_nof_ptravs = 0;
-          static double      avg_path_lengths = 0;
+          // TODO: Use a structure with atomic increase operation to collect statistics.
+          static unsigned long int ptrav_counter = 0;
+          static unsigned long int ptrav_len_sum = 0;
+          static double      pre_avg_paths_len = 0;
+          static double      avg_paths_len = 0;
 #endif
 
           path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
@@ -530,16 +540,25 @@ namespace grem
               {
 #ifndef NDEBUG
                 // XXX: compute average path length.
-                avg_path_lengths = avg_path_lengths * (total_nof_ptravs / (total_nof_ptravs+1.0))
-                                   + ptrav.get_path_length() / (total_nof_ptravs+1.0);
-                ++total_nof_ptravs;
-                if (total_nof_ptravs % AVG_GODOWNS_SAMPLES == 0)
+                ptrav_len_sum += ptrav.get_path_length();
+                ++ptrav_counter;
+                if (ptrav_counter == NOF_PATHLEN_SAMPLES)
                 {
-                  static int nof_reports = 1;
-                  LOG(DEBUG) << "Average traversed path length (from "
-                             << nof_reports * AVG_GODOWNS_SAMPLES
-                             << " samples): " << avg_path_lengths;
+                  static int nof_reports = 0;
+                  avg_paths_len = ptrav_len_sum / static_cast<float>(NOF_PATHLEN_SAMPLES);
+                  if (pre_avg_paths_len != 0)
+                  {
+                    avg_paths_len = (avg_paths_len + pre_avg_paths_len) / 2.0;
+                  }
+                  pre_avg_paths_len = avg_paths_len;
+
+                  LOG(INFO) << "Average traversed path length (from "
+                            << nof_reports * NOF_PATHLEN_SAMPLES + ptrav_counter
+                            << " samples): " << avg_paths_len;
                   ++nof_reports;
+
+                  ptrav_counter = 0;
+                  ptrav_len_sum = 0;
                 }
 #endif
 
