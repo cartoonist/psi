@@ -5,6 +5,10 @@ SRCDIR       := src
 PROTODIR     := proto
 # Tests directory.
 TESTDIR      := test
+# Binary files directory.
+BINDIR       := ./bin
+# The location where the binary files should be installed.
+PREFIX       ?= ~/.local
 
 ##  Sources:
 # Proto files.
@@ -31,6 +35,9 @@ ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: ${PROTODIR}/%.proto
 
 test: all
 	make -C ${TESTDIR}
+
+install:
+	install -v ${BINDIR}/grem ${PREFIX}/bin
 
 clean:
 	make -C ${SRCDIR} $@
