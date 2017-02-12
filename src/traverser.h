@@ -515,14 +515,19 @@ namespace grem
             std::function< void(typename TPathTraverser::Output &) > & callback,
             const vg::Position & locus)
         {
+          // TODO: Thread unsafe!
+          //       Possible solution: non-static variable passed by caller.
           static std::vector< TPathTraverser > path_traversers;
           static std::vector< int > deleted_paths_idx;
           static std::vector< typename TPathTraverser::Output > seeds;
           static std::vector< TPathTraverser > new_ptravs;
 
 #ifndef NDEBUG
-          static long unsigned int total_nof_ptravs = 0;
-          static double      avg_path_lengths = 0;
+          // TODO: Use a structure with atomic increase operation to collect statistics.
+          static unsigned long int ptrav_counter = 0;
+          static unsigned long int ptrav_len_sum = 0;
+          static double      pre_avg_paths_len = 0;
+          static double      avg_paths_len = 0;
 #endif
 
           path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
@@ -535,16 +540,25 @@ namespace grem
               {
 #ifndef NDEBUG
                 // XXX: compute average path length.
-                avg_path_lengths = avg_path_lengths * (total_nof_ptravs / (total_nof_ptravs+1.0))
-                                   + ptrav.get_path_length() / (total_nof_ptravs+1.0);
-                ++total_nof_ptravs;
-                if (total_nof_ptravs % AVG_GODOWNS_SAMPLES == 0)
+                ptrav_len_sum += ptrav.get_path_length();
+                ++ptrav_counter;
+                if (ptrav_counter == NOF_PATHLEN_SAMPLES)
                 {
-                  static int nof_reports = 1;
-                  LOG(DEBUG) << "Average traversed path length (from "
-                             << nof_reports * AVG_GODOWNS_SAMPLES
-                             << " samples): " << avg_path_lengths;
+                  static int nof_reports = 0;
+                  avg_paths_len = ptrav_len_sum / static_cast<float>(NOF_PATHLEN_SAMPLES);
+                  if (pre_avg_paths_len != 0)
+                  {
+                    avg_paths_len = (avg_paths_len + pre_avg_paths_len) / 2.0;
+                  }
+                  pre_avg_paths_len = avg_paths_len;
+
+                  LOG(INFO) << "Average traversed path length (from "
+                            << nof_reports * NOF_PATHLEN_SAMPLES + ptrav_counter
+                            << " samples): " << avg_paths_len;
                   ++nof_reports;
+
+                  ptrav_counter = 0;
+                  ptrav_len_sum = 0;
                 }
 #endif
 
