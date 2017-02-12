@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Fri Jan 27, 2017  03:06
+ * Last modified: Fri Feb 03, 2017  01:03
  *
  * Description: grem main function.
  *
@@ -82,6 +82,12 @@ int main(int argc, char *argv[])
   config_logger("default", options);
   config_logger("performance", options);
 
+  LOG(INFO) << "Parameters:";
+  LOG(INFO) << "- Seed length: " << options.seed_len;
+  LOG(INFO) << "- Reads index type: " << index_to_str(options.index);
+  LOG(INFO) << "- Starting points interval: " << options.start_every;
+  LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
+
   if (options.index == IndexType::Esa)
   {
     find_seeds<seqan::IndexEsa<>, seqan::TopDown<>>(options);
@@ -128,21 +134,25 @@ find_seeds(GremOptions & options)
   };
 
   ReadsChunk reads;
-  while (true)
+
+  TIMED_BLOCK(t, "seed-finding")
   {
+    while (true)
     {
-      TIMED_SCOPE(loadChunkTimer, "load-chunk");
-      readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
+      {
+        TIMED_SCOPE(loadChunkTimer, "load-chunk");
+        readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
+      }
+
+      if (length(reads.ids) == 0) break;
+
+      typename PathTraverser< TIndex, TIterSpec >::Param params(reads, seedlen);
+      gtraverser.traverse(params, write);
+
+      clear(reads.ids);
+      clear(reads.seqs);
+      clear(reads.quals);
     }
-
-    if (length(reads.ids) == 0) break;
-
-    typename PathTraverser< TIndex, TIterSpec >::Param params(reads, seedlen);
-    gtraverser.traverse(params, write);
-
-    clear(reads.ids);
-    clear(reads.seqs);
-    clear(reads.quals);
   }
 
   LOG(INFO) << "Total number of seeds found: " << found;
@@ -336,6 +346,8 @@ config_logger(GremOptions & options)
 {
   // Configure color output.
   if (!options.nocolor) el::Loggers::addFlag(el::LoggingFlag::ColoredTerminalOutput);
+  // Configure time format.
+  el::Loggers::addFlag(el::LoggingFlag::FixedTimeFormat);
 }
 
   inline void

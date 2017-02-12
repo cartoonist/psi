@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Sun Jan 29, 2017  03:12
+ * Last modified: Fri Feb 03, 2017  01:37
  *
  * Description: Traversers template class.
  *
@@ -122,10 +122,12 @@ namespace grem
 
           public:
           // Constructors
-          Param(const ReadsChunk &reads_, unsigned int seed_len_) :
-            reads(reads_), reads_index(reads.seqs), seed_len(seed_len_)
+          Param(const ReadsChunk &reads_, unsigned int seed_len_)
           {
-            TIMED_FUNC(readsIndexTimer);
+            TIMED_SCOPE(readsIndexTimer, "index-read");
+            this->reads = reads_;
+            this->reads_index = DnaSeqSetIndex< TIndex >(reads.seqs);
+            this->seed_len = seed_len_;
           }
 
           // Attributes getters and setters
@@ -404,7 +406,7 @@ namespace grem
         inline void traverse(typename TPathTraverser::Param trav_params,
                       std::function< void(typename TPathTraverser::Output &) > callback)
         {
-          TIMED_FUNC(traverseTimer);
+          TIMED_SCOPE(traverseTimer, "traverse");
           unsigned int locus_counter = 0;
           unsigned int nof_reports = 0;
 
@@ -417,10 +419,8 @@ namespace grem
             {
               locus_counter = 0;
               ++nof_reports;
-              CLOG(INFO, "performance") << "Traversed "
-                                        << nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO
-                                        << " starting points:";
-              PERFORMANCE_CHECKPOINT(traverseTimer);
+              PERFORMANCE_CHECKPOINT_WITH_ID(traverseTimer,
+                  std::to_string(nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO));
             }
           }
         }
@@ -434,7 +434,7 @@ namespace grem
           //       this distance between inter-node loci.
           // **UPDATE** This algorithm use better approximation.
           // TODO: Add documentation.
-          TIMED_FUNC(addAllLociTimer);
+          TIMED_SCOPE(addAllLociTimer, "add-starts");
 
           // TODO: Old method -- remove
           /*
