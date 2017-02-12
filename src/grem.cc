@@ -34,6 +34,8 @@
 
 #include <easyloggingpp/src/easylogging++.h>
 
+INITIALIZE_EASYLOGGINGPP
+
 using namespace seqan;
 using namespace grem;
 
@@ -45,14 +47,13 @@ using namespace grem;
 // TODO: handle 'N's.
 // TODO: comments' first letter?
 
-INITIALIZE_EASYLOGGINGPP
-
 // Forwards
 template<typename TIndex, typename TIterSpec>
   void     find_seeds(GremOptions & options);
 void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
 void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
 IndexType                          index_from_str(std::string str);
+std::string                        index_to_str(IndexType index);
 void                               setup_argparser(seqan::ArgumentParser & parser);
 seqan::ArgumentParser::ParseResult parse_args(GremOptions & options, int argc, char *argv[]);
 void                               config_logger(GremOptions & options);
@@ -63,10 +64,6 @@ int main(int argc, char *argv[])
 {
   START_EASYLOGGINGPP(argc, argv);
 
-  // Verify that the version of the library that we linked against is
-  // compatible with the version of the headers we compiled against.
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
   // Parse the command line.
   GremOptions options;
   auto res = parse_args(options, argc, argv);
@@ -74,6 +71,10 @@ int main(int argc, char *argv[])
   // Otherwise, exit with code 0 (e.g. help was printed).
   if (res != seqan::ArgumentParser::PARSE_OK)
     return res == seqan::ArgumentParser::PARSE_ERROR;
+
+  // Verify that the version of the library that we linked against is
+  // compatible with the version of the headers we compiled against.
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   /* Configure loggers */
   config_logger(options);
@@ -193,6 +194,20 @@ index_from_str(std::string str)
   if (str == "DFI") return IndexType::Dfi;
   if (str == "QGRAM") return IndexType::QGram;
   if (str == "FM") return IndexType::FM;
+
+  throw std::runtime_error("Undefined index type.");
+}
+
+
+  inline std::string
+index_to_str(IndexType index)
+{
+  if (index == IndexType::Sa) return std::string("SA");
+  if (index == IndexType::Esa) return std::string("ESA");
+  if (index == IndexType::Wotd) return std::string("WOTD");
+  if (index == IndexType::Dfi) return std::string("DFI");
+  if (index == IndexType::QGram) return std::string("QGRAM");
+  if (index == IndexType::FM) return std::string("FM");
 
   throw std::runtime_error("Undefined index type.");
 }

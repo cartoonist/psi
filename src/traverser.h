@@ -500,6 +500,11 @@ namespace grem
           }
         }
 
+        inline std::vector< vg::Position > const & get_starting_points()
+        {
+          return this->starting_points;
+        }
+
       private:
         // Attributes
         const VarGraph *             vargraph;
