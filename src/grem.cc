@@ -23,6 +23,7 @@
 #include <sstream>
 #include <string>
 #include <functional>
+#include <unordered_set>
 
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
@@ -119,13 +120,11 @@ find_seeds(GremOptions & options)
   gtraverser.add_all_loci(start_step);
 
   long int found = 0;
-  std::function< void(typename PathTraverser< TIndex, TIterSpec >::Output &) > write = [&found]
-    (typename PathTraverser< TIndex, TIterSpec >::Output & seed_hit){
+  std::unordered_set< std::string > covered_reads;
+  std::function< void(typename PathTraverser< TIndex, TIterSpec >::Output &) > write =
+    [&found, &covered_reads] (typename PathTraverser< TIndex, TIterSpec >::Output & seed_hit){
     ++found;
-    if (found % SEEDHITS_REPORT_BUF == 0)
-    {
-      LOG(DEBUG) << found << " seeds found so far.";
-    }
+    covered_reads.insert(toCString(seed_hit.read_id));
   };
 
   ReadsChunk reads;
@@ -147,6 +146,8 @@ find_seeds(GremOptions & options)
   }
 
   LOG(INFO) << "Total number of seeds found: " << found;
+  LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
+  LOG(INFO) << "Total number of starting points: " << gtraverser.get_starting_points().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
             << PathTraverser< TIndex, TIterSpec >::inc_total_go_down(0);
