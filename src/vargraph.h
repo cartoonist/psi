@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Thu Jan 19, 2017  12:34
+ * Last modified: Tue Feb 14, 2017  01:57
  *
  * Description: VarGraph class definition.
  *
@@ -71,7 +71,7 @@ namespace grem
       inline unsigned int                    nodes_size() const
       { return this->vg_graph.node_size(); }
 
-      bool                                   has_node(vg::Node *node) const;
+      bool                                   has_node(const vg::Node* node) const;
       bool                                   has_node(id_t node_id) const;
 
       inline const vg::Node&                 node_at(unsigned int idx) const

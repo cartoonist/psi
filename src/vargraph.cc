@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Tue Jan 31, 2017  17:17
+ * Last modified: Tue Feb 14, 2017  01:56
  *
  * Description: VarGraph class implementation.
  *
@@ -102,7 +102,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_node(vg::Node *node) const
+    VarGraph::has_node(const vg::Node* node) const
   {
     return this->has_node(node->id());
   }
