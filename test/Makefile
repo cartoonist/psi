@@ -64,7 +64,7 @@ ${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o ${SRCDIR}/vargraph.o ${S
 clean:
 	rm -f *.o *~
 
-dist-clean: clean
+distclean: clean
 	rm -f -r ${BINDIR}; \
 	rm -f -r ${DPMDIR}
 

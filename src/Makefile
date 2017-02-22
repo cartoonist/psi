@@ -52,7 +52,7 @@ ${BINDIR}/grem: grem.o vargraph.o vg.pb.o
 clean:
 	rm -f *.o *~
 
-dist-clean: clean
+distclean: clean
 	rm -f -r ${BINDIR}; \
 	rm -f -r ${DPMDIR}
 

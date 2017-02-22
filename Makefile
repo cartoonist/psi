@@ -43,7 +43,7 @@ clean:
 	make -C ${SRCDIR} $@
 	make -C ${TESTDIR} $@
 
-dist-clean: clean
+distclean: clean
 	make -C ${SRCDIR} $@
 	rm -f ${SRCDIR}/*.pb.cc ${SRCDIR}/*.pb.h
 	make -C ${TESTDIR} $@
