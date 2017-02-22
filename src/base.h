@@ -4,7 +4,7 @@
  * Filename: base.h
  *
  * Created: Tue Dec 06, 2016  22:37
- * Last modified: Fri Feb 03, 2017  00:05
+ * Last modified: Tue Feb 28, 2017  17:42
  *
  * Description: grem base definitions.
  *
@@ -32,6 +32,7 @@
 #define ELPP_DISABLE_PERFORMANCE_TRACKING
 #endif
 
+// TODO: Move to a class specifically aimed to store performance statistics.
 // Add a checkpoint for performance tracker when this number of loci is traversed.
 #define TRAVERSE_CHECKPOINT_LOCI_NO 1000000
 // Report the average path length when no. of traversed paths reach this number.

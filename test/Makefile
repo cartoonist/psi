@@ -12,11 +12,14 @@ DPMDIR       := .d
 # Make the dependencies Makefiles' directory.
 $(shell mkdir -p ${DPMDIR} >/dev/null)
 
+#Makefile absolute path.
+TEST_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 ##  Build variables:
 # Compiler.
 CXX          ?= g++
 # Compiler flags.
-MACROS       ?= -DGREM_DEBUG=1
+MACROS       ?= -DGREM_DEBUG=1 -DTESTDIR=\"${TEST_PATH}\"
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
 CXXFLAGS      = -O3
 LIBS_CFLAGS  := -I ${SRCDIR}/ \
@@ -32,7 +35,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGETS       := ${BINDIR}/test_bfs ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/tests_vargraph ${BINDIR}/test_bfs ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -49,6 +52,9 @@ ${BINDIR}/test_linear: linear.o
 	${LINK} $^
 
 ${BINDIR}/test_bfs: bfs.o ${SRCDIR}/vg.pb.o ${SRCDIR}/vargraph.o
+	${LINK} $^
+
+${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o ${SRCDIR}/vargraph.o ${SRCDIR}/vg.pb.o
 	${LINK} $^
 
 # general rule for compiling cc files.
