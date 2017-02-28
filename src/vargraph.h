@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Tue Feb 14, 2017  01:57
+ * Last modified: Mon Feb 27, 2017  22:07
  *
  * Description: VarGraph class definition.
  *
@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <cstdint>
 
 #include "types.h"
 #include "vg.pb.h"
@@ -35,6 +36,7 @@ namespace grem
     public:
       // typedefs
       typedef vg::Node Node;
+      typedef uint64_t NodeID;   /**< @brief Node ID type. */
 
       // Constructors
       VarGraph(std::ifstream &ifs, std::string &name_) : name(name_)
@@ -72,7 +74,7 @@ namespace grem
       { return this->vg_graph.node_size(); }
 
       bool                                   has_node(const vg::Node* node) const;
-      bool                                   has_node(id_t node_id) const;
+      bool                                   has_node(NodeID node_id) const;
 
       inline const vg::Node&                 node_at(unsigned int idx) const
       { return this->vg_graph.node(idx); }
@@ -80,10 +82,10 @@ namespace grem
       inline vg::Node*                       mutable_node_at(unsigned int idx)
       { return this->vg_graph.mutable_node(idx); }
 
-      inline const vg::Node&                 node_by(id_t node_id) const
+      inline const vg::Node&                 node_by(NodeID node_id) const
       { return *(this->nodes_by_id.at(node_id)); }
 
-      inline vg::Node*                       mutable_node_by(id_t node_id)
+      inline vg::Node*                       mutable_node_by(NodeID node_id)
       { return this->nodes_by_id.at(node_id); }
 
       inline unsigned int                    edges_size() const
@@ -98,21 +100,21 @@ namespace grem
       { return this->vg_graph.mutable_edge(idx); }
 
       bool                                   has_fwd_edge(vg::Node *node) const;
-      bool                                   has_fwd_edge(id_t node_id) const;
+      bool                                   has_fwd_edge(NodeID node_id) const;
 
-      inline const std::vector< vg::Edge* >& fwd_edges(id_t node_id) const
+      inline const std::vector< vg::Edge* >& fwd_edges(NodeID node_id) const
       { return this->edges_by_id.at(node_id); }
 
-      inline std::vector< vg::Edge* >&       mutable_fwd_edges(id_t node_id)
+      inline std::vector< vg::Edge* >&       mutable_fwd_edges(NodeID node_id)
       { return this->edges_by_id.at(node_id); }
 
       bool                                   has_bwd_edge(vg::Node *node) const;
-      bool                                   has_bwd_edge(id_t node_id) const;
+      bool                                   has_bwd_edge(NodeID node_id) const;
 
-      inline const std::vector< vg::Edge* >& bwd_edges(id_t node_id) const
+      inline const std::vector< vg::Edge* >& bwd_edges(NodeID node_id) const
       { return this->redges_by_id.at(node_id); }
 
-      inline std::vector< vg::Edge* >&       mutable_bwd_edges(id_t node_id)
+      inline std::vector< vg::Edge* >&       mutable_bwd_edges(NodeID node_id)
       { return this->redges_by_id.at(node_id); }
 
       // TODO: incomplete methods for accessing paths in the graph.
@@ -135,9 +137,9 @@ namespace grem
       // Attributes
       std::string                                              name;
       vg::Graph                                                vg_graph;
-      std::unordered_map< id_t, vg::Node* >                    nodes_by_id;
-      std::unordered_map< id_t, std::vector< vg::Edge* >>      edges_by_id;
-      std::unordered_map< id_t, std::vector< vg::Edge* >>      redges_by_id;
+      std::unordered_map< NodeID, vg::Node* >                    nodes_by_id;
+      std::unordered_map< NodeID, std::vector< vg::Edge* >>      edges_by_id;
+      std::unordered_map< NodeID, std::vector< vg::Edge* >>      redges_by_id;
 
       // internal methods
       void add_node(vg::Node *node);

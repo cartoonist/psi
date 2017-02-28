@@ -50,7 +50,7 @@ namespace grem
 
     ptrav.one_node_forward();
 
-    id_t c_node_id = ptrav.c_locus.node_id();
+    VarGraph::NodeID c_node_id = ptrav.c_locus.node_id();
 
     if (ptrav.is_seed_hit() ||
         ptrav.iters_state.empty() ||
@@ -310,7 +310,7 @@ namespace grem
 
         inline void one_node_forward()
         {
-          id_t c_node_id = this->c_locus.node_id();
+          VarGraph::NodeID c_node_id = this->c_locus.node_id();
           const vg::Node &c_node = this->vargraph->node_by(c_node_id);
           DnaSeq partseq = c_node.sequence().substr(this->c_locus.offset());
 
@@ -454,7 +454,7 @@ namespace grem
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
-          id_t prenode_level = 0;
+          VarGraph::NodeID prenode_level = 0;
           std::string seq;
           while (!at_end(itr))
           {

@@ -52,7 +52,7 @@ SCENARIO( "Loading variation graph from a vg file", "[input]" )
 
     REQUIRE( vargraph.nodes_size() == 210 );
 
-    grem::id_t node_id = 0;
+    grem::VarGraph::NodeID node_id = 0;
     REQUIRE( !vargraph.has_node(node_id) );
 
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();

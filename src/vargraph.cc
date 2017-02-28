@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Tue Feb 14, 2017  01:56
+ * Last modified: Mon Feb 27, 2017  22:00
  *
  * Description: VarGraph class implementation.
  *
@@ -31,7 +31,7 @@ namespace grem
   void
     VarGraph::extend(vg::Graph &vg_graph)
   {
-    for (id_t i = 0; i < vg_graph.node_size(); ++i)
+    for (int i = 0; i < vg_graph.node_size(); ++i)
     {
       vg::Node *node = vg_graph.mutable_node(i);
 
@@ -46,7 +46,7 @@ namespace grem
       }
     }
 
-    for (id_t i = 0; i < vg_graph.edge_size(); ++i)
+    for (int i = 0; i < vg_graph.edge_size(); ++i)
     {
       vg::Edge *edge = vg_graph.mutable_edge(i);
 
@@ -108,7 +108,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_node(id_t node_id) const
+    VarGraph::has_node(NodeID node_id) const
   {
     auto got = this->nodes_by_id.find(node_id);
 
@@ -124,7 +124,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_fwd_edge(id_t node_id) const
+    VarGraph::has_fwd_edge(NodeID node_id) const
   {
     auto got = this->edges_by_id.find(node_id);
 
@@ -140,7 +140,7 @@ namespace grem
   }
 
   bool
-    VarGraph::has_bwd_edge(id_t node_id) const
+    VarGraph::has_bwd_edge(NodeID node_id) const
   {
     auto got = this->redges_by_id.find(node_id);
 
@@ -171,7 +171,7 @@ namespace grem
   bool
     VarGraph::has_edge(vg::Edge *edge) const
   {
-    // TODO: check for duplication. It needs map<pair<id_t,id_t>,vg::Edge*>.
+    // TODO: check for duplication. It needs map<pair<NodeID,NodeID>,vg::Edge*>.
     return false;
   }
 

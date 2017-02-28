@@ -4,7 +4,7 @@
  * Filename: vargraph_iter.h
  *
  * Created: Wed Jan 18, 2017  14:40
- * Last modified: Mon Jan 30, 2017  23:27
+ * Last modified: Mon Feb 27, 2017  22:10
  *
  * Description: Variation graph iterator for traversing the graph.
  *
@@ -68,7 +68,7 @@ namespace grem
   template<typename TSpec = void>
     struct BfsIterator
     {
-      typedef id_t Value;
+      typedef VarGraph::NodeID Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Level >> TContainer;
 

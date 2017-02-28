@@ -19,20 +19,15 @@
 #ifndef TYPES_H__
 #define TYPES_H__
 
-#include <cstdint>
-
 #include <seqan/sequence.h>
 #include <seqan/index.h>
 
-#include "base.h"
-
 namespace grem
 {
-  typedef int64_t id_t;
-
   typedef seqan::StringSet< seqan::CharString >                     CharStringSet;
   typedef seqan::Dna5QString                                        DnaSeq;
   typedef seqan::StringSet< DnaSeq >                                DnaSeqSet;
+  // TODO: Move to a class represents a string set and its index.
   template< typename TIndex >
     using DnaSeqSetIndex = seqan::Index< DnaSeqSet, TIndex >;
   template< typename TIndex, typename TSpec >
@@ -44,7 +39,9 @@ namespace grem
     DnaSeqSet     seqs;
     CharStringSet quals;
   } ReadsChunk;
+  // END OF TODO
 
+  // TODO: Move to a class for command-line options.
   enum class IndexType {
     Sa = 1,
     Esa,
@@ -68,6 +65,7 @@ namespace grem
     bool quiet;
     bool nocolor;
   } GremOptions;
+  // END OF TODO
 }
 
 namespace seqan

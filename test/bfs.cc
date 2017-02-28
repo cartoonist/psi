@@ -4,7 +4,7 @@
  * Filename: bfs.cc
  *
  * Created: Wed Jan 18, 2017  16:07
- * Last modified: Sun Jan 29, 2017  23:09
+ * Last modified: Mon Feb 27, 2017  22:43
  *
  * Description: Test variation graph iterator class.
  *
@@ -35,7 +35,7 @@ typedef struct
 {
   std::string vgpath;
   unsigned long int step;
-  grem::id_t start;
+  grem::VarGraph::NodeID start;
 } Options;
 
 
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
   unsigned long int prenode_remain = 0;
   unsigned long int remain_estimate = 0;
-  grem::id_t prenode_level = 0;
+  grem::VarGraph::NodeID prenode_level = 0;
   std::string seq;
   while (!at_end(itr))
   {
