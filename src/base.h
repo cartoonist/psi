@@ -1,19 +1,19 @@
-/*
- * =====================================================================================
+/**
+ *    @file  base.h
+ *   @brief  Base header file.
  *
- * Filename: base.h
+ *  The base header file including essential macros that should be defined globally
+ *  in the entire package. They can be redefined at compile time.
  *
- * Created: Tue Dec 06, 2016  22:37
- * Last modified: Tue Feb 28, 2017  17:43
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
- * Description: grem base definitions.
+ *  @internal
+ *       Created:  Tue Dec 06, 2016  22:37
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Copyright (c) 2016, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari <ali.ghaffaari@mpi-inf.mpg.de>
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #ifndef BASE_H__

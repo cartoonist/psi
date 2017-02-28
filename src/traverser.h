@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Fri Feb 03, 2017  01:37
+ * Last modified: Mon Feb 27, 2017  21:47
  *
  * Description: Traversers template class.
  *
@@ -37,7 +37,7 @@ namespace grem
     class PathTraverser;
 
   /** Traverse interface functions **
-   *  NOTE: These methods should be specialized for any other PathTraverser
+   *  @note These methods should be specialized for any other PathTraverser
    *        classes.
    **/
   template< typename TIndex, typename TIterSpec >

@@ -1,19 +1,21 @@
-/*
- * =====================================================================================
+/**
+ *    @file  tests_main.cc
+ *   @brief  Unit test framework (Catch) implementation file.
  *
- * Filename: tests-main.cc
+ *  In order to compile the unit testing framework once, not for each tranlation unit
+ *  which includes the header file, we put the `CATCH_CONFIG_MAIN` macro in a separated
+ *  source file while the header file is included. This file should be linked with other
+ *  test implementations.
  *
- * Created: Mon Feb 13, 2017  00:44
- * Last modified: Mon Feb 13, 2017  00:52
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@gmail.com>
  *
- * Description: Unit test framework (Catch) implementation file.
+ *  @internal
+ *       Created:  Mon Feb 13, 2017  00:44
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Copyright (c) 2017, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari (cartoonist), 
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #define CATCH_CONFIG_MAIN
