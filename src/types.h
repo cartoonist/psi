@@ -1,19 +1,18 @@
-/*
- * =====================================================================================
+/**
+ *    @file  types.h
+ *   @brief  Type definitions header file.
  *
- * Filename: types.h
+ *  All global type definitions (`typedef`s) go here.
  *
- * Created: Fri Nov 11, 2016  09:40
- * Last modified: Wed Jan 11, 2017  23:28
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
- * Description: Types header file.
+ *  @internal
+ *       Created:  Fri Nov 11, 2016  09:40
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Copyright (c) 2016, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari, <ali.ghaffaari@mpi-inf.mpg.de>
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #ifndef TYPES_H__
@@ -43,12 +42,12 @@ namespace grem
 
   // TODO: Move to a class for command-line options.
   enum class IndexType {
-    Sa = 1,
-    Esa,
-    Wotd,
-    Dfi,
-    QGram,
-    FM
+    Sa = 1,               /**< @brief Suffix array index. */
+    Esa,                  /**< @brief Enhanced suffix array index. */
+    Wotd,                 /**< @brief Lazy suffix tree (write only, top down) index. */
+    Dfi,                  /**< @brief Deferred frequency index. */
+    QGram,                /**< @brief An index based on an array of sorted q-grams. */
+    FM                    /**< @brief FM index. */
   };
 
   typedef struct

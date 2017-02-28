@@ -49,3 +49,12 @@ tags
 *.exe
 *.out
 *.app
+
+# Backups
+*.bak
+*~
+
+# Doxygen files
+doc/html/*
+doc/latex/*
+doc/doxygen_sqlite3.db

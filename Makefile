@@ -20,7 +20,7 @@ PROTO_SRCS   := $(subst ${PROTODIR}, ${SRCDIR}, ${PROTOS:%.proto=%.pb.cc})
 COMPILE.proto = protoc -I=${PROTODIR}/ --cpp_out=${SRCDIR}/
 
 # Specifying phony targets.
-.PHONY: all debug test clean dist-clean
+.PHONY: all debug test doc clean dist-clean
 # Specifying precious targets.
 .PRECIOUS: ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h
 
@@ -35,6 +35,9 @@ ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: ${PROTODIR}/%.proto
 
 test: all
 	make -C ${TESTDIR}
+
+doc:
+	doxygen
 
 install:
 	install -v ${BINDIR}/grem ${PREFIX}/bin
