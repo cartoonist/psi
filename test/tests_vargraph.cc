@@ -25,9 +25,7 @@
 
 #include "tests_base.h"
 #include "vargraph.h"
-#include "base.h"
-
-#include <easyloggingpp/src/easylogging++.h>
+#include "logger.h"
 
 INITIALIZE_EASYLOGGINGPP
 

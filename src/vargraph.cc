@@ -24,9 +24,7 @@
 #include <stream/src/stream.hpp>
 
 #include "vargraph.h"
-#include "release.h"
-
-#include <easyloggingpp/src/easylogging++.h>
+#include "logger.h"
 
 namespace grem
 {

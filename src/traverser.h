@@ -25,9 +25,8 @@
 #include "vg.pb.h"
 #include "vargraph.h"
 #include "vargraph_iter.h"
+#include "logger.h"
 #include "types.h"
-
-#include <easyloggingpp/src/easylogging++.h>
 
 // TODO: refactor: types (const, * and &).
 
@@ -264,8 +263,6 @@ namespace grem
         std::vector< IterState > iters_state;
         unsigned int             path_length;
         bool                     finished;
-#ifndef NDEBUG
-#endif
 
         // Internal methods
         inline bool is_seed_hit()

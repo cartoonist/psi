@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Fri Feb 03, 2017  01:03
+ * Last modified: Mon Feb 27, 2017  20:52
  *
  * Description: grem main function.
  *
@@ -31,9 +31,8 @@
 #include "vargraph.h"
 #include "traverser.h"
 #include "types.h"
+#include "logger.h"
 #include "release.h"
-
-#include <easyloggingpp/src/easylogging++.h>
 
 INITIALIZE_EASYLOGGINGPP
 
