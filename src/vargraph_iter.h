@@ -75,6 +75,17 @@ namespace grem {
     };
 
   /**
+   *  @brief  Backtracker graph iterator trait.
+   */
+  template < typename TSpec = void >
+    struct Backtracker {
+      typedef VarGraph::NodeID Value;
+      typedef Value Level;
+      typedef std::deque< std::pair< Value, Value > > TContainer;
+      typedef Value TSet; // UNUSED
+    };  /* ----------  end of struct Backtracker  ---------- */
+
+  /**
    *  @brief  Graph iterator template class.
    *
    *  @tparam  TGraph The graph.
@@ -200,6 +211,86 @@ namespace grem {
     }
 
   /* END OF BFS template specialization  ----------------------------------------- */
+
+  /* Backtracker template specialization  --------------------------------------------- */
+
+  /* Meta-functions specialization. */
+  template < >
+    bool at_end ( Iterator < VarGraph, Backtracker<> > it )
+    {
+      return it.visiting_buffer.empty() &&
+        !it.vargraph_ptr->has_fwd_edge(*it);
+    }  /* -----  end of template function at_end  ----- */
+
+  template < >
+    Iterator < VarGraph, Backtracker <> >
+    begin ( const VarGraph &g, Backtracker<>::Value start )
+    {
+      Iterator < VarGraph, Backtracker <> > begin_itr;
+      Backtracker<>::Value start_node_id;
+
+      if ( start != 0 ) {
+        start_node_id = start;
+      }
+      else {
+        start_node_id = g.node_at(0).id();
+      }
+
+      begin_itr.vargraph_ptr = &g;
+      begin_itr.itr_value = start_node_id;
+      begin_itr.visited = 0;  // Next node ID from current node. 0 = nothing buffered.
+
+      return begin_itr;
+    }  /* -----  end of template function begin  ----- */
+
+  /* Member functions specialization. */
+
+  template < >
+    Iterator < VarGraph, Backtracker <> > &
+    Iterator < VarGraph, Backtracker <> >::operator++ ( )
+    {
+      if ( this->visited != 0 ) {                             // Any node buffered?
+        this->itr_value = this->visited;                      // Use it.
+        this->visited = 0;                                    // Clear up buffer.
+      }
+      else {                                                  // else
+        Backtracker<>::Value cnode_id = this->itr_value;
+        if ( this->vargraph_ptr->has_fwd_edge(cnode_id) ) {  // Any forward edge?
+          // Go forward.
+          this->itr_value = this->vargraph_ptr->fwd_edges(cnode_id).at(0)->to();
+          // On each branch nodes enqueue other branches for traversing later.
+          auto edges = this->vargraph_ptr->fwd_edges(cnode_id);
+          for ( int i = edges.size() - 1; i >= 1; --i ) {
+            this->visiting_buffer.push_back ( std::make_pair(cnode_id, edges[i]->to()) );
+          }
+        }
+      }
+
+      return *this;
+    }  /* -----  end of method Iterator < VarGraph, Backtracker <> >::operator++  ----- */
+
+  template < >
+    Iterator < VarGraph, Backtracker <> > &
+    Iterator < VarGraph, Backtracker <> >::operator-- ( )
+    {
+      if ( this->visited != 0 ) {                             // Any node buffered?
+        while (                // Remove all buffered branches of the current node.
+            !this->visiting_buffer.empty() &&
+            this->visiting_buffer.back().first == this->itr_value ) {
+          this->visiting_buffer.pop_back();
+        }
+      }
+
+      if ( !this->visiting_buffer.empty() ) {                 // Go back in buffer.
+        this->itr_value = this->visiting_buffer.back().first;
+        this->visited = this->visiting_buffer.back().second;
+        this->visiting_buffer.pop_back();
+      }
+
+      return *this;
+    }  /* -----  end of method Iterator < VarGraph, Backtracker <> >::operator--  ----- */
+
+  /* END OF Backtracker template specialization  -------------------------------------- */
 
 }  /* -----  end of namespace grem  ----- */
 #endif  /* ----- #ifndef VARGRAPH_ITER_H__  ----- */
