@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Mon Feb 27, 2017  22:00
+ * Last modified: Thu Mar 02, 2017  23:01
  *
  * Description: VarGraph class implementation.
  *
@@ -134,6 +134,24 @@ namespace grem
   }
 
   bool
+    VarGraph::is_branch ( vg::Node *node ) const
+    {
+      return this->is_branch(node->id());
+    }  /* -----  end of method VarGraph::is_branch  ----- */
+
+  bool
+    VarGraph::is_branch ( NodeID node_id ) const
+    {
+      if ( this->has_fwd_edge(node_id) ) {
+        return this->fwd_edges(node_id).size() > 1;
+      }
+      else {
+        return false;
+      }
+    }  /* -----  end of method VarGraph::is_branch  ----- */
+
+
+  bool
     VarGraph::has_bwd_edge(vg::Node *node) const
   {
     return this->has_bwd_edge(node->id());
@@ -148,6 +166,23 @@ namespace grem
 
     return true;
   }
+
+  bool
+    VarGraph::is_merge ( vg::Node *node ) const
+    {
+      return this->is_merge(node->id());
+    }  /* -----  end of method VarGraph::is_merge  ----- */
+
+  bool
+    VarGraph::is_merge ( NodeID node_id ) const
+    {
+      if ( this->has_bwd_edge(node_id) ) {
+        return this->bwd_edges(node_id).size() > 1;
+      }
+      else {
+        return false;
+      }
+    }  /* -----  end of method VarGraph::is_merge  ----- */
 
   void
     VarGraph::add_node(vg::Node *node)
