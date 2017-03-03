@@ -450,7 +450,7 @@ namespace grem
           */
 
           // New algorithm
-          Iterator<VarGraph, BfsIterator<>> itr(this->vargraph);
+          Iterator<VarGraph, BFS<>> itr(this->vargraph);
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
