@@ -24,7 +24,6 @@
 
 #include "vg.pb.h"
 #include "vargraph.h"
-#include "vargraph_iter.h"
 #include "logger.h"
 #include "types.h"
 
@@ -450,7 +449,7 @@ namespace grem
           */
 
           // New algorithm
-          Iterator<VarGraph, BFS<>> itr(this->vargraph);
+          seqan::Iterator<VarGraph, BFS<>>::Type itr(this->vargraph);
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
