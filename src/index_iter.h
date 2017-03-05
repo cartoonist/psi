@@ -105,7 +105,7 @@ namespace grem {
             return boffset;
           }  /* -----  end of method IndexIter::get_boffset  ----- */
 
-      protected:
+      private:
         /* ====================  METHODS       ======================================= */
 
         /**

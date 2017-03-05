@@ -88,7 +88,7 @@ namespace grem {
         GraphIter &operator++ ( );
         GraphIter &operator-- ( );
 
-      protected:
+      private:
         /* ====================  METHODS       ======================================= */
 
         GraphIter() : vargraph_ptr(nullptr) {}
