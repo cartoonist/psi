@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Feb 27, 2017  20:52
+ * Last modified: Thu Mar 02, 2017  02:26
  *
  * Description: grem main function.
  *
@@ -48,7 +48,7 @@ using namespace grem;
 // TODO: comments' first letter?
 
 // Forwards
-template<typename TIndex, typename TIterSpec>
+template<typename TIndexSpec, typename TIterSpec>
   void     find_seeds(GremOptions & options);
 void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
 void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
   return EXIT_SUCCESS;
 }
 
-template<typename TIndex, typename TIterSpec >
+template<typename TIndexSpec, typename TIterSpec >
   void
 find_seeds(GremOptions & options)
 {
@@ -121,13 +121,13 @@ find_seeds(GremOptions & options)
   VarGraph vargraph;
   load_graph(vgpath, vargraph);
 
-  GraphTraverser< PathTraverser< TIndex, TIterSpec >> gtraverser(vargraph);
+  GraphTraverser< PathTraverser< TIndexSpec, TIterSpec >> gtraverser(vargraph);
   gtraverser.add_all_loci(start_step);
 
   long int found = 0;
   std::unordered_set< std::string > covered_reads;
-  std::function< void(typename PathTraverser< TIndex, TIterSpec >::Output &) > write =
-    [&found, &covered_reads] (typename PathTraverser< TIndex, TIterSpec >::Output & seed_hit){
+  std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output &) > write =
+    [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output & seed_hit){
     ++found;
     covered_reads.insert(toCString(seed_hit.read_id));
   };
@@ -145,7 +145,7 @@ find_seeds(GremOptions & options)
 
       if (length(reads.ids) == 0) break;
 
-      typename PathTraverser< TIndex, TIterSpec >::Param params(reads, seedlen);
+      typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads, seedlen);
       gtraverser.traverse(params, write);
 
       clear(reads.ids);
@@ -159,7 +159,7 @@ find_seeds(GremOptions & options)
   LOG(INFO) << "Total number of starting points: " << gtraverser.get_starting_points().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
-            << PathTraverser< TIndex, TIterSpec >::inc_total_go_down(0);
+            << PathTraverser< TIndexSpec, TIterSpec >::inc_total_go_down(0);
 #endif
 }
 

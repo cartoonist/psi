@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Mon Feb 27, 2017  21:47
+ * Last modified: Sun Mar 05, 2017  18:05
  *
  * Description: Traversers template class.
  *
@@ -32,17 +32,17 @@
 namespace grem
 {
   /* Forwards */
-  template< typename TIndex, typename TIterSpec >
+  template< typename TIndexSpec, typename TIterSpec >
     class PathTraverser;
 
   /** Traverse interface functions **
    *  @note These methods should be specialized for any other PathTraverser
    *        classes.
    **/
-  template< typename TIndex, typename TIterSpec >
+  template< typename TIndexSpec, typename TIterSpec >
   void
-    move_forward(PathTraverser< TIndex, TIterSpec > &ptrav,
-                 std::vector< PathTraverser< TIndex, TIterSpec >> &new_ptravs)
+    move_forward(PathTraverser< TIndexSpec, TIterSpec > &ptrav,
+                 std::vector< PathTraverser< TIndexSpec, TIterSpec >> &new_ptravs)
   {
     if (ptrav.finished)
       throw std::runtime_error("cannot move forward on a finalized path.");
@@ -72,35 +72,35 @@ namespace grem
         vg::Position new_pos;
         new_pos.set_node_id((*it)->to());
         new_pos.set_offset(0);
-        new_ptravs.push_back(PathTraverser< TIndex, TIterSpec >(ptrav, std::move(new_pos)));
+        new_ptravs.push_back(PathTraverser< TIndexSpec, TIterSpec >(ptrav, std::move(new_pos)));
       }
     }
   }
 
-  template< typename TIndex, typename TIterSpec >
+  template< typename TIndexSpec, typename TIterSpec >
   bool
-    is_finished(PathTraverser< TIndex, TIterSpec > & ptrav)
+    is_finished(PathTraverser< TIndexSpec, TIterSpec > & ptrav)
   {
     return ptrav.finished;
   }
 
-  template< typename TIndex, typename TIterSpec >
+  template< typename TIndexSpec, typename TIterSpec >
   bool
-    is_valid(PathTraverser< TIndex, TIterSpec > & ptrav)
+    is_valid(PathTraverser< TIndexSpec, TIterSpec > & ptrav)
   {
     return ptrav.is_seed_hit();
   }
 
-  template< typename TIndex, typename TIterSpec >
+  template< typename TIndexSpec, typename TIterSpec >
   void
-    get_results(PathTraverser< TIndex, TIterSpec > &ptrav,
-                std::vector< typename PathTraverser< TIndex, TIterSpec >::Output > &results)
+    get_results(PathTraverser< TIndexSpec, TIterSpec > &ptrav,
+                std::vector< typename PathTraverser< TIndexSpec, TIterSpec >::Output > &results)
   {
     if (is_valid(ptrav))
       ptrav.get_results(results);
   }
 
-  template< typename TIndex, typename TIterSpec >
+  template< typename TIndexSpec, typename TIterSpec >
     class PathTraverser
     {
       public:
@@ -124,7 +124,7 @@ namespace grem
           {
             TIMED_SCOPE(readsIndexTimer, "index-read");
             this->reads = reads_;
-            this->reads_index = DnaSeqSetIndex< TIndex >(reads.seqs);
+            this->reads_index = DnaSeqSetIndex< TIndexSpec >(reads.seqs);
             this->seed_len = seed_len_;
           }
 
@@ -132,7 +132,7 @@ namespace grem
           inline const ReadsChunk     &get_reads()
           { return this->reads; }
 
-          inline const DnaSeqSetIndex< TIndex > &get_reads_index()
+          inline const DnaSeqSetIndex< TIndexSpec > &get_reads_index()
           { return this->reads_index; }
 
           inline unsigned int          get_seed_len()
@@ -140,7 +140,7 @@ namespace grem
 
           private:
           ReadsChunk     reads;
-          DnaSeqSetIndex< TIndex > reads_index;
+          DnaSeqSetIndex< TIndexSpec > reads_index;
           unsigned int   seed_len;
         };
 
@@ -153,7 +153,7 @@ namespace grem
         {
           this->iters_state.push_back(
               IterState({
-                DnaSSIndexIter< TIndex, TIterSpec >(this->parameters->reads_index),
+                TIndexIterator< DnaSeqSetIndex< TIndexSpec >, TIterSpec >(this->parameters->reads_index),
                 0})
               );
         }
@@ -215,18 +215,18 @@ namespace grem
         }
 
         // Traverse interface functions (are friends!)
-        friend void move_forward< TIndex, TIterSpec >(PathTraverser &ptrav,
+        friend void move_forward< TIndexSpec, TIterSpec >(PathTraverser &ptrav,
                                                       std::vector< PathTraverser > &new_ptravs);
-        friend bool is_finished< TIndex, TIterSpec >(PathTraverser &ptrav);
-        friend bool is_valid< TIndex, TIterSpec >(PathTraverser &ptrav);
-        friend void get_results< TIndex, TIterSpec >(PathTraverser &ptrav,
+        friend bool is_finished< TIndexSpec, TIterSpec >(PathTraverser &ptrav);
+        friend bool is_valid< TIndexSpec, TIterSpec >(PathTraverser &ptrav);
+        friend void get_results< TIndexSpec, TIterSpec >(PathTraverser &ptrav,
                                                      std::vector< PathTraverser::Output > &results);
 
         // Attributes getters and setters
         inline const VarGraph *              get_vargraph()
         { return this->vargraph; }
 
-        inline const PathTraverser< TIndex, TIterSpec >::Param *  get_paramters()
+        inline const PathTraverser< TIndexSpec, TIterSpec >::Param *  get_paramters()
         { return this->parameters; }
 
         inline vg::Position                  get_s_locus()
@@ -250,13 +250,13 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          DnaSSIndexIter< TIndex, TIterSpec > iter;
+          TIndexIterator< DnaSeqSetIndex< TIndexSpec >, TIterSpec > iter;
           unsigned int   boffset;
         } IterState;
 
         // Attributes
         const VarGraph *         vargraph;        // pointer to variation graph.
-        PathTraverser< TIndex, TIterSpec >::Param *   parameters;      // pointer to params (shared between traversers).
+        PathTraverser< TIndexSpec, TIterSpec >::Param *   parameters;      // pointer to params (shared between traversers).
         vg::Position             s_locus;         // starting locus
         vg::Position             c_locus;         // current locus
         std::vector< IterState > iters_state;
@@ -324,11 +324,11 @@ namespace grem
           }
         }
 
-        inline void get_results(std::vector< PathTraverser< TIndex, TIterSpec >::Output > &results)
+        inline void get_results(std::vector< PathTraverser< TIndexSpec, TIterSpec >::Output > &results)
         {
           for (auto its : this->iters_state)
           {
-            using TSAValue = typename seqan::SAValue< DnaSeqSetIndex< TIndex >>::Type;
+            using TSAValue = typename seqan::SAValue< DnaSeqSetIndex< TIndexSpec >>::Type;
             seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
             for (unsigned i = 0; i < length(saPositions); ++i)
             {

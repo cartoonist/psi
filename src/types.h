@@ -27,10 +27,10 @@ namespace grem
   typedef seqan::Dna5QString                                        DnaSeq;
   typedef seqan::StringSet< DnaSeq >                                DnaSeqSet;
   // TODO: Move to a class represents a string set and its index.
-  template< typename TIndex >
-    using DnaSeqSetIndex = seqan::Index< DnaSeqSet, TIndex >;
+  template< typename TIndexSpec >
+    using DnaSeqSetIndex = seqan::Index< DnaSeqSet, TIndexSpec >;
   template< typename TIndex, typename TSpec >
-    using DnaSSIndexIter = typename seqan::Iterator< DnaSeqSetIndex< TIndex >, TSpec >::Type;
+    using TIndexIterator = typename seqan::Iterator< TIndex, TSpec >::Type;
 
   typedef struct
   {
