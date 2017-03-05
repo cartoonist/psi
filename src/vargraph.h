@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Mon Feb 27, 2017  22:07
+ * Last modified: Sun Mar 05, 2017  18:00
  *
  * Description: VarGraph class definition.
  *
@@ -23,9 +23,13 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <deque>
+#include <utility>
 #include <cstdint>
 
 #include "types.h"
+#include "graph_iter.h"
 #include "vg.pb.h"
 
 
@@ -101,6 +105,8 @@ namespace grem
 
       bool                                   has_fwd_edge(vg::Node *node) const;
       bool                                   has_fwd_edge(NodeID node_id) const;
+      bool                                   is_branch(vg::Node *node) const;
+      bool                                   is_branch(NodeID node_id) const;
 
       inline const std::vector< vg::Edge* >& fwd_edges(NodeID node_id) const
       { return this->edges_by_id.at(node_id); }
@@ -110,6 +116,8 @@ namespace grem
 
       bool                                   has_bwd_edge(vg::Node *node) const;
       bool                                   has_bwd_edge(NodeID node_id) const;
+      bool                                   is_merge(vg::Node *node) const;
+      bool                                   is_merge(NodeID node_id) const;
 
       inline const std::vector< vg::Edge* >& bwd_edges(NodeID node_id) const
       { return this->redges_by_id.at(node_id); }
@@ -145,6 +153,82 @@ namespace grem
       void add_node(vg::Node *node);
       void add_edge(vg::Edge *edge);
   };
-}
 
-#endif  // VARGRAPH_H__
+  /* GRAPH ITERATORS  ============================================================ */
+
+  /* Traits template specialization  --------------------------------------------- */
+
+  /**
+   *  @brief  Breadth-first search graph iterator trait.
+   *
+   *  Specialization of generic graph iterator trait BFSIter for VarGraph.
+   */
+  template < typename TSpec >
+    struct BFSIter < VarGraph, TSpec >
+    {
+      typedef VarGraph::NodeID Value;
+      typedef Value Level;
+      typedef std::deque< std::pair< Value, Level > > TContainer;
+
+      struct pair_hash
+      {
+        inline std::size_t operator()(const std::pair< Value, Level > & v) const
+        {
+          return std::hash< Value >()(v.first);
+        }
+      };
+
+      struct pair_pred
+      {
+        inline bool operator()
+          (const std::pair< Value, Level > & v,
+           const std::pair< Value, Level > & u)
+          const noexcept
+        {
+          if (v.first == u.first) return true;
+          else return false;
+        }
+      };
+
+      typedef std::unordered_set< TContainer::value_type, pair_hash, pair_pred > TSet;
+    };
+
+  template < typename TSpec = void >
+    using BFS = BFSIter < VarGraph, TSpec >;
+
+  /**
+   *  @brief  Backtracker graph iterator trait.
+   *
+   *  Specialization of generic graph iterator trait BacktrackerIter for VarGraph.
+   */
+  template < typename TSpec >
+    struct BacktrackerIter < VarGraph, TSpec > {
+      typedef VarGraph::NodeID Value;
+      typedef Value Level;
+      typedef std::deque< std::pair< Value, Value > > TContainer;
+      typedef Value TSet; // UNUSED
+    };  /* ----------  end of struct Backtracker  ---------- */
+
+  template < typename TSpec = void >
+    using Backtracker = BacktrackerIter < VarGraph, TSpec >;
+
+  /* END OF traits template specialization  -------------------------------------- */
+
+}  /* -----  end of namespace grem  ----- */
+
+namespace seqan {
+  /**
+   *  @brief  Iterator template class specialization for VarGraph.
+   *
+   *  This class extends existing Iterator class in seqan namespace.
+   */
+  template < typename TSpec >
+    class Iterator < grem::VarGraph, TSpec >
+    {
+      public:
+        typedef grem::GraphIter < grem::VarGraph, TSpec > Type;
+        /* ====================  TYPEDEFS      ======================================= */
+    };  /* ----------  end of template class Iterator  ---------- */
+}  /* -----  end of namespace seqan  ----- */
+
+#endif  /* ----- #ifndef VARGRAPH_H__  ----- */

@@ -4,7 +4,7 @@
  * Filename: bfs.cc
  *
  * Created: Wed Jan 18, 2017  16:07
- * Last modified: Mon Feb 27, 2017  22:43
+ * Last modified: Thu Mar 02, 2017  13:16
  *
  * Description: Test variation graph iterator class.
  *
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
   VarGraph vargraph(options.vgpath);
-  Iterator<VarGraph, BfsIterator<>> itr(vargraph, options.start);
+  Iterator<VarGraph, BFS<>> itr(vargraph, options.start);
 
   unsigned long int prenode_remain = 0;
   unsigned long int remain_estimate = 0;
