@@ -39,6 +39,8 @@ namespace grem {
     struct BFSIter;
   template < typename TGraph, typename TSpec >
     struct BacktrackerIter;
+  template < typename TGraph, typename TSpec >
+    struct HaplotyperIter;
 
   /* END OF FORWARDS  ------------------------------------------------------------ */
 

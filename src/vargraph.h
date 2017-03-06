@@ -206,11 +206,27 @@ namespace grem
       typedef VarGraph::NodeID Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
-      typedef Value TSet; // UNUSED
+      typedef Value TSet;                       /**< @brief Used as a buffer. */
     };  /* ----------  end of struct Backtracker  ---------- */
 
   template < typename TSpec = void >
     using Backtracker = BacktrackerIter < VarGraph, TSpec >;
+
+  /**
+   *  @brief  Haplotyper graph iterator trait.
+   *
+   *  Specialization of generic graph iterator trait HaplotyperIter for VarGraph.
+   */
+  template < typename TSpec >
+    struct HaplotyperIter < VarGraph, TSpec > {
+      typedef VarGraph::NodeID Value;
+      typedef Value Level;
+      typedef Value TContainer;                 /**< @brief Used to store start node. */
+      typedef std::unordered_set < Value > TSet;
+    };  /* ----------  end of struct HaplotyperIter  ---------- */
+
+  template < typename TSpec = void >
+    using Haplotyper = HaplotyperIter < VarGraph, TSpec >;
 
   /* END OF traits template specialization  -------------------------------------- */
 
