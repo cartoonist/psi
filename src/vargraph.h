@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Sun Mar 05, 2017  18:00
+ * Last modified: Mon Mar 06, 2017  11:15
  *
  * Description: VarGraph class definition.
  *
@@ -246,5 +246,15 @@ namespace seqan {
         /* ====================  TYPEDEFS      ======================================= */
     };  /* ----------  end of template class Iterator  ---------- */
 }  /* -----  end of namespace seqan  ----- */
+
+namespace grem {
+  /* Haplotyper iterator meta-function declarations  ----------------------------- */
+
+  std::vector < VarGraph::NodeID >
+    get_uniq_haplotype ( typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
+
+  /* END OF Haplotyper iterator meta-function declarations  ---------------------- */
+
+}  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef VARGRAPH_H__  ----- */

@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Sun Mar 05, 2017  17:17
+ * Last modified: Mon Mar 06, 2017  11:16
  *
  * Description: VarGraph class implementation.
  *
@@ -300,7 +300,7 @@ namespace grem
 
   /* END OF BFS template specialization  ----------------------------------------- */
 
-  /* Backtracker template specialization  --------------------------------------------- */
+  /* Backtracker template specialization  ---------------------------------------- */
 
   /* Meta-functions specialization. */
   template < >
@@ -378,9 +378,9 @@ namespace grem
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Backtracker <> >::operator--  ----- */
 
-  /* END OF Backtracker template specialization  -------------------------------------- */
+  /* END OF Backtracker template specialization  --------------------------------- */
 
-  /* Haplotyper template specialization  --------------------------------------------- */
+  /* Haplotyper template specialization  ----------------------------------------- */
 
   /* Meta-functions specialization. */
   template < >
@@ -455,6 +455,32 @@ namespace grem
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator--  ----- */
 
-  /* END OF Haplotyper template specialization  -------------------------------------- */
+  /* END OF Haplotyper template specialization  ---------------------------------- */
 
+  /* Haplotyper iterator meta-functions  ----------------------------------------- */
+
+  /**
+   *  @brief  Simulate a unique haplotype.
+   *
+   *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @return Node IDs list of the simulated haplotype.
+   *
+   *  This function gets a Haplotyper graph iterator and generate a unique haplotype
+   *  if available. The input Haplotyper iterator stores required information of the
+   *  previous simulated haplotypes for which the iterator is used. So, in order to
+   *  simulate multiple unique haplotypes use the same iterator as the input.
+   */
+  inline std::vector < VarGraph::NodeID >
+    get_uniq_haplotype ( typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter )
+    {
+      std::vector < VarGraph::NodeID > haplotype;
+      --iter;                                 // reset the Haplotyper iterator.
+      while ( !at_end ( iter ) ) {
+        haplotype.push_back ( *iter );
+        ++iter;
+      }
+      return haplotype;
+    }
+
+  /* END OF Haplotyper iterator meta-functions  ---------------------------------- */
 }
