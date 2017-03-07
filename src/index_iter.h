@@ -36,8 +36,19 @@ namespace grem {
   template < typename TIndex, typename TSpec >
     class IndexIter;
 
+  /* Forwards  ------------------------------------------------------------------- */
+  template < typename TIndex >
+    bool go_down (
+        grem::IndexIter < TIndex, seqan::TopDown < FinePreorder<> > > &iterator,
+        typename seqan::Value < TIndex >::Type c);
+  template < typename TIndex >
+    bool go_down_on_edge (
+        grem::IndexIter < TIndex, seqan::TopDown < FinePreorder<> > > &iterator,
+        typename seqan::Value < TIndex >::Type c);
+  /* END OF Forwards  ------------------------------------------------------------ */
+
   /**
-   *  @brief  IndexIter template specialization for `TopDown<grem::FinePreorder>`
+   *  @brief  IndexIter template specialization for `TopDown<grem::FinePreorder<>>`
    *          trait.
    *
    *  This specialization is a wrapper class for `Iterator < TopDown <> >` allowing to go
@@ -45,40 +56,17 @@ namespace grem {
    *  be done by regular `TopDown` iterator.
    */
   template < typename TIndex >
-    class IndexIter < TIndex, seqan::TopDown < FinePreorder > >
+    class IndexIter < TIndex, seqan::TopDown < FinePreorder <> > >
     {
-      /**
-       *  @brief  Go down in virtual suffix tree by one character.
-       *
-       *  @param[in,out]  iterator The iterator of virtual suffix tree.
-       *  @param[in]      c `iterator` goes down the edge beginning with `c`.
-       *  @return `true` if the edge or path to go down exists, otherwise `false`.
-       *
-       *  A wrapper function for `seqan::goDown` allowing to go down the virtual suffix
-       *  tree finer; i.e. one character at a time. A regular `TopDown` iterator cannot
-       *  perform the same because the virtual suffix tree is a compressed trie so that
-       *  the new representative string of iterator after going down might be extended
-       *  by more than one character.
-       */
-      friend inline bool
+      friend bool
         go_down < TIndex > (
-            grem::IndexIter < TIndex, seqan::TopDown < FinePreorder > > &iterator,
-            seqan::Value < TIndex >::Type c)
-        {
-          // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
-          if (iterator.boffset == 0) {          // iterator points a node.
-            // Go down using `seqan::goDown` function updating internal iterator.
-            if (seqan::goDown(iterator.iter_, c)) {
-              // Set `boffset` such that it points to the first char of the parent edge.
-              iterator.boffset = parentEdgeLength(iterator.iter_) - 1;
-              return true;
-            } else {                            // iterator cannot go down further.
-              return false;
-            }
-          } else {                              // iterator points a char on an edge.
-            return go_down_on_edge(iterator, c);
-          }
-        }  /* -----  end of template function go_down  ----- */
+            grem::IndexIter < TIndex, seqan::TopDown < FinePreorder <> > > &iterator,
+            typename seqan::Value < TIndex >::Type c);
+
+      friend bool
+        go_down_on_edge < TIndex > (
+            grem::IndexIter < TIndex, seqan::TopDown < FinePreorder <> > > &iterator,
+            typename seqan::Value < TIndex >::Type c);
 
       public:
         /* ====================  LIFECYCLE     ======================================= */
@@ -90,8 +78,8 @@ namespace grem {
         /**
          *  @brief  getter function for iter_.
          */
-        inline const seqan::Iterator < TIndex, seqan::TopDown<> >::Type &
-          IndexIter::get_iter_ (  ) const
+        inline const typename seqan::Iterator < TIndex, seqan::TopDown<> >::Type &
+          get_iter_ (  ) const
           {
             return iter_;
           }  /* -----  end of method IndexIter::get_iter_  ----- */
@@ -100,45 +88,16 @@ namespace grem {
          *  @brief  getter function for boffset.
          */
         inline unsigned int
-          IndexIter::get_boffset (  ) const
+          get_boffset (  ) const
           {
             return boffset;
           }  /* -----  end of method IndexIter::get_boffset  ----- */
 
       private:
-        /* ====================  METHODS       ======================================= */
-
-        /**
-         *  @brief  Go down when iterator points to a char on an edge.
-         *
-         *  @param[in,out]  iterator The iterator of virtual suffix tree.
-         *  @param[in]      c `iterator` goes down if next character on the edge is `c`.
-         *  @return `true` if the path to go down exists, otherwise `false`.
-         *
-         *  Looking up the next character on the edge, go down by updating `boffset` if
-         *  the next char on the edge is `c`. Internal iterator does not change in this
-         *  function.
-         */
-        friend inline bool
-          go_down_on_edge < TIndex > (
-              grem::IndexIter < TIndex, seqan::TopDown < FinePreorder > > &iterator,
-              seqan::Value < TIndex >::Type c)
-          {
-            parent_edge_label = parentEdgeLabel(iterator.iter_);
-            parent_edge_length = parentEdgeLength(iterator.iter_);
-            next_char = parent_edge_label[ parent_edge_length - iterator.boffset ]
-            if (c == next_char) {
-              --its.boffset;
-              return true;
-            } else {
-              return false;
-            }
-          }  /* -----  end of function go_down_on_edge  ----- */
-
         /* ====================  DATA MEMBERS  ======================================= */
 
         /** @brief Internal regular `TopDown` iterator. */
-        seqan::Iterator < TIndex, seqan::TopDown<> >::Type iter_;
+        typename seqan::Iterator < TIndex, seqan::TopDown<> >::Type iter_;
         /**
          *  @brief  Backward offset.
          *
@@ -151,6 +110,66 @@ namespace grem {
          */
         unsigned int boffset;
     };  /* ----------  end of template class IndexIter  ---------- */
+
+  /**
+   *  @brief  Go down in virtual suffix tree by one character.
+   *
+   *  @param[in,out]  iterator The iterator of virtual suffix tree.
+   *  @param[in]      c `iterator` goes down the edge beginning with `c`.
+   *  @return `true` if the edge or path to go down exists, otherwise `false`.
+   *
+   *  A wrapper function for `seqan::goDown` allowing to go down the virtual suffix
+   *  tree finer; i.e. one character at a time. A regular `TopDown` iterator cannot
+   *  perform the same because the virtual suffix tree is a compressed trie so that
+   *  the new representative string of iterator after going down might be extended
+   *  by more than one character.
+   */
+  template < typename TIndex >
+    bool go_down (
+        grem::IndexIter < TIndex, seqan::TopDown < FinePreorder <> > > &iterator,
+        typename seqan::Value < TIndex >::Type c)
+  {
+    // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
+    if (iterator.boffset == 0) {          // iterator points a node.
+      // Go down using `seqan::goDown` function updating internal iterator.
+      if (seqan::goDown(iterator.iter_, c)) {
+        // Set `boffset` such that it points to the first char of the parent edge.
+        iterator.boffset = parentEdgeLength(iterator.iter_) - 1;
+        return true;
+      } else {                            // iterator cannot go down further.
+        return false;
+      }
+    } else {                              // iterator points a char on an edge.
+      return go_down_on_edge(iterator, c);
+    }
+  }  /* -----  end of template function go_down  ----- */
+
+  /**
+   *  @brief  Go down when iterator points to a char on an edge.
+   *
+   *  @param[in,out]  iterator The iterator of virtual suffix tree.
+   *  @param[in]      c `iterator` goes down if next character on the edge is `c`.
+   *  @return `true` if the path to go down exists, otherwise `false`.
+   *
+   *  Looking up the next character on the edge, go down by updating `boffset` if
+   *  the next char on the edge is `c`. Internal iterator does not change in this
+   *  function.
+   */
+  template < typename TIndex >
+    bool go_down_on_edge (
+        grem::IndexIter < TIndex, seqan::TopDown < FinePreorder <> > > &iterator,
+        typename seqan::Value < TIndex >::Type c)
+  {
+    auto const &parent_edge_label = parentEdgeLabel(iterator.iter_);
+    auto const &parent_edge_length = parentEdgeLength(iterator.iter_);
+    auto const &next_char = parent_edge_label[ parent_edge_length - iterator.boffset ];
+      if (c == next_char) {
+        --iterator.boffset;
+        return true;
+      } else {
+        return false;
+      }
+  }  /* -----  end of function go_down_on_edge  ----- */
 
   /* Typedefs  ------------------------------------------------------------------- */
 
@@ -171,7 +190,7 @@ namespace seqan {
    *  This class extends existing Iterator class in seqan namespace.
    */
   template < typename TIndex >
-    class Iterator < TIndex, TopDown < grem::FinePreorder <> >
+    class Iterator < TIndex, TopDown < grem::FinePreorder <> > >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
