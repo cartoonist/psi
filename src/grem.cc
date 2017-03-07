@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Mar 02, 2017  02:26
+ * Last modified: Tue Mar 07, 2017  23:20
  *
  * Description: grem main function.
  *
@@ -30,7 +30,9 @@
 
 #include "vargraph.h"
 #include "traverser.h"
-#include "types.h"
+#include "sequence.h"
+#include "utils.h"
+#include "options.h"
 #include "logger.h"
 #include "release.h"
 
@@ -132,7 +134,7 @@ find_seeds(GremOptions & options)
     covered_reads.insert(toCString(seed_hit.read_id));
   };
 
-  ReadsChunk reads;
+  Dna5QRecords reads_chunk;
 
   TIMED_BLOCK(t, "seed-finding")
   {
@@ -140,17 +142,16 @@ find_seeds(GremOptions & options)
     {
       {
         TIMED_SCOPE(loadChunkTimer, "load-chunk");
-        readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
+        readRecords(reads_chunk, reads_infile, chksize);
       }
 
-      if (length(reads.ids) == 0) break;
+      if (length(reads_chunk.id) == 0) break;
 
-      typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads, seedlen);
+      typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads_chunk, seedlen);
       gtraverser.traverse(params, write);
 
-      clear(reads.ids);
-      clear(reads.seqs);
-      clear(reads.quals);
+      clear(reads_chunk.str);
+      clear(reads_chunk.id);
     }
   }
 

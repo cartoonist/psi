@@ -4,7 +4,7 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Sun Mar 05, 2017  18:05
+ * Last modified: Tue Mar 07, 2017  21:26
  *
  * Description: Traversers template class.
  *
@@ -25,7 +25,9 @@
 #include "vg.pb.h"
 #include "vargraph.h"
 #include "logger.h"
-#include "types.h"
+#include "sequence.h"
+#include "index.h"
+#include "index_iter.h"
 
 // TODO: refactor: types (const, * and &).
 
@@ -120,27 +122,27 @@ namespace grem
 
           public:
           // Constructors
-          Param(const ReadsChunk &reads_, unsigned int seed_len_)
+          Param(const Dna5QRecords &reads_, unsigned int seed_len_)
           {
             TIMED_SCOPE(readsIndexTimer, "index-read");
             this->reads = reads_;
-            this->reads_index = DnaSeqSetIndex< TIndexSpec >(reads.seqs);
+            this->reads_index = Dna5QStringSetIndex < TIndexSpec >(reads.str);
             this->seed_len = seed_len_;
           }
 
           // Attributes getters and setters
-          inline const ReadsChunk     &get_reads()
+          inline const Dna5QRecords     &get_reads()
           { return this->reads; }
 
-          inline const DnaSeqSetIndex< TIndexSpec > &get_reads_index()
+          inline const Dna5QStringSetIndex < TIndexSpec > &get_reads_index()
           { return this->reads_index; }
 
           inline unsigned int          get_seed_len()
           { return this->seed_len; }
 
           private:
-          ReadsChunk     reads;
-          DnaSeqSetIndex< TIndexSpec > reads_index;
+          Dna5QRecords     reads;
+          Dna5QStringSetIndex < TIndexSpec > reads_index;
           unsigned int   seed_len;
         };
 
@@ -153,7 +155,7 @@ namespace grem
         {
           this->iters_state.push_back(
               IterState({
-                TIndexIterator< DnaSeqSetIndex< TIndexSpec >, TIterSpec >(this->parameters->reads_index),
+                TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec >(this->parameters->reads_index),
                 0})
               );
         }
@@ -250,7 +252,7 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          TIndexIterator< DnaSeqSetIndex< TIndexSpec >, TIterSpec > iter;
+          TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec > iter;
           unsigned int   boffset;
         } IterState;
 
@@ -269,7 +271,7 @@ namespace grem
           return (this->path_length == this->parameters->seed_len);
         }
 
-        inline bool go_down(IterState &its, seqan::Value<DnaSeq>::Type c)
+        inline bool go_down(IterState &its, seqan::Value< seqan::Dna5QString >::Type c)
         {
 #ifndef NDEBUG
           PathTraverser::inc_total_go_down(1);
@@ -290,7 +292,7 @@ namespace grem
           return true;
         }
 
-        inline void go_down_all(seqan::Value<DnaSeq>::Type c)
+        inline void go_down_all(seqan::Value< seqan::Dna5QString >::Type c)
         {
           static std::vector<int> to_be_deleted;
           for (unsigned int i = 0; i < this->iters_state.size(); ++i)
@@ -311,7 +313,7 @@ namespace grem
         {
           VarGraph::NodeID c_node_id = this->c_locus.node_id();
           const vg::Node &c_node = this->vargraph->node_by(c_node_id);
-          DnaSeq partseq = c_node.sequence().substr(this->c_locus.offset());
+          seqan::Dna5QString partseq = c_node.sequence().substr(this->c_locus.offset());
 
           long unsigned int i;
           for (i = 0;
@@ -328,13 +330,13 @@ namespace grem
         {
           for (auto its : this->iters_state)
           {
-            using TSAValue = typename seqan::SAValue< DnaSeqSetIndex< TIndexSpec >>::Type;
+            using TSAValue = typename seqan::SAValue< Dna5QStringSetIndex < TIndexSpec >>::Type;
             seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
             for (unsigned i = 0; i < length(saPositions); ++i)
             {
               PathTraverser::SeedHit seed_hit;
               seed_hit.seed_locus = this->s_locus;
-              seed_hit.read_id = this->parameters->reads.ids[saPositions[i].i1];
+              seed_hit.read_id = this->parameters->reads.id[saPositions[i].i1];
               seed_hit.read_pos = saPositions[i].i2;
 
               results.push_back(std::move(seed_hit));

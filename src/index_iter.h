@@ -152,6 +152,16 @@ namespace grem {
         unsigned int boffset;
     };  /* ----------  end of template class IndexIter  ---------- */
 
+  /* Typedefs  ------------------------------------------------------------------- */
+
+  /**
+   *  @brief  Shorter alias for `Iterator<>::Type` syntax.
+   */
+  template< typename TIndex, typename TSpec >
+    using TIndexIterator = typename seqan::Iterator< TIndex, TSpec >::Type;
+
+  /* END OF Typedefs  ------------------------------------------------------------ */
+
 }  /* -----  end of namespace grem  ----- */
 
 namespace seqan {
@@ -160,7 +170,7 @@ namespace seqan {
    *
    *  This class extends existing Iterator class in seqan namespace.
    */
-  template < class TIndex >
+  template < typename TIndex >
     class Iterator < TIndex, TopDown < grem::FinePreorder <> >
     {
       public:

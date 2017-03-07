@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Mon Mar 06, 2017  13:38
+ * Last modified: Tue Mar 07, 2017  23:19
  *
  * Description: VarGraph class definition.
  *
@@ -28,7 +28,8 @@
 #include <utility>
 #include <cstdint>
 
-#include "types.h"
+#include <seqan/index.h>
+
 #include "graph_iter.h"
 #include "vg.pb.h"
 
