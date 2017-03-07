@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Mon Mar 06, 2017  11:16
+ * Last modified: Mon Mar 06, 2017  13:17
  *
  * Description: VarGraph class implementation.
  *
@@ -184,6 +184,24 @@ namespace grem
         return false;
       }
     }  /* -----  end of method VarGraph::is_merge  ----- */
+
+  /**
+   *  @brief  Get string value of the given path.
+   *
+   *  @param  path The given path as a set of node IDs.
+   *  @return string representation of the path in the variation graph.
+   *
+   *  Get string representation of a path in the variation graph.
+   */
+  std::string
+    VarGraph::get_string ( std::vector < VarGraph::NodeID > path )
+    {
+      std::string repr_str;
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        repr_str = repr_str + this->node_by(*it).sequence();
+      }
+      return repr_str;
+    }  /* -----  end of method VarGraph::get_string  ----- */
 
   void
     VarGraph::add_node(vg::Node *node)

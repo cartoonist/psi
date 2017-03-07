@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Mon Mar 06, 2017  11:15
+ * Last modified: Mon Mar 06, 2017  13:38
  *
  * Description: VarGraph class definition.
  *
@@ -134,6 +134,9 @@ namespace grem
 
       inline vg::Path*                       mutable_path_at(unsigned int idx)
       { return this->vg_graph.mutable_path(idx); }
+
+      // Helper functions.
+      std::string get_string ( std::vector < VarGraph::NodeID > path );
 
       // Attributes getters and setters
       inline const std::string&              get_name() const
