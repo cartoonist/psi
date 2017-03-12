@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Mon Mar 06, 2017  13:17
+ * Last modified: Sun Mar 12, 2017  02:14
  *
  * Description: VarGraph class implementation.
  *
@@ -344,7 +344,7 @@ namespace grem
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.itr_value = start_node_id;
-      begin_itr.visited = 0;  // Next node ID from current node. 0 = nothing buffered.
+      begin_itr.visited.push_back(0);  // Next node ID from current node. 0 = nothing buffered.
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
@@ -355,9 +355,9 @@ namespace grem
     GraphIter < VarGraph, Backtracker <> > &
     GraphIter < VarGraph, Backtracker <> >::operator++ ( )
     {
-      if ( this->visited != 0 ) {                             // Any node buffered?
-        this->itr_value = this->visited;                      // Use it.
-        this->visited = 0;                                    // Clear up buffer.
+      if ( this->visited[0] != 0 ) {                             // Any node buffered?
+        this->itr_value = this->visited[0];                      // Use it.
+        this->visited[0] = 0;                                    // Clear up buffer.
       }
       else {                                                  // else
         Backtracker<>::Value cnode_id = this->itr_value;
@@ -379,7 +379,7 @@ namespace grem
     GraphIter < VarGraph, Backtracker <> > &
     GraphIter < VarGraph, Backtracker <> >::operator-- ( )
     {
-      if ( this->visited != 0 ) {                             // Any node buffered?
+      if ( this->visited[0] != 0 ) {                             // Any node buffered?
         while (                // Remove all buffered branches of the current node.
             !this->visiting_buffer.empty() &&
             this->visiting_buffer.back().first == this->itr_value ) {
@@ -389,7 +389,7 @@ namespace grem
 
       if ( !this->visiting_buffer.empty() ) {                 // Go back in buffer.
         this->itr_value = this->visiting_buffer.back().first;
-        this->visited = this->visiting_buffer.back().second;
+        this->visited[0] = this->visiting_buffer.back().second;
         this->visiting_buffer.pop_back();
       }
 
@@ -423,7 +423,7 @@ namespace grem
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.itr_value = start_node_id;
-      begin_itr.visiting_buffer = start_node_id;
+      begin_itr.visiting_buffer.push_back( start_node_id );
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
@@ -469,7 +469,7 @@ namespace grem
     GraphIter < VarGraph, Haplotyper <> > &
     GraphIter < VarGraph, Haplotyper <> >::operator-- ( )
     {
-      this->itr_value = this->visiting_buffer;  // Reset the iterator to the start node.
+      this->itr_value = this->visiting_buffer[0];  // Reset the iterator to the start node.
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator--  ----- */
 

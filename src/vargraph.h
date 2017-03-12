@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Tue Mar 07, 2017  23:19
+ * Last modified: Sun Mar 12, 2017  02:13
  *
  * Description: VarGraph class definition.
  *
@@ -210,7 +210,7 @@ namespace grem
       typedef VarGraph::NodeID Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
-      typedef Value TSet;                       /**< @brief Used as a buffer. */
+      typedef std::vector< Value > TSet;        /**< @brief Used as a buffer. */
     };  /* ----------  end of struct Backtracker  ---------- */
 
   template < typename TSpec = void >
@@ -225,7 +225,7 @@ namespace grem
     struct HaplotyperIter < VarGraph, TSpec > {
       typedef VarGraph::NodeID Value;
       typedef Value Level;
-      typedef Value TContainer;                 /**< @brief Used to store start node. */
+      typedef std::vector< Value > TContainer;  /**< @brief Used to store start node. */
       typedef std::unordered_set < Value > TSet;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
 
