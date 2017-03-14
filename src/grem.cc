@@ -91,10 +91,14 @@ int main(int argc, char *argv[])
 
   if (options.index == IndexType::Esa)
   {
+    // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
+    //   inferenced by its arguments.
     find_seeds<seqan::IndexEsa<>, seqan::TopDown<>>(options);
   }
   else if (options.index == IndexType::Wotd)
   {
+    // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
+    //   inferenced by its arguments.
     find_seeds<seqan::IndexWotd<>, seqan::TopDown<>>(options);
   }
   else
@@ -128,8 +132,8 @@ find_seeds(GremOptions & options)
 
   long int found = 0;
   std::unordered_set< std::string > covered_reads;
-  std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output &) > write =
-    [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output & seed_hit){
+  std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output const &) > write =
+    [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output const & seed_hit){
     ++found;
     covered_reads.insert(toCString(seed_hit.read_id));
   };
@@ -148,7 +152,7 @@ find_seeds(GremOptions & options)
       if (length(reads_chunk.id) == 0) break;
 
       typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads_chunk, seedlen);
-      gtraverser.traverse(params, write);
+      gtraverser.traverse ( params, write );
 
       clear(reads_chunk.str);
       clear(reads_chunk.id);

@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Sun Mar 12, 2017  02:13
+ * Last modified: Wed Mar 15, 2017  18:47
  *
  * Description: VarGraph class definition.
  *
@@ -137,7 +137,7 @@ namespace grem
       { return this->vg_graph.mutable_path(idx); }
 
       // Helper functions.
-      std::string get_string ( std::vector < VarGraph::NodeID > path );
+      std::string get_string ( std::vector < VarGraph::NodeID > path ) const;
 
       // Attributes getters and setters
       inline const std::string&              get_name() const
@@ -254,8 +254,9 @@ namespace seqan {
 namespace grem {
   /* Haplotyper iterator meta-function declarations  ----------------------------- */
 
-  std::vector < VarGraph::NodeID >
-    get_uniq_haplotype ( typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
+  void
+    get_uniq_haplotype ( std::vector < VarGraph::NodeID > haplotype,
+        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
 
   /* END OF Haplotyper iterator meta-function declarations  ---------------------- */
 

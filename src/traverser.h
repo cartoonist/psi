@@ -4,7 +4,6 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Tue Mar 07, 2017  21:26
  *
  * Description: Traversers template class.
  *
@@ -402,7 +401,7 @@ namespace grem
         }
 
         inline void traverse(typename TPathTraverser::Param trav_params,
-                      std::function< void(typename TPathTraverser::Output &) > callback)
+                      std::function< void(typename TPathTraverser::Output const &) > callback)
         {
           TIMED_SCOPE(traverseTimer, "traverse");
           unsigned int locus_counter = 0;
@@ -510,7 +509,7 @@ namespace grem
 
         // internal methods
         inline void traverse_from_locus(typename TPathTraverser::Param & trav_params,
-            std::function< void(typename TPathTraverser::Output &) > & callback,
+            std::function< void(typename TPathTraverser::Output const &) > & callback,
             const vg::Position & locus)
         {
           // TODO: Thread unsafe!

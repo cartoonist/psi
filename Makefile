@@ -20,7 +20,7 @@ PROTO_SRCS   := $(subst ${PROTODIR}, ${SRCDIR}, ${PROTOS:%.proto=%.pb.cc})
 COMPILE.proto = protoc -I=${PROTODIR}/ --cpp_out=${SRCDIR}/
 
 # Specifying phony targets.
-.PHONY: all debug test doc clean dist-clean
+.PHONY: all debug test doc clean distclean
 # Specifying precious targets.
 .PRECIOUS: ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h
 

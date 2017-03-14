@@ -26,7 +26,7 @@ namespace grem {
   /**
    *  @brief  Read records from the input file into named string set.
    *
-   *  @param[in,out]  records Named string set to store records in the input file.
+   *  @param[out]  records Named string set to store records in the input file.
    *  @param[in,out]  infile The input file.
    *  @param[in]  num_record Read this number of record from the input file.
    *

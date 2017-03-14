@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Sun Mar 12, 2017  02:14
+ * Last modified: Wed Mar 15, 2017  18:47
  *
  * Description: VarGraph class implementation.
  *
@@ -194,7 +194,7 @@ namespace grem
    *  Get string representation of a path in the variation graph.
    */
   std::string
-    VarGraph::get_string ( std::vector < VarGraph::NodeID > path )
+    VarGraph::get_string ( std::vector < VarGraph::NodeID > path ) const
     {
       std::string repr_str;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
@@ -480,24 +480,23 @@ namespace grem
   /**
    *  @brief  Simulate a unique haplotype.
    *
+   *  @param[out]  The simulated haplotype as a list of node IDs.
    *  @param[in,out]  iter Haplotyper graph iterator.
-   *  @return Node IDs list of the simulated haplotype.
    *
    *  This function gets a Haplotyper graph iterator and generate a unique haplotype
    *  if available. The input Haplotyper iterator stores required information of the
    *  previous simulated haplotypes for which the iterator is used. So, in order to
    *  simulate multiple unique haplotypes use the same iterator as the input.
    */
-  inline std::vector < VarGraph::NodeID >
-    get_uniq_haplotype ( typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter )
+  void
+    get_uniq_haplotype ( std::vector < VarGraph::NodeID > haplotype,
+        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter )
     {
-      std::vector < VarGraph::NodeID > haplotype;
       --iter;                                 // reset the Haplotyper iterator.
       while ( !at_end ( iter ) ) {
         haplotype.push_back ( *iter );
         ++iter;
       }
-      return haplotype;
     }
 
   /* END OF Haplotyper iterator meta-functions  ---------------------------------- */
