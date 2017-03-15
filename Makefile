@@ -15,12 +15,17 @@ PREFIX       ?= ~/.local
 PROTOS       := $(wildcard ${PROTODIR}/*.proto)
 # Sources to be generated from proto files.
 PROTO_SRCS   := $(subst ${PROTODIR}, ${SRCDIR}, ${PROTOS:%.proto=%.pb.cc})
+# All source files (including header files).
+ALL_SOURCES  := $(wildcard ${SRCDIR}/*.cc)
+ALL_SOURCES  += $(wildcard ${SRCDIR}/*.h)
+ALL_SOURCES  += $(wildcard ${TESTDIR}/*.cc)
+ALL_SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
 ## Recipes:
 COMPILE.proto = protoc -I=${PROTODIR}/ --cpp_out=${SRCDIR}/
 
 # Specifying phony targets.
-.PHONY: all debug test doc clean distclean
+.PHONY: all debug test doc tags clean distclean
 # Specifying precious targets.
 .PRECIOUS: ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h
 
@@ -38,6 +43,9 @@ test: all
 
 doc:
 	doxygen
+
+tags:
+	ctags ${ALL_SOURCES}
 
 install:
 	install -v ${BINDIR}/grem ${PREFIX}/bin
