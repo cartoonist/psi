@@ -4,7 +4,7 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Thu Dec 15, 2016  18:18
+ * Last modified: Thu Mar 16, 2017  22:38
  *
  * Description: Finding seed hits in a linear sequence.
  *
@@ -21,10 +21,16 @@
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 
-#include "types.h"
+#include "sequence.h"
+#include "index.h"
+#include "utils.h"
+#include "options.h"
 #include "release.h"
 
 #include <easyloggingpp/src/easylogging++.h>
+
+#define SEEDHITS_REPORT_BUF 1000
+#define TRAVERSE_CHECKPOINT_LOCI_NO 1000
 
 using namespace std;
 using namespace seqan;
@@ -37,7 +43,10 @@ INITIALIZE_EASYLOGGINGPP
 
 typedef struct
 {
-  DnaSSIndexIter index_iter;
+  typedef Dna5QStringSetIndex < IndexWotd<> > TIndex;
+  typedef typename Iterator < TIndex, TopDown<> >::Type TIndexIterator;
+
+  TIndexIterator index_iter;
   unsigned int   boffset;
   unsigned int   ref_len;
 } IterState;
@@ -113,7 +122,7 @@ parse_args(GremOptions & options, int argc, char *argv[])
 }
 
 
-bool go_down(IterState &its, seqan::Value<DnaSeq>::Type c)
+bool go_down(IterState &its, seqan::Value< Dna5QString >::Type c)
 {
   if (its.boffset == 0) {
     if (!seqan::goDown(its.index_iter, c)) return false;
@@ -150,7 +159,7 @@ int main(int argc, char *argv[])
   }
 
   CharString ref_id;
-  DnaSeq     ref_seq;
+  Dna5QString     ref_seq;
 
   {
     TIMED_SCOPE(loadRefTimer, "load-ref");
@@ -163,7 +172,7 @@ int main(int argc, char *argv[])
     LOG(FATAL) << "could not open the file '" << toCString(options.fq_path) << "'.";
   }
 
-  ReadsChunk reads;
+  Dna5QRecords reads;
   bool found;
   unsigned int nof_found = 0;
   while (true)
@@ -172,10 +181,10 @@ int main(int argc, char *argv[])
 
     {
       TIMED_SCOPE(loadReadsTimer, "load-reads");
-      readRecords(reads.ids, reads.seqs, reads.quals, readsInFile, options.chunk_size);
+      readRecords(reads, readsInFile, options.chunk_size);
     }
 
-    if (length(reads.ids) == 0)
+    if (length(reads.id) == 0)
     {
       LOG(INFO) << "All reads are processed.";
       break;
@@ -187,10 +196,10 @@ int main(int argc, char *argv[])
       TIMED_SCOPE(traverseTimer, "traverse");
 
       unsigned int i;
-      DnaSeqSetIndex reads_index(reads.seqs);
+      IterState::TIndex reads_index( reads.str );
       for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
       {
-        IterState iter_state = {DnaSSIndexIter(reads_index), 0, 0};
+        IterState iter_state = {IterState::TIndexIterator(reads_index), 0, 0};
         // Explicit is better than implicit.
         if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
 
@@ -217,9 +226,8 @@ int main(int argc, char *argv[])
       }
     }
 
-    clear(reads.ids);
-    clear(reads.seqs);
-    clear(reads.quals);
+    clear(reads.id);
+    clear(reads.str);
   }
 
   return EXIT_SUCCESS;
