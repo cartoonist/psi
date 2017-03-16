@@ -19,6 +19,9 @@ logs/
 # ctags
 tags
 
+# test data files
+test/data/**/*.svg
+
 ## GitHub defaults ##
 # Compiled Object files
 *.slo
