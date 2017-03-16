@@ -19,6 +19,8 @@
 #ifndef TESTS_BASE_H__
 #define TESTS_BASE_H__
 
+#include <catch/catch.hpp>
+
 #ifndef TESTDIR
 #define TESTDIR ".."  // Test directory path relative to test binary path.
 #endif
