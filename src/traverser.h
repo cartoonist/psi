@@ -21,6 +21,8 @@
 #include <vector>
 #include <functional>
 
+#include <seqan/seeds.h>
+
 #include "vg.pb.h"
 #include "vargraph.h"
 #include "logger.h"
@@ -113,7 +115,8 @@ namespace grem
           unsigned int      read_pos;
         } SeedHit;
 
-        typedef SeedHit Output;
+        // defined types
+        typedef seqan::Seed < seqan::Simple > Output;
         // Traverse parameters
         class Param
         {
@@ -333,12 +336,13 @@ namespace grem
             seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
             for (unsigned i = 0; i < length(saPositions); ++i)
             {
-              PathTraverser::SeedHit seed_hit;
-              seed_hit.seed_locus = this->s_locus;
-              seed_hit.read_id = this->parameters->reads.id[saPositions[i].i1];
-              seed_hit.read_pos = saPositions[i].i2;
+              PathTraverser::Output hit;
+              seqan::setBeginPositionH ( hit, this->s_locus.node_id());
+              seqan::setEndPositionH ( hit, this->s_locus.offset());
+              seqan::setBeginPositionV ( hit, saPositions[i].i1);  // Read ID.
+              seqan::setEndPositionV ( hit, saPositions[i].i2);    // Position in the read.
 
-              results.push_back(std::move(seed_hit));
+              results.push_back(std::move(hit));
             }
           }
         }

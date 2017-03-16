@@ -25,6 +25,7 @@
 #include <functional>
 #include <unordered_set>
 
+#include <seqan/seeds.h>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 
@@ -131,11 +132,11 @@ find_seeds(GremOptions & options)
   gtraverser.add_all_loci(start_step);
 
   long int found = 0;
-  std::unordered_set< std::string > covered_reads;
+  std::unordered_set< Dna5QStringSetPosition > covered_reads;
   std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output const &) > write =
     [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output const & seed_hit){
     ++found;
-    covered_reads.insert(toCString(seed_hit.read_id));
+    covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
 
   Dna5QRecords reads_chunk;

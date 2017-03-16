@@ -24,8 +24,9 @@
 
 namespace grem {
   /* Typedefs  ------------------------------------------------------------------- */
-  typedef seqan::StringSet< seqan::CharString >                     CharStringSet;
-  typedef seqan::StringSet< seqan::Dna5QString >                    Dna5QStringSet;
+  typedef seqan::StringSet< seqan::CharString >    CharStringSet;
+  typedef seqan::StringSet< seqan::Dna5QString >   Dna5QStringSet;
+  typedef seqan::Position < Dna5QStringSet >::Type Dna5QStringSetPosition;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   /* Data structures  ------------------------------------------------------------ */
