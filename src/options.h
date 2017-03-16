@@ -37,6 +37,7 @@ namespace grem
     unsigned int seed_len;
     unsigned int chunk_size;
     unsigned int start_every;
+    unsigned int path_num;
     IndexType index;
     seqan::CharString rf_path;
     seqan::CharString fq_path;

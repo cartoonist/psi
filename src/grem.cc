@@ -268,6 +268,12 @@ setup_argparser(seqan::ArgumentParser & parser)
                                           "INT"));
   setDefaultValue(parser, "e", 1);
 
+  // number of paths
+  addOption ( parser, seqan::ArgParseOption ( "n", "path-num", "Number of paths from "
+        "the variation graph in hybrid approach.", seqan::ArgParseArgument::INTEGER,
+        "INT" ) );
+  setDefaultValue(parser, "n", 2);
+
   // index
   addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
                                           seqan::ArgParseArgument::STRING, "INDEX"));
@@ -333,6 +339,7 @@ parse_args(GremOptions & options, int argc, char *argv[])
   getOptionValue(options.seed_len, parser, "seed-length");
   getOptionValue(options.chunk_size, parser, "chunk-size");
   getOptionValue(options.start_every, parser, "start-every");
+  getOptionValue(options.path_num, parser, "path-num");
   getOptionValue(indexname, parser, "index");
   getOptionValue(options.log_path, parser, "log-file");
   options.nologfile = isSet(parser, "no-log-file");
