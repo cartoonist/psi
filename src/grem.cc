@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Mar 16, 2017  10:40
+ * Last modified: Thu Mar 16, 2017  11:14
  *
  * Description: grem main function.
  *
@@ -277,7 +277,7 @@ setup_argparser(seqan::ArgumentParser & parser)
   addOption ( parser, seqan::ArgParseOption ( "n", "path-num", "Number of paths from "
         "the variation graph in hybrid approach.", seqan::ArgParseArgument::INTEGER,
         "INT" ) );
-  setDefaultValue(parser, "n", 2);
+  setDefaultValue(parser, "n", 0);
 
   // index
   addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
