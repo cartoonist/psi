@@ -19,6 +19,7 @@
 #include <chrono>
 #include <libgen.h>
 #include <string>
+#include <vector>
 
 #include "tests_base.h"
 #include "vargraph.h"
@@ -73,5 +74,37 @@ SCENARIO( "Loading variation graph from a vg file", "[input]" )
     random_idx = distribution(generator);
 
     auto& an_edge = vargraph.edge_at(random_idx);
+  }
+}
+
+// VarGraph graph iterators test scenarios.
+SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iterator]" )
+{
+  GIVEN ( "A small variation graph" )
+  {
+    std::string vgpath = testdir + "/data/small/x.vg";
+    VarGraph vargraph(vgpath.c_str());
+
+    seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
+
+    WHEN ( "the two haplotypes are generated" )
+    {
+      std::vector < VarGraph::NodeID > haplotype1;
+      std::vector < VarGraph::NodeID > haplotype2;
+      get_uniq_haplotype ( haplotype1, hap_itr );
+      get_uniq_haplotype ( haplotype2, hap_itr );
+
+      THEN ( "they should be unique" )
+      {
+        std::string hapstr1 = vargraph.get_string ( haplotype1 );
+        std::string hapstr2 = vargraph.get_string ( haplotype2 );
+        REQUIRE ( hapstr1 != hapstr2 );
+      }
+      AND_THEN ( "they should have the correct length" )
+      {
+        REQUIRE ( haplotype1.size() == 147 );
+        REQUIRE ( haplotype2.size() == 134 );
+      }
+    }
   }
 }
