@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Sun Mar 05, 2017  18:00
+ * Last modified: Wed Mar 15, 2017  18:47
  *
  * Description: VarGraph class definition.
  *
@@ -28,7 +28,8 @@
 #include <utility>
 #include <cstdint>
 
-#include "types.h"
+#include <seqan/index.h>
+
 #include "graph_iter.h"
 #include "vg.pb.h"
 
@@ -135,6 +136,9 @@ namespace grem
       inline vg::Path*                       mutable_path_at(unsigned int idx)
       { return this->vg_graph.mutable_path(idx); }
 
+      // Helper functions.
+      std::string get_string ( std::vector < VarGraph::NodeID > path ) const;
+
       // Attributes getters and setters
       inline const std::string&              get_name() const
       { return this->name; }
@@ -206,11 +210,27 @@ namespace grem
       typedef VarGraph::NodeID Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
-      typedef Value TSet; // UNUSED
+      typedef std::vector< Value > TSet;        /**< @brief Used as a buffer. */
     };  /* ----------  end of struct Backtracker  ---------- */
 
   template < typename TSpec = void >
     using Backtracker = BacktrackerIter < VarGraph, TSpec >;
+
+  /**
+   *  @brief  Haplotyper graph iterator trait.
+   *
+   *  Specialization of generic graph iterator trait HaplotyperIter for VarGraph.
+   */
+  template < typename TSpec >
+    struct HaplotyperIter < VarGraph, TSpec > {
+      typedef VarGraph::NodeID Value;
+      typedef Value Level;
+      typedef std::vector< Value > TContainer;  /**< @brief Used to store start node. */
+      typedef std::unordered_set < Value > TSet;
+    };  /* ----------  end of struct HaplotyperIter  ---------- */
+
+  template < typename TSpec = void >
+    using Haplotyper = HaplotyperIter < VarGraph, TSpec >;
 
   /* END OF traits template specialization  -------------------------------------- */
 
@@ -230,5 +250,16 @@ namespace seqan {
         /* ====================  TYPEDEFS      ======================================= */
     };  /* ----------  end of template class Iterator  ---------- */
 }  /* -----  end of namespace seqan  ----- */
+
+namespace grem {
+  /* Haplotyper iterator meta-function declarations  ----------------------------- */
+
+  void
+    get_uniq_haplotype ( std::vector < VarGraph::NodeID > haplotype,
+        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
+
+  /* END OF Haplotyper iterator meta-function declarations  ---------------------- */
+
+}  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef VARGRAPH_H__  ----- */

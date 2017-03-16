@@ -4,7 +4,6 @@
  * Filename: traverser.h
  *
  * Created: Mon Nov 14, 2016  01:11
- * Last modified: Sun Mar 05, 2017  18:05
  *
  * Description: Traversers template class.
  *
@@ -21,11 +20,16 @@
 
 #include <vector>
 #include <functional>
+#include <unordered_set>
+
+#include <seqan/seeds.h>
 
 #include "vg.pb.h"
 #include "vargraph.h"
 #include "logger.h"
-#include "types.h"
+#include "sequence.h"
+#include "index.h"
+#include "index_iter.h"
 
 // TODO: refactor: types (const, * and &).
 
@@ -112,7 +116,10 @@ namespace grem
           unsigned int      read_pos;
         } SeedHit;
 
-        typedef SeedHit Output;
+        // defined types
+        typedef seqan::Seed < seqan::Simple > Output;
+        typedef TIndexSpec IndexType;
+        typedef TIterSpec IterType;
         // Traverse parameters
         class Param
         {
@@ -120,27 +127,27 @@ namespace grem
 
           public:
           // Constructors
-          Param(const ReadsChunk &reads_, unsigned int seed_len_)
+          Param(const Dna5QRecords &reads_, unsigned int seed_len_)
           {
             TIMED_SCOPE(readsIndexTimer, "index-read");
             this->reads = reads_;
-            this->reads_index = DnaSeqSetIndex< TIndexSpec >(reads.seqs);
+            this->reads_index = Dna5QStringSetIndex < TIndexSpec >(reads.str);
             this->seed_len = seed_len_;
           }
 
           // Attributes getters and setters
-          inline const ReadsChunk     &get_reads()
+          inline const Dna5QRecords     &get_reads()
           { return this->reads; }
 
-          inline const DnaSeqSetIndex< TIndexSpec > &get_reads_index()
+          inline const Dna5QStringSetIndex < TIndexSpec > &get_reads_index()
           { return this->reads_index; }
 
           inline unsigned int          get_seed_len()
           { return this->seed_len; }
 
           private:
-          ReadsChunk     reads;
-          DnaSeqSetIndex< TIndexSpec > reads_index;
+          Dna5QRecords     reads;
+          Dna5QStringSetIndex < TIndexSpec > reads_index;
           unsigned int   seed_len;
         };
 
@@ -153,7 +160,7 @@ namespace grem
         {
           this->iters_state.push_back(
               IterState({
-                TIndexIterator< DnaSeqSetIndex< TIndexSpec >, TIterSpec >(this->parameters->reads_index),
+                TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec >(this->parameters->reads_index),
                 0})
               );
         }
@@ -250,7 +257,7 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          TIndexIterator< DnaSeqSetIndex< TIndexSpec >, TIterSpec > iter;
+          TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec > iter;
           unsigned int   boffset;
         } IterState;
 
@@ -269,7 +276,7 @@ namespace grem
           return (this->path_length == this->parameters->seed_len);
         }
 
-        inline bool go_down(IterState &its, seqan::Value<DnaSeq>::Type c)
+        inline bool go_down(IterState &its, seqan::Value< seqan::Dna5QString >::Type c)
         {
 #ifndef NDEBUG
           PathTraverser::inc_total_go_down(1);
@@ -290,7 +297,7 @@ namespace grem
           return true;
         }
 
-        inline void go_down_all(seqan::Value<DnaSeq>::Type c)
+        inline void go_down_all(seqan::Value< seqan::Dna5QString >::Type c)
         {
           static std::vector<int> to_be_deleted;
           for (unsigned int i = 0; i < this->iters_state.size(); ++i)
@@ -311,7 +318,7 @@ namespace grem
         {
           VarGraph::NodeID c_node_id = this->c_locus.node_id();
           const vg::Node &c_node = this->vargraph->node_by(c_node_id);
-          DnaSeq partseq = c_node.sequence().substr(this->c_locus.offset());
+          seqan::Dna5QString partseq = c_node.sequence().substr(this->c_locus.offset());
 
           long unsigned int i;
           for (i = 0;
@@ -328,16 +335,17 @@ namespace grem
         {
           for (auto its : this->iters_state)
           {
-            using TSAValue = typename seqan::SAValue< DnaSeqSetIndex< TIndexSpec >>::Type;
+            using TSAValue = typename seqan::SAValue< Dna5QStringSetIndex < TIndexSpec >>::Type;
             seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
             for (unsigned i = 0; i < length(saPositions); ++i)
             {
-              PathTraverser::SeedHit seed_hit;
-              seed_hit.seed_locus = this->s_locus;
-              seed_hit.read_id = this->parameters->reads.ids[saPositions[i].i1];
-              seed_hit.read_pos = saPositions[i].i2;
+              PathTraverser::Output hit;
+              seqan::setBeginPositionH ( hit, this->s_locus.node_id());
+              seqan::setEndPositionH ( hit, this->s_locus.offset());
+              seqan::setBeginPositionV ( hit, saPositions[i].i1);  // Read ID.
+              seqan::setEndPositionV ( hit, saPositions[i].i2);    // Position in the read.
 
-              results.push_back(std::move(seed_hit));
+              results.push_back(std::move(hit));
             }
           }
         }
@@ -399,8 +407,83 @@ namespace grem
           this->starting_points.push_back(locus);
         }
 
+        /**
+         *  @brief  Pick n paths from the variation graph.
+         *
+         *  @param[out]  paths The set of generated paths are added to this string set.
+         *  @param[out]  covered_nodes The set of covered nodes by the generated paths.
+         *  @param[in]  n Number of paths.
+         *
+         *  This method generates a set of (probably) unique whole-genome path from the
+         *  variation graph.
+         */
+        void
+          pick_paths ( Dna5QStringSet &paths,
+              std::unordered_set < VarGraph::NodeID > &covered_nodes, int n )
+          {
+            if ( n == 0 ) return;
+
+            seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
+            std::vector < VarGraph::NodeID > new_hap;
+            seqan::Dna5QString new_path;
+            for ( int i = 0; i < n; ++i ) {
+              get_uniq_haplotype ( new_hap, hap_itr );
+
+              for ( auto node : new_hap ) covered_nodes.insert (node);
+
+              new_path = this->vargraph->get_string ( new_hap );
+
+              // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
+              char fake_qual = 'I';
+              assignQualities ( new_path, std::string ( length(new_path), fake_qual ) );
+
+              appendValue ( paths, new_path );
+
+              new_hap.clear();
+            }
+          }  /* -----  end of function pick_paths  ----- */
+
+        /**
+         *  @brief  Find seeds on a set of whole-genome paths for the input reads chunk.
+         *
+         *  @param[in]  paths_index The index of the set of paths used for finding the seeds.
+         *  @param[in]  trav_params Traverse parameters including reads chunk and its index.
+         *  @param[in]  callback The call back function applied on the found seeds.
+         *
+         *  This function uses a set of paths from variation graph to find seeds of the
+         *  input set of reads on these paths by traversing the virtual suffix tree of
+         *  both indexes of reads chunk and whole-genome paths.
+         */
+        // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
+        inline void
+          seeds_on_paths ( Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index,
+              typename TPathTraverser::Param trav_params,
+              std::function< void(typename TPathTraverser::Output const &) > callback )
+          {
+            // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
+            typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
+            typedef typename TPathTraverser::IndexType TReadsIndexSpec;
+            typedef Dna5QStringSetIndex < TReadsIndexSpec > TReadsIndex;
+            typedef seqan::Seed < seqan::Simple > TSimpleSeed;
+            typedef seqan::SeedSet < TSimpleSeed > TSimpleSeedSet;
+            typedef seqan::Iterator < TSimpleSeedSet >::Type TSeedIterator;
+
+            TFineIterator < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
+            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr (trav_params.get_reads_index());
+
+            TSimpleSeedSet seeds_set;
+            kmer_exact_matches < TPathIndex, TReadsIndex > ( seeds_set, paths_itr, reads_itr,
+                trav_params.get_seed_len() );
+
+            for ( TSeedIterator it = begin ( seeds_set, seqan::Standard() );
+                it != end ( seeds_set, seqan::Standard() );
+                ++it )
+              callback ( *it );
+
+          }  /* -----  end of method GraphTraverser::seeds_on_paths  ----- */
+
         inline void traverse(typename TPathTraverser::Param trav_params,
-                      std::function< void(typename TPathTraverser::Output &) > callback)
+                      std::function< void(typename TPathTraverser::Output const &) > callback)
         {
           TIMED_SCOPE(traverseTimer, "traverse");
           unsigned int locus_counter = 0;
@@ -421,7 +504,8 @@ namespace grem
           }
         }
 
-        inline void add_all_loci(unsigned int step=1)
+        inline void add_all_loci(unsigned int step=1,
+            std::unordered_set < VarGraph::NodeID > *exclude_nodes=nullptr)
         {
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph. This means that for example add_all_loci(2) would add
@@ -467,14 +551,27 @@ namespace grem
             seq = this->vargraph->node_by(*itr).sequence();
 
             unsigned long int cursor = (step - prenode_remain) % step;
-            while (cursor < seq.length())
-            {
-              vg::Position s_point;
-              s_point.set_node_id(*itr);
-              s_point.set_offset(cursor);
-              this->add_start(s_point);
+            if ( exclude_nodes == nullptr ||
+                (*exclude_nodes).find(*itr) == (*exclude_nodes).end() ) {
+              bool set = false;
+              while (cursor < seq.length())
+              {
+                vg::Position s_point;
+                s_point.set_node_id(*itr);
+                s_point.set_offset(cursor);
+                this->add_start(s_point);
+                set = true;
 
-              cursor += step;
+                cursor += step;
+              }
+
+              if (!set) {
+                vg::Position s_point;
+                s_point.set_node_id(*itr);
+                s_point.set_offset(0);
+                this->add_start(s_point);
+                set = true;
+              }
             }
 
             unsigned long int new_remain;
@@ -508,7 +605,7 @@ namespace grem
 
         // internal methods
         inline void traverse_from_locus(typename TPathTraverser::Param & trav_params,
-            std::function< void(typename TPathTraverser::Output &) > & callback,
+            std::function< void(typename TPathTraverser::Output const &) > & callback,
             const vg::Position & locus)
         {
           // TODO: Thread unsafe!

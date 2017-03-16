@@ -1,8 +1,8 @@
 /**
- *    @file  types.h
- *   @brief  Type definitions header file.
+ *    @file  options.h
+ *   @brief  Options class definition.
  *
- *  All global type definitions (`typedef`s) go here.
+ *  It contains data structures storing program options.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -19,28 +19,10 @@
 #define TYPES_H__
 
 #include <seqan/sequence.h>
-#include <seqan/index.h>
 
 namespace grem
 {
-  typedef seqan::StringSet< seqan::CharString >                     CharStringSet;
-  typedef seqan::Dna5QString                                        DnaSeq;
-  typedef seqan::StringSet< DnaSeq >                                DnaSeqSet;
-  // TODO: Move to a class represents a string set and its index.
-  template< typename TIndexSpec >
-    using DnaSeqSetIndex = seqan::Index< DnaSeqSet, TIndexSpec >;
-  template< typename TIndex, typename TSpec >
-    using TIndexIterator = typename seqan::Iterator< TIndex, TSpec >::Type;
-
-  typedef struct
-  {
-    CharStringSet ids;
-    DnaSeqSet     seqs;
-    CharStringSet quals;
-  } ReadsChunk;
-  // END OF TODO
-
-  // TODO: Move to a class for command-line options.
+  // :TODO:Tue Mar 07 20:34:\@cartoonist: Option class.
   enum class IndexType {
     Sa = 1,               /**< @brief Suffix array index. */
     Esa,                  /**< @brief Enhanced suffix array index. */
@@ -55,6 +37,7 @@ namespace grem
     unsigned int seed_len;
     unsigned int chunk_size;
     unsigned int start_every;
+    unsigned int path_num;
     IndexType index;
     seqan::CharString rf_path;
     seqan::CharString fq_path;
@@ -64,22 +47,6 @@ namespace grem
     bool quiet;
     bool nocolor;
   } GremOptions;
-  // END OF TODO
-}
-
-namespace seqan
-{
-  /* Saving memory by overriding SAValue type:
-   *
-   * NOTE -- CURRENT LIMITATION:
-   *   (unlimited) number of reads of length at most (2^16=65536).
-   *
-   */
-  template<>
-  struct SAValue< grem::DnaSeqSet >
-  {
-    typedef Pair<long unsigned int, uint16_t, Tag<Pack_> > Type;
-  };
 }
 
 #endif  // TYPES_H__

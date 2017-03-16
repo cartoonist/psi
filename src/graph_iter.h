@@ -30,7 +30,7 @@ namespace grem {
   template < typename TGraph, typename TSpec >                      // at_end
     bool at_end ( GraphIter<TGraph, TSpec> &it );
   template < typename TGraph, typename TSpec >                      // begin
-    GraphIter< TGraph, TSpec > begin ( const TGraph &g, typename TSpec::Value start=0 );
+    GraphIter < TGraph, TSpec > begin ( const TGraph &g, typename TSpec::Value start=0 );
   template < typename TGraph, typename TSpec >                      // level
     typename TSpec::Level level ( GraphIter< TGraph, TSpec > &it );
 
@@ -39,6 +39,8 @@ namespace grem {
     struct BFSIter;
   template < typename TGraph, typename TSpec >
     struct BacktrackerIter;
+  template < typename TGraph, typename TSpec >
+    struct HaplotyperIter;
 
   /* END OF FORWARDS  ------------------------------------------------------------ */
 

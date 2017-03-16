@@ -37,7 +37,7 @@ LINK          = ${CXX} ${LDFLAG} -o $@
 MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MF $@
 
 # Specifying phony targets.
-.PHONY: all clean dist-clean
+.PHONY: all clean distclean
 
 # building target.
 all: ${TARGET}

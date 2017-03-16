@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Mar 02, 2017  02:26
+ * Last modified: Thu Mar 16, 2017  08:56
  *
  * Description: grem main function.
  *
@@ -25,12 +25,15 @@
 #include <functional>
 #include <unordered_set>
 
+#include <seqan/seeds.h>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 
 #include "vargraph.h"
 #include "traverser.h"
-#include "types.h"
+#include "sequence.h"
+#include "utils.h"
+#include "options.h"
 #include "logger.h"
 #include "release.h"
 
@@ -89,10 +92,14 @@ int main(int argc, char *argv[])
 
   if (options.index == IndexType::Esa)
   {
+    // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
+    //   inferenced by its arguments.
     find_seeds<seqan::IndexEsa<>, seqan::TopDown<>>(options);
   }
   else if (options.index == IndexType::Wotd)
   {
+    // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
+    //   inferenced by its arguments.
     find_seeds<seqan::IndexWotd<>, seqan::TopDown<>>(options);
   }
   else
@@ -122,17 +129,21 @@ find_seeds(GremOptions & options)
   load_graph(vgpath, vargraph);
 
   GraphTraverser< PathTraverser< TIndexSpec, TIterSpec >> gtraverser(vargraph);
-  gtraverser.add_all_loci(start_step);
+  std::unordered_set < VarGraph::NodeID > covered_nodes;
+  Dna5QStringSet paths;
+  gtraverser.pick_paths ( paths, covered_nodes, options.path_num );
+  gtraverser.add_all_loci ( start_step, &covered_nodes );
 
   long int found = 0;
-  std::unordered_set< std::string > covered_reads;
-  std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output &) > write =
-    [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output & seed_hit){
+  std::unordered_set< Dna5QStringSetPosition > covered_reads;
+  std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output const &) > write =
+    [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output const & seed_hit){
     ++found;
-    covered_reads.insert(toCString(seed_hit.read_id));
+    covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
 
-  ReadsChunk reads;
+  Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index (paths);
+  Dna5QRecords reads_chunk;
 
   TIMED_BLOCK(t, "seed-finding")
   {
@@ -140,17 +151,17 @@ find_seeds(GremOptions & options)
     {
       {
         TIMED_SCOPE(loadChunkTimer, "load-chunk");
-        readRecords(reads.ids, reads.seqs, reads.quals, reads_infile, chksize);
+        readRecords(reads_chunk, reads_infile, chksize);
       }
 
-      if (length(reads.ids) == 0) break;
+      if (length(reads_chunk.id) == 0) break;
 
-      typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads, seedlen);
-      gtraverser.traverse(params, write);
+      typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads_chunk, seedlen);
+      gtraverser.seeds_on_paths ( paths_index, params, write );
+      gtraverser.traverse ( params, write );
 
-      clear(reads.ids);
-      clear(reads.seqs);
-      clear(reads.quals);
+      clear(reads_chunk.str);
+      clear(reads_chunk.id);
     }
   }
 
@@ -262,6 +273,12 @@ setup_argparser(seqan::ArgumentParser & parser)
                                           "INT"));
   setDefaultValue(parser, "e", 1);
 
+  // number of paths
+  addOption ( parser, seqan::ArgParseOption ( "n", "path-num", "Number of paths from "
+        "the variation graph in hybrid approach.", seqan::ArgParseArgument::INTEGER,
+        "INT" ) );
+  setDefaultValue(parser, "n", 2);
+
   // index
   addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
                                           seqan::ArgParseArgument::STRING, "INDEX"));
@@ -327,6 +344,7 @@ parse_args(GremOptions & options, int argc, char *argv[])
   getOptionValue(options.seed_len, parser, "seed-length");
   getOptionValue(options.chunk_size, parser, "chunk-size");
   getOptionValue(options.start_every, parser, "start-every");
+  getOptionValue(options.path_num, parser, "path-num");
   getOptionValue(indexname, parser, "index");
   getOptionValue(options.log_path, parser, "log-file");
   options.nologfile = isSet(parser, "no-log-file");
