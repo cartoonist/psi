@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Wed Mar 15, 2017  18:47
+ * Last modified: Thu Mar 16, 2017  11:02
  *
  * Description: VarGraph class definition.
  *
@@ -160,12 +160,12 @@ namespace grem
 
   /* GRAPH ITERATORS  ============================================================ */
 
-  /* Traits template specialization  --------------------------------------------- */
+  /* Tags template specialization  --------------------------------------------- */
 
   /**
-   *  @brief  Breadth-first search graph iterator trait.
+   *  @brief  Breadth-first search graph iterator tag.
    *
-   *  Specialization of generic graph iterator trait BFSIter for VarGraph.
+   *  Specialization of generic graph iterator tag BFSIter for VarGraph.
    */
   template < typename TSpec >
     struct BFSIter < VarGraph, TSpec >
@@ -201,9 +201,9 @@ namespace grem
     using BFS = BFSIter < VarGraph, TSpec >;
 
   /**
-   *  @brief  Backtracker graph iterator trait.
+   *  @brief  Backtracker graph iterator tag.
    *
-   *  Specialization of generic graph iterator trait BacktrackerIter for VarGraph.
+   *  Specialization of generic graph iterator tag BacktrackerIter for VarGraph.
    */
   template < typename TSpec >
     struct BacktrackerIter < VarGraph, TSpec > {
@@ -217,9 +217,9 @@ namespace grem
     using Backtracker = BacktrackerIter < VarGraph, TSpec >;
 
   /**
-   *  @brief  Haplotyper graph iterator trait.
+   *  @brief  Haplotyper graph iterator tag.
    *
-   *  Specialization of generic graph iterator trait HaplotyperIter for VarGraph.
+   *  Specialization of generic graph iterator tag HaplotyperIter for VarGraph.
    */
   template < typename TSpec >
     struct HaplotyperIter < VarGraph, TSpec > {
@@ -232,7 +232,7 @@ namespace grem
   template < typename TSpec = void >
     using Haplotyper = HaplotyperIter < VarGraph, TSpec >;
 
-  /* END OF traits template specialization  -------------------------------------- */
+  /* END OF tags template specialization  -------------------------------------- */
 
 }  /* -----  end of namespace grem  ----- */
 

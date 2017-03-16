@@ -34,7 +34,7 @@ namespace grem {
   template < typename TGraph, typename TSpec >                      // level
     typename TSpec::Level level ( GraphIter< TGraph, TSpec > &it );
 
-  /* Graph iterator traits. */
+  /* Graph iterator tags. */
   template < typename TGraph, typename TSpec >
     struct BFSIter;
   template < typename TGraph, typename TSpec >

@@ -23,9 +23,9 @@
 
 namespace grem {
   /**
-   *  @brief  Top-down index iterator trait with finer traversal in virtual suffix tree.
+   *  @brief  Top-down index iterator tag with finer traversal in virtual suffix tree.
    *
-   *  @tparam  TSpec The type for further specialization of the `TopDownFine` trait type.
+   *  @tparam  TSpec The type for further specialization of the `TopDownFine` tag type.
    *
    *  The `TSpec` can `seqan::Preorder` or `seqan::ParentLinks<>`. It specifies internal
    *  SeqAn iterator of IndexIter class.
