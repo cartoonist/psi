@@ -83,10 +83,10 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     std::string vgpath = _testdir + "/data/small/x.vg";
     VarGraph vargraph(vgpath.c_str());
 
-    seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
-
-    WHEN ( "the two haplotypes are generated" )
+    WHEN ( "the two haplotypes are generated using Haplotyper" )
     {
+      seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
+
       std::vector < VarGraph::NodeID > haplotype1;
       std::vector < VarGraph::NodeID > haplotype2;
       get_uniq_haplotype ( haplotype1, hap_itr );
