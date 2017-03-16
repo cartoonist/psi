@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Tue Mar 07, 2017  23:20
+ * Last modified: Thu Mar 16, 2017  08:56
  *
  * Description: grem main function.
  *
@@ -129,7 +129,10 @@ find_seeds(GremOptions & options)
   load_graph(vgpath, vargraph);
 
   GraphTraverser< PathTraverser< TIndexSpec, TIterSpec >> gtraverser(vargraph);
-  gtraverser.add_all_loci(start_step);
+  std::unordered_set < VarGraph::NodeID > covered_nodes;
+  Dna5QStringSet paths;
+  gtraverser.pick_paths ( paths, covered_nodes, options.path_num );
+  gtraverser.add_all_loci ( start_step, &covered_nodes );
 
   long int found = 0;
   std::unordered_set< Dna5QStringSetPosition > covered_reads;
@@ -139,6 +142,7 @@ find_seeds(GremOptions & options)
     covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
 
+  Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index (paths);
   Dna5QRecords reads_chunk;
 
   TIMED_BLOCK(t, "seed-finding")
@@ -153,6 +157,7 @@ find_seeds(GremOptions & options)
       if (length(reads_chunk.id) == 0) break;
 
       typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads_chunk, seedlen);
+      gtraverser.seeds_on_paths ( paths_index, params, write );
       gtraverser.traverse ( params, write );
 
       clear(reads_chunk.str);
