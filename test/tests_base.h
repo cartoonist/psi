@@ -25,4 +25,6 @@
 #define TESTDIR ".."  // Test directory path relative to test binary path.
 #endif
 
+std::string _testdir(TESTDIR);
+
 #endif  // TESTS_BASE_H__
