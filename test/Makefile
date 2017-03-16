@@ -35,7 +35,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGETS       := ${BINDIR}/tests_vargraph ${BINDIR}/test_bfs ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/tests_vargraph ${BINDIR}/tests_bfs ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -51,7 +51,7 @@ all: ${TARGETS}
 ${BINDIR}/test_linear: linear.o
 	${LINK} $^
 
-${BINDIR}/test_bfs: bfs.o ${SRCDIR}/vg.pb.o ${SRCDIR}/vargraph.o
+${BINDIR}/tests_bfs: tests_bfs.o tests_main.o ${SRCDIR}/vargraph.o ${SRCDIR}/vg.pb.o
 	${LINK} $^
 
 ${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o ${SRCDIR}/vargraph.o ${SRCDIR}/vg.pb.o
