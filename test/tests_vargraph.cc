@@ -4,7 +4,6 @@
  * Filename: tests-vargraph.cc
  *
  * Created: Mon Feb 13, 2017  22:24
- * Last modified: Tue Feb 28, 2017  10:27
  *
  * Description: Test VarGraph class.
  *
@@ -20,8 +19,6 @@
 #include <chrono>
 #include <libgen.h>
 #include <string>
-
-#include <catch/catch.hpp>
 
 #include "tests_base.h"
 #include "vargraph.h"
