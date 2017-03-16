@@ -38,14 +38,12 @@ bool is_const_ref(const T&) { return true; }
 template<typename T>
 bool is_mutable_ptr(T*) { return true; }
 
-std::string testdir(TESTDIR);
-
 
 SCENARIO( "Loading variation graph from a vg file", "[input]" )
 {
   GIVEN( "A small graph without graph name" )
   {
-    std::string vgpath = testdir + "/data/small/x.vg";
+    std::string vgpath = _testdir + "/data/small/x.vg";
     VarGraph vargraph(vgpath.c_str());
 
     REQUIRE( vargraph.nodes_size() == 210 );
@@ -82,7 +80,7 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
 {
   GIVEN ( "A small variation graph" )
   {
-    std::string vgpath = testdir + "/data/small/x.vg";
+    std::string vgpath = _testdir + "/data/small/x.vg";
     VarGraph vargraph(vgpath.c_str());
 
     seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
