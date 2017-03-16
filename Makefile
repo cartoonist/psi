@@ -39,7 +39,14 @@ ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: ${PROTODIR}/%.proto
 	${COMPILE.proto} $<
 
 test: all
-	make -C ${TESTDIR}
+	@echo
+	@echo "Building tests..."
+	@echo
+	@make -C ${TESTDIR}
+	@echo
+	@echo "Running tests..."
+	@echo
+	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c {}
 
 doc:
 	doxygen
