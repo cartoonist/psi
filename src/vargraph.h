@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Thu Mar 16, 2017  11:02
+ * Last modified: Thu Mar 16, 2017  15:46
  *
  * Description: VarGraph class definition.
  *
@@ -255,7 +255,7 @@ namespace grem {
   /* Haplotyper iterator meta-function declarations  ----------------------------- */
 
   void
-    get_uniq_haplotype ( std::vector < VarGraph::NodeID > haplotype,
+    get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
         typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
 
   /* END OF Haplotyper iterator meta-function declarations  ---------------------- */
