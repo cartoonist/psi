@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Mar 16, 2017  08:56
+ * Last modified: Thu Mar 16, 2017  10:40
  *
  * Description: grem main function.
  *
@@ -323,9 +323,10 @@ parse_args(GremOptions & options, int argc, char *argv[])
   setDate(parser, __DATE__);
   addDescription(parser, LONG_DESC);
 
-  std::ostringstream hold_buf;
+  std::ostringstream hold_buf_stdout;
+  std::ostringstream hold_buf_stderr;
   // parse command line.
-  auto res = seqan::parse(parser, argc, argv, hold_buf, std::cerr);
+  auto res = seqan::parse(parser, argc, argv, hold_buf_stdout, hold_buf_stderr);
   // print the banner in help or version messages.
   if (res == seqan::ArgumentParser::PARSE_HELP ||
       res == seqan::ArgumentParser::PARSE_VERSION)
@@ -333,7 +334,8 @@ parse_args(GremOptions & options, int argc, char *argv[])
     std::cout << BANNER << std::endl;
   }
   // print the buffer.
-  std::cout << hold_buf.str();
+  std::cout << hold_buf_stderr.str();
+  std::cout << hold_buf_stdout.str();
 
   // only extract options if the program will continue after parse_args()
   if (res != seqan::ArgumentParser::PARSE_OK) return res;
