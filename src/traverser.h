@@ -425,27 +425,27 @@ namespace grem
             LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
 
             seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
-            seqan::Dna5QString new_path;
-            std::vector < VarGraph::NodeID > new_hap;
+            std::vector < VarGraph::NodeID > new_path;
+            seqan::Dna5QString new_path_str;
 
-            new_hap.reserve ( this->vargraph->nodes_size() );
+            new_path.reserve ( this->vargraph->nodes_size() );
             covered_nodes.reserve ( covered_nodes.size() + this->vargraph->nodes_size() );
 
             for ( int i = 0; i < n; ++i ) {
-              get_uniq_haplotype ( new_hap, hap_itr );
+              get_uniq_haplotype ( new_path, hap_itr );
 
-              std::copy ( new_hap.begin(), new_hap.end(),
+              std::copy ( new_path.begin(), new_path.end(),
                   std::inserter ( covered_nodes, covered_nodes.end() ) );
 
-              new_path = this->vargraph->get_string ( new_hap );
+              new_path_str = this->vargraph->get_string ( new_path );
 
               // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
               char fake_qual = 'I';
-              assignQualities ( new_path, std::string ( length(new_path), fake_qual ) );
+              assignQualities ( new_path_str, std::string ( length(new_path_str), fake_qual ) );
 
-              appendValue ( paths, new_path );
+              appendValue ( paths, new_path_str );
 
-              new_hap.clear();
+              new_path.clear();
             }
           }  /* -----  end of function pick_paths  ----- */
 
