@@ -451,6 +451,8 @@ namespace grem
 
               new_hap.clear();
             }
+
+            LOG(INFO) << "Picked " << n << " path(s).";
           }  /* -----  end of function pick_paths  ----- */
 
         /**
@@ -472,6 +474,8 @@ namespace grem
           {
             if ( length ( indexText ( paths_index ) ) == 0 ) return;
 
+            LOG(INFO) << "Finding seeds on paths...";
+
             // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
             typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
             typedef typename TPathTraverser::IndexType TReadsIndexSpec;
@@ -487,10 +491,17 @@ namespace grem
             kmer_exact_matches < TPathIndex, TReadsIndex > ( seeds_set, paths_itr, reads_itr,
                 trav_params.get_seed_len() );
 
+            // :TODO:Tue Mar 21 10:30:\@cartoonist: Remove this log message.
+            LOG(INFO) << "Number of seeds found on paths: " << length ( seeds_set );
+
             for ( TSeedIterator it = begin ( seeds_set, seqan::Standard() );
                 it != end ( seeds_set, seqan::Standard() );
                 ++it )
+            {
               callback ( *it );
+            }
+
+            LOG(INFO) << "Finding seeds on paths: Done.";
 
           }  /* -----  end of method GraphTraverser::seeds_on_paths  ----- */
 
@@ -603,6 +614,10 @@ namespace grem
 
             ++itr;
           }
+
+          LOG(INFO) << "Number of starting points selected (from "
+                    << this->vargraph->nodes_size() << "): "
+                    << this->starting_points.size();
         }
 
         inline std::vector< vg::Position > const & get_starting_points()
