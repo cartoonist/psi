@@ -461,6 +461,46 @@ namespace grem {
       } while ( !is_root( first ) );
     }  /* -----  end of template function kmer_exact_matches  ----- */
 
+  template < typename TIndex1, typename TIndex2 >
+    void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
+        typename seqan::Iterator < TIndex1, seqan::TopDown < seqan::ParentLinks<> > >::Type &first,
+        typename seqan::Iterator < TIndex2, seqan::TopDown < seqan::ParentLinks<> > >::Type &second,
+        unsigned int k)
+    {
+      if ( k == 0 ) return;
+
+      do {
+        while ( repLength ( first ) < k && goDown ( first ) );
+
+        goRoot ( second );
+        bool second_agrees = goDown ( second, prefix ( representative ( first ), k ) );
+        if ( repLength ( first ) >= k && second_agrees ) {
+          typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
+          typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
+          seqan::String<TSAValue1> saPositions1 = getOccurrences( first );
+          seqan::String<TSAValue2> saPositions2 = getOccurrences( second );
+          for (unsigned i = 0; i < length(saPositions1); ++i) {
+            for (unsigned j = 0; j < length(saPositions2); ++j) {
+              // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
+              seqan::Seed < seqan::Simple > hit;
+              seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
+              seqan::setEndPositionH ( hit, saPositions1[i].i2 );
+              seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
+              seqan::setEndPositionV ( hit, saPositions2[j].i2 );
+
+              seqan::addSeed (seeds, std::move(hit), seqan::Single());
+            }
+          }
+        }
+
+        while (repLength( first ) - parentEdgeLength( first ) > repLength( second ) &&
+            goUp ( first ))
+          /* EMPTY */;
+
+        while ( !goRight ( first ) && goUp ( first ) );
+
+      } while ( !isRoot ( first ) );
+    }  /* -----  end of template function kmer_exact_matches  ----- */
   /* END OF Top-down fine interator meta-function declarations  ------------------ */
 }  /* -----  end of namespace grem  ----- */
 
