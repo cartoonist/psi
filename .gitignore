@@ -19,6 +19,9 @@ logs/
 # ctags
 tags
 
+# compile flags
+compile_commands.json
+
 # test data files
 test/data/**/*.svg
 
