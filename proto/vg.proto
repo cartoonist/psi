@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package vg;
 
+option cc_enable_arenas = true;
+
 // *Graphs* are collections of nodes and edges
 // They can represent subgraphs of larger graphs
 // or be wholly-self-sufficient.
