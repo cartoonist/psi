@@ -94,13 +94,13 @@ int main(int argc, char *argv[])
   {
     // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
     //   inferenced by its arguments.
-    find_seeds<seqan::IndexEsa<>, seqan::TopDown<>>(options);
+    find_seeds<seqan::IndexEsa<>, seqan::TopDown< seqan::ParentLinks<> >>(options);
   }
   else if (options.index == IndexType::Wotd)
   {
     // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
     //   inferenced by its arguments.
-    find_seeds<seqan::IndexWotd<>, seqan::TopDown<>>(options);
+    find_seeds<seqan::IndexWotd<>, seqan::TopDown< seqan::ParentLinks<> >>(options);
   }
   else
   {

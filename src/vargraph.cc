@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Thu Mar 16, 2017  17:11
+ * Last modified: Tue Mar 21, 2017  07:10
  *
  * Description: VarGraph class implementation.
  *
@@ -194,11 +194,11 @@ namespace grem
    *  Get string representation of a path in the variation graph.
    */
   std::string
-    VarGraph::get_string ( std::vector < VarGraph::NodeID > path ) const
+    VarGraph::get_string ( std::vector < VarGraph::NodeID > &path ) const
     {
       std::string repr_str;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
-        repr_str = repr_str + this->node_by(*it).sequence();
+        repr_str += this->node_by(*it).sequence();
       }
       return repr_str;
     }  /* -----  end of method VarGraph::get_string  ----- */
@@ -462,7 +462,7 @@ namespace grem
       std::random_device rd;  // Will be used to obtain a seed for the random no. engine
       std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
       std::uniform_int_distribution<> dis(0, fwd_edges.size() - 1);
-      this->itr_value = dis(gen);
+      this->itr_value = fwd_edges[dis(gen)]->to();
 
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator++  ----- */

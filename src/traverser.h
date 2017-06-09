@@ -142,6 +142,9 @@ namespace grem
           inline const Dna5QStringSetIndex < TIndexSpec > &get_reads_index()
           { return this->reads_index; }
 
+          inline Dna5QStringSetIndex < TIndexSpec > &mutable_get_reads_index()
+          { return this->reads_index; }
+
           inline unsigned int          get_seed_len()
           { return this->seed_len; }
 
@@ -456,10 +459,12 @@ namespace grem
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
         inline void
-          seeds_on_paths ( Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index,
+          seeds_on_paths ( Dna5QStringSetIndex < seqan::IndexEsa<> > &paths_index,
               typename TPathTraverser::Param trav_params,
               std::function< void(typename TPathTraverser::Output const &) > callback )
           {
+            if ( length ( indexText ( paths_index ) ) == 0 ) return;
+
             // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
             typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
             typedef typename TPathTraverser::IndexType TReadsIndexSpec;
@@ -469,7 +474,7 @@ namespace grem
             typedef seqan::Iterator < TSimpleSeedSet >::Type TSeedIterator;
 
             TFineIterator < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
-            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr (trav_params.get_reads_index());
+            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
 
             TSimpleSeedSet seeds_set;
             kmer_exact_matches < TPathIndex, TReadsIndex > ( seeds_set, paths_itr, reads_itr,
@@ -552,7 +557,7 @@ namespace grem
 
             unsigned long int cursor = (step - prenode_remain) % step;
             if ( exclude_nodes == nullptr ||
-                (*exclude_nodes).find(*itr) == (*exclude_nodes).end() ) {
+                exclude_nodes->find(*itr) == exclude_nodes->end() ) {
               bool set = false;
               while (cursor < seq.length())
               {
@@ -565,7 +570,7 @@ namespace grem
                 cursor += step;
               }
 
-              if (!set) {
+              if ( exclude_nodes != nullptr && exclude_nodes->size() != 0 && !set ) {
                 vg::Position s_point;
                 s_point.set_node_id(*itr);
                 s_point.set_offset(0);

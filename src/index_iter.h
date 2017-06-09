@@ -117,7 +117,7 @@ namespace grem {
 
       public:
         /* ====================  LIFECYCLE     ======================================= */
-        IndexIter ( TIndex index ) :                             /* constructor */
+        IndexIter ( TIndex &index ) :                             /* constructor */
           iter_(index), boffset(0) { }
 
         /* ====================  ACCESSORS     ======================================= */
@@ -425,8 +425,8 @@ namespace grem {
               seqan::Seed < seqan::Simple > hit;
               seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
               seqan::setEndPositionH ( hit, saPositions1[i].i2 );
-              seqan::setBeginPositionV ( hit, saPositions2[i].i1 );
-              seqan::setEndPositionV ( hit, saPositions2[i].i2 );
+              seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
+              seqan::setEndPositionV ( hit, saPositions2[j].i2 );
 
               seqan::addSeed (seeds, std::move(hit), seqan::Single());
             }
@@ -437,10 +437,10 @@ namespace grem {
         bool down = false;
         if ( ( level == k || !second_agrees || !(down = go_down ( first )) )
             && !(right = go_right ( first )) ) {
-          while ( go_up ( first ) && !(right = go_right ( first )) ) {
+          do {
             go_up ( second );
             --level;
-          }
+          } while ( go_up ( first ) && !(right = go_right ( first )) );
         }
 
         if ( right && second_agrees ) {
@@ -450,7 +450,12 @@ namespace grem {
 
         second_agrees = true;
         if ( right || down ) {
-          second_agrees = go_down ( second, parent_edge_label ( first ) );
+          if ( parent_edge_label ( first ) == 'N' ) {
+            second_agrees = false;
+          }
+          else {
+            second_agrees = go_down ( second, parent_edge_label ( first ) );
+          }
           if ( second_agrees ) ++level;
         }
       } while ( !is_root( first ) );

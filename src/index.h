@@ -40,7 +40,7 @@ namespace seqan {
   template < >
   struct SAValue< StringSet < Dna5QString > >
   {
-    typedef Pair<long unsigned int, uint16_t, Tag<Pack_> > Type;
+    typedef Pair<long unsigned int, long unsigned int, Tag<Pack_> > Type;
   };
 }  /* -----  end of namespace seqan  ----- */
 
