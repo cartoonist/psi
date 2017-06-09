@@ -178,4 +178,33 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
       REQUIRE ( length ( seeds ) == 21 );
     }
   }
+
+  GIVEN ( "Given two top-down index iterators of two small string set" )
+  {
+    Dna5QStringSet str1;
+    appendValue (str1, "TAGGCTACCGATTTAAATAGGCACAC");
+    appendValue (str1, "TAGGCTACGGATTTAAATCGGCACAC");
+
+    Dna5QStringSet str2;
+    appendValue (str2, "GGATTTAAATA");
+    appendValue (str2, "CGATTTAAATC");
+    appendValue (str2, "GGATTTAAATC");
+    appendValue (str2, "CGATTTAAATA");
+
+    typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TIndexEsa;
+
+    TIndexEsa index1 (str1);
+    TIndexEsa index2 (str2);
+
+    TIndexIter < TIndexEsa, seqan::TopDown< seqan::ParentLinks<> > > itr1(index1);
+    TIndexIter < TIndexEsa, seqan::TopDown< seqan::ParentLinks<> > > itr2(index2);
+
+    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+
+    THEN ( "Find 10-mer exact matches" )
+    {
+      kmer_exact_matches < TIndexEsa, TIndexEsa > ( seeds, itr1, itr2, 10 );
+      REQUIRE ( length ( seeds ) == 8 );
+    }
+  }
 }
