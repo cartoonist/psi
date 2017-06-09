@@ -35,7 +35,7 @@ using namespace std;
 using namespace seqan;
 using namespace grem;
 
-// TODO: Localize GremOptions (it is written for the main program).
+// TODO: Localize Options (it is written for the main program).
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -89,7 +89,7 @@ setup_argparser(seqan::ArgumentParser& parser)
 
 
 seqan::ArgumentParser::ParseResult
-parse_args(GremOptions & options, int argc, char *argv[])
+parse_args(Options & options, int argc, char *argv[])
 {
   // setup ArgumentParser.
   seqan::ArgumentParser parser("test_linear");
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
   START_EASYLOGGINGPP(argc, argv);
 
   // Parse the command line.
-  GremOptions options;
+  Options options;
   auto res = parse_args(options, argc, argv);
   // If parsing was not successful then exit with code 1 if there were errors.
   // Otherwise, exit with code 0 (e.g. help was printed).

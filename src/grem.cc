@@ -1,6 +1,6 @@
 /**
  *    @file  grem.cc
- *   @brief  grem main function.
+ *   @brief  grem main program.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.de>
  *
@@ -46,18 +46,32 @@ using namespace grem;
 // TODO: performance logs' level should be DEBUG.
 // TODO: handle 'N's.
 // TODO: comments' first letter?
+// TODO: fix code style: spacing.
 
 // Forwards
-template<typename TIndexSpec>
-  void     find_seeds(GremOptions & options);
-void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
-void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
-IndexType                          index_from_str(std::string str);
-std::string                        index_to_str(IndexType index);
-void                               setup_argparser(seqan::ArgumentParser & parser);
-seqan::ArgumentParser::ParseResult parse_args(GremOptions & options, int argc, char *argv[]);
-void                               config_logger(GremOptions & options);
-void                               config_logger(const char * logger_name, GremOptions & options);
+  void
+startup ( const Options & options );
+
+template < typename TIndexSpec >
+  void
+find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
+    unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
+    TIndexSpec const /* Tag */ );
+
+  seqan::ArgumentParser::ParseResult
+parse_args ( Options & options, int argc, char *argv[] );
+
+  inline void
+get_option_values ( Options & options, seqan::ArgumentParser & parser );
+
+  void
+setup_argparser ( seqan::ArgumentParser & parser );
+
+  void
+config_logger ( const Options & options );
+
+  void
+config_logger ( const char * logger_name, const Options & options );
 
 
 int main(int argc, char *argv[])
@@ -65,7 +79,7 @@ int main(int argc, char *argv[])
   START_EASYLOGGINGPP(argc, argv);
 
   // Parse the command line.
-  GremOptions options;
+  Options options;
   auto res = parse_args(options, argc, argv);
   // If parsing was not successful then exit with code 1 if there were errors.
   // Otherwise, exit with code 0 (e.g. help was printed).
@@ -81,29 +95,7 @@ int main(int argc, char *argv[])
   config_logger("default", options);
   config_logger("performance", options);
 
-  LOG(INFO) << "Parameters:";
-  LOG(INFO) << "- Seed length: " << options.seed_len;
-  LOG(INFO) << "- Reads index type: " << index_to_str(options.index);
-  LOG(INFO) << "- Starting points interval: " << options.start_every;
-  LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
-  LOG(INFO) << "- Number of paths: " << options.path_num;
-
-  if (options.index == IndexType::Esa)
-  {
-    // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
-    //   inferenced by its arguments.
-    find_seeds<seqan::IndexEsa<>>(options);
-  }
-  else if (options.index == IndexType::Wotd)
-  {
-    // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
-    //   inferenced by its arguments.
-    find_seeds<seqan::IndexWotd<>>(options);
-  }
-  else
-  {
-    throw std::runtime_error("Index not implemented.");
-  }
+  startup ( options );
 
   // Delete all global objects allocated by libprotobuf.
   google::protobuf::ShutdownProtobufLibrary();
@@ -111,27 +103,75 @@ int main(int argc, char *argv[])
   return EXIT_SUCCESS;
 }
 
+  void
+startup ( const Options & options )
+{
+  LOG(INFO) << "Parameters:";
+  LOG(INFO) << "- Seed length: " << options.seed_len;
+  LOG(INFO) << "- Reads index type: " << index_to_str(options.index);
+  LOG(INFO) << "- Starting points interval: " << options.start_every;
+  LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
+  LOG(INFO) << "- Number of paths: " << options.path_num;
+
+  SeqFileIn reads_infile;
+  LOG(INFO) << "Opening file '" << options.fq_path << "'...";
+  if (!open(reads_infile, options.fq_path.c_str()))
+  {
+    LOG(FATAL) << "could not open the file '" << options.fq_path << "'.";
+  }
+
+  VarGraph vargraph;
+  try
+  {
+    LOG(INFO) << "Loading the vg graph from file '" << options.rf_path << "'...";
+
+    vargraph.extend_from_file(options.rf_path);
+
+    LOG(INFO) << "Loading the vg graph from file '" << options.rf_path << "': Done.";
+  }
+  catch(std::ios::failure &e)
+  {
+    LOG(ERROR) << "failed to open the file '" << options.rf_path << "'.";
+    LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
+  }
+
+  switch ( options.index ) {
+    case IndexType::Wotd: find_seeds ( vargraph,
+                              reads_infile,
+                              options.seed_len,
+                              options.chunk_size,
+                              options.start_every,
+                              options.path_num,
+                              UsingIndexWotd() );
+                          break;
+    case IndexType::Esa: find_seeds ( vargraph,
+                             reads_infile,
+                             options.seed_len,
+                             options.chunk_size,
+                             options.start_every,
+                             options.path_num,
+                             UsingIndexEsa() );
+                         break;
+    default: throw std::runtime_error("Index not implemented.");
+             break;
+  }
+
+}
+
 
 template<typename TIndexSpec >
   void
-find_seeds(GremOptions & options)
+find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
+    unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
+    TIndexSpec const /* Tag */ )
 {
-  CharString const & fqpath       = options.fq_path;
-  CharString const & vgpath       = options.rf_path;
-  unsigned int const & seedlen    = options.seed_len;
-  unsigned int const & chksize    = options.chunk_size;
-  unsigned int const & start_step = options.start_every;
+  Mapper< PathTraverser< TIndexSpec > > mapper(vargraph);
 
-  SeqFileIn reads_infile;
-  open_fastq(fqpath, reads_infile);
-  VarGraph vargraph;
-  load_graph(vgpath, vargraph);
-
-  GraphTraverser< PathTraverser< TIndexSpec >> gtraverser(vargraph);
-  std::unordered_set < VarGraph::NodeID > covered_nodes;
   Dna5QStringSet paths;
-  gtraverser.pick_paths ( paths, covered_nodes, options.path_num );
-  gtraverser.add_all_loci ( start_step, &covered_nodes );
+  std::unordered_set < VarGraph::NodeID > covered_nodes;
+  mapper.pick_paths ( paths, covered_nodes, path_num );
+
+  mapper.add_all_loci ( start_every, &covered_nodes );
 
   long int found = 0;
   std::unordered_set< Dna5QStringSetPosition > covered_reads;
@@ -150,14 +190,14 @@ find_seeds(GremOptions & options)
     {
       {
         TIMED_SCOPE(loadChunkTimer, "load-chunk");
-        readRecords(reads_chunk, reads_infile, chksize);
+        readRecords(reads_chunk, reads_infile, chunk_size);
       }
 
       if (length(reads_chunk.id) == 0) break;
 
-      typename PathTraverser< TIndexSpec >::Param params(reads_chunk, seedlen);
-      gtraverser.seeds_on_paths ( paths_index, params, write );
-      gtraverser.traverse ( params, write );
+      typename PathTraverser< TIndexSpec >::Param params(reads_chunk, seed_len);
+      mapper.seeds_on_paths ( paths_index, params, write );
+      mapper.traverse ( params, write );
 
       clear(reads_chunk.str);
       clear(reads_chunk.id);
@@ -166,70 +206,11 @@ find_seeds(GremOptions & options)
 
   LOG(INFO) << "Total number of seeds found: " << found;
   LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
-  LOG(INFO) << "Total number of starting points: " << gtraverser.get_starting_points().size();
+  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_points().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
             << PathTraverser< TIndexSpec >::inc_total_go_down(0);
 #endif
-}
-
-
-  inline void
-open_fastq(const CharString & fqpath, SeqFileIn & infile)
-{
-  LOG(INFO) << "Opening file '" << toCString(fqpath) << "'...";
-
-  if (!open(infile, toCString(fqpath)))
-  {
-    LOG(FATAL) << "could not open the file '" << toCString(fqpath) << "'.";
-  }
-}
-
-
-  inline void
-load_graph(const CharString & vgpath, VarGraph & vargraph)
-{
-  try
-  {
-    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgpath) << "'...";
-
-    vargraph.extend_from_file(toCString(vgpath));
-
-    LOG(INFO) << "Loading the vg graph from file '" << toCString(vgpath) << "': Done.";
-  }
-  catch(std::ios::failure &e)
-  {
-    LOG(ERROR) << "failed to open the file '" << toCString(vgpath) << "'.";
-    LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
-  }
-}
-
-
-  inline IndexType
-index_from_str(std::string str)
-{
-  if (str == "SA") return IndexType::Sa;
-  if (str == "ESA") return IndexType::Esa;
-  if (str == "WOTD") return IndexType::Wotd;
-  if (str == "DFI") return IndexType::Dfi;
-  if (str == "QGRAM") return IndexType::QGram;
-  if (str == "FM") return IndexType::FM;
-
-  throw std::runtime_error("Undefined index type.");
-}
-
-
-  inline std::string
-index_to_str(IndexType index)
-{
-  if (index == IndexType::Sa) return std::string("SA");
-  if (index == IndexType::Esa) return std::string("ESA");
-  if (index == IndexType::Wotd) return std::string("WOTD");
-  if (index == IndexType::Dfi) return std::string("DFI");
-  if (index == IndexType::QGram) return std::string("QGRAM");
-  if (index == IndexType::FM) return std::string("FM");
-
-  throw std::runtime_error("Undefined index type.");
 }
 
 
@@ -309,8 +290,30 @@ setup_argparser(seqan::ArgumentParser & parser)
 }
 
 
+  inline void
+get_option_values ( Options & options, seqan::ArgumentParser & parser )
+{
+  std::string indexname;
+
+  getOptionValue(options.fq_path, parser, "fastq");
+  getOptionValue(options.seed_len, parser, "seed-length");
+  getOptionValue(options.chunk_size, parser, "chunk-size");
+  getOptionValue(options.start_every, parser, "start-every");
+  getOptionValue(options.path_num, parser, "path-num");
+  getOptionValue(indexname, parser, "index");
+  getOptionValue(options.log_path, parser, "log-file");
+  options.nologfile = isSet(parser, "no-log-file");
+  options.quiet = isSet(parser, "quiet");
+  options.nocolor = isSet(parser, "no-color");
+  options.nolog = isSet(parser, "disable-log");
+  getArgumentValue(options.rf_path, parser, 0);
+
+  options.index = index_from_str(indexname);
+}
+
+
   inline seqan::ArgumentParser::ParseResult
-parse_args(GremOptions & options, int argc, char *argv[])
+parse_args(Options & options, int argc, char *argv[])
 {
   // setup ArgumentParser.
   seqan::ArgumentParser parser("grem");
@@ -319,6 +322,7 @@ parse_args(GremOptions & options, int argc, char *argv[])
   // Embedding program's meta data and build information.
   setShortDescription(parser, SHORT_DESC);
   setVersion(parser, VERSION);
+  // :TODO:Thu Apr 06 02:06:\@cartoonist: date should be captured from git.
   setDate(parser, __DATE__);
   addDescription(parser, LONG_DESC);
 
@@ -339,28 +343,13 @@ parse_args(GremOptions & options, int argc, char *argv[])
   // only extract options if the program will continue after parse_args()
   if (res != seqan::ArgumentParser::PARSE_OK) return res;
 
-  std::string indexname;
-
-  getOptionValue(options.fq_path, parser, "fastq");
-  getOptionValue(options.seed_len, parser, "seed-length");
-  getOptionValue(options.chunk_size, parser, "chunk-size");
-  getOptionValue(options.start_every, parser, "start-every");
-  getOptionValue(options.path_num, parser, "path-num");
-  getOptionValue(indexname, parser, "index");
-  getOptionValue(options.log_path, parser, "log-file");
-  options.nologfile = isSet(parser, "no-log-file");
-  options.quiet = isSet(parser, "quiet");
-  options.nocolor = isSet(parser, "no-color");
-  options.nolog = isSet(parser, "disable-log");
-  getArgumentValue(options.rf_path, parser, 0);
-
-  options.index = index_from_str(indexname);
+  get_option_values ( options, parser );
 
   return seqan::ArgumentParser::PARSE_OK;
 }
 
   inline void
-config_logger(GremOptions & options)
+config_logger ( const Options & options )
 {
   // Configure color output.
   if (!options.nocolor) el::Loggers::addFlag(el::LoggingFlag::ColoredTerminalOutput);
@@ -369,14 +358,14 @@ config_logger(GremOptions & options)
 }
 
   inline void
-config_logger(const char * logger_name, GremOptions & options)
+config_logger(const char * logger_name, const Options & options)
 {
   el::Configurations conf;
   conf.setToDefault();
   // Configure log file.
   if (!options.nologfile)
   {
-    conf.setGlobally(el::ConfigurationType::Filename, toCString(options.log_path));
+    conf.setGlobally(el::ConfigurationType::Filename, options.log_path);
   }
   // Enabling quiet mode.
   if (options.quiet)
