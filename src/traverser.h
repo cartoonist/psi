@@ -357,54 +357,37 @@ namespace grem
     };
 
   template <class TPathTraverser>
-    class GraphTraverser
+    class Mapper
     {
       public:
         // Constructors
-        GraphTraverser(const VarGraph *graph,
-                       const std::vector< vg::Position > *start_loci) :
+        Mapper(const VarGraph *graph,
+            const std::vector< vg::Position > *start_loci) :
           vargraph(graph)
         {
           if (start_loci != nullptr) this->starting_points = *start_loci;
         }
 
-        GraphTraverser(const VarGraph &graph,
-                       const std::vector< vg::Position > *start_loci) :
-          GraphTraverser(&graph, start_loci)
+        Mapper(const VarGraph &graph,
+            const std::vector< vg::Position > *start_loci) :
+          Mapper(&graph, start_loci)
         {}
 
-        GraphTraverser(const VarGraph *graph) : GraphTraverser(graph, nullptr)
+        Mapper(const VarGraph &graph,
+            const std::vector< vg::Position > &start_loci) :
+          Mapper(&graph, &start_loci)
         {}
 
-        GraphTraverser(const VarGraph &graph) : GraphTraverser(&graph)
+        Mapper(const VarGraph *graph,
+            const std::vector< vg::Position > &start_loci) :
+          Mapper(graph, &start_loci)
         {}
 
-        GraphTraverser(const GraphTraverser & other)
-        {
-          this->vargraph = other.vargraph;
-          this->starting_points = other.starting_points;
-        }
+        Mapper(const VarGraph *graph) : Mapper(graph, nullptr)
+        {}
 
-        GraphTraverser(const GraphTraverser && other) noexcept
-        {
-          this->vargraph = other.vargraph;
-          this->starting_points = std::move(other.starting_points);
-        }
-
-        GraphTraverser & operator=(const GraphTraverser & other)
-        {
-          GraphTraverser tmp(other);
-          *this = std::move(tmp);
-          return *this;
-        }
-
-        GraphTraverser & operator=(GraphTraverser && other) noexcept
-        {
-          this->vargraph = other.vargraph;
-          this->starting_points = std::move(other.starting_points);
-        }
-
-        ~GraphTraverser() noexcept {}
+        Mapper(const VarGraph &graph) : Mapper(&graph)
+        {}
 
         // Public methods
         inline void add_start(vg::Position &locus)
@@ -505,7 +488,7 @@ namespace grem
 
             LOG(INFO) << "Finding seeds on paths: Done.";
 
-          }  /* -----  end of method GraphTraverser::seeds_on_paths  ----- */
+          }  /* -----  end of method Mapper::seeds_on_paths  ----- */
 
         inline void traverse(typename TPathTraverser::Param trav_params,
                       std::function< void(typename TPathTraverser::Output const &) > callback)
