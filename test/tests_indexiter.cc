@@ -67,7 +67,7 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
     TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 4-mer exact matches" )
     {
@@ -87,7 +87,7 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
     TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 3-mer exact matches" )
     {
@@ -111,7 +111,7 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
     TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {
@@ -135,7 +135,7 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
     TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {
@@ -170,7 +170,7 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     TFineIndexIter < TIndexEsa, seqan::ParentLinks<> > itr1(index1);
     TFineIndexIter < TIndexEsa, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {
@@ -199,7 +199,7 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     TIndexIter < TIndexEsa, seqan::TopDown< seqan::ParentLinks<> > > itr1(index1);
     TIndexIter < TIndexEsa, seqan::TopDown< seqan::ParentLinks<> > > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {

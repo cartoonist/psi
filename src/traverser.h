@@ -463,30 +463,20 @@ namespace grem
             typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
             typedef typename TPathTraverser::IndexType TReadsIndexSpec;
             typedef Dna5QStringSetIndex < TReadsIndexSpec > TReadsIndex;
-            typedef seqan::Seed < seqan::Simple > TSimpleSeed;
-            typedef seqan::SeedSet < TSimpleSeed > TSimpleSeedSet;
-            typedef seqan::Iterator < TSimpleSeedSet >::Type TSeedIterator;
 
             TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
             TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
             //seqan::Iterator < TPathIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type paths_itr (paths_index);
             //typename seqan::Iterator < TReadsIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type reads_itr ( trav_params.mutable_get_reads_index() );
 
-            TSimpleSeedSet seeds_set;
+            std::vector < seqan::Seed < seqan::Simple > > seeds_set;
             kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr,
                 trav_params.get_seed_len() );
 
             // :TODO:Tue Mar 21 10:30:\@cartoonist: Remove this log message.
             LOG(INFO) << "Number of seeds found on paths: " << length ( seeds_set );
 
-            for ( TSeedIterator it = begin ( seeds_set, seqan::Standard() );
-                it != end ( seeds_set, seqan::Standard() );
-                ++it )
-            {
-              callback ( *it );
-            }
-
-            LOG(INFO) << "Finding seeds on paths: Done.";
+            std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
 
           }  /* -----  end of method Mapper::seeds_on_paths  ----- */
 

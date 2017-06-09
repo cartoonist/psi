@@ -403,7 +403,7 @@ namespace grem {
    *  texts' indexes.
    */
   template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
+    void kmer_exact_matches ( std::vector < seqan::Seed < seqan::Simple > > &seeds,
         TFineIndexIter < TIndex1, seqan::ParentLinks<> > &first,
         TFineIndexIter < TIndex2, seqan::ParentLinks<> > &second,
         unsigned int k)
@@ -419,8 +419,11 @@ namespace grem {
           typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
           seqan::String<TSAValue1> saPositions1 = getOccurrences( first.get_iter_() );
           seqan::String<TSAValue2> saPositions2 = getOccurrences( second.get_iter_() );
-          for (unsigned i = 0; i < length(saPositions1); ++i) {
-            for (unsigned j = 0; j < length(saPositions2); ++j) {
+          unsigned int len1 = length(saPositions1);
+          unsigned int len2 = length(saPositions2);
+          seeds.reserve ( seeds.size() + len1 * len2 );
+          for (unsigned i = 0; i < len1; ++i) {
+            for (unsigned j = 0; j < len2; ++j) {
               // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
               seqan::Seed < seqan::Simple > hit;
               seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
@@ -428,7 +431,7 @@ namespace grem {
               seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
               seqan::setEndPositionV ( hit, saPositions2[j].i2 );
 
-              seqan::addSeed (seeds, std::move(hit), seqan::Single());
+              seeds.push_back ( std::move (hit) );
             }
           }
         }
@@ -462,7 +465,7 @@ namespace grem {
     }  /* -----  end of template function kmer_exact_matches  ----- */
 
   template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
+    void kmer_exact_matches ( std::vector < seqan::Seed < seqan::Simple > > &seeds,
         TIndexIter < TIndex1, seqan::TopDown < seqan::ParentLinks<> > > &first,
         TIndexIter < TIndex2, seqan::TopDown < seqan::ParentLinks<> > > &second,
         unsigned int k)
@@ -479,8 +482,11 @@ namespace grem {
           typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
           seqan::String<TSAValue1> saPositions1 = getOccurrences( first );
           seqan::String<TSAValue2> saPositions2 = getOccurrences( second );
-          for (unsigned i = 0; i < length(saPositions1); ++i) {
-            for (unsigned j = 0; j < length(saPositions2); ++j) {
+          unsigned int len1 = length(saPositions1);
+          unsigned int len2 = length(saPositions2);
+          seeds.reserve ( seeds.size() + len1 * len2 );
+          for (unsigned i = 0; i < len1; ++i) {
+            for (unsigned j = 0; j < len2; ++j) {
               // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
               seqan::Seed < seqan::Simple > hit;
               seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
@@ -488,7 +494,7 @@ namespace grem {
               seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
               seqan::setEndPositionV ( hit, saPositions2[j].i2 );
 
-              seqan::addSeed (seeds, std::move(hit), seqan::Single());
+              seeds.push_back ( std::move (hit) );
             }
           }
         }
