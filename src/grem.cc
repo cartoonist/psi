@@ -52,11 +52,15 @@ using namespace grem;
   void
 startup ( const Options & options );
 
+template < typename TIndex >
+  bool
+load_paths_index ( TIndex &paths_index, std::string &index_file, unsigned int path_num );
+
 template < typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-    TIndexSpec const /* Tag */ );
+    std::string paths_index_file, TIndexSpec const /* Tag */ );
 
   seqan::ArgumentParser::ParseResult
 parse_args ( Options & options, int argc, char *argv[] );
@@ -112,6 +116,7 @@ startup ( const Options & options )
   LOG(INFO) << "- Starting points interval: " << options.start_every;
   LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
   LOG(INFO) << "- Number of paths: " << options.path_num;
+  LOG(INFO) << "- Paths index file: " << options.paths_index_file;
 
   SeqFileIn reads_infile;
   LOG(INFO) << "Opening file '" << options.fq_path << "'...";
@@ -140,6 +145,7 @@ startup ( const Options & options )
                               options.chunk_size,
                               options.start_every,
                               options.path_num,
+                              options.paths_index_file,
                               UsingIndexWotd() );
                           break;
     case IndexType::Esa: find_seeds ( vargraph,
@@ -148,6 +154,7 @@ startup ( const Options & options )
                              options.chunk_size,
                              options.start_every,
                              options.path_num,
+                             options.paths_index_file,
                              UsingIndexEsa() );
                          break;
     default: throw std::runtime_error("Index not implemented.");
@@ -157,17 +164,52 @@ startup ( const Options & options )
 }
 
 
+template < typename TIndex >
+  bool
+load_paths_index ( TIndex &paths_index, std::string &index_file, unsigned int path_num )
+{
+  if ( open ( paths_index, index_file.c_str() ) ) {
+    LOG(INFO) << "Paths index found. Loaded.";
+
+    LOG(INFO) << "Verifying loaded paths index...";
+    auto nof_paths = length ( getFibre ( paths_index, FibreText() ) );
+    if ( nof_paths == path_num ) return true;
+
+    LOG(WARNING) << "The number of paths in the index file (" << nof_paths << ")"
+      " and the given parameter (" << path_num << ") are mismatched.";
+    LOG(INFO) << "Updating paths index...";
+  }
+
+  return false;
+}
+
+
 template<typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-    TIndexSpec const /* Tag */ )
+    std::string paths_index_file, TIndexSpec const /* Tag */ )
 {
   Mapper< PathTraverser< TIndexSpec > > mapper(vargraph);
 
   Dna5QStringSet paths;
   std::unordered_set < VarGraph::NodeID > covered_nodes;
-  mapper.pick_paths ( paths, covered_nodes, path_num );
+  Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index;
+
+  // :TODO:Thu Apr 13 03:18:\@cartoonist: Load covered_nodes.
+  if ( !load_paths_index ( paths_index, paths_index_file, path_num ) )
+  {
+    mapper.pick_paths ( paths, covered_nodes, path_num );
+    paths_index = Dna5QStringSetIndex< seqan::IndexEsa<> > (paths);
+
+    TIMED_BLOCK(pathIndexingTimer, "path-indexing")
+    {
+      LOG(INFO) << "Indexing the paths...";
+      create_index ( paths_index );
+      LOG(INFO) << "Saving paths index...";
+      save ( paths_index, paths_index_file.c_str() );
+    }
+  }
 
   mapper.add_all_loci ( start_every, &covered_nodes );
 
@@ -178,13 +220,6 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     ++found;
     covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
-
-  Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index (paths);
-  TIMED_BLOCK(pathIndexingTimer, "path-indexing")
-  {
-    LOG(INFO) << "Indexing the paths...";
-    create_index ( paths_index );
-  }
 
   Dna5QRecords reads_chunk;
 
@@ -201,6 +236,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
 
       typename PathTraverser< TIndexSpec >::Param params(reads_chunk, seed_len);
       mapper.seeds_on_paths ( paths_index, params, write );
+      LOG(INFO) << "Total number of seeds found on paths: " << found;
       mapper.traverse ( params, write );
 
       clear(reads_chunk.str);
@@ -238,6 +274,12 @@ setup_argparser(seqan::ArgumentParser & parser)
   setValidValues(fqfile_arg, "fq fastq");
   addOption(parser, fqfile_arg);
   setRequired(parser, "f");
+
+  // paths index file
+  seqan::ArgParseOption paths_index_arg ( "I", "paths-index", "Paths index file.",
+      seqan::ArgParseArgument::STRING, "PATHS_INDEX_FILE" );
+  addOption ( parser, paths_index_arg );
+  setDefaultValue ( parser, "I", "/tmp/GREM.XXXXXX/paths_index" );
 
   // seed length -- **required** option.
   addOption(parser, seqan::ArgParseOption("l", "seed-length", "Seed length.",
@@ -304,6 +346,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue(options.chunk_size, parser, "chunk-size");
   getOptionValue(options.start_every, parser, "start-every");
   getOptionValue(options.path_num, parser, "path-num");
+  getOptionValue(options.paths_index_file, parser, "paths-index");
   getOptionValue(indexname, parser, "index");
   getOptionValue(options.log_path, parser, "log-file");
   options.nologfile = isSet(parser, "no-log-file");
