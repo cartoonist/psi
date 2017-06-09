@@ -390,9 +390,18 @@ namespace grem
         {}
 
         // Public methods
-        inline void add_start(vg::Position &locus)
+        inline void add_start(const vg::Position &locus)
         {
           this->starting_points.push_back(locus);
+        }
+
+        inline void add_start ( const VarGraph::NodeID & node_id,
+            const unsigned long int & offset )
+        {
+          vg::Position locus;
+          locus.set_node_id(node_id);
+          locus.set_offset(offset);
+          this->add_start ( locus );
         }
 
         /**
@@ -503,7 +512,8 @@ namespace grem
         }
 
         inline void add_all_loci(unsigned int step=1,
-            std::unordered_set < VarGraph::NodeID > *exclude_nodes=nullptr)
+            std::unordered_set < VarGraph::NodeID > *exclude_nodes=nullptr,
+            bool maximal=true /* true = all included nodes should be picked up. */)
         {
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph. This means that for example add_all_loci(2) would add
@@ -514,23 +524,9 @@ namespace grem
           // TODO: Add documentation.
           TIMED_SCOPE(addAllLociTimer, "add-starts");
 
-          // TODO: Old method -- remove
-          /*
-          for (unsigned int i = 0; i < this->vargraph->nodes_size(); ++i)
-          {
-            const vg::Node &node = this->vargraph->node_at(i);
-            for (unsigned int j = 0; j < node.sequence().length(); j += step)
-            {
-              vg::Position s_point;
-              s_point.set_node_id(node.id());
-              s_point.set_offset(j);
+          bool any_excluded_node =
+            ( exclude_nodes == nullptr || exclude_nodes->size() == 0 ) ? false : true;
 
-              this->add_start(s_point);
-            }
-          }
-          */
-
-          // New algorithm
           seqan::Iterator<VarGraph, BFS<>>::Type itr(this->vargraph);
 
           unsigned long int prenode_remain = 0;
@@ -549,25 +545,19 @@ namespace grem
             seq = this->vargraph->node_by(*itr).sequence();
 
             unsigned long int cursor = (step - prenode_remain) % step;
-            if ( exclude_nodes == nullptr ||
+            if ( ! any_excluded_node ||
                 exclude_nodes->find(*itr) == exclude_nodes->end() ) {
               bool set = false;
               while (cursor < seq.length())
               {
-                vg::Position s_point;
-                s_point.set_node_id(*itr);
-                s_point.set_offset(cursor);
-                this->add_start(s_point);
+                this->add_start(*itr, cursor);
                 set = true;
 
                 cursor += step;
               }
 
-              if ( exclude_nodes != nullptr && exclude_nodes->size() != 0 && !set ) {
-                vg::Position s_point;
-                s_point.set_node_id(*itr);
-                s_point.set_offset(0);
-                this->add_start(s_point);
+              if ( any_excluded_node && !set && maximal ) {
+                this->add_start(*itr, 0);
                 set = true;
               }
             }
