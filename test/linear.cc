@@ -4,7 +4,6 @@
  * Filename: linear.cc
  *
  * Created: Tue Nov 29, 2016  15:04
- * Last modified: Thu Mar 16, 2017  22:38
  *
  * Description: Finding seed hits in a linear sequence.
  *

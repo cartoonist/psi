@@ -1,19 +1,16 @@
-/*
- * =====================================================================================
+/**
+ *    @file  grem.cc
+ *   @brief  grem main function.
  *
- * Filename: grem.cpp
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.de>
  *
- * Created: Tue Nov 08, 2016  16:48
- * Last modified: Mon Mar 27, 2017  11:36
+ *  @internal
+ *       Created:  Tue Nov 08, 2016  16:48
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Description: grem main function.
- *
- * Copyright (c) 2016, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari, <ali.ghaffaari@mpi-inf.mpg.de>
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #include <cstdlib>
