@@ -38,6 +38,17 @@ namespace grem {
   template < typename TText >
     using TFMIndex = seqan::Index < TText, seqan::FMIndex < void, TFMIndexConfig > >;
   /* END OF Typedefs  ------------------------------------------------------------ */
+
+  template < typename TText >
+    void
+  create_index ( seqan::Index < TText, seqan::IndexEsa<> > & index )
+  {
+    indexRequire ( index, seqan::EsaSA() );
+    indexRequire ( index, seqan::EsaLcp() );
+    indexRequire ( index, seqan::EsaChildtab() );
+    indexRequire ( index, seqan::EsaBwt() );
+  }
+
 }  /* -----  end of namespace grem  ----- */
 
 namespace seqan {

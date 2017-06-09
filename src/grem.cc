@@ -182,6 +182,12 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   };
 
   Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index (paths);
+  TIMED_BLOCK(pathIndexingTimer, "path-indexing")
+  {
+    LOG(INFO) << "Indexing the paths...";
+    create_index ( paths_index );
+  }
+
   Dna5QRecords reads_chunk;
 
   TIMED_BLOCK(t, "seed-finding")
