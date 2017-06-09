@@ -36,8 +36,7 @@ SCENARIO ( "Adding starting points for seed finding using GraphTraverser", "[tra
 {
   GIVEN ( "A small variation graph and a graph seed finder" )
   {
-    typedef PathTraverser < seqan::IndexWotd<>,
-            seqan::TopDown<seqan::ParentLinks<>>> TPathTraverser;
+    typedef PathTraverser < seqan::IndexWotd<> > TPathTraverser;
     typedef GraphTraverser < TPathTraverser > TGraphTraverser;
 
     std::string vgpath = _testdir + "/data/small/x.vg";

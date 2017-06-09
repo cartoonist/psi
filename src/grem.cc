@@ -48,7 +48,7 @@ using namespace grem;
 // TODO: comments' first letter?
 
 // Forwards
-template<typename TIndexSpec, typename TIterSpec>
+template<typename TIndexSpec>
   void     find_seeds(GremOptions & options);
 void                               open_fastq(const CharString & fqpath, SeqFileIn & infile);
 void                               load_graph(const CharString & vgpath, VarGraph & vargraph);
@@ -92,13 +92,13 @@ int main(int argc, char *argv[])
   {
     // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
     //   inferenced by its arguments.
-    find_seeds<seqan::IndexEsa<>, seqan::TopDown< seqan::ParentLinks<> >>(options);
+    find_seeds<seqan::IndexEsa<>>(options);
   }
   else if (options.index == IndexType::Wotd)
   {
     // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
     //   inferenced by its arguments.
-    find_seeds<seqan::IndexWotd<>, seqan::TopDown< seqan::ParentLinks<> >>(options);
+    find_seeds<seqan::IndexWotd<>>(options);
   }
   else
   {
@@ -111,7 +111,8 @@ int main(int argc, char *argv[])
   return EXIT_SUCCESS;
 }
 
-template<typename TIndexSpec, typename TIterSpec >
+
+template<typename TIndexSpec >
   void
 find_seeds(GremOptions & options)
 {
@@ -126,7 +127,7 @@ find_seeds(GremOptions & options)
   VarGraph vargraph;
   load_graph(vgpath, vargraph);
 
-  GraphTraverser< PathTraverser< TIndexSpec, TIterSpec >> gtraverser(vargraph);
+  GraphTraverser< PathTraverser< TIndexSpec >> gtraverser(vargraph);
   std::unordered_set < VarGraph::NodeID > covered_nodes;
   Dna5QStringSet paths;
   gtraverser.pick_paths ( paths, covered_nodes, options.path_num );
@@ -134,8 +135,8 @@ find_seeds(GremOptions & options)
 
   long int found = 0;
   std::unordered_set< Dna5QStringSetPosition > covered_reads;
-  std::function< void(typename PathTraverser< TIndexSpec, TIterSpec >::Output const &) > write =
-    [&found, &covered_reads] (typename PathTraverser< TIndexSpec, TIterSpec >::Output const & seed_hit){
+  std::function< void(typename PathTraverser< TIndexSpec >::Output const &) > write =
+    [&found, &covered_reads] (typename PathTraverser< TIndexSpec >::Output const & seed_hit){
     ++found;
     covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
@@ -154,7 +155,7 @@ find_seeds(GremOptions & options)
 
       if (length(reads_chunk.id) == 0) break;
 
-      typename PathTraverser< TIndexSpec, TIterSpec >::Param params(reads_chunk, seedlen);
+      typename PathTraverser< TIndexSpec >::Param params(reads_chunk, seedlen);
       gtraverser.seeds_on_paths ( paths_index, params, write );
       gtraverser.traverse ( params, write );
 
@@ -168,7 +169,7 @@ find_seeds(GremOptions & options)
   LOG(INFO) << "Total number of starting points: " << gtraverser.get_starting_points().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
-            << PathTraverser< TIndexSpec, TIterSpec >::inc_total_go_down(0);
+            << PathTraverser< TIndexSpec >::inc_total_go_down(0);
 #endif
 }
 
