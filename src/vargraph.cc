@@ -4,7 +4,7 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Tue Mar 21, 2017  07:10
+ * Last modified: Thu Apr 06, 2017  01:39
  *
  * Description: VarGraph class implementation.
  *
@@ -89,7 +89,7 @@ namespace grem
   }
 
   void
-    VarGraph::extend_from_file(std::string &filename)
+    VarGraph::extend_from_file(const std::string &filename)
   {
     std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
     this->extend_from_file(ifs);

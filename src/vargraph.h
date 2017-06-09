@@ -4,7 +4,7 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Fri Mar 17, 2017  10:27
+ * Last modified: Thu Apr 06, 2017  01:39
  *
  * Description: VarGraph class definition.
  *
@@ -73,7 +73,7 @@ namespace grem
       // Public methods
       void                                   extend(vg::Graph &vg_graph);
       void                                   extend_from_file(std::ifstream &ifs);
-      void                                   extend_from_file(std::string &filename);
+      void                                   extend_from_file(const std::string &filename);
       void                                   extend_from_file(const char *filename);
       inline unsigned int                    nodes_size() const
       { return this->vg_graph.node_size(); }
