@@ -18,6 +18,9 @@
 #ifndef  INDEX_ITERATOR_H__
 #define  INDEX_ITERATOR_H__
 
+#include <vector>
+#include <functional>
+
 #include <seqan/index.h>
 #include <seqan/seeds.h>
 
@@ -359,6 +362,15 @@ namespace grem {
   template< typename TIndex, typename TSpec >
     using TIndexIter = typename seqan::Iterator< TIndex, TSpec >::Type;
 
+  template < typename TIter >
+    using TIterIndex = typename seqan::Container< TIter >::Type;
+
+  template < typename TIter >
+    using TIterText = typename seqan::Fibre< TIterIndex< TIter >, seqan::FibreText >::Type;
+
+  template < typename TIter >
+    using TIterRawText = typename seqan::Value< TIterText< TIter > >::Type;
+
   /* END OF Typedefs  ------------------------------------------------------------ */
 
 }  /* -----  end of namespace grem  ----- */
@@ -508,6 +520,100 @@ namespace grem {
       } while ( !isRoot ( first ) );
     }  /* -----  end of template function kmer_exact_matches  ----- */
   /* END OF Top-down fine interator meta-function declarations  ------------------ */
+
+  template < typename TIter >
+    TIterRawText < TIter >
+    next_kmer ( TIter &itr, unsigned int k )
+    {
+      do {
+        if ( repLength ( itr ) >= k ||
+            !goDown ( itr ) ||
+            parentEdgeLabel ( itr )[0] == 'N' ) {
+            if ( !goRight ( itr ) ) {
+              while ( goUp ( itr ) && !goRight ( itr ) );
+            }
+        }
+
+        if ( repLength ( itr ) >= k ) {
+          return prefix ( representative ( itr ), k );
+        }
+      } while ( !isRoot ( itr ) );        /* -----  end do-while  ----- */
+
+      return "";
+    }
+
+  template < typename TOccurrence1, typename TOccurrence2, typename TCallback >
+    void
+    _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, TCallback callback )
+    {
+      seqan::Seed < seqan::Simple > hit;
+
+      setBeginPositionH ( hit, oc1.i1 );
+      setEndPositionH ( hit, oc1.i2 );
+      setBeginPositionV ( hit, oc2.i1 );
+      setEndPositionV ( hit, oc2.i2 );
+
+      callback ( hit );
+    }
+
+  template < typename TIndex1, typename TIndex2, typename TCallback >
+    void
+    _kmer_exact_match_impl ( TIndex1 &smaller, TIndex2 &bigger, unsigned int k,
+        bool rev_params, TCallback callback )
+    {
+      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
+      typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
+      typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
+
+      seqan::String< TSAValue1 > occurrences1;
+      seqan::String< TSAValue2 > occurrences2;
+
+      TIndexIter< TIndex1, TIterSpec > smaller_itr ( smaller );
+      TIndexIter< TIndex2, TIterSpec > bigger_itr ( bigger );
+
+      seqan::Dna5QString kmer;
+      while ( length( kmer = next_kmer ( smaller_itr, k ) ) != 0 ) {
+        if ( goDown ( bigger_itr, kmer ) ) {
+          occurrences1 = getOccurrences ( smaller_itr );
+          occurrences2 = getOccurrences ( bigger_itr );
+          auto occur_size1 = length ( occurrences1 );
+          auto occur_size2 = length ( occurrences2 );
+
+          for ( unsigned int i = 0; i < occur_size1; ++i ) {
+            for ( unsigned int j = 0; j < occur_size2; ++j ) {
+
+              if ( !rev_params ) {
+                _add_seed ( occurrences1[i], occurrences2[j], callback );
+              }
+              else {
+                _add_seed ( occurrences2[j], occurrences1[i], callback );
+              }
+
+            }
+          }
+
+          clear ( occurrences1 );
+          clear ( occurrences2 );
+        }
+
+        goRoot ( bigger_itr );
+      }
+    }
+
+  template < typename TIndex1, typename TIndex2, typename TCallback >
+    void
+    kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, unsigned int k, TCallback callback )
+    {
+      auto fst_len = length ( getFibre ( fst, seqan::FibreRawText() ) );
+      auto snd_len = length ( getFibre ( snd, seqan::FibreRawText() ) );
+
+      if ( fst_len <= snd_len ) {
+        _kmer_exact_match_impl ( fst, snd, k, false, callback );
+      }
+      else {
+        _kmer_exact_match_impl ( snd, fst, k, true, callback );
+      }
+    }
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef INDEX_ITERATOR_H__  ----- */

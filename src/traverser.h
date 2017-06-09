@@ -473,23 +473,20 @@ namespace grem
             LOG(INFO) << "Finding seeds on paths...";
 
             // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-            typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
-            typedef Dna5QStringSetIndex < typename TPathTraverser::IndexType > TReadsIndex;
+            //typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
+            //typedef Dna5QStringSetIndex < typename TPathTraverser::IndexType > TReadsIndex;
 
-            TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
-            TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
+            //TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
+            //TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
             //seqan::Iterator < TPathIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type paths_itr (paths_index);
             //typename seqan::Iterator < TReadsIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type reads_itr ( trav_params.mutable_get_reads_index() );
 
-            std::vector < seqan::Seed < seqan::Simple > > seeds_set;
-            kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr,
-                trav_params.get_seed_len() );
+            //std::vector < seqan::Seed < seqan::Simple > > seeds_set;
+            //kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr, trav_params.get_seed_len() );
+            kmer_exact_matches ( paths_index, trav_params.mutable_get_reads_index(),
+               trav_params.get_seed_len(), callback );
 
-            // :TODO:Tue Mar 21 10:30:\@cartoonist: Remove this log message.
-            LOG(INFO) << "Number of seeds found on paths: " << length ( seeds_set );
-
-            std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
-
+            //std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
           }  /* -----  end of method Mapper::seeds_on_paths  ----- */
 
         inline void traverse(typename TPathTraverser::Param trav_params,
