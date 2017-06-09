@@ -357,7 +357,7 @@ namespace grem {
    *  @brief  Shorter alias for `Iterator<>::Type` syntax.
    */
   template< typename TIndex, typename TSpec >
-    using TIndexIterator = typename seqan::Iterator< TIndex, TSpec >::Type;
+    using TIndexIter = typename seqan::Iterator< TIndex, TSpec >::Type;
 
   /* END OF Typedefs  ------------------------------------------------------------ */
 
@@ -383,7 +383,7 @@ namespace grem {
 
   /* Typedefs  ------------------------------------------------------------------- */
   template < typename TIndex, typename TSpec = seqan::Preorder >
-    using TFineIterator =
+    using TFineIndexIter =
       typename seqan::Iterator < TIndex, TopDownFine < TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
@@ -404,8 +404,8 @@ namespace grem {
    */
   template < typename TIndex1, typename TIndex2 >
     void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
-        typename seqan::Iterator < TIndex1, TopDownFine< seqan::ParentLinks<> > >::Type &first,
-        typename seqan::Iterator < TIndex2, TopDownFine< seqan::ParentLinks<> > >::Type &second,
+        TFineIndexIter < TIndex1, seqan::ParentLinks<> > &first,
+        TFineIndexIter < TIndex2, seqan::ParentLinks<> > &second,
         unsigned int k)
     {
       if ( k == 0 ) return;
@@ -463,8 +463,8 @@ namespace grem {
 
   template < typename TIndex1, typename TIndex2 >
     void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
-        typename seqan::Iterator < TIndex1, seqan::TopDown < seqan::ParentLinks<> > >::Type &first,
-        typename seqan::Iterator < TIndex2, seqan::TopDown < seqan::ParentLinks<> > >::Type &second,
+        TIndexIter < TIndex1, seqan::TopDown < seqan::ParentLinks<> > > &first,
+        TIndexIter < TIndex2, seqan::TopDown < seqan::ParentLinks<> > > &second,
         unsigned int k)
     {
       if ( k == 0 ) return;

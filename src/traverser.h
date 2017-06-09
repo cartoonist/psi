@@ -165,7 +165,7 @@ namespace grem
         {
           this->iters_state.push_back(
               IterState({
-                TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec >(this->parameters->reads_index),
+                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, TIterSpec >(this->parameters->reads_index),
                 0})
               );
         }
@@ -262,7 +262,7 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec > iter;
+          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, TIterSpec > iter;
           unsigned int   boffset;
         } IterState;
 
@@ -484,11 +484,13 @@ namespace grem
             typedef seqan::SeedSet < TSimpleSeed > TSimpleSeedSet;
             typedef seqan::Iterator < TSimpleSeedSet >::Type TSeedIterator;
 
-            TFineIterator < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
-            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
+            TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
+            TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
+            //seqan::Iterator < TPathIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type paths_itr (paths_index);
+            //typename seqan::Iterator < TReadsIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type reads_itr ( trav_params.mutable_get_reads_index() );
 
             TSimpleSeedSet seeds_set;
-            kmer_exact_matches < TPathIndex, TReadsIndex > ( seeds_set, paths_itr, reads_itr,
+            kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr,
                 trav_params.get_seed_len() );
 
             // :TODO:Tue Mar 21 10:30:\@cartoonist: Remove this log message.

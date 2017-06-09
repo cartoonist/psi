@@ -44,9 +44,9 @@ INITIALIZE_EASYLOGGINGPP
 typedef struct
 {
   typedef Dna5QStringSetIndex < IndexWotd<> > TIndex;
-  typedef typename Iterator < TIndex, TopDown<> >::Type TIndexIterator;
+  typedef typename Iterator < TIndex, TopDown<> >::Type TIndexIter;
 
-  TIndexIterator index_iter;
+  TIndexIter index_iter;
   unsigned int   boffset;
   unsigned int   ref_len;
 } IterState;
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
       IterState::TIndex reads_index( reads.str );
       for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
       {
-        IterState iter_state = {IterState::TIndexIterator(reads_index), 0, 0};
+        IterState iter_state = {IterState::TIndexIter(reads_index), 0, 0};
         // Explicit is better than implicit.
         if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
 
