@@ -28,6 +28,15 @@ namespace grem {
   /* Typedefs  ------------------------------------------------------------------- */
   template < typename TIndexSpec >
     using Dna5QStringSetIndex = seqan::Index< Dna5QStringSet, TIndexSpec >;
+
+  typedef seqan::FastFMIndexConfig<void, uint64_t, 2, 1> TFMIndexConfig;
+
+  template < typename TText >
+    using TBiFMIndex = seqan::Index < TText,
+          seqan::BidirectionalIndex < seqan::FMIndex < void, TFMIndexConfig > > >;
+
+  template < typename TText >
+    using TFMIndex = seqan::Index < TText, seqan::FMIndex < void, TFMIndexConfig > >;
   /* END OF Typedefs  ------------------------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 
