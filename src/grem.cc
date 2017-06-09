@@ -126,8 +126,6 @@ startup ( const Options & options )
     LOG(INFO) << "Loading the vg graph from file '" << options.rf_path << "'...";
 
     vargraph.extend_from_file(options.rf_path);
-
-    LOG(INFO) << "Loading the vg graph from file '" << options.rf_path << "': Done.";
   }
   catch(std::ios::failure &e)
   {
@@ -194,8 +192,8 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   {
     while (true)
     {
+      TIMED_BLOCK(loadChunkTimer, "load-chunk")
       {
-        TIMED_SCOPE(loadChunkTimer, "load-chunk");
         readRecords(reads_chunk, reads_infile, chunk_size);
       }
 

@@ -420,6 +420,10 @@ namespace grem
           {
             if ( n == 0 ) return;
 
+            TIMED_SCOPE(pickPathsTimer, "pick-paths");
+
+            LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
+
             seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
             seqan::Dna5QString new_path;
             std::vector < VarGraph::NodeID > new_hap;
@@ -443,8 +447,6 @@ namespace grem
 
               new_hap.clear();
             }
-
-            LOG(INFO) << "Picked " << n << " path(s).";
           }  /* -----  end of function pick_paths  ----- */
 
         /**
@@ -466,12 +468,13 @@ namespace grem
           {
             if ( length ( indexText ( paths_index ) ) == 0 ) return;
 
+            TIMED_SCOPE(pathsSeedFindTimer, "paths-seed-find");
+
             LOG(INFO) << "Finding seeds on paths...";
 
             // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
             typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
-            typedef typename TPathTraverser::IndexType TReadsIndexSpec;
-            typedef Dna5QStringSetIndex < TReadsIndexSpec > TReadsIndex;
+            typedef Dna5QStringSetIndex < typename TPathTraverser::IndexType > TReadsIndex;
 
             TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
             TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
