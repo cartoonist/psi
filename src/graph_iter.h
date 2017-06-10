@@ -103,6 +103,7 @@ namespace grem {
         typename TSpec::Value itr_value;             /**< @brief Iter. current value. */
         typename TSpec::TContainer visiting_buffer;  /**< @brief Visiting buffer. */
         typename TSpec::TSet visited;                /**< @brief Visited set. */
+        typename TSpec::TState state;                /**< @brief Special-purpose vars. */
     };  /* ----------  end of template class GraphIter  ---------- */
 
 }  /* -----  end of namespace grem  ----- */

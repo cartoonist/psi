@@ -4,7 +4,6 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Thu Apr 06, 2017  01:39
  *
  * Description: VarGraph class implementation.
  *
@@ -259,12 +258,18 @@ namespace grem
     }
 
   template < >
-    GraphIter< VarGraph, BFS<> > begin ( const VarGraph &g, BFS<>::Value start )
+    GraphIter< VarGraph, BFS<> >
+    begin ( const VarGraph &g, BFS<>::Value start )
     {
       GraphIter < VarGraph, BFS<> > begin_itr;
       BFS<>::Value start_node_id;
-      if (start != 0) start_node_id = start;
-      else start_node_id = g.node_at(0).id();
+
+      if ( start != 0 ) {
+        start_node_id = start;
+      }
+      else {
+        start_node_id = g.node_at(0).id();
+      }
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.visiting_buffer.push_back(std::make_pair(start_node_id, 0));
@@ -404,7 +409,7 @@ namespace grem
   template < >
     bool at_end ( GraphIter < VarGraph, Haplotyper<> > &it )
     {
-      return it.visiting_buffer[1] == 1;           // if at-end flag is set.
+      return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template < >
@@ -423,8 +428,8 @@ namespace grem
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.itr_value = start_node_id;
-      begin_itr.visiting_buffer.push_back( start_node_id );
-      begin_itr.visiting_buffer.push_back( 0 ); // Used as at-end flag.
+      begin_itr.state.start = start_node_id;
+      begin_itr.state.end = false;
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
@@ -437,7 +442,7 @@ namespace grem
     {
       Haplotyper<>::Value cnode_id = this->itr_value;
       if ( !this->vargraph_ptr->has_fwd_edge ( cnode_id ) ) {    // No forward edges?
-        this->visiting_buffer[1] = 1;                            // set at-end flag.
+        this->state.end = true;                                  // set at-end flag.
         return *this;                                            // Return.
       }
 
@@ -471,8 +476,8 @@ namespace grem
     GraphIter < VarGraph, Haplotyper <> > &
     GraphIter < VarGraph, Haplotyper <> >::operator-- ( )
     {
-      this->itr_value = this->visiting_buffer[0];  // Reset the iterator to the start node.
-      this->visiting_buffer[1] = 0;                // Reset at-end flag.
+      this->itr_value = this->state.start;    // Reset the iterator to the start node.
+      this->state.end = false;                // Reset at-end flag.
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator--  ----- */
 
