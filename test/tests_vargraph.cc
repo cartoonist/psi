@@ -83,25 +83,31 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     std::string vgpath = _testdir + "/data/small/x.vg";
     VarGraph vargraph(vgpath.c_str());
 
-    WHEN ( "the two haplotypes are generated using Haplotyper" )
+    WHEN ( "the three haplotypes are generated using Haplotyper" )
     {
       seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
 
       std::vector < VarGraph::NodeID > haplotype1;
       std::vector < VarGraph::NodeID > haplotype2;
+      std::vector < VarGraph::NodeID > haplotype3;
       get_uniq_haplotype ( haplotype1, hap_itr );
       get_uniq_haplotype ( haplotype2, hap_itr );
+      get_uniq_haplotype ( haplotype3, hap_itr );
 
       THEN ( "they should be unique" )
       {
         std::string hapstr1 = vargraph.get_string ( haplotype1 );
         std::string hapstr2 = vargraph.get_string ( haplotype2 );
+        std::string hapstr3 = vargraph.get_string ( haplotype3 );
         REQUIRE ( hapstr1 != hapstr2 );
+        REQUIRE ( hapstr2 != hapstr3 );
+        REQUIRE ( hapstr1 != hapstr3 );
       }
       AND_THEN ( "they should have the correct length" )
       {
         REQUIRE ( haplotype1.size() == 147 );
         REQUIRE ( haplotype2.size() == 134 );
+        REQUIRE ( haplotype3.size() > 2 );      // randomized path
       }
     }
   }
