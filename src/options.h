@@ -18,7 +18,10 @@
 #ifndef TYPES_H__
 #define TYPES_H__
 
+#include <stdexcept>
 #include <string>
+
+#include <seqan/index.h>
 
 namespace grem
 {
