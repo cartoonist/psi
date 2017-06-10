@@ -195,6 +195,7 @@ namespace grem
       };
 
       typedef std::unordered_set< TContainer::value_type, pair_hash, pair_pred > TSet;
+      typedef void* TState;
     };
 
   template < typename TSpec = void >
@@ -210,7 +211,12 @@ namespace grem
       typedef VarGraph::NodeID Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
-      typedef std::vector< Value > TSet;        /**< @brief Used as a buffer. */
+      typedef void* TSet;
+      typedef struct {
+        VarGraph::NodeID start;                 /**< @brief Start node ID. */
+        VarGraph::NodeID buffer;                /**< @brief Buffer node ID. 0=nothing */
+        bool end;                               /**< @brief End flag. */
+      } TState;
     };  /* ----------  end of struct Backtracker  ---------- */
 
   template < typename TSpec = void >
@@ -225,8 +231,12 @@ namespace grem
     struct HaplotyperIter < VarGraph, TSpec > {
       typedef VarGraph::NodeID Value;
       typedef Value Level;
-      typedef std::vector< Value > TContainer;  /**< @brief Used to store start node. */
+      typedef void* TContainer;
       typedef std::unordered_set < Value > TSet;
+      typedef struct {
+        VarGraph::NodeID start;                 /**< @brief Start node ID. */
+        bool end;                               /**< @brief End flag. */
+      } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
 
   template < typename TSpec = void >

@@ -4,7 +4,6 @@
  * Filename: vargraph.cc
  *
  * Created: Fri Nov 11, 2016  23:12
- * Last modified: Thu Apr 06, 2017  01:39
  *
  * Description: VarGraph class implementation.
  *
@@ -259,12 +258,18 @@ namespace grem
     }
 
   template < >
-    GraphIter< VarGraph, BFS<> > begin ( const VarGraph &g, BFS<>::Value start )
+    GraphIter< VarGraph, BFS<> >
+    begin ( const VarGraph &g, BFS<>::Value start )
     {
       GraphIter < VarGraph, BFS<> > begin_itr;
       BFS<>::Value start_node_id;
-      if (start != 0) start_node_id = start;
-      else start_node_id = g.node_at(0).id();
+
+      if ( start != 0 ) {
+        start_node_id = start;
+      }
+      else {
+        start_node_id = g.node_at(0).id();
+      }
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.visiting_buffer.push_back(std::make_pair(start_node_id, 0));
@@ -324,8 +329,7 @@ namespace grem
   template < >
     bool at_end ( GraphIter < VarGraph, Backtracker<> > &it )
     {
-      return it.visiting_buffer.empty() &&
-        !it.vargraph_ptr->has_fwd_edge(*it);
+      return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template < >
@@ -344,7 +348,9 @@ namespace grem
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.itr_value = start_node_id;
-      begin_itr.visited.push_back(0);  // Next node ID from current node. 0 = nothing buffered.
+      begin_itr.state.buffer = 0;
+      begin_itr.state.end = false;
+      begin_itr.state.start = start_node_id;
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
@@ -355,9 +361,9 @@ namespace grem
     GraphIter < VarGraph, Backtracker <> > &
     GraphIter < VarGraph, Backtracker <> >::operator++ ( )
     {
-      if ( this->visited[0] != 0 ) {                             // Any node buffered?
-        this->itr_value = this->visited[0];                      // Use it.
-        this->visited[0] = 0;                                    // Clear up buffer.
+      if ( this->state.buffer != 0 ) {                             // Any node buffered?
+        this->itr_value = this->state.buffer;                      // Use it.
+        this->state.buffer = 0;                                    // Clear up buffer.
       }
       else {                                                  // else
         Backtracker<>::Value cnode_id = this->itr_value;
@@ -370,6 +376,9 @@ namespace grem
             this->visiting_buffer.push_back ( std::make_pair(cnode_id, edges[i]->to()) );
           }
         }
+        else {
+          this->state.end = true;
+        }
       }
 
       return *this;
@@ -379,18 +388,23 @@ namespace grem
     GraphIter < VarGraph, Backtracker <> > &
     GraphIter < VarGraph, Backtracker <> >::operator-- ( )
     {
-      if ( this->visited[0] != 0 ) {                             // Any node buffered?
+      if ( this->state.buffer != 0 ) {                             // Any node buffered?
         while (                // Remove all buffered branches of the current node.
             !this->visiting_buffer.empty() &&
             this->visiting_buffer.back().first == this->itr_value ) {
           this->visiting_buffer.pop_back();
         }
+        this->state.buffer = 0;
       }
 
       if ( !this->visiting_buffer.empty() ) {                 // Go back in buffer.
         this->itr_value = this->visiting_buffer.back().first;
-        this->visited[0] = this->visiting_buffer.back().second;
+        this->state.buffer = this->visiting_buffer.back().second;
         this->visiting_buffer.pop_back();
+        this->state.end = false;  // Reset at-end flag.
+      }
+      else {
+        this->state.end = true;  // Set at-end flag.
       }
 
       return *this;
@@ -404,7 +418,7 @@ namespace grem
   template < >
     bool at_end ( GraphIter < VarGraph, Haplotyper<> > &it )
     {
-      return it.visiting_buffer[1] == 1;           // if at-end flag is set.
+      return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template < >
@@ -423,8 +437,8 @@ namespace grem
 
       begin_itr.vargraph_ptr = &g;
       begin_itr.itr_value = start_node_id;
-      begin_itr.visiting_buffer.push_back( start_node_id );
-      begin_itr.visiting_buffer.push_back( 0 ); // Used as at-end flag.
+      begin_itr.state.start = start_node_id;
+      begin_itr.state.end = false;
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
@@ -437,7 +451,7 @@ namespace grem
     {
       Haplotyper<>::Value cnode_id = this->itr_value;
       if ( !this->vargraph_ptr->has_fwd_edge ( cnode_id ) ) {    // No forward edges?
-        this->visiting_buffer[1] = 1;                            // set at-end flag.
+        this->state.end = true;                                  // set at-end flag.
         return *this;                                            // Return.
       }
 
@@ -471,8 +485,8 @@ namespace grem
     GraphIter < VarGraph, Haplotyper <> > &
     GraphIter < VarGraph, Haplotyper <> >::operator-- ( )
     {
-      this->itr_value = this->visiting_buffer[0];  // Reset the iterator to the start node.
-      this->visiting_buffer[1] = 0;                // Reset at-end flag.
+      this->itr_value = this->state.start;    // Reset the iterator to the start node.
+      this->state.end = false;                // Reset at-end flag.
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator--  ----- */
 
