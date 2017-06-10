@@ -19,6 +19,7 @@
 
 #include "tests_base.h"
 #include "sequence.h"
+#include "index.h"
 #include "index_iter.h"
 #include "logger.h"
 
@@ -33,7 +34,7 @@ SCENARIO ( "Fine top-down index iterator basic functionalities", "[index][iterat
   {
     seqan::Dna5QString str = "GATAGACTAGCCA";
     seqan::Index < seqan::Dna5QString, seqan::IndexEsa<> > index (str);
-    TFineIterator < seqan::Index < seqan::Dna5QString, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr(index);
+    TFineIndexIter < seqan::Index < seqan::Dna5QString, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr(index);
 
     REQUIRE ( go_down ( itr, 'A' ) );
     REQUIRE ( go_down ( itr, 'G' ) );
@@ -60,13 +61,13 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     appendValue (str1, "GATAGACTAGCCA");
     appendValue (str1, "GGGCGTAGCCA");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index1 (str1);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
     Dna5QStringSet str2;
     appendValue (str2, "GGGCGTAGCCA");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 4-mer exact matches" )
     {
@@ -80,13 +81,13 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     Dna5QStringSet str1;
     appendValue (str1, "CATATA");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index1 (str1);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
     Dna5QStringSet str2;
     appendValue (str2, "ATATAC");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 3-mer exact matches" )
     {
@@ -101,16 +102,16 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     appendValue (str1, "TAGGCTACCGATTTAAATAGGCACAC");
     appendValue (str1, "TAGGCTACGGATTTAAATCGGCACAC");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index1 (str1);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
     Dna5QStringSet str2;
     appendValue (str2, "GGATTTAAATA");
     appendValue (str2, "CGATTTAAATC");
     appendValue (str2, "GGATTTAAATC");
     appendValue (str2, "CGATTTAAATA");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {
@@ -125,16 +126,16 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
     appendValue (str1, "TAGGCTACCGATTNAAATAGGCACAC");
     appendValue (str1, "TAGGCTACGGATTNAAATCGGCACAC");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index1 (str1);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
     Dna5QStringSet str2;
     appendValue (str2, "GGATTNAAATA");
     appendValue (str2, "CGATTNAAATC");
     appendValue (str2, "GGATTNAAATC");
     appendValue (str2, "CGATTNAAATA");
     seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
+    TFineIndexIter < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {
@@ -146,22 +147,64 @@ SCENARIO ( "Find k-mer exact matches between two fine top-down index iterators",
   GIVEN ( "Given two fine top-down index iterators of two small string set 5" )
   {
     Dna5QStringSet str1;
-    appendValue (str1, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGTGTAGGGCCCTCTTGCTCCCGGTGTGACGGCTGGCGTGCAGCTGGCTCCCCCGCTGGCAGCTGGGGACACTGACGGGCCCTCTTGCTCCCCTACTGGCCGCCTCCTGCACCAATTAAAGTCGGAGCACCGGTTACGC");
-    appendValue (str1, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGTGTAGGGCCCTCTTGCTCCCGGTGTGACGGCTGGCGTGCAGCTGGCTCCCCCGCTCGCAGGTGGCGACACAAACGGGCCCTCTTGCTCCCCTACTGGCCGCCTCCTGCACCAATTAAAGTCGGAGCACCGGTTACGC");
-    seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index1 (str1);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr1(index1);
-    Dna5QStringSet str2;
-    appendValue (str2, "CATTGCAGAGCCCTCTTGCTCACAGTGTAGTGGCAGCACGCCCGCCTCCTGGCAGCTAGGGACAGTGCCAGGCCCTCTTGCTCCAAGTGTAGTGGCAGCTGGCTCCCCCGCTGGCAGCTGGGGACACTGACGGGCCCTCTTGCTTGCAGT");
-    appendValue (str2, "TAGGGCAACTGCAGGGCTATCTTGCTTACAGTGGTGTCCAGCGCCCTCTGCTGGCGTCGGAGCATTGCAGGGCTCTCTTGCTCGCAGTGTAGTGGCGGCACGCCGCCTGCTGGCAGCTAGGGACATTGCAGAGCCCTCTTGCTCACAGTG");
-    seqan::Index < Dna5QStringSet, seqan::IndexEsa<> > index2 (str2);
-    TFineIterator < seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr2(index2);
+    appendValue (str1, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGT"
+        "GTAGGGCCCTCTTGCTCCCGGTGTGACGGCTGGCGTGCAGCTGGCTCCCCCGCTGGCAGCTGGGGACACTGACGGGCCC"
+        "TCTTGCTCCCCTACTGGCCGCCTCCTGCACCAATTAAAGTCGGAGCACCGGTTACGC");
+    appendValue (str1, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGT"
+        "GTAGGGCCCTCTTGCTCCCGGTGTGACGGCTGGCGTGCAGCTGGCTCCCCCGCTCGCAGGTGGCGACACAAACGGGCCC"
+        "TCTTGCTCCCCTACTGGCCGCCTCCTGCACCAATTAAAGTCGGAGCACCGGTTACGC");
 
-    seqan::SeedSet < seqan::Seed < seqan::Simple > > seeds;
+    Dna5QStringSet str2;
+    appendValue (str2, "CATTGCAGAGCCCTCTTGCTCACAGTGTAGTGGCAGCACGCCCGCCTCCTGGCAGCTAGGGACA"
+        "GTGCCAGGCCCTCTTGCTCCAAGTGTAGTGGCAGCTGGCTCCCCCGCTGGCAGCTGGGGACACTGACGGGCCCTCTTGC"
+        "TTGCAGT");
+    appendValue (str2, "TAGGGCAACTGCAGGGCTATCTTGCTTACAGTGGTGTCCAGCGCCCTCTGCTGGCGTCGGAGCA"
+        "TTGCAGGGCTCTCTTGCTCGCAGTGTAGTGGCGGCACGCCGCCTGCTGGCAGCTAGGGACATTGCAGAGCCCTCTTGCT"
+        "CACAGTG");
+
+    typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TIndexEsa;
+
+    TIndexEsa index1 (str1);
+    TIndexEsa index2 (str2);
+
+    TFineIndexIter < TIndexEsa, seqan::ParentLinks<> > itr1(index1);
+    TFineIndexIter < TIndexEsa, seqan::ParentLinks<> > itr2(index2);
+
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
 
     THEN ( "Find 10-mer exact matches" )
     {
-      kmer_exact_matches <seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >, seqan::Index < Dna5QStringSet, seqan::IndexEsa<> >> ( seeds, itr1, itr2, 30 );
+      kmer_exact_matches < TIndexEsa, TIndexEsa > ( seeds, itr1, itr2, 30 );
       REQUIRE ( length ( seeds ) == 21 );
+    }
+  }
+
+  GIVEN ( "Given two top-down index iterators of two small string set" )
+  {
+    Dna5QStringSet str1;
+    appendValue (str1, "TAGGCTACCGATTTAAATAGGCACAC");
+    appendValue (str1, "TAGGCTACGGATTTAAATCGGCACAC");
+
+    Dna5QStringSet str2;
+    appendValue (str2, "GGATTTAAATA");
+    appendValue (str2, "CGATTTAAATC");
+    appendValue (str2, "GGATTTAAATC");
+    appendValue (str2, "CGATTTAAATA");
+
+    typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TIndexEsa;
+
+    TIndexEsa index1 (str1);
+    TIndexEsa index2 (str2);
+
+    TIndexIter < TIndexEsa, seqan::TopDown< seqan::ParentLinks<> > > itr1(index1);
+    TIndexIter < TIndexEsa, seqan::TopDown< seqan::ParentLinks<> > > itr2(index2);
+
+    std::vector < seqan::Seed < seqan::Simple > > seeds;
+
+    THEN ( "Find 10-mer exact matches" )
+    {
+      kmer_exact_matches < TIndexEsa, TIndexEsa > ( seeds, itr1, itr2, 10 );
+      REQUIRE ( length ( seeds ) == 8 );
     }
   }
 }

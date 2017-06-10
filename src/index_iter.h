@@ -18,6 +18,9 @@
 #ifndef  INDEX_ITERATOR_H__
 #define  INDEX_ITERATOR_H__
 
+#include <vector>
+#include <functional>
+
 #include <seqan/index.h>
 #include <seqan/seeds.h>
 
@@ -357,7 +360,16 @@ namespace grem {
    *  @brief  Shorter alias for `Iterator<>::Type` syntax.
    */
   template< typename TIndex, typename TSpec >
-    using TIndexIterator = typename seqan::Iterator< TIndex, TSpec >::Type;
+    using TIndexIter = typename seqan::Iterator< TIndex, TSpec >::Type;
+
+  template < typename TIter >
+    using TIterIndex = typename seqan::Container< TIter >::Type;
+
+  template < typename TIter >
+    using TIterText = typename seqan::Fibre< TIterIndex< TIter >, seqan::FibreText >::Type;
+
+  template < typename TIter >
+    using TIterRawText = typename seqan::Value< TIterText< TIter > >::Type;
 
   /* END OF Typedefs  ------------------------------------------------------------ */
 
@@ -383,7 +395,7 @@ namespace grem {
 
   /* Typedefs  ------------------------------------------------------------------- */
   template < typename TIndex, typename TSpec = seqan::Preorder >
-    using TFineIterator =
+    using TFineIndexIter =
       typename seqan::Iterator < TIndex, TopDownFine < TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
@@ -403,9 +415,9 @@ namespace grem {
    *  texts' indexes.
    */
   template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
-        typename seqan::Iterator < TIndex1, TopDownFine< seqan::ParentLinks<> > >::Type &first,
-        typename seqan::Iterator < TIndex2, TopDownFine< seqan::ParentLinks<> > >::Type &second,
+    void kmer_exact_matches ( std::vector < seqan::Seed < seqan::Simple > > &seeds,
+        TFineIndexIter < TIndex1, seqan::ParentLinks<> > &first,
+        TFineIndexIter < TIndex2, seqan::ParentLinks<> > &second,
         unsigned int k)
     {
       if ( k == 0 ) return;
@@ -419,8 +431,11 @@ namespace grem {
           typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
           seqan::String<TSAValue1> saPositions1 = getOccurrences( first.get_iter_() );
           seqan::String<TSAValue2> saPositions2 = getOccurrences( second.get_iter_() );
-          for (unsigned i = 0; i < length(saPositions1); ++i) {
-            for (unsigned j = 0; j < length(saPositions2); ++j) {
+          unsigned int len1 = length(saPositions1);
+          unsigned int len2 = length(saPositions2);
+          seeds.reserve ( seeds.size() + len1 * len2 );
+          for (unsigned i = 0; i < len1; ++i) {
+            for (unsigned j = 0; j < len2; ++j) {
               // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
               seqan::Seed < seqan::Simple > hit;
               seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
@@ -428,7 +443,7 @@ namespace grem {
               seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
               seqan::setEndPositionV ( hit, saPositions2[j].i2 );
 
-              seqan::addSeed (seeds, std::move(hit), seqan::Single());
+              seeds.push_back ( std::move (hit) );
             }
           }
         }
@@ -462,9 +477,9 @@ namespace grem {
     }  /* -----  end of template function kmer_exact_matches  ----- */
 
   template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( seqan::SeedSet < seqan::Seed < seqan::Simple > > &seeds,
-        typename seqan::Iterator < TIndex1, seqan::TopDown < seqan::ParentLinks<> > >::Type &first,
-        typename seqan::Iterator < TIndex2, seqan::TopDown < seqan::ParentLinks<> > >::Type &second,
+    void kmer_exact_matches ( std::vector < seqan::Seed < seqan::Simple > > &seeds,
+        TIndexIter < TIndex1, seqan::TopDown < seqan::ParentLinks<> > > &first,
+        TIndexIter < TIndex2, seqan::TopDown < seqan::ParentLinks<> > > &second,
         unsigned int k)
     {
       if ( k == 0 ) return;
@@ -479,8 +494,11 @@ namespace grem {
           typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
           seqan::String<TSAValue1> saPositions1 = getOccurrences( first );
           seqan::String<TSAValue2> saPositions2 = getOccurrences( second );
-          for (unsigned i = 0; i < length(saPositions1); ++i) {
-            for (unsigned j = 0; j < length(saPositions2); ++j) {
+          unsigned int len1 = length(saPositions1);
+          unsigned int len2 = length(saPositions2);
+          seeds.reserve ( seeds.size() + len1 * len2 );
+          for (unsigned i = 0; i < len1; ++i) {
+            for (unsigned j = 0; j < len2; ++j) {
               // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
               seqan::Seed < seqan::Simple > hit;
               seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
@@ -488,7 +506,7 @@ namespace grem {
               seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
               seqan::setEndPositionV ( hit, saPositions2[j].i2 );
 
-              seqan::addSeed (seeds, std::move(hit), seqan::Single());
+              seeds.push_back ( std::move (hit) );
             }
           }
         }
@@ -502,6 +520,100 @@ namespace grem {
       } while ( !isRoot ( first ) );
     }  /* -----  end of template function kmer_exact_matches  ----- */
   /* END OF Top-down fine interator meta-function declarations  ------------------ */
+
+  template < typename TIter >
+    TIterRawText < TIter >
+    next_kmer ( TIter &itr, unsigned int k )
+    {
+      do {
+        if ( repLength ( itr ) >= k ||
+            !goDown ( itr ) ||
+            parentEdgeLabel ( itr )[0] == 'N' ) {
+            if ( !goRight ( itr ) ) {
+              while ( goUp ( itr ) && !goRight ( itr ) );
+            }
+        }
+
+        if ( repLength ( itr ) >= k ) {
+          return prefix ( representative ( itr ), k );
+        }
+      } while ( !isRoot ( itr ) );        /* -----  end do-while  ----- */
+
+      return "";
+    }
+
+  template < typename TOccurrence1, typename TOccurrence2, typename TCallback >
+    void
+    _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, TCallback callback )
+    {
+      seqan::Seed < seqan::Simple > hit;
+
+      setBeginPositionH ( hit, oc1.i1 );
+      setEndPositionH ( hit, oc1.i2 );
+      setBeginPositionV ( hit, oc2.i1 );
+      setEndPositionV ( hit, oc2.i2 );
+
+      callback ( hit );
+    }
+
+  template < typename TIndex1, typename TIndex2, typename TCallback >
+    void
+    _kmer_exact_match_impl ( TIndex1 &smaller, TIndex2 &bigger, unsigned int k,
+        bool rev_params, TCallback callback )
+    {
+      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
+      typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
+      typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
+
+      seqan::String< TSAValue1 > occurrences1;
+      seqan::String< TSAValue2 > occurrences2;
+
+      TIndexIter< TIndex1, TIterSpec > smaller_itr ( smaller );
+      TIndexIter< TIndex2, TIterSpec > bigger_itr ( bigger );
+
+      seqan::Dna5QString kmer;
+      while ( length( kmer = next_kmer ( smaller_itr, k ) ) != 0 ) {
+        if ( goDown ( bigger_itr, kmer ) ) {
+          occurrences1 = getOccurrences ( smaller_itr );
+          occurrences2 = getOccurrences ( bigger_itr );
+          auto occur_size1 = length ( occurrences1 );
+          auto occur_size2 = length ( occurrences2 );
+
+          for ( unsigned int i = 0; i < occur_size1; ++i ) {
+            for ( unsigned int j = 0; j < occur_size2; ++j ) {
+
+              if ( !rev_params ) {
+                _add_seed ( occurrences1[i], occurrences2[j], callback );
+              }
+              else {
+                _add_seed ( occurrences2[j], occurrences1[i], callback );
+              }
+
+            }
+          }
+
+          clear ( occurrences1 );
+          clear ( occurrences2 );
+        }
+
+        goRoot ( bigger_itr );
+      }
+    }
+
+  template < typename TIndex1, typename TIndex2, typename TCallback >
+    void
+    kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, unsigned int k, TCallback callback )
+    {
+      auto fst_len = length ( getFibre ( fst, seqan::FibreRawText() ) );
+      auto snd_len = length ( getFibre ( snd, seqan::FibreRawText() ) );
+
+      if ( fst_len <= snd_len ) {
+        _kmer_exact_match_impl ( fst, snd, k, false, callback );
+      }
+      else {
+        _kmer_exact_match_impl ( snd, fst, k, true, callback );
+      }
+    }
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef INDEX_ITERATOR_H__  ----- */

@@ -38,17 +38,17 @@
 namespace grem
 {
   /* Forwards */
-  template< typename TIndexSpec, typename TIterSpec >
+  template< typename TIndexSpec >
     class PathTraverser;
 
   /** Traverse interface functions **
    *  @note These methods should be specialized for any other PathTraverser
    *        classes.
    **/
-  template< typename TIndexSpec, typename TIterSpec >
+  template< typename TIndexSpec >
   void
-    move_forward(PathTraverser< TIndexSpec, TIterSpec > &ptrav,
-                 std::vector< PathTraverser< TIndexSpec, TIterSpec >> &new_ptravs)
+    move_forward(PathTraverser< TIndexSpec > &ptrav,
+                 std::vector< PathTraverser< TIndexSpec >> &new_ptravs)
   {
     if (ptrav.finished)
       throw std::runtime_error("cannot move forward on a finalized path.");
@@ -78,35 +78,35 @@ namespace grem
         vg::Position new_pos;
         new_pos.set_node_id((*it)->to());
         new_pos.set_offset(0);
-        new_ptravs.push_back(PathTraverser< TIndexSpec, TIterSpec >(ptrav, std::move(new_pos)));
+        new_ptravs.push_back(PathTraverser< TIndexSpec >(ptrav, std::move(new_pos)));
       }
     }
   }
 
-  template< typename TIndexSpec, typename TIterSpec >
+  template< typename TIndexSpec >
   bool
-    is_finished(PathTraverser< TIndexSpec, TIterSpec > & ptrav)
+    is_finished(PathTraverser< TIndexSpec > & ptrav)
   {
     return ptrav.finished;
   }
 
-  template< typename TIndexSpec, typename TIterSpec >
+  template< typename TIndexSpec >
   bool
-    is_valid(PathTraverser< TIndexSpec, TIterSpec > & ptrav)
+    is_valid(PathTraverser< TIndexSpec > & ptrav)
   {
     return ptrav.is_seed_hit();
   }
 
-  template< typename TIndexSpec, typename TIterSpec >
+  template< typename TIndexSpec >
   void
-    get_results(PathTraverser< TIndexSpec, TIterSpec > &ptrav,
-                std::vector< typename PathTraverser< TIndexSpec, TIterSpec >::Output > &results)
+    get_results(PathTraverser< TIndexSpec > &ptrav,
+                std::vector< typename PathTraverser< TIndexSpec >::Output > &results)
   {
     if (is_valid(ptrav))
       ptrav.get_results(results);
   }
 
-  template< typename TIndexSpec, typename TIterSpec >
+  template< typename TIndexSpec >
     class PathTraverser
     {
       public:
@@ -121,7 +121,7 @@ namespace grem
         // defined types
         typedef seqan::Seed < seqan::Simple > Output;
         typedef TIndexSpec IndexType;
-        typedef TIterSpec IterType;
+        typedef seqan::TopDown< seqan::ParentLinks<> > IterType;
         // Traverse parameters
         class Param
         {
@@ -165,7 +165,7 @@ namespace grem
         {
           this->iters_state.push_back(
               IterState({
-                TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec >(this->parameters->reads_index),
+                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, PathTraverser::IterType >(this->parameters->reads_index),
                 0})
               );
         }
@@ -227,18 +227,18 @@ namespace grem
         }
 
         // Traverse interface functions (are friends!)
-        friend void move_forward< TIndexSpec, TIterSpec >(PathTraverser &ptrav,
+        friend void move_forward< TIndexSpec >(PathTraverser &ptrav,
                                                       std::vector< PathTraverser > &new_ptravs);
-        friend bool is_finished< TIndexSpec, TIterSpec >(PathTraverser &ptrav);
-        friend bool is_valid< TIndexSpec, TIterSpec >(PathTraverser &ptrav);
-        friend void get_results< TIndexSpec, TIterSpec >(PathTraverser &ptrav,
+        friend bool is_finished< TIndexSpec >(PathTraverser &ptrav);
+        friend bool is_valid< TIndexSpec >(PathTraverser &ptrav);
+        friend void get_results< TIndexSpec >(PathTraverser &ptrav,
                                                      std::vector< PathTraverser::Output > &results);
 
         // Attributes getters and setters
         inline const VarGraph *              get_vargraph()
         { return this->vargraph; }
 
-        inline const PathTraverser< TIndexSpec, TIterSpec >::Param *  get_paramters()
+        inline const PathTraverser< TIndexSpec >::Param *  get_paramters()
         { return this->parameters; }
 
         inline vg::Position                  get_s_locus()
@@ -262,13 +262,13 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          TIndexIterator< Dna5QStringSetIndex < TIndexSpec >, TIterSpec > iter;
+          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, PathTraverser::IterType > iter;
           unsigned int   boffset;
         } IterState;
 
         // Attributes
         const VarGraph *         vargraph;        // pointer to variation graph.
-        PathTraverser< TIndexSpec, TIterSpec >::Param *   parameters;      // pointer to params (shared between traversers).
+        PathTraverser< TIndexSpec >::Param *   parameters;      // pointer to params (shared between traversers).
         vg::Position             s_locus;         // starting locus
         vg::Position             c_locus;         // current locus
         std::vector< IterState > iters_state;
@@ -336,7 +336,7 @@ namespace grem
           }
         }
 
-        inline void get_results(std::vector< PathTraverser< TIndexSpec, TIterSpec >::Output > &results)
+        inline void get_results(std::vector< PathTraverser< TIndexSpec >::Output > &results)
         {
           for (auto its : this->iters_state)
           {
@@ -357,59 +357,51 @@ namespace grem
     };
 
   template <class TPathTraverser>
-    class GraphTraverser
+    class Mapper
     {
       public:
         // Constructors
-        GraphTraverser(const VarGraph *graph,
-                       const std::vector< vg::Position > *start_loci) :
+        Mapper(const VarGraph *graph,
+            const std::vector< vg::Position > *start_loci) :
           vargraph(graph)
         {
           if (start_loci != nullptr) this->starting_points = *start_loci;
         }
 
-        GraphTraverser(const VarGraph &graph,
-                       const std::vector< vg::Position > *start_loci) :
-          GraphTraverser(&graph, start_loci)
+        Mapper(const VarGraph &graph,
+            const std::vector< vg::Position > *start_loci) :
+          Mapper(&graph, start_loci)
         {}
 
-        GraphTraverser(const VarGraph *graph) : GraphTraverser(graph, nullptr)
+        Mapper(const VarGraph &graph,
+            const std::vector< vg::Position > &start_loci) :
+          Mapper(&graph, &start_loci)
         {}
 
-        GraphTraverser(const VarGraph &graph) : GraphTraverser(&graph)
+        Mapper(const VarGraph *graph,
+            const std::vector< vg::Position > &start_loci) :
+          Mapper(graph, &start_loci)
         {}
 
-        GraphTraverser(const GraphTraverser & other)
-        {
-          this->vargraph = other.vargraph;
-          this->starting_points = other.starting_points;
-        }
+        Mapper(const VarGraph *graph) : Mapper(graph, nullptr)
+        {}
 
-        GraphTraverser(const GraphTraverser && other) noexcept
-        {
-          this->vargraph = other.vargraph;
-          this->starting_points = std::move(other.starting_points);
-        }
-
-        GraphTraverser & operator=(const GraphTraverser & other)
-        {
-          GraphTraverser tmp(other);
-          *this = std::move(tmp);
-          return *this;
-        }
-
-        GraphTraverser & operator=(GraphTraverser && other) noexcept
-        {
-          this->vargraph = other.vargraph;
-          this->starting_points = std::move(other.starting_points);
-        }
-
-        ~GraphTraverser() noexcept {}
+        Mapper(const VarGraph &graph) : Mapper(&graph)
+        {}
 
         // Public methods
-        inline void add_start(vg::Position &locus)
+        inline void add_start(const vg::Position &locus)
         {
           this->starting_points.push_back(locus);
+        }
+
+        inline void add_start ( const VarGraph::NodeID & node_id,
+            const unsigned long int & offset )
+        {
+          vg::Position locus;
+          locus.set_node_id(node_id);
+          locus.set_offset(offset);
+          this->add_start ( locus );
         }
 
         /**
@@ -428,31 +420,33 @@ namespace grem
           {
             if ( n == 0 ) return;
 
-            seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
-            seqan::Dna5QString new_path;
-            std::vector < VarGraph::NodeID > new_hap;
+            TIMED_SCOPE(pickPathsTimer, "pick-paths");
 
-            new_hap.reserve ( this->vargraph->nodes_size() );
+            LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
+
+            seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
+            std::vector < VarGraph::NodeID > new_path;
+            seqan::Dna5QString new_path_str;
+
+            new_path.reserve ( this->vargraph->nodes_size() );
             covered_nodes.reserve ( covered_nodes.size() + this->vargraph->nodes_size() );
 
             for ( int i = 0; i < n; ++i ) {
-              get_uniq_haplotype ( new_hap, hap_itr );
+              get_uniq_haplotype ( new_path, hap_itr );
 
-              std::copy ( new_hap.begin(), new_hap.end(),
+              std::copy ( new_path.begin(), new_path.end(),
                   std::inserter ( covered_nodes, covered_nodes.end() ) );
 
-              new_path = this->vargraph->get_string ( new_hap );
+              new_path_str = this->vargraph->get_string ( new_path );
 
               // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
               char fake_qual = 'I';
-              assignQualities ( new_path, std::string ( length(new_path), fake_qual ) );
+              assignQualities ( new_path_str, std::string ( length(new_path_str), fake_qual ) );
 
-              appendValue ( paths, new_path );
+              appendValue ( paths, new_path_str );
 
-              new_hap.clear();
+              new_path.clear();
             }
-
-            LOG(INFO) << "Picked " << n << " path(s).";
           }  /* -----  end of function pick_paths  ----- */
 
         /**
@@ -474,36 +468,26 @@ namespace grem
           {
             if ( length ( indexText ( paths_index ) ) == 0 ) return;
 
+            TIMED_SCOPE(pathsSeedFindTimer, "paths-seed-find");
+
             LOG(INFO) << "Finding seeds on paths...";
 
             // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-            typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
-            typedef typename TPathTraverser::IndexType TReadsIndexSpec;
-            typedef Dna5QStringSetIndex < TReadsIndexSpec > TReadsIndex;
-            typedef seqan::Seed < seqan::Simple > TSimpleSeed;
-            typedef seqan::SeedSet < TSimpleSeed > TSimpleSeedSet;
-            typedef seqan::Iterator < TSimpleSeedSet >::Type TSeedIterator;
+            //typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
+            //typedef Dna5QStringSetIndex < typename TPathTraverser::IndexType > TReadsIndex;
 
-            TFineIterator < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
-            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
+            //TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
+            //TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
+            //seqan::Iterator < TPathIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type paths_itr (paths_index);
+            //typename seqan::Iterator < TReadsIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type reads_itr ( trav_params.mutable_get_reads_index() );
 
-            TSimpleSeedSet seeds_set;
-            kmer_exact_matches < TPathIndex, TReadsIndex > ( seeds_set, paths_itr, reads_itr,
-                trav_params.get_seed_len() );
+            //std::vector < seqan::Seed < seqan::Simple > > seeds_set;
+            //kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr, trav_params.get_seed_len() );
+            kmer_exact_matches ( paths_index, trav_params.mutable_get_reads_index(),
+               trav_params.get_seed_len(), callback );
 
-            // :TODO:Tue Mar 21 10:30:\@cartoonist: Remove this log message.
-            LOG(INFO) << "Number of seeds found on paths: " << length ( seeds_set );
-
-            for ( TSeedIterator it = begin ( seeds_set, seqan::Standard() );
-                it != end ( seeds_set, seqan::Standard() );
-                ++it )
-            {
-              callback ( *it );
-            }
-
-            LOG(INFO) << "Finding seeds on paths: Done.";
-
-          }  /* -----  end of method GraphTraverser::seeds_on_paths  ----- */
+            //std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
+          }  /* -----  end of method Mapper::seeds_on_paths  ----- */
 
         inline void traverse(typename TPathTraverser::Param trav_params,
                       std::function< void(typename TPathTraverser::Output const &) > callback)
@@ -528,7 +512,8 @@ namespace grem
         }
 
         inline void add_all_loci(unsigned int step=1,
-            std::unordered_set < VarGraph::NodeID > *exclude_nodes=nullptr)
+            std::unordered_set < VarGraph::NodeID > *exclude_nodes=nullptr,
+            bool maximal=true /* true = all included nodes should be picked up. */)
         {
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph. This means that for example add_all_loci(2) would add
@@ -539,23 +524,9 @@ namespace grem
           // TODO: Add documentation.
           TIMED_SCOPE(addAllLociTimer, "add-starts");
 
-          // TODO: Old method -- remove
-          /*
-          for (unsigned int i = 0; i < this->vargraph->nodes_size(); ++i)
-          {
-            const vg::Node &node = this->vargraph->node_at(i);
-            for (unsigned int j = 0; j < node.sequence().length(); j += step)
-            {
-              vg::Position s_point;
-              s_point.set_node_id(node.id());
-              s_point.set_offset(j);
+          bool any_excluded_node =
+            ( exclude_nodes == nullptr || exclude_nodes->size() == 0 ) ? false : true;
 
-              this->add_start(s_point);
-            }
-          }
-          */
-
-          // New algorithm
           seqan::Iterator<VarGraph, BFS<>>::Type itr(this->vargraph);
 
           unsigned long int prenode_remain = 0;
@@ -574,25 +545,19 @@ namespace grem
             seq = this->vargraph->node_by(*itr).sequence();
 
             unsigned long int cursor = (step - prenode_remain) % step;
-            if ( exclude_nodes == nullptr ||
+            if ( ! any_excluded_node ||
                 exclude_nodes->find(*itr) == exclude_nodes->end() ) {
               bool set = false;
               while (cursor < seq.length())
               {
-                vg::Position s_point;
-                s_point.set_node_id(*itr);
-                s_point.set_offset(cursor);
-                this->add_start(s_point);
+                this->add_start(*itr, cursor);
                 set = true;
 
                 cursor += step;
               }
 
-              if ( exclude_nodes != nullptr && exclude_nodes->size() != 0 && !set ) {
-                vg::Position s_point;
-                s_point.set_node_id(*itr);
-                s_point.set_offset(0);
-                this->add_start(s_point);
+              if ( any_excluded_node && !set && maximal ) {
+                this->add_start(*itr, 0);
                 set = true;
               }
             }
