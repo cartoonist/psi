@@ -211,7 +211,12 @@ namespace grem
       typedef VarGraph::NodeID Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
-      typedef std::vector< Value > TSet;        /**< @brief Used as a buffer. */
+      typedef void* TSet;
+      typedef struct {
+        VarGraph::NodeID start;                 /**< @brief Start node ID. */
+        VarGraph::NodeID buffer;                /**< @brief Buffer node ID. 0=nothing */
+        bool end;                               /**< @brief End flag. */
+      } TState;
     };  /* ----------  end of struct Backtracker  ---------- */
 
   template < typename TSpec = void >
