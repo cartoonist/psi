@@ -31,6 +31,8 @@ namespace grem {
     bool at_end ( GraphIter<TGraph, TSpec> &it );
   template < typename TGraph, typename TSpec >                      // begin
     GraphIter < TGraph, TSpec > begin ( const TGraph &g, typename TSpec::Value start=0 );
+  template < typename TGraph, typename TSpec >
+    void go_begin ( GraphIter<TGraph, TSpec> &it, typename TSpec::Value start=0 );
   template < typename TGraph, typename TSpec >                      // level
     typename TSpec::Level level ( GraphIter< TGraph, TSpec > &it );
 
@@ -67,6 +69,9 @@ namespace grem {
         at_end < TGraph, TSpec > ( GraphIter < TGraph, TSpec > &it );
       friend GraphIter<TGraph, TSpec>
         begin < TGraph, TSpec > ( const TGraph &g, typename TSpec::Value start );
+      friend void
+        go_begin < TGraph, TSpec >
+        ( GraphIter<TGraph, TSpec> &it, typename TSpec::Value start );
 
       /* Meta-functions specific for BFS graph iterator. */
       friend typename TSpec::Level

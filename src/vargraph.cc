@@ -280,6 +280,26 @@ namespace grem
     }
 
   template < >
+    void go_begin ( GraphIter < VarGraph, BFS<> > &it,
+        BFS<>::Value start )
+    {
+      BFS<>::Value start_node_id;
+
+      if ( start != 0 ) {
+        start_node_id = start;
+      }
+      else {
+        start_node_id = it.vargraph_ptr->node_at(0).id();
+      }
+
+      it.visiting_buffer.clear();
+      it.visiting_buffer.push_back ( std::make_pair ( start_node_id, 0 ) );
+      it.visited.clear();
+      it.visited.insert ( std::make_pair ( start_node_id, 0 ) );
+      it.itr_value = it.visiting_buffer.front().first;
+    }  /* -----  end of template function go_begin  ----- */
+
+  template < >
     BFS <>::Level level( GraphIter < VarGraph, BFS <> > & it )
     {
       if ( !it.visiting_buffer.empty() ) {
@@ -354,6 +374,25 @@ namespace grem
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
+
+  template < >
+    void go_begin ( GraphIter < VarGraph, Backtracker<> > &it,
+        Backtracker<>::Value start )
+    {
+      Backtracker<>::Value start_node_id;
+
+      if ( start != 0 ) {
+        start_node_id = start;
+      }
+      else {
+        start_node_id = it.state.start;  // Re-use stored start node.
+      }
+
+      it.itr_value = start_node_id;
+      it.state.buffer = 0;  // Re-set buffer.
+      it.state.end = false;  // Re-set at-end flag.
+      it.visiting_buffer.clear();
+    }  /* -----  end of template function go_begin  ----- */
 
   /* Member functions specialization. */
 
@@ -442,6 +481,24 @@ namespace grem
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
+
+  template < >
+    void go_begin ( GraphIter < VarGraph, Haplotyper<> > &it,
+        Haplotyper<>::Value start )
+    {
+      Haplotyper<>::Value start_node_id;
+
+      if ( start != 0 ) {
+        start_node_id = start;
+      }
+      else {
+        start_node_id = it.state.start;  // Re-use start node.
+      }
+
+      it.itr_value = start_node_id;
+      it.state.end = false;  // Re-set at-end flag.
+      it.visited.clear();
+    }  /* -----  end of template function go_begin  ----- */
 
   /* Member functions specialization. */
 
