@@ -25,43 +25,64 @@ ALL_SOURCES  += $(wildcard ${TESTDIR}/*.h)
 COMPILE.proto = protoc -I=${PROTODIR}/ --cpp_out=${SRCDIR}/
 
 # Specifying phony targets.
-.PHONY: all debug test doc tags clean distclean
+.PHONY: all release benchmark debug test doc tags clean distclean
 # Specifying precious targets.
 .PRECIOUS: ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h
 
-all: ${PROTO_SRCS}
-	make -C ${SRCDIR}
+## Functions:
+define echotitle
+	@echo
+	@tput setaf 2
+	@echo "$1"
+	@tput sgr0
+	@echo
+endef
+
+all: release
+
+release: ${PROTO_SRCS}
+	$(call echotitle,"Building sources...")
+	@make -C ${SRCDIR} BUILD=release
+
+benchmark: ${PROTO_SRCS}
+	$(call echotitle,"Building sources for benchmark...")
+	@make -C ${SRCDIR} BUILD=release MACROS=-DGREM_DEBUG=1
 
 debug: ${PROTO_SRCS}
-	make -C ${SRCDIR} MACROS=-DGREM_DEBUG=1
+	$(call echotitle,"Building sources for debug...")
+	@make -C ${SRCDIR} BUILD=debug
 
 ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: ${PROTODIR}/%.proto
+	$(call echotitle,"Compiling protocol buffers...")
 	${COMPILE.proto} $<
 
-test: all
-	@echo
-	@echo "Building tests..."
-	@echo
+test: benchmark
+	$(call echotitle,"Building tests...")
 	@make -C ${TESTDIR}
-	@echo
-	@echo "Running tests..."
-	@echo
+	$(call echotitle,"Running tests...")
 	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c {}
 
+test-debug: debug
+	$(call echotitle,"Building tests for debug...")
+	@make -C ${TESTDIR} debug
+
 doc:
+	$(call echotitle,"Generating source code documentation...")
 	doxygen
 
 tags:
+	$(call echotitle,"Updating ctags...")
 	ctags ${ALL_SOURCES}
 
-install:
-	install -v ${BINDIR}/grem ${PREFIX}/bin
+install: all
+	$(call echotitle,"Installing binaries...")
+	@install -v ${BINDIR}/release/grem ${PREFIX}/bin
 
 clean:
-	make -C ${SRCDIR} $@
-	make -C ${TESTDIR} $@
+	@make -C ${SRCDIR} $@
+	@make -C ${TESTDIR} $@
 
-distclean: clean
-	make -C ${SRCDIR} $@
+distclean:
+	@make -C ${SRCDIR} $@
 	rm -f ${SRCDIR}/*.pb.cc ${SRCDIR}/*.pb.h
-	make -C ${TESTDIR} $@
+	@make -C ${TESTDIR} $@

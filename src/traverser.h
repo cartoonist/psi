@@ -18,6 +18,8 @@
 #ifndef TRAVERSER_H__
 #define TRAVERSER_H__
 
+#include <algorithm>
+#include <iterator>
 #include <vector>
 #include <functional>
 #include <unordered_set>
@@ -140,6 +142,9 @@ namespace grem
           { return this->reads; }
 
           inline const Dna5QStringSetIndex < TIndexSpec > &get_reads_index()
+          { return this->reads_index; }
+
+          inline Dna5QStringSetIndex < TIndexSpec > &mutable_get_reads_index()
           { return this->reads_index; }
 
           inline unsigned int          get_seed_len()
@@ -424,12 +429,17 @@ namespace grem
             if ( n == 0 ) return;
 
             seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
-            std::vector < VarGraph::NodeID > new_hap;
             seqan::Dna5QString new_path;
+            std::vector < VarGraph::NodeID > new_hap;
+
+            new_hap.reserve ( this->vargraph->nodes_size() );
+            covered_nodes.reserve ( covered_nodes.size() + this->vargraph->nodes_size() );
+
             for ( int i = 0; i < n; ++i ) {
               get_uniq_haplotype ( new_hap, hap_itr );
 
-              for ( auto node : new_hap ) covered_nodes.insert (node);
+              std::copy ( new_hap.begin(), new_hap.end(),
+                  std::inserter ( covered_nodes, covered_nodes.end() ) );
 
               new_path = this->vargraph->get_string ( new_hap );
 
@@ -441,6 +451,8 @@ namespace grem
 
               new_hap.clear();
             }
+
+            LOG(INFO) << "Picked " << n << " path(s).";
           }  /* -----  end of function pick_paths  ----- */
 
         /**
@@ -456,10 +468,14 @@ namespace grem
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
         inline void
-          seeds_on_paths ( Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index,
+          seeds_on_paths ( Dna5QStringSetIndex < seqan::IndexEsa<> > &paths_index,
               typename TPathTraverser::Param trav_params,
               std::function< void(typename TPathTraverser::Output const &) > callback )
           {
+            if ( length ( indexText ( paths_index ) ) == 0 ) return;
+
+            LOG(INFO) << "Finding seeds on paths...";
+
             // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
             typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
             typedef typename TPathTraverser::IndexType TReadsIndexSpec;
@@ -469,16 +485,23 @@ namespace grem
             typedef seqan::Iterator < TSimpleSeedSet >::Type TSeedIterator;
 
             TFineIterator < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
-            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr (trav_params.get_reads_index());
+            TFineIterator < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
 
             TSimpleSeedSet seeds_set;
             kmer_exact_matches < TPathIndex, TReadsIndex > ( seeds_set, paths_itr, reads_itr,
                 trav_params.get_seed_len() );
 
+            // :TODO:Tue Mar 21 10:30:\@cartoonist: Remove this log message.
+            LOG(INFO) << "Number of seeds found on paths: " << length ( seeds_set );
+
             for ( TSeedIterator it = begin ( seeds_set, seqan::Standard() );
                 it != end ( seeds_set, seqan::Standard() );
                 ++it )
+            {
               callback ( *it );
+            }
+
+            LOG(INFO) << "Finding seeds on paths: Done.";
 
           }  /* -----  end of method GraphTraverser::seeds_on_paths  ----- */
 
@@ -552,7 +575,7 @@ namespace grem
 
             unsigned long int cursor = (step - prenode_remain) % step;
             if ( exclude_nodes == nullptr ||
-                (*exclude_nodes).find(*itr) == (*exclude_nodes).end() ) {
+                exclude_nodes->find(*itr) == exclude_nodes->end() ) {
               bool set = false;
               while (cursor < seq.length())
               {
@@ -565,7 +588,7 @@ namespace grem
                 cursor += step;
               }
 
-              if (!set) {
+              if ( exclude_nodes != nullptr && exclude_nodes->size() != 0 && !set ) {
                 vg::Position s_point;
                 s_point.set_node_id(*itr);
                 s_point.set_offset(0);
@@ -591,6 +614,10 @@ namespace grem
 
             ++itr;
           }
+
+          LOG(INFO) << "Number of starting points selected (from "
+                    << this->vargraph->nodes_size() << "): "
+                    << this->starting_points.size();
         }
 
         inline std::vector< vg::Position > const & get_starting_points()

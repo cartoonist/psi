@@ -18,6 +18,8 @@
 #ifndef  UTILS_H__
 #define  UTILS_H__
 
+#include <string>
+
 #include <seqan/seq_io.h>
 
 #include "sequence.h"
@@ -38,7 +40,7 @@ namespace grem {
         seqan::SeqFileIn &infile, unsigned int num_record )
     {
       CharStringSet quals;
-      seqan::readRecords ( records.str, records.id, quals, infile, num_record );
+      seqan::readRecords ( records.id, records.str, quals, infile, num_record );
       assignQualities ( records.str, quals );
       return;
     }  /* -----  end of function readRecords  ----- */

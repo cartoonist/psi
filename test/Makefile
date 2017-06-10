@@ -21,12 +21,14 @@ CXX          ?= g++
 # Compiler flags.
 MACROS       ?= -DGREM_DEBUG=1 -DTESTDIR=\"${TEST_PATH}\"
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
-CXXFLAGS      = -O3
+CXXFLAGS     ?= -O3
 LIBS_CFLAGS  := -I ${SRCDIR}/ \
 	        -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \
 	        $(shell pkg-config --cflags protobuf)
 LDFLAG       := -fopenmp \
+	        -lz \
+		-lbz2 \
 	        -lrt \
 	        $(shell pkg-config --libs protobuf)
 
@@ -35,18 +37,21 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGETS       := ${BINDIR}/tests_vargraph ${BINDIR}/tests_bfs ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/tests_bfs ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
 LINK          = ${CXX} ${LDFLAG} -o $@
-MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MF $@
+MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MG -MF $@
 
 # Specifying phony targets.
 .PHONY: all clean distclean
 
 # building target.
 all: ${TARGETS}
+
+debug: CXXFLAGS := -g
+debug: all
 
 ${BINDIR}/test_linear: linear.o
 	${LINK} $^
@@ -55,6 +60,12 @@ ${BINDIR}/tests_bfs: tests_bfs.o tests_main.o ${SRCDIR}/vargraph.o ${SRCDIR}/vg.
 	${LINK} $^
 
 ${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o ${SRCDIR}/vargraph.o ${SRCDIR}/vg.pb.o
+	${LINK} $^
+
+${BINDIR}/tests_traverser: tests_traverser.o tests_main.o ${SRCDIR}/vargraph.o ${SRCDIR}/vg.pb.o
+	${LINK} $^
+
+${BINDIR}/tests_indexiter: tests_indexiter.o tests_main.o
 	${LINK} $^
 
 # general rule for compiling cc files.
@@ -73,4 +84,8 @@ ${DPMDIR}/%.d: %.cc
 	${MAKE_DMAKES} -MT $*.o -MT $@ $<
 
 # include *.d Makefiles.
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addprefix ${DPMDIR}/, ${SOURCES:%.cc=%.d})
+endif
+endif

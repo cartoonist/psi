@@ -4,7 +4,7 @@
  * Filename: grem.cpp
  *
  * Created: Tue Nov 08, 2016  16:48
- * Last modified: Thu Mar 16, 2017  11:14
+ * Last modified: Mon Mar 27, 2017  11:36
  *
  * Description: grem main function.
  *
@@ -89,18 +89,19 @@ int main(int argc, char *argv[])
   LOG(INFO) << "- Reads index type: " << index_to_str(options.index);
   LOG(INFO) << "- Starting points interval: " << options.start_every;
   LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
+  LOG(INFO) << "- Number of paths: " << options.path_num;
 
   if (options.index == IndexType::Esa)
   {
     // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
     //   inferenced by its arguments.
-    find_seeds<seqan::IndexEsa<>, seqan::TopDown<>>(options);
+    find_seeds<seqan::IndexEsa<>, seqan::TopDown< seqan::ParentLinks<> >>(options);
   }
   else if (options.index == IndexType::Wotd)
   {
     // :TODO:Tue Mar 14 22:48:\@cartoonist: function template parameters can be
     //   inferenced by its arguments.
-    find_seeds<seqan::IndexWotd<>, seqan::TopDown<>>(options);
+    find_seeds<seqan::IndexWotd<>, seqan::TopDown< seqan::ParentLinks<> >>(options);
   }
   else
   {
