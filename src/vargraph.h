@@ -4,7 +4,6 @@
  * Filename: vargraph.h
  *
  * Created: Fri Nov 11, 2016  01:08
- * Last modified: Thu Apr 06, 2017  01:39
  *
  * Description: VarGraph class definition.
  *
@@ -42,6 +41,7 @@ namespace grem
       // typedefs
       typedef vg::Node Node;
       typedef uint64_t NodeID;   /**< @brief Node ID type. */
+      typedef std::unordered_set< NodeID > NodeCoverage;
 
       // Constructors
       VarGraph(std::ifstream &ifs, std::string &name_) : name(name_)
