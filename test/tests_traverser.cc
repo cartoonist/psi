@@ -46,9 +46,9 @@ SCENARIO ( "Adding starting points for seed finding using Mapper", "[traverser]"
     unsigned int stepsize = 50;
     WHEN ( "Step size is " + std::to_string ( stepsize ) + " and the exclude nodes list is non-empty." )
     {
-      std::unordered_set < VarGraph::NodeID > excluded_nodes;
+      std::vector < VarGraph::NodeCoverage > excluded_nodes;
       excluded_nodes.insert ( 1 );
-      mapper.add_all_loci ( stepsize, &excluded_nodes );
+      mapper.add_all_loci ( excluded_nodes, stepsize );
 
       THEN ( "all node should be picked up as starting points except the excluded ones." )
       {

@@ -52,9 +52,10 @@ using namespace grem;
   void
 startup ( const Options & options );
 
-template < typename TIndex >
+template < typename TIndex, typename TCoverage >
   bool
-load_paths_index ( TIndex &paths_index, std::string &index_file, unsigned int path_num );
+load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_nodes,
+    const std::string &index_file, unsigned int path_num );
 
 template < typename TIndexSpec >
   void
@@ -164,23 +165,31 @@ startup ( const Options & options )
 }
 
 
-template < typename TIndex >
+template < typename TIndex, typename TCoverage >
   bool
-load_paths_index ( TIndex &paths_index, std::string &index_file, unsigned int path_num )
+load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_nodes,
+    const std::string &index_file, unsigned int path_num )
 {
-  if ( open ( paths_index, index_file.c_str() ) ) {
-    LOG(INFO) << "Paths index found. Loaded.";
+  if ( !open ( paths_index, index_file.c_str() ) ||
+     !load_paths_coverage ( paths_covered_nodes, index_file, path_num ))
+  {
+    LOG(INFO) << "No valid paths index found. Creating one...";
+    return false;
+  }
 
-    LOG(INFO) << "Verifying loaded paths index...";
-    auto nof_paths = length ( getFibre ( paths_index, FibreText() ) );
-    if ( nof_paths == path_num ) return true;
+  LOG(INFO) << "Paths index found. Loaded.";
 
+  LOG(INFO) << "Verifying loaded paths index...";
+  auto nof_paths = length ( getFibre ( paths_index, FibreText() ) );
+  if ( nof_paths != path_num ) {
     LOG(WARNING) << "The number of paths in the index file (" << nof_paths << ")"
       " and the given parameter (" << path_num << ") are mismatched.";
     LOG(INFO) << "Updating paths index...";
+
+    return false;
   }
 
-  return false;
+  return true;
 }
 
 
@@ -193,13 +202,16 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   Mapper< PathTraverser< TIndexSpec > > mapper(vargraph);
 
   Dna5QStringSet paths;
-  std::unordered_set < VarGraph::NodeID > covered_nodes;
+  std::vector < VarGraph::NodeCoverage > paths_covered_nodes;
   Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index;
 
-  // :TODO:Thu Apr 13 03:18:\@cartoonist: Load covered_nodes.
-  if ( !load_paths_index ( paths_index, paths_index_file, path_num ) )
-  {
-    mapper.pick_paths ( paths, covered_nodes, path_num );
+  // :TODO:Thu Apr 13 03:18:\@cartoonist: Load paths_covered_nodes.
+  if ( path_num == 0 ) {
+    LOG(INFO) << "Specified number of path is 0. Skipping paths indexing...";
+  }
+  else if ( !load_paths_index
+      ( paths_index, paths_covered_nodes, paths_index_file, path_num ) ) {
+    mapper.pick_paths ( paths, paths_covered_nodes, path_num );
     paths_index = Dna5QStringSetIndex< seqan::IndexEsa<> > (paths);
 
     TIMED_BLOCK(pathIndexingTimer, "path-indexing")
@@ -208,11 +220,13 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
       create_index ( paths_index );
       LOG(INFO) << "Saving paths index...";
       save ( paths_index, paths_index_file.c_str() );
+      save_paths_coverage ( paths_covered_nodes, paths_index_file );
     }
   }
 
   mapper.add_all_loci ( start_every, &covered_nodes );
 
+   // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;
   std::unordered_set< Dna5QStringSetPosition > covered_reads;
   std::function< void(typename PathTraverser< TIndexSpec >::Output const &) > write =
