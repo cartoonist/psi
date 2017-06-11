@@ -22,7 +22,8 @@
 #include <iterator>
 #include <vector>
 #include <functional>
-#include <unordered_set>
+#include <fstream>
+#include <memory>
 
 #include <seqan/seeds.h>
 
@@ -408,7 +409,7 @@ namespace grem
          *  @brief  Pick n paths from the variation graph.
          *
          *  @param[out]  paths The set of generated paths are added to this string set.
-         *  @param[out]  covered_nodes The set of covered nodes by the generated paths.
+         *  @param[out]  paths_covered_nodes The vector of `NodeCoverage` of each path.
          *  @param[in]  n Number of paths.
          *
          *  This method generates a set of (probably) unique whole-genome path from the
@@ -416,7 +417,7 @@ namespace grem
          */
         void
           pick_paths ( Dna5QStringSet &paths,
-              std::unordered_set < VarGraph::NodeID > &covered_nodes, int n )
+              std::vector< VarGraph::NodeCoverage > &paths_covered_nodes, int n )
           {
             if ( n == 0 ) return;
 
@@ -427,15 +428,18 @@ namespace grem
             seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
             std::vector < VarGraph::NodeID > new_path;
             seqan::Dna5QString new_path_str;
+            VarGraph::NodeCoverage covered_nodes;
 
             new_path.reserve ( this->vargraph->nodes_size() );
-            covered_nodes.reserve ( covered_nodes.size() + this->vargraph->nodes_size() );
+            covered_nodes.reserve ( this->vargraph->nodes_size() );
+            paths_covered_nodes.reserve ( n );
 
             for ( int i = 0; i < n; ++i ) {
               get_uniq_haplotype ( new_path, hap_itr );
 
               std::copy ( new_path.begin(), new_path.end(),
                   std::inserter ( covered_nodes, covered_nodes.end() ) );
+              paths_covered_nodes.push_back ( covered_nodes );
 
               new_path_str = this->vargraph->get_string ( new_path );
 
@@ -446,6 +450,7 @@ namespace grem
               appendValue ( paths, new_path_str );
 
               new_path.clear();
+              covered_nodes.clear();
             }
           }  /* -----  end of function pick_paths  ----- */
 
@@ -671,6 +676,86 @@ namespace grem
           }
         }
     };
+
+  /* interface functions */
+
+  /**
+   *  @brief  Save coverage (nodes covered by each path) of the picked paths.
+   *
+   *  @param[in]  paths_covered_nodes The vector of `NodeCoverage` of each path.
+   *  @param[in]  paths_index_file The file path prefix of the paths index.
+   *
+   *  It saves the paths coverage; i.e. the list of node IDs covered by each path,
+   *  separatedly in files. These files in conjuction with the paths index can be
+   *  considered as an offline index for seed finding.
+   */
+  void
+    save_paths_coverage ( std::vector< VarGraph::NodeCoverage > &paths_covered_nodes,
+        const std::string &path_prefix )
+    {
+      std::ofstream file_stream;
+      for ( unsigned int i = 0; i < paths_covered_nodes.size(); ++i ) {
+        const auto &covered_nodes = paths_covered_nodes[i];
+        file_stream.open ( path_prefix + "_path_" + std::to_string ( i ),
+            std::ofstream::out | std::ofstream::binary );
+
+        uint64_t set_size = covered_nodes.size();
+        file_stream.write
+          ( reinterpret_cast<char*>( &set_size ), sizeof ( uint64_t ) );
+        for ( const auto &node_id : covered_nodes ) {
+          file_stream.write
+            ( reinterpret_cast<const char*>( &node_id ), sizeof ( VarGraph::NodeID ) );
+        }
+
+        file_stream.close();
+      }
+    }  /* -----  end of function save_paths_coverage  ----- */
+
+  /**
+   *  @brief  Load coverage (node covered by each path) from file.
+   *
+   *  @param[out]  paths_covered_nodes The vector of `NodeCoverage` to be filled.
+   *  @param[in]   path_prefix The file path prefix of the saved paths.
+   *  @return true if it successfully load the node coverage of the paths from file;
+   *          otherwise false.
+   *
+   *  It reads the saved files and insert each node ID to the unordered set. The file is
+   *  prefixed by the number of node IDs stored in the file.
+   */
+  bool
+    load_paths_coverage ( std::vector< VarGraph::NodeCoverage > &paths_covered_nodes,
+        const std::string &path_prefix, unsigned int path_num )
+    {
+      std::ifstream file_stream;
+      VarGraph::NodeCoverage covered_nodes;
+      VarGraph::NodeID node_id;
+
+      paths_covered_nodes.reserve ( path_num );
+
+      for ( unsigned int i = 0; i < path_num; ++i ) {
+        file_stream.open ( path_prefix + "_path_" + std::to_string ( i ),
+            std::ifstream::in | std::ifstream::binary );
+        if ( !file_stream ) {
+          paths_covered_nodes.clear();
+          return false;
+        }
+
+        uint64_t set_size;
+        file_stream.read ( reinterpret_cast<char*>( &set_size ), sizeof ( uint64_t ) );
+        covered_nodes.reserve ( set_size );
+        for ( unsigned int j = 0; j < set_size; ++j ) {
+          file_stream.read
+            ( reinterpret_cast<char*>( &node_id ), sizeof ( VarGraph::NodeID ) );
+          covered_nodes.insert ( node_id );
+        }
+        paths_covered_nodes.push_back ( covered_nodes );
+
+        file_stream.close();
+        covered_nodes.clear();
+      }
+
+      return true;
+    }  /* -----  end of function load_paths_coverage  ----- */
 }
 
 #endif
