@@ -540,9 +540,10 @@ namespace grem
               if ( ! this->vargraph->is_branch ( start_node_id ) &&
                   covered_by ( start_node_id, paths_coverage ) &&
                   ( label_len >= kmer_len ||
-                    ( this->vargraph->has_fwd_edges ( start_node ) &&
-                      label_len + this->vargraph->fwd_edges ( start_node )[0]
-                        .to().sequence().length() >= kmer_len ) ) ) {
+                    ( this->vargraph->has_fwd_edge ( start_node_id ) &&
+                      label_len + this->vargraph->node_by (
+                        this->vargraph->fwd_edges ( start_node_id ).at(0)->to() )
+                          .sequence().length() >= kmer_len ) ) ) {
                   continue;
               }
 

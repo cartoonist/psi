@@ -198,8 +198,8 @@ namespace grem
    *  This function simply checks if a node is on any of the path in the given set of
    *  paths.
    */
-    void
-  covered_by ( VarGraph::NodeID & node_id,
+    inline bool
+  covered_by ( const VarGraph::NodeID & node_id,
       std::vector< VarGraph::NodeCoverage > &paths_coverage )
   {
     for ( unsigned int path_idx = 0; path_idx < paths_coverage.size(); ++path_idx ) {
@@ -221,11 +221,11 @@ namespace grem
    *  This function simply checks if a node is on any of the path in the given set of
    *  paths.
    */
-    void
+    inline bool
   covered_by ( const VarGraph::Node & node,
       std::vector< VarGraph::NodeCoverage > &paths_coverage )
   {
-    return covered_by ( node.id(), paths_coverage );
+    return covered_by ( static_cast<VarGraph::NodeID>( node.id() ), paths_coverage );
   }  /* -----  end of function covered_by  ----- */
   /* END OF graph interface functions  ----------------------------------------- */
 
