@@ -32,6 +32,7 @@ using namespace grem;
 
 // :TODO:Fri Mar 17 00:52:\@cartoonist: Mapper -> refactor
 // :TODO:Fri Mar 17 00:52:\@cartoonist: traverser -> refactor
+// :TODO:Sun Jun 11 15:14:\@cartoonist: Fix this test scenario.
 SCENARIO ( "Adding starting points for seed finding using Mapper", "[traverser]" )
 {
   GIVEN ( "A small variation graph and a graph seed finder" )
@@ -61,6 +62,52 @@ SCENARIO ( "Adding starting points for seed finding using Mapper", "[traverser]"
         }
 
         REQUIRE ( --counter == vargraph.nodes_size() );
+      }
+    }
+  }
+}
+
+SCENARIO ( "Serialize/deserialize paths nodes coverage into/from the file", "[traverser]" )
+{
+  GIVEN ( "Nodes coverage of two paths" )
+  {
+    std::vector< VarGraph::NodeCoverage > paths_node_coverage;
+    VarGraph::NodeCoverage covered_nodes;
+    unsigned int paths_num = 2;
+    std::string file_path = "/tmp/test_path_coverage";
+
+    for ( unsigned int i = 0; i < paths_num; ++i ) {
+      for ( VarGraph::NodeID j = 100*(i+1); j < 100*(i+1) + 12; ++j ) {
+        covered_nodes.insert ( j );
+      }
+      paths_node_coverage.push_back ( covered_nodes );
+      covered_nodes.clear();
+    }
+
+    WHEN ( "Serialize it to the file" )
+    {
+      save_paths_coverage ( paths_node_coverage, file_path );
+
+      THEN ( "Deserializing should yield the same coverage" )
+      {
+        std::vector< VarGraph::NodeCoverage > paths_coverage_reloaded;
+        load_paths_coverage ( paths_coverage_reloaded, file_path, paths_num );
+
+        std::vector< VarGraph::NodeID > sorted_node_ids;
+        REQUIRE ( paths_coverage_reloaded.size() == paths_num );
+        for ( unsigned int i = 0; i < paths_num; ++i ) {
+          REQUIRE ( paths_coverage_reloaded[i].size() == 12 );
+          for ( const auto &node_id : paths_coverage_reloaded[i] ) {
+            sorted_node_ids.push_back ( node_id );
+          }
+          unsigned int j = 0;
+          std::sort ( sorted_node_ids.begin(), sorted_node_ids.end() );
+          for ( const auto &node_id : sorted_node_ids ) {
+            REQUIRE ( node_id == 100*(i+1) + j );
+            ++j;
+          }
+          sorted_node_ids.clear();
+        }
       }
     }
   }
