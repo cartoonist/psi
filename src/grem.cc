@@ -224,7 +224,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     }
   }
 
-  mapper.add_all_loci ( start_every, &covered_nodes );
+  mapper.add_all_loci ( paths_covered_nodes, seed_len, start_every );
 
    // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;

@@ -18,6 +18,7 @@
 #ifndef VARGRAPH_H__
 #define VARGRAPH_H__
 
+#include <algorithm>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -157,6 +158,76 @@ namespace grem
       void add_node(vg::Node *node);
       void add_edge(vg::Edge *edge);
   };
+
+  /* Graph interface functions  ------------------------------------------------ */
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  path the given path to check as a vector of node IDs
+   *  @param  paths_coverage a set of paths as a vector of `VarGraph::NodeCoverage`
+   *  @return true if the given path is a subset of a path in the paths set, otherwise
+   *          false.
+   *
+   *  This function checks if all nodes of the given path is covered by at least one
+   *  path in the given set of paths.
+   */
+    inline bool
+  covered_by ( std::vector< VarGraph::NodeID > &path,
+      std::vector< VarGraph::NodeCoverage > &paths_coverage )
+  {
+    for ( unsigned int path_idx = 0; path_idx < paths_coverage.size(); ++path_idx ) {
+      const VarGraph::NodeCoverage &coverage = paths_coverage[path_idx];
+      auto &&on_the_path = [&coverage]( VarGraph::NodeID i ) {
+        return coverage.find ( i ) != coverage.end ();
+      };
+
+      if ( std::all_of ( path.begin(), path.end(), on_the_path ) ) return true;
+    }
+
+    return false;
+  }  /* -----  end of function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a node is covered by a set of paths.
+   *
+   *  @param  node_id the ID of the given node to check
+   *  @param  paths_coverage a set of paths as a vector of `VarGraph::NodeCoverage`
+   *  @return true if the node is on one of the path in the paths set, otherwise false.
+   *
+   *  This function simply checks if a node is on any of the path in the given set of
+   *  paths.
+   */
+    void
+  covered_by ( VarGraph::NodeID & node_id,
+      std::vector< VarGraph::NodeCoverage > &paths_coverage )
+  {
+    for ( unsigned int path_idx = 0; path_idx < paths_coverage.size(); ++path_idx ) {
+      const VarGraph::NodeCoverage &coverage = paths_coverage[path_idx];
+
+      if ( coverage.find ( node_id ) != coverage.end () ) return true;
+    }
+
+    return false;
+  }  /* -----  end of function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a node is covered by a set of paths.
+   *
+   *  @param  node_id the given node to check
+   *  @param  paths_coverage a set of paths as a vector of `VarGraph::NodeCoverage`
+   *  @return true if the node is on one of the path in the paths set, otherwise false.
+   *
+   *  This function simply checks if a node is on any of the path in the given set of
+   *  paths.
+   */
+    void
+  covered_by ( const VarGraph::Node & node,
+      std::vector< VarGraph::NodeCoverage > &paths_coverage )
+  {
+    return covered_by ( node.id(), paths_coverage );
+  }  /* -----  end of function covered_by  ----- */
+  /* END OF graph interface functions  ----------------------------------------- */
 
   /* GRAPH ITERATORS  ============================================================ */
 

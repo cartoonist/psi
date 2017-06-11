@@ -516,9 +516,81 @@ namespace grem
           }
         }
 
-        inline void add_all_loci(unsigned int step=1,
-            std::unordered_set < VarGraph::NodeID > *exclude_nodes=nullptr,
-            bool maximal=true /* true = all included nodes should be picked up. */)
+        inline void add_all_loci(std::vector < VarGraph::NodeCoverage > &paths_coverage,
+            unsigned int kmer_len, unsigned int step=1)
+        {
+          if ( paths_coverage.size() == 0 ) return this->add_all_loci(step);
+
+          seqan::Iterator< VarGraph, Backtracker<> >::Type bt_itr ( this->vargraph );
+          std::vector< VarGraph::NodeID > trav_path;
+          unsigned int trav_len = 0;
+
+          // :TODO:Sun Jun 11 21:36:\@cartoonist: traverse the graph using BFS instead
+          //   of iterating over node list would be more cache oblivious.
+          for ( unsigned long int idx = 0; idx < this->vargraph->nodes_size(); ++idx ) {
+            const VarGraph::Node &start_node = this->vargraph->node_at ( idx );
+            VarGraph::NodeID start_node_id = start_node.id();
+            unsigned int label_len = start_node.sequence().length();
+
+            bool set = false;
+            unsigned int init_offset = ( label_len < kmer_len - 1 ) ? 0 : label_len - kmer_len + 1;
+            for ( unsigned int offset = init_offset; offset < label_len; offset += step ) {
+              // :TODO:Mon May 22 14:40:\@cartoonist: missed some locations when the
+              //     the length of branch node's label is less than k.
+              if ( ! this->vargraph->is_branch ( start_node_id ) &&
+                  covered_by ( start_node_id, paths_coverage ) &&
+                  ( label_len >= kmer_len ||
+                    ( this->vargraph->has_fwd_edges ( start_node ) &&
+                      label_len + this->vargraph->fwd_edges ( start_node )[0]
+                        .to().sequence().length() >= kmer_len ) ) ) {
+                  continue;
+              }
+
+              if ( set ) {
+                this->add_start( start_node_id, offset );
+                continue;
+              }
+
+              go_begin ( bt_itr, start_node_id );
+
+              while ( !at_end( bt_itr ) ) {
+                while ( !at_end( bt_itr ) ) {
+                  trav_path.push_back ( *bt_itr );
+                  if ( *bt_itr != start_node_id ) {
+                    trav_len += this->vargraph->node_by ( *bt_itr ).sequence().length();
+                  }
+                  else {
+                    trav_len = label_len - offset;
+                  }
+
+                  if ( trav_len < kmer_len ) ++bt_itr;
+                  else break;
+                }
+
+                if ( ! covered_by ( trav_path, paths_coverage ) ) {
+                  this->add_start( start_node_id, offset );
+                  set = true;
+                  break;
+                }
+
+                --bt_itr;
+
+                VarGraph::NodeID poped_id = 0;
+                while ( !trav_path.empty() && poped_id != *bt_itr ) {
+                  poped_id = trav_path.back();
+                  trav_len -= this->vargraph->node_by ( poped_id ).sequence().length();
+                  trav_path.pop_back();
+                }
+              }
+            }
+          }
+
+          LOG(INFO) << "Number of starting points selected (from "
+                    << this->vargraph->nodes_size() << "): "
+                    << this->starting_points.size();
+        }
+
+        inline void add_all_loci(unsigned int step=1)
         {
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph. This means that for example add_all_loci(2) would add
@@ -528,9 +600,6 @@ namespace grem
           // **UPDATE** This algorithm use better approximation.
           // TODO: Add documentation.
           TIMED_SCOPE(addAllLociTimer, "add-starts");
-
-          bool any_excluded_node =
-            ( exclude_nodes == nullptr || exclude_nodes->size() == 0 ) ? false : true;
 
           seqan::Iterator<VarGraph, BFS<>>::Type itr(this->vargraph);
 
@@ -550,21 +619,10 @@ namespace grem
             seq = this->vargraph->node_by(*itr).sequence();
 
             unsigned long int cursor = (step - prenode_remain) % step;
-            if ( ! any_excluded_node ||
-                exclude_nodes->find(*itr) == exclude_nodes->end() ) {
-              bool set = false;
-              while (cursor < seq.length())
-              {
-                this->add_start(*itr, cursor);
-                set = true;
-
-                cursor += step;
-              }
-
-              if ( any_excluded_node && !set && maximal ) {
-                this->add_start(*itr, 0);
-                set = true;
-              }
+            while (cursor < seq.length())
+            {
+              this->add_start(*itr, cursor);
+              cursor += step;
             }
 
             unsigned long int new_remain;
