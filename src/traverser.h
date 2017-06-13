@@ -517,7 +517,7 @@ namespace grem
         }
 
         inline void add_all_loci(std::vector < VarGraph::NodeCoverage > &paths_coverage,
-            unsigned int kmer_len, unsigned int step=1)
+            unsigned int k, unsigned int step=1)
         {
           if ( paths_coverage.size() == 0 ) return this->add_all_loci(step);
 
@@ -533,17 +533,16 @@ namespace grem
             unsigned int label_len = start_node.sequence().length();
 
             bool set = false;
-            unsigned int init_offset = ( label_len < kmer_len - 1 ) ? 0 : label_len - kmer_len + 1;
+            unsigned int init_offset = ( label_len < k - 1 ) ? 0 : label_len - k + 1;
             for ( unsigned int offset = init_offset; offset < label_len; offset += step ) {
               // :TODO:Mon May 22 14:40:\@cartoonist: missed some locations when the
               //     the length of branch node's label is less than k.
               if ( ! this->vargraph->is_branch ( start_node_id ) &&
                   covered_by ( start_node_id, paths_coverage ) &&
-                  ( label_len >= kmer_len ||
-                    ( this->vargraph->has_fwd_edge ( start_node_id ) &&
-                      this->vargraph->node_by (
-                        this->vargraph->fwd_edges ( start_node_id ).at(0)->to() )
-                          .sequence().length() > kmer_len ) ) ) {
+                  this->vargraph->has_fwd_edge ( start_node_id ) &&
+                    this->vargraph->node_by (
+                      this->vargraph->fwd_edges ( start_node_id ).at(0)->to() )
+                      .sequence().length() > k ) {
                   continue;
               }
 
@@ -564,7 +563,7 @@ namespace grem
                     trav_len = label_len - offset;
                   }
 
-                  if ( trav_len < kmer_len ) ++bt_itr;
+                  if ( trav_len < k ) ++bt_itr;
                   else break;
                 }
 
