@@ -61,7 +61,7 @@ template < typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-    std::string paths_index_file, TIndexSpec const /* Tag */ );
+    std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ );
 
   seqan::ArgumentParser::ParseResult
 parse_args ( Options & options, int argc, char *argv[] );
@@ -147,6 +147,7 @@ startup ( const Options & options )
                               options.start_every,
                               options.path_num,
                               options.paths_index_file,
+                              options.nomapping,
                               UsingIndexWotd() );
                           break;
     case IndexType::Esa: find_seeds ( vargraph,
@@ -156,6 +157,7 @@ startup ( const Options & options )
                              options.start_every,
                              options.path_num,
                              options.paths_index_file,
+                             options.nomapping,
                              UsingIndexEsa() );
                          break;
     default: throw std::runtime_error("Index not implemented.");
@@ -197,7 +199,7 @@ template<typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-    std::string paths_index_file, TIndexSpec const /* Tag */ )
+    std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
 {
   Mapper< PathTraverser< TIndexSpec > > mapper(vargraph);
 
@@ -222,6 +224,11 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
       save ( paths_index, paths_index_file.c_str() );
       save_paths_coverage ( paths_covered_nodes, paths_index_file );
     }
+  }
+
+  if ( nomapping ) {
+    LOG(INFO) << "Skipping mapping as requested...";
+    return;
   }
 
   mapper.add_all_loci ( paths_covered_nodes, seed_len, start_every );
@@ -325,6 +332,9 @@ setup_argparser(seqan::ArgumentParser & parser)
   setValidValues(parser, "i", "SA ESA WOTD DFI QGRAM FM");
   setDefaultValue(parser, "i", "WOTD");
 
+  // no map -- just do the paths indexing phase
+  addOption(parser, seqan::ArgParseOption("x", "only-index", "Only build paths index and skip mapping."));
+
   // log file
   seqan::ArgParseOption logfile_arg("L", "log-file",
                                     "Sets default log file for existing and future loggers.",
@@ -362,6 +372,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue(options.path_num, parser, "path-num");
   getOptionValue(options.paths_index_file, parser, "paths-index");
   getOptionValue(indexname, parser, "index");
+  options.nomapping = isSet(parser, "only-index");
   getOptionValue(options.log_path, parser, "log-file");
   options.nologfile = isSet(parser, "no-log-file");
   options.quiet = isSet(parser, "quiet");

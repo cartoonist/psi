@@ -75,6 +75,7 @@ namespace grem
     std::string fq_path;
     std::string log_path;
     std::string paths_index_file;
+    bool nomapping;
     bool nologfile;
     bool nolog;
     bool quiet;
