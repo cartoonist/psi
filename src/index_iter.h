@@ -399,7 +399,7 @@ namespace grem {
       typename seqan::Iterator < TIndex, TopDownFine < TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
-  /* Top-down fine interator meta-function declarations  ------------------------- */
+  /* Top-down fine interator interface function declarations  -------------------- */
 
   /**
    *  @brief  Find k-mer exact matches between two texts.
@@ -519,7 +519,7 @@ namespace grem {
 
       } while ( !isRoot ( first ) );
     }  /* -----  end of template function kmer_exact_matches  ----- */
-  /* END OF Top-down fine interator meta-function declarations  ------------------ */
+  /* END OF Top-down fine interator interface function declarations  ------------- */
 
   template < typename TIter >
     TIterRawText < TIter >

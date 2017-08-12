@@ -2,8 +2,8 @@
  *    @file  sequence.h
  *   @brief  Sequence abstract data types.
  *
- *  Sequence header file contains type definitions, abstract data types, and helper meta-
- *  functions (mostly implemented at the top of SeqAn sequence library; i.e.
+ *  Sequence header file contains type definitions, abstract data types, and helper
+ *  interface functions (mostly implemented at the top of SeqAn sequence library; i.e.
  *  `seqan/sequence.h`) to work with sequences and sequence sets.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>

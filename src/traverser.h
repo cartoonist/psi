@@ -132,9 +132,10 @@ namespace grem
           // Constructors
           Param(const Dna5QRecords &reads_, unsigned int seed_len_)
           {
-            TIMED_SCOPE(readsIndexTimer, "index-read");
             this->reads = reads_;
-            this->reads_index = Dna5QStringSetIndex < TIndexSpec >(this->reads.str);
+            TIMED_BLOCK(readsIndexTimer, "index-reads") {
+              this->reads_index = Dna5QStringSetIndex < TIndexSpec >(this->reads.str);
+            }
             this->seed_len = seed_len_;
             TIMED_BLOCK(seedingTimer, "seeding") {
               this->seeds = seeding ( this->reads.str, this->seed_len,
