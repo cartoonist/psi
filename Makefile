@@ -65,6 +65,8 @@ test: benchmark
 test-debug: debug
 	$(call echotitle,"Building tests for debug...")
 	@make -C ${TESTDIR} debug
+	$(call echotitle,"Running tests...")
+	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*_d" | xargs -I{} sh -c {}
 
 doc:
 	$(call echotitle,"Generating source code documentation...")
