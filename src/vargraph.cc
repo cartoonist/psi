@@ -16,7 +16,6 @@
  */
 
 #include <functional>
-#include <random>
 #include <iostream>
 #include <ios>
 #include <exception>
@@ -478,6 +477,8 @@ namespace grem
       begin_itr.itr_value = start_node_id;
       begin_itr.state.start = start_node_id;
       begin_itr.state.end = false;
+      begin_itr.state.current_path.insert( begin_itr.itr_value );
+      begin_itr.state.setback = 0;
 
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
@@ -496,56 +497,124 @@ namespace grem
       }
 
       it.itr_value = start_node_id;
+      it.visiting_buffer.clear();
       it.state.end = false;  // Re-set at-end flag.
       it.visited.clear();
+      it.state.current_path.clear();
+      it.state.current_path.insert( it.itr_value );
+      it.state.setback = 0;
     }  /* -----  end of template function go_begin  ----- */
 
   /* Member functions specialization. */
 
   template < >
+    void
+    GraphIter < VarGraph, Haplotyper<> >::set_setback ( )
+    {
+      this->state.setback = (( this->visited.size() == 0 /* first path */||
+                               this->visited.size() % 2 /* odd */) ?
+                             this->visited.size() : this->visited.size() + 1 );
+    }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::set_setback  ----- */
+
+  /**
+   *  A setback path is a sequence of last 's' nodes of currently generating haplotype.
+   *  An unvisited setback path is a path that does not occur as a subset of any
+   *  previously generated haplotypes. This function search in adjacent nodes set for
+   *  a node that together with 's-1' previously selected nodes forms an unvisited
+   *  setback in order to cover more k-mers from all paths in the graph; i.e. generating
+   *  more diverse haplotypes.
+   */
+  template < >
     GraphIter < VarGraph, Haplotyper <> > &
     GraphIter < VarGraph, Haplotyper <> >::operator++ ( )
     {
-      Haplotyper<>::Value cnode_id = this->itr_value;
-      if ( !this->vargraph_ptr->has_fwd_edge ( cnode_id ) ) {    // No forward edges?
-        this->state.end = true;                                  // set at-end flag.
-        return *this;                                            // Return.
+      if ( !this->vargraph_ptr->has_fwd_edge ( this->itr_value ) ) {
+        this->state.end = true;
+        return *this;
       }
 
-      auto fwd_edges = this->vargraph_ptr->fwd_edges(cnode_id);  // Forward edges.
-      // Search for a forward node that is not in visited branches.
-      for ( auto e_itr = fwd_edges.begin(); e_itr != fwd_edges.end(); ++e_itr ) {
-        const Haplotyper<>::Value &next_node = ( *e_itr )->to();
-        if ( this->visited.find( next_node )                     // Visited?
-            != this->visited.end() ) {
-          continue;                                              // Next edge.
-        }
-
-        this->itr_value = next_node;                             // Not visited? Use it.
-        // Only nodes whose parent is a branch node are added to the visited node set.
-        if ( this->vargraph_ptr->is_branch ( cnode_id ) ) {      // Parent is branch?
-          this->visited.insert ( next_node );                    // Add to visited.
-        }
-        return *this;                                            // Found! Return.
+      if ( this->state.setback != 0 &&
+          this->visiting_buffer.size() >= this->state.setback ) {
+        this->visiting_buffer.pop_front();
       }
 
+      Haplotyper<>::Value next_candidate = 0;
+      auto fwd_edges = this->vargraph_ptr->fwd_edges ( this->itr_value );
+      if ( this->state.setback == 0 || fwd_edges.size() == 1 ) {
+        next_candidate = fwd_edges[0]->to();
+      }
+      else {
+        // Search for a forward node such that the setback path is not in previous paths.
+        for ( auto e : fwd_edges ) {
+          this->visiting_buffer.push_back ( e->to() );
+          if ( covered_by ( this->visiting_buffer, this->visited ) ) {  // Visited?
+            this->visiting_buffer.pop_back();
+            continue;                             // Next edge.
+          }
+          this->visiting_buffer.pop_back();       // No change to the iterator state.
+          next_candidate = e->to();               // Found!
+        }
+      }
+      // If no unvisited setback path found, use a node with least path coverage.
+      if ( next_candidate == 0 ) {
+        next_candidate = least_covered_adjacent ( *this->vargraph_ptr,
+            this->itr_value, this->visited );
+      }
       // If all forward edges are visited, pick one randomly with uniform distribution.
-      std::random_device rd;  // Will be used to obtain a seed for the random no. engine
-      std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-      std::uniform_int_distribution<> dis(0, fwd_edges.size() - 1);
-      this->itr_value = fwd_edges[dis(gen)]->to();
+      if ( next_candidate == 0 ) {
+        next_candidate =
+          get_random_adjacent ( ( *this->vargraph_ptr ),  this->itr_value );
+      }
+
+      this->itr_value = next_candidate;
+      if ( this->state.setback != 0 ) {
+        this->visiting_buffer.push_back ( this->itr_value );
+      }
+      this->state.current_path.insert( this->itr_value );
 
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator++  ----- */
 
   template < >
     GraphIter < VarGraph, Haplotyper <> > &
-    GraphIter < VarGraph, Haplotyper <> >::operator-- ( )
+    GraphIter < VarGraph, Haplotyper<> >::operator-- ( int )
     {
       this->itr_value = this->state.start;    // Reset the iterator to the start node.
+      this->visiting_buffer.clear();
+      if ( this->state.setback != 0 ) {
+        this->visiting_buffer.push_back( this->itr_value );
+      }
       this->state.end = false;                // Reset at-end flag.
+      this->state.current_path.clear();
+      this->state.current_path.insert( this->itr_value );
+      return *this;
+    }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::operator--  ----- */
+
+  template < >
+    GraphIter < VarGraph, Haplotyper <> > &
+    GraphIter < VarGraph, Haplotyper <> >::operator-- ( )
+    {
+      this->visited.push_back( this->state.current_path );
+      this->set_setback();
+      (*this)--;
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator--  ----- */
+
+  /**
+   *  @brief  Check if the given path is present in paths generated so far.
+   *
+   *  @param  path A container of node IDs indicating nodes in a path.
+   *  @return `true` if the path is present; `false` otherwise.
+   *
+   *  Check whether the given path is generated before or not.
+   */
+  template < >
+  template < typename TContainer >
+    bool
+    GraphIter < VarGraph, Haplotyper<> >::operator[] ( const TContainer &path )
+    {
+      return covered_by ( path, this->visited );
+    }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::operator[]  ----- */
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
 
@@ -554,23 +623,36 @@ namespace grem
   /**
    *  @brief  Simulate a unique haplotype.
    *
-   *  @param[out]  The simulated haplotype as a list of node IDs.
+   *  @param[out]  haplotype The simulated haplotype as a list of node IDs.
    *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @param[in]  tries Number of tries if the generated haplotype is not unique.
    *
    *  This function gets a Haplotyper graph iterator and generate a unique haplotype
    *  if available. The input Haplotyper iterator stores required information of the
    *  previous simulated haplotypes for which the iterator is used. So, in order to
-   *  simulate multiple unique haplotypes use the same iterator as the input.
+   *  simulate multiple unique haplotypes use the same iterator as the input. It tries
+   *  `tries` times to generated a unique haplotype.
    */
   void
     get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
-        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter )
+        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter,
+        int tries )
     {
-      --iter;                                 // reset the Haplotyper iterator.
-      while ( !at_end ( iter ) ) {
-        haplotype.push_back ( *iter );
-        ++iter;
-      }
+      do {
+        haplotype.clear();
+        while ( !at_end ( iter ) ) {
+          haplotype.push_back ( *iter );
+          ++iter;
+        }
+        if ( tries-- && iter [ haplotype ] ) {
+          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        }
+        else {
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          break;
+        }
+        /* trying again */
+      } while (true);
     }
 
   /* END OF Haplotyper iterator interface functions  ----------------------------- */
