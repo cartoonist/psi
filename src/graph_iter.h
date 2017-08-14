@@ -94,13 +94,18 @@ namespace grem {
 
         /* ====================  OPERATORS     ======================================= */
         typename TSpec::Value operator* ( ) { return this->itr_value; }
-        GraphIter &operator++ ( );
-        GraphIter &operator-- ( );
+        GraphIter &operator++ ( );  // prefix: go forward.
+        GraphIter &operator-- ( );  // prefix: go backward (reset) considering last traverse as history.
+        GraphIter &operator-- ( int );  // postfix: go backward (reset) without side effects.
+        template < typename T >     // traversal history query.
+          bool operator[] ( const T &param );
 
       private:
         /* ====================  METHODS       ======================================= */
-
+        /* Private constructor. */
         GraphIter() : vargraph_ptr(nullptr) {}
+        /* Internal methods. */
+        void set_setback ( );
 
         /* ====================  DATA MEMBERS  ======================================= */
 

@@ -477,11 +477,14 @@ namespace grem
     struct HaplotyperIter < VarGraph, TSpec > {
       typedef VarGraph::NodeID Value;
       typedef Value Level;
-      typedef void* TContainer;
-      typedef std::unordered_set < Value > TSet;
+      typedef std::deque< Value > TContainer;
+      /**< @brief Set of visited paths. */
+      typedef std::vector< VarGraph::NodeCoverage > TSet;
       typedef struct {
         Value start;                            /**< @brief Start node ID. */
         bool end;                               /**< @brief End flag. */
+        VarGraph::NodeCoverage current_path;
+        unsigned int setback;
       } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
 
