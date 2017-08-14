@@ -284,8 +284,8 @@ namespace grem
       typedef std::deque< std::pair< Value, Value > > TContainer;
       typedef void* TSet;
       typedef struct {
-        VarGraph::NodeID start;                 /**< @brief Start node ID. */
-        VarGraph::NodeID buffer;                /**< @brief Buffer node ID. 0=nothing */
+        Value start;                            /**< @brief Start node ID. */
+        Value buffer;                           /**< @brief Buffer node ID. 0=nothing */
         bool end;                               /**< @brief End flag. */
       } TState;
     };  /* ----------  end of struct Backtracker  ---------- */
@@ -305,7 +305,7 @@ namespace grem
       typedef void* TContainer;
       typedef std::unordered_set < Value > TSet;
       typedef struct {
-        VarGraph::NodeID start;                 /**< @brief Start node ID. */
+        Value start;                            /**< @brief Start node ID. */
         bool end;                               /**< @brief End flag. */
       } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
@@ -333,13 +333,13 @@ namespace seqan {
 }  /* -----  end of namespace seqan  ----- */
 
 namespace grem {
-  /* Haplotyper iterator meta-function declarations  ----------------------------- */
+  /* Haplotyper iterator interface function declarations  ------------------------ */
 
   void
     get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
         typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
 
-  /* END OF Haplotyper iterator meta-function declarations  ---------------------- */
+  /* END OF Haplotyper iterator interface function declarations  ----------------- */
 
 }  /* -----  end of namespace grem  ----- */
 

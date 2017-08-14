@@ -2,9 +2,9 @@
  *    @file  index.h
  *   @brief  Index header file.
  *
- *  This header file contains type definitions, abstract data types, and helper meta-
- *  functions (mostly implemented on top of SeqAn index library; i.e. `seqan/index.h`)
- *  for working with string indexes.
+ *  This header file contains type definitions, abstract data types, and helper
+ *  interface functions (mostly implemented on top of SeqAn index library; i.e.
+ *  `seqan/index.h`) for working with string indexes.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *

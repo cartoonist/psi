@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef TYPES_H__
-#define TYPES_H__
+#ifndef OPTIONS_H__
+#define OPTIONS_H__
 
 #include <stdexcept>
 #include <string>
@@ -82,4 +82,4 @@ namespace grem
   } Options;
 }
 
-#endif  // TYPES_H__
+#endif  // OPTIONS_H__

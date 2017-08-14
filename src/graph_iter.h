@@ -26,7 +26,7 @@ namespace grem {
   template < typename TGraph, typename TSpec >
     class GraphIter;
 
-  /* Graph iterator meta-functions. */
+  /* Graph iterator interface functions. */
   template < typename TGraph, typename TSpec >                      // at_end
     bool at_end ( GraphIter<TGraph, TSpec> &it );
   template < typename TGraph, typename TSpec >                      // begin
@@ -55,7 +55,7 @@ namespace grem {
    *  Graph iterator template class for traversing a variation graph. The iterator will
    *  go forward by operator ++ and backward by operator -- (if supported by iterator
    *  type). They can be initialized and check if it reached to the end by `begin` and
-   *  `end` meta-functions, respectively.
+   *  `end` interface functions, respectively.
    */
   // :TODO:Thu Mar 16 17:04:\@cartoonist: Fix the problem of determining the end of an
   //   iterator.
@@ -64,7 +64,7 @@ namespace grem {
     {
       /* ====================  FRIENDSHIP    ======================================= */
 
-      /* Common meta-functions. */
+      /* Common interface functions. */
       friend bool
         at_end < TGraph, TSpec > ( GraphIter < TGraph, TSpec > &it );
       friend GraphIter<TGraph, TSpec>
@@ -73,7 +73,7 @@ namespace grem {
         go_begin < TGraph, TSpec >
         ( GraphIter<TGraph, TSpec> &it, typename TSpec::Value start );
 
-      /* Meta-functions specific for BFS graph iterator. */
+      /* Interface functions specific for BFS graph iterator. */
       friend typename TSpec::Level
         level < TGraph, TSpec > ( GraphIter< TGraph, TSpec > &it );
 

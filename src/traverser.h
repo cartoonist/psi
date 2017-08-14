@@ -132,10 +132,18 @@ namespace grem
           // Constructors
           Param(const Dna5QRecords &reads_, unsigned int seed_len_)
           {
-            TIMED_SCOPE(readsIndexTimer, "index-read");
             this->reads = reads_;
-            this->reads_index = Dna5QStringSetIndex < TIndexSpec >(reads.str);
+            TIMED_BLOCK(readsIndexTimer, "index-reads") {
+              this->reads_index = Dna5QStringSetIndex < TIndexSpec >(this->reads.str);
+            }
             this->seed_len = seed_len_;
+            TIMED_BLOCK(seedingTimer, "seeding") {
+              this->seeds = seeding ( this->reads.str, this->seed_len,
+                                      FixedLengthNonOverlapping() );
+            }
+            TIMED_BLOCK(seedsIndexTimer, "index-seeds") {
+              this->seeds_index = Dna5QStringSetIndex < TIndexSpec >(this->seeds);
+            }
           }
 
           // Attributes getters and setters
@@ -148,12 +156,26 @@ namespace grem
           inline Dna5QStringSetIndex < TIndexSpec > &mutable_get_reads_index()
           { return this->reads_index; }
 
+          inline const Dna5QStringSet &get_seeds()
+          { return this->seeds; }
+
+          inline Dna5QStringSet &mutable_get_seeds()
+          { return this->seeds; }
+
+          inline const Dna5QStringSetIndex < TIndexSpec > &get_seeds_index()
+          { return this->seeds_index; }
+
+          inline Dna5QStringSetIndex < TIndexSpec > &mutable_get_seeds_index()
+          { return this->seeds_index; }
+
           inline unsigned int          get_seed_len()
           { return this->seed_len; }
 
           private:
           Dna5QRecords     reads;
           Dna5QStringSetIndex < TIndexSpec > reads_index;
+          Dna5QStringSet seeds;
+          Dna5QStringSetIndex < TIndexSpec > seeds_index;
           unsigned int   seed_len;
         };
 
@@ -488,7 +510,7 @@ namespace grem
 
             //std::vector < seqan::Seed < seqan::Simple > > seeds_set;
             //kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr, trav_params.get_seed_len() );
-            kmer_exact_matches ( paths_index, trav_params.mutable_get_reads_index(),
+            kmer_exact_matches ( paths_index, trav_params.mutable_get_seeds_index(),
                trav_params.get_seed_len(), callback );
 
             //std::for_each ( seeds_set.begin(), seeds_set.end(), callback );

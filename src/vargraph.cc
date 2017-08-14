@@ -249,7 +249,7 @@ namespace grem
 
   /* BFS template specialization  ------------------------------------------------ */
 
-  /* Meta-functions specialization. */
+  /* Interface functions specialization. */
 
   template < >
     bool at_end ( GraphIter < VarGraph, BFS<> > &it )
@@ -345,7 +345,7 @@ namespace grem
 
   /* Backtracker template specialization  ---------------------------------------- */
 
-  /* Meta-functions specialization. */
+  /* Interface functions specialization. */
   template < >
     bool at_end ( GraphIter < VarGraph, Backtracker<> > &it )
     {
@@ -453,7 +453,7 @@ namespace grem
 
   /* Haplotyper template specialization  ----------------------------------------- */
 
-  /* Meta-functions specialization. */
+  /* Interface functions specialization. */
   template < >
     bool at_end ( GraphIter < VarGraph, Haplotyper<> > &it )
     {
@@ -549,7 +549,7 @@ namespace grem
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
 
-  /* Haplotyper iterator meta-functions  ----------------------------------------- */
+  /* Haplotyper iterator interface functions  ------------------------------------ */
 
   /**
    *  @brief  Simulate a unique haplotype.
@@ -573,5 +573,5 @@ namespace grem
       }
     }
 
-  /* END OF Haplotyper iterator meta-functions  ---------------------------------- */
+  /* END OF Haplotyper iterator interface functions  ----------------------------- */
 }
