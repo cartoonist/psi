@@ -614,6 +614,28 @@ namespace grem {
         _kmer_exact_match_impl ( snd, fst, k, true, callback );
       }
     }
+
+  template < typename TIndex, typename TStringSet, typename TCallback >
+    void
+    kmer_exact_matches ( TIndex &paths_index, TStringSet &seeds, TCallback callback )
+    {
+      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
+      typedef typename seqan::SAValue< TIndex >::Type TSAValue;
+
+      seqan::String< TSAValue > paths_occurrences;
+      TIndexIter< TIndex, TIterSpec > paths_itr ( paths_index );
+      for ( unsigned int idx = 0; idx < length ( seeds ); ++idx ) {
+        if ( goDown ( paths_itr, seeds[idx] ) ) {
+          paths_occurrences = getOccurrences ( paths_itr );
+          for ( unsigned int i; i < length ( paths_occurrences ); ++i ) {
+            // :FIXME:Mon Aug 14 21:32:\@cartoonist: seed occurrences should not be 0.
+            _add_seed ( paths_occurrences[i], 0, callback );
+          }
+          clear ( paths_occurrences );
+        }
+        goRoot ( paths_itr );
+      }
+    }
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef INDEX_ITERATOR_H__  ----- */

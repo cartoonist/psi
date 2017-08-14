@@ -49,6 +49,44 @@ namespace grem {
 
   /* END OF Data structures  ----------------------------------------------------- */
 
+  /* Interface functions  -------------------------------------------------------- */
+  /* Seeding strategies */
+  struct FixedLengthNonOverlappingSeeding;
+
+  /* Seeding strategy tags */
+  typedef seqan::Tag< FixedLengthNonOverlappingSeeding > FixedLengthNonOverlapping;
+
+  /**
+   *  @brief  Seeding by partitioning each sequence into non-overlapping k-mers.
+   *
+   *  @param  string_set The string set from which seeds are extracted.
+   *  @param  k The length of the seeds.
+   *  @param  tag Tag for fixed-length non-overlapping seeding strategy.
+   *  @return A set of strings containing seeds.
+   *
+   *  Extract a set of non-overlapping seeds of length k.
+   *
+   *  NOTE: In case that the length of sequence is not dividable by k the last seed
+   *        may overlap its previous.
+   */
+  Dna5QStringSet
+    seeding ( Dna5QStringSet string_set, unsigned int k, FixedLengthNonOverlapping )
+    {
+      Dna5QStringSet seeds;
+      reserve ( seeds, static_cast<int>( lengthSum ( string_set ) / k ) );
+
+      for ( unsigned int idx = 0; idx < length ( string_set ); ++idx ) {
+        for ( unsigned int i = 0; i < length ( string_set[idx] ) - k; i += k ) {
+          appendValue ( seeds, infixWithLength ( string_set[idx], i, k ) );
+        }
+        unsigned int last = length ( string_set[idx] ) - k;
+        appendValue ( seeds, infixWithLength ( string_set[idx], last, k ) );
+      }
+
+      return seeds;
+    }  /* -----  end of function seeding  ----- */
+  /* END OF Interface functions  ------------------------------------------------- */
+
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef SEQUENCE_H__  ----- */
