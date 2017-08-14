@@ -515,7 +515,8 @@ namespace grem {
 
   void
     get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
-        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter );
+        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter,
+        int tries=0 );
 
   /* END OF Haplotyper iterator interface function declarations  ----------------- */
 

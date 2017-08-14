@@ -623,23 +623,36 @@ namespace grem
   /**
    *  @brief  Simulate a unique haplotype.
    *
-   *  @param[out]  The simulated haplotype as a list of node IDs.
+   *  @param[out]  haplotype The simulated haplotype as a list of node IDs.
    *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @param[in]  tries Number of tries if the generated haplotype is not unique.
    *
    *  This function gets a Haplotyper graph iterator and generate a unique haplotype
    *  if available. The input Haplotyper iterator stores required information of the
    *  previous simulated haplotypes for which the iterator is used. So, in order to
-   *  simulate multiple unique haplotypes use the same iterator as the input.
+   *  simulate multiple unique haplotypes use the same iterator as the input. It tries
+   *  `tries` times to generated a unique haplotype.
    */
   void
     get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
-        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter )
+        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter,
+        int tries )
     {
-      --iter;                                 // reset the Haplotyper iterator.
-      while ( !at_end ( iter ) ) {
-        haplotype.push_back ( *iter );
-        ++iter;
-      }
+      do {
+        haplotype.clear();
+        while ( !at_end ( iter ) ) {
+          haplotype.push_back ( *iter );
+          ++iter;
+        }
+        if ( tries-- && iter [ haplotype ] ) {
+          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        }
+        else {
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          break;
+        }
+        /* trying again */
+      } while (true);
     }
 
   /* END OF Haplotyper iterator interface functions  ----------------------------- */
