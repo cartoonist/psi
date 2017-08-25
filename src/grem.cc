@@ -27,6 +27,7 @@
 #include <seqan/arg_parse.h>
 
 #include "vargraph.h"
+#include "mapper.h"
 #include "traverser.h"
 #include "sequence.h"
 #include "utils.h"

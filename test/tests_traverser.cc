@@ -16,12 +16,14 @@
  */
 
 // :TODO:Fri Mar 17 00:46:\@cartoonist: traverser should be refactored, also this file.
+// :TODO:Mon Aug 28 23:30:\@cartoonist: this is Mapper test, not traverser!
 
 #include <string>
 #include <vector>
 
 #include "tests_base.h"
 #include "traverser.h"
+#include "mapper.h"
 #include "vargraph.h"
 #include "logger.h"
 
