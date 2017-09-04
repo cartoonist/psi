@@ -53,9 +53,10 @@ namespace grem
   {
     public:
       // typedefs
-      typedef vg::Node node_type;               /**< @brief Node type. */
-      typedef size_t nodeid_type;               /**< @brief Node ID type. */
-      typedef size_t rank_type;                 /**< @brief Node ID type. */
+      typedef vg::Node node_type;                               /**< @brief Node type. */
+      typedef decltype( vg::Node().id() ) nodeid_type;          /**< @brief Node ID type. */
+      typedef std::size_t rank_type;                            /**< @brief Node ID type. */
+      typedef decltype( vg::Position().offset() ) offset_type;  /**< @brief Node offset type. */
       typedef std::unordered_set< nodeid_type > NodeCoverage;
 
       // Constructors
