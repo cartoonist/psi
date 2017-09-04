@@ -303,15 +303,25 @@ namespace grem
 
   /* GRAPH ITERATORS  ============================================================ */
 
-  /* Tags template specialization  --------------------------------------------- */
+  /* Traits template specialization  ------------------------------------------- */
+
+  struct BFSStrategy;
+  struct DFSStrategy;
+  struct BacktrackStrategy;
+  struct HaplotypeStrategy;
+
+  typedef seqan::Tag< BFSStrategy > BFS;
+  typedef seqan::Tag< DFSStrategy > DFS;
+  typedef seqan::Tag< BacktrackStrategy > Backtracker;
+  typedef seqan::Tag< HaplotypeStrategy > Haplotyper;
 
   /**
    *  @brief  Breadth-first search graph iterator tag.
    *
    *  Specialization of generic graph iterator tag BFSIter for VarGraph.
    */
-  template < typename TSpec >
-    struct BFSIter < VarGraph, TSpec >
+  template< >
+    struct GraphIterTraits < VarGraph, BFS >
     {
       typedef VarGraph::nodeid_type Value;
       typedef Value Level;
@@ -341,16 +351,13 @@ namespace grem
       typedef void* TState;
     };
 
-  template < typename TSpec = void >
-    using BFS = BFSIter < VarGraph, TSpec >;
-
   /**
    *  @brief  Backtracker graph iterator tag.
    *
    *  Specialization of generic graph iterator tag BacktrackerIter for VarGraph.
    */
-  template < typename TSpec >
-    struct BacktrackerIter < VarGraph, TSpec > {
+  template < >
+    struct GraphIterTraits < VarGraph, Backtracker > {
       typedef VarGraph::nodeid_type Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
@@ -362,16 +369,13 @@ namespace grem
       } TState;
     };  /* ----------  end of struct Backtracker  ---------- */
 
-  template < typename TSpec = void >
-    using Backtracker = BacktrackerIter < VarGraph, TSpec >;
-
   /**
    *  @brief  Haplotyper graph iterator tag.
    *
    *  Specialization of generic graph iterator tag HaplotyperIter for VarGraph.
    */
-  template < typename TSpec >
-    struct HaplotyperIter < VarGraph, TSpec > {
+  template < >
+    struct GraphIterTraits < VarGraph, Haplotyper > {
       typedef VarGraph::nodeid_type Value;
       typedef Value Level;
       typedef std::deque< Value > TContainer;
@@ -384,9 +388,6 @@ namespace grem
         unsigned int setback;
       } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
-
-  template < typename TSpec = void >
-    using Haplotyper = HaplotyperIter < VarGraph, TSpec >;
 
   /* END OF tags template specialization  -------------------------------------- */
 
@@ -412,7 +413,7 @@ namespace grem {
 
   void
     get_uniq_haplotype ( std::vector < VarGraph::nodeid_type > &haplotype,
-        typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter,
+        typename seqan::Iterator < VarGraph, Haplotyper >::Type &iter,
         int tries=0 );
 
   /* END OF Haplotyper iterator interface function declarations  ----------------- */

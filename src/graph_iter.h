@@ -23,26 +23,27 @@ namespace grem {
 
   /* FORWARDS  ------------------------------------------------------------------- */
 
-  template < typename TGraph, typename TSpec >
+  template< typename TGraph, typename TSpec >
     class GraphIter;
 
-  /* Graph iterator interface functions. */
-  template < typename TGraph, typename TSpec >                      // at_end
-    bool at_end ( GraphIter<TGraph, TSpec> &it );
-  template < typename TGraph, typename TSpec >                      // begin
-    GraphIter < TGraph, TSpec > begin ( const TGraph &g, typename TSpec::Value start=0 );
-  template < typename TGraph, typename TSpec >
-    void go_begin ( GraphIter<TGraph, TSpec> &it, typename TSpec::Value start=0 );
-  template < typename TGraph, typename TSpec >                      // level
-    typename TSpec::Level level ( GraphIter< TGraph, TSpec > &it );
+  /* Graph iterator traits. */
+  template< typename TGraph, typename TSpec >
+    struct GraphIterTraits;
 
-  /* Graph iterator tags. */
-  template < typename TGraph, typename TSpec >
-    struct BFSIter;
-  template < typename TGraph, typename TSpec >
-    struct BacktrackerIter;
-  template < typename TGraph, typename TSpec >
-    struct HaplotyperIter;
+  /* Graph iterator interface functions. */
+  template< typename TGraph, typename TSpec >                      // at_end
+      bool
+    at_end( GraphIter<TGraph, TSpec> &it );
+  template< typename TGraph, typename TSpec >                      // begin
+      GraphIter< TGraph, TSpec >
+    begin( const TGraph &g, typename GraphIter< TGraph, TSpec >::value_type start=0 );
+  template< typename TGraph, typename TSpec >
+      void
+    go_begin( GraphIter<TGraph, TSpec> &it,
+        typename GraphIter< TGraph, TSpec >::value_type start=0 );
+  template< typename TGraph, typename TSpec >    // level
+      typename GraphIter< TGraph, TSpec >::level_type
+    level( GraphIter< TGraph, TSpec > &it );
 
   /* END OF FORWARDS  ------------------------------------------------------------ */
 
@@ -62,25 +63,33 @@ namespace grem {
   template < typename TGraph, typename TSpec >
     class GraphIter
     {
-      /* ====================  FRIENDSHIP    ======================================= */
-
-      /* Common interface functions. */
-      friend bool
-        at_end < TGraph, TSpec > ( GraphIter < TGraph, TSpec > &it );
-      friend GraphIter<TGraph, TSpec>
-        begin < TGraph, TSpec > ( const TGraph &g, typename TSpec::Value start );
-      friend void
-        go_begin < TGraph, TSpec >
-        ( GraphIter<TGraph, TSpec> &it, typename TSpec::Value start );
-
-      /* Interface functions specific for BFS graph iterator. */
-      friend typename TSpec::Level
-        level < TGraph, TSpec > ( GraphIter< TGraph, TSpec > &it );
-
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef GraphIterTraits< TGraph, TSpec > TTraits;
+        typedef typename TTraits::Value value_type;
+        typedef typename TTraits::Level level_type;
+        typedef typename TTraits::TContainer container_type;
+        typedef typename TTraits::TSet set_type;
+        typedef typename TTraits::TState state_type;
+
+        /* ====================  FRIENDSHIP    ======================================= */
+
+        /* Common interface functions. */
+        friend bool
+          at_end < TGraph, TSpec > ( GraphIter < TGraph, TSpec > &it );
+        friend GraphIter<TGraph, TSpec>
+          begin < TGraph, TSpec > ( const TGraph &g, value_type start );
+        friend void
+          go_begin < TGraph, TSpec >
+          ( GraphIter<TGraph, TSpec> &it, value_type start );
+
+        /* Interface functions specific for BFS graph iterator. */
+        friend level_type
+          level < TGraph, TSpec > ( GraphIter< TGraph, TSpec > &it );
+
         /* ====================  LIFECYCLE     ======================================= */
 
-        GraphIter ( const TGraph *graph, typename TSpec::Value start=0 )  // constructor
+        GraphIter ( const TGraph *graph, value_type start=0 )  // constructor
         {
           // Use [implicit] move assignment operator for initializing the iterator.
           *this = begin<TGraph, TSpec>(*graph, start);
@@ -89,11 +98,11 @@ namespace grem {
         /**
          *  @overload
          */
-        GraphIter ( const TGraph &vargraph, typename TSpec::Value start=0 ) :
+        GraphIter ( const TGraph &vargraph, value_type start=0 ) :
           GraphIter ( &vargraph, start ) { }
 
         /* ====================  OPERATORS     ======================================= */
-        typename TSpec::Value operator* ( ) { return this->itr_value; }
+        value_type operator* ( ) { return this->itr_value; }
         GraphIter &operator++ ( );  // prefix: go forward.
         GraphIter &operator-- ( );  // prefix: go backward (reset) considering last traverse as history.
         GraphIter &operator-- ( int );  // postfix: go backward (reset) without side effects.
@@ -109,11 +118,11 @@ namespace grem {
 
         /* ====================  DATA MEMBERS  ======================================= */
 
-        const TGraph *vargraph_ptr;                  /**< @brief Pointer to graph. */
-        typename TSpec::Value itr_value;             /**< @brief Iter. current value. */
-        typename TSpec::TContainer visiting_buffer;  /**< @brief Visiting buffer. */
-        typename TSpec::TSet visited;                /**< @brief Visited set. */
-        typename TSpec::TState state;                /**< @brief Special-purpose vars. */
+        const TGraph *vargraph_ptr;      /**< @brief Pointer to graph. */
+        value_type itr_value;            /**< @brief Iter. current value. */
+        container_type visiting_buffer;  /**< @brief Visiting buffer. */
+        set_type visited;                /**< @brief Visited set. */
+        state_type state;                /**< @brief Special-purpose vars. */
     };  /* ----------  end of template class GraphIter  ---------- */
 
 }  /* -----  end of namespace grem  ----- */

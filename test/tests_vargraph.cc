@@ -77,7 +77,7 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
 
     WHEN ( "the eigth haplotypes are generated using Haplotyper" )
     {
-      seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
+      seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
       std::vector < VarGraph::nodeid_type > haplotype1;
       std::vector < VarGraph::nodeid_type > haplotype2;
@@ -166,7 +166,7 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
 
     WHEN ( "the three haplotypes are generated using Haplotyper" )
     {
-      seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr (vargraph);
+      seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
       std::vector < VarGraph::nodeid_type > haplotype1;
       std::vector < VarGraph::nodeid_type > haplotype2;
@@ -246,7 +246,7 @@ SCENARIO ( "Traverse a variation graph using backtracking algorithm", "[graph][i
       VarGraph::nodeid_type true_snode_id;
       unsigned int true_offset;
 
-      seqan::Iterator< VarGraph, Backtracker<> >::Type bt_itr ( vargraph );
+      seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( vargraph );
       std::vector< VarGraph::nodeid_type > trav_path;
       std::string trav_seq = "";
       // :TODO:Mon May 22 11:16:\@cartoonist: add REQUIREs and assertions.
