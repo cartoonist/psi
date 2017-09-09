@@ -22,12 +22,11 @@ CXX          ?= g++
 # Compiler flags.
 ifeq ($(BUILD),debug)
 MACROS       ?= -DGREM_DEBUG=1
-CXXFLAGS     := -g
 endif
 MACROS       ?= -DGREM_DEBUG=0
 
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
-CXXFLAGS     ?= -O3
+CXXFLAGS     ?= -g -O3
 LIBS_CFLAGS  := -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \
 	        $(shell pkg-config --cflags xg) \
@@ -80,9 +79,17 @@ distclean: clean
 ${DPMDIR}/%.d: %.cc
 	${MAKE_DMAKES} -MT $*.o -MT $@ $<
 
+# generating sources' prerequisites automatically by remaking *.g.d Makefiles (debug mode).
+${DPMDIR}/%.g.d: %.cc
+	${MAKE_DMAKES} -MT $*.g.o -MT $@ $<
+
 # include *.d Makefiles.
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
+ifneq ($(BUILD),debug)
 -include $(addprefix ${DPMDIR}/, ${SOURCES:%.cc=%.d})
+else
+-include $(addprefix ${DPMDIR}/, ${SOURCES:%.cc=%.g.d})
+endif
 endif
 endif
