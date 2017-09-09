@@ -1,8 +1,8 @@
 /**
  *    @file  traverser.h
- *   @brief  Traverser template class.
+ *   @brief  TraverserBase template class.
  *
- *  Traverser template class definition and its template specialisations.
+ *  TraverserBase template class definition and its template specialisations.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -15,12 +15,19 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef TRAVERSER_H__
-#define TRAVERSER_H__
+#ifndef TRAVERSER_BASE_H__
+#define TRAVERSER_BASE_H__
 
 // :TODO:Fri Aug 25 13:15:\@cartoonist: remove unused headers.
 // :TODO:Fri Aug 25 13:15:\@cartoonist: add required headers explicitly.
+#include <stdexcept>
+#include <cstdint>
+#include <atomic>
+#include <mutex>
+#include <cmath>
 #include <vector>
+#include <array>
+#include <functional>
 
 #include <seqan/seeds.h>
 
@@ -30,343 +37,275 @@
 #include "index.h"
 #include "index_iter.h"
 #include "seed.h"
+#include "stat.h"
 
 // TODO: refactor: types (const, * and &).
 
 namespace grem
 {
   /* Forwards */
-  template< typename TIndexSpec >
-    class Traverser;
+  template< typename TIndexSpec,
+    typename TStrategy,
+    template<typename> class TMatchingTraits,
+    typename TStatTag >
+    class TraverserBase;
 
-  /** Traverse interface functions **
-   *  @note These methods should be specialized for any other Traverser
-   *        classes.
-   **/
-  template< typename TIndexSpec >
-  void
-    move_forward(Traverser< TIndexSpec > &ptrav,
-                 std::vector< Traverser< TIndexSpec >> &new_ptravs)
-  {
-    if (ptrav.finished)
-      throw std::runtime_error("cannot move forward on a finalized path.");
+  template< typename TIter, std::size_t MaxMismatches >
+    struct MatchingTraits {
+      static const std::size_t max_mismatches = MaxMismatches;
+      typedef struct {
+        TIter iter;
+        unsigned char mismatches;
+        vg::Position pos;
+      } TState;
+    };
 
-    ptrav.one_node_forward();
+  template< typename TIter >
+    using ExactMatching = MatchingTraits< TIter, 0 >;
+  template< typename TIter >
+    using ApproxMatching = MatchingTraits< TIter, 3 >;
 
-    VarGraph::nodeid_type c_node_id = ptrav.c_locus.node_id();
-
-    if (ptrav.is_seed_hit() ||
-        ptrav.iters_state.empty() ||
-        !ptrav.vargraph->has_edges_from(c_node_id))
+  /**
+   *  @brief  TraverserStat template class.
+   *
+   *  Collect statistics from a `TraverserBase` class instance(s) in running time.
+   */
+  template< typename TSpec = void >
+    class TraverserStat
     {
-      ptrav.finished = true;
-    }
+      public:
+        /* ====================  ACCESSORS     ======================================= */
+        static inline std::atomic_ullong& get_total_nof_godowns( )
+        {
+          static std::atomic_ullong total_nof_godowns( 0 );
+          return total_nof_godowns;
+        }
+        static inline std::atomic_ulong& get_total_nof_paths( )
+        {
+          static std::atomic_ulong total_nof_paths( 0 );
+          return total_nof_paths;
+        }
+        static inline std::atomic< double >& get_avg_pathlens( )
+        {
+          static std::atomic< double > avg_pathlens( 0 );
+          std::lock_guard< std::mutex > lock( get_avg_pathlens_mutex() );
+          update_avg_pathlens();
+          return avg_pathlens;
+        }
+        /* ====================  METHODS       ======================================= */
+        static inline void inc_total_nof_godowns( unsigned int by=1 )
+        {
+          get_total_nof_godowns().fetch_add( by );
+        }
+        static inline void reset_total_nof_godowns( )
+        {
+          get_total_nof_godowns().store( 0 );
+        }
+        static inline void inc_total_nof_paths( unsigned int by=1 )
+        {
+          get_total_nof_paths().fetch_add( by );
+          inc_partial_nof_paths();
+        }
+        static inline void reset_total_nof_paths( )
+        {
+          get_total_nof_paths().store( 0 );
+        }
+        static inline void inc_pathlens_partial_sum( unsigned int by=1 )
+        {
+          std::lock_guard< std::mutex > lock( get_avg_pathlens_mutex() );
+          if ( get_pathlens_partial_sum() > ULONG_MAX - by ) {
+            update_avg_pathlens();
+          }
+          get_pathlens_partial_sum().fetch_add( by );
+          inc_total_nof_paths();
+        }
+      private:
+        /* ====================  ACCESSORS     ======================================= */
+        static inline std::mutex& get_avg_pathlens_mutex( )
+        {
+          static std::mutex avg_pathlens_mutex;
+          return avg_pathlens_mutex;
+        }
+        static inline std::atomic_ulong& get_pathlens_partial_sum( )
+        {
+          static std::atomic_ulong pathlens_partial_sum( 0 );
+          return pathlens_partial_sum;
+        }
+        static inline std::atomic_ulong& get_partial_nof_paths( )
+        {
+          static std::atomic_ulong partial_nof_paths( 0 );
+          return partial_nof_paths;
+        }
+        /* ====================  METHODS       ======================================= */
+        static inline void update_avg_pathlens( )
+        {
+          assert( !get_avg_pathlens_mutex.try_lock() );  // should be already locked.
 
-    if (ptrav.finished) return;
-    else
+          if ( get_partial_nof_paths() == 0 ) return;
+
+          std::atomic< double >& avg_pathlens = get_avg_pathlens();
+          double pre_avg_pathlens = avg_pathlens;
+          avg_pathlens = get_pathlens_partial_sum() /
+            static_cast< double >( get_partial_nof_paths() );
+          if ( pre_avg_pathlens != 0 ) {
+            avg_pathlens = ( avg_pathlens + pre_avg_pathlens ) / 2.0;
+          }
+          reset_partial_nof_paths();
+          reset_pathlens_partial_sum();
+        }
+        static inline void reset_pathlens_partial_sum( )
+        {
+          get_pathlens_partial_sum().store( 0 );
+        }
+        static inline void inc_partial_nof_paths( unsigned int by=1 )
+        {
+          get_partial_nof_paths().fetch_add( by );
+        }
+        static inline void reset_partial_nof_paths( )
+        {
+          get_partial_nof_paths().store( 0 );
+        }
+    };  /* ----------  end of template class TraverserStat  ---------- */
+
+  /**
+   *  @brief  TraverserStat template class no-stat specialization.
+   *
+   *  Do nothing.
+   */
+  template< >
+    class TraverserStat< NoStat >
     {
-      auto edges = ptrav.vargraph->edges_from(c_node_id);
-      auto it = edges.begin();
-      ptrav.c_locus.set_node_id((*it).to());
-      ptrav.c_locus.set_offset(0);
-      ++it;
+      public:
+        /* ====================  ACCESSORS     ======================================= */
+        static inline unsigned long long int get_total_nof_godowns( ) { return 0; }
+        static inline unsigned long int get_total_nof_paths( ) { return 0; }
+        static inline double get_avg_pathlens( ) { return 0; }
+        /* ====================  METHODS       ======================================= */
+        static inline void inc_total_nof_godowns( unsigned int by=1 ) { }
+        static inline void reset_total_nof_godowns( ) { }
+        static inline void inc_total_nof_paths( unsigned int by=1 ) { }
+        static inline void reset_total_nof_paths( ) { }
+        static inline void inc_pathlens_partial_sum( unsigned int by=1 ) { }
+    };  /* ----------  end of template class TraverserStat  ---------- */
 
-      for (; it != edges.end(); ++it)
-      {
-        vg::Position new_pos;
-        new_pos.set_node_id((*it).to());
-        new_pos.set_offset(0);
-        new_ptravs.push_back(Traverser< TIndexSpec >(ptrav, std::move(new_pos)));
-      }
-    }
-  }
+  /**
+   *  @brief  Stat template class specialization for TraverserBase.
+   */
+  template< typename TIndexSpec,
+    typename TStrategy,
+    template<typename> class TMatchingTraits,
+    typename TSpec >
+    class Stat< TraverserBase< TIndexSpec, TStrategy, TMatchingTraits, TSpec > >
+    {
+      public:
+        typedef TraverserStat< TSpec > Type;
+    };
 
-  template< typename TIndexSpec >
-  bool
-    is_finished(Traverser< TIndexSpec > & ptrav)
-  {
-    return ptrav.finished;
-  }
-
-  template< typename TIndexSpec >
-  bool
-    is_valid(Traverser< TIndexSpec > & ptrav)
-  {
-    return ptrav.is_seed_hit();
-  }
-
-  template< typename TIndexSpec >
-  void
-    get_results(Traverser< TIndexSpec > &ptrav,
-                std::vector< typename Traverser< TIndexSpec >::Output > &results)
-  {
-    if (is_valid(ptrav))
-      ptrav.get_results(results);
-  }
-
-  template< typename TIndexSpec >
-    class Traverser
+  template< typename TIndexSpec,
+    typename TStrategy,
+    template<typename> class TMatchingTraits,
+    typename TStatTag >
+    class TraverserBase
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef seqan::Seed < seqan::Simple > Output;
-        typedef TIndexSpec IndexType;
-        typedef seqan::TopDown< seqan::ParentLinks<> > IterType;
-
-        class Param
+        // :TODO:Tue Aug 29 14:49:\@cartoonist: Use grem::Seed class instead of Output.
+        /**< @brief The output type. */
+        typedef seqan::Seed < seqan::Simple > output_type;
+        /**< @brief Index iterator template specialization parameter. */
+        typedef TIndexSpec indexspec_type;
+        typedef TopDownFine< seqan::ParentLinks<> > iterspec_type;
+        typedef Dna5QStringSetIndex< TIndexSpec > index_type;
+        typedef TIndexIter< index_type, iterspec_type > iterator_type;
+        typedef TMatchingTraits< iterator_type > traits_type;
+        typedef typename seqan::SAValue< index_type >::Type TSAValue;
+        typedef typename Stat< TraverserBase >::Type stats_type;
+        /* ====================  DATA MEMBERS  ======================================= */
+        static const auto max_mismatches = traits_type::max_mismatches;
+        /* ====================  LIFECYCLE      ====================================== */
+        TraverserBase( const VarGraph* graph, index_type* index, unsigned int len, vg::Position s )
+          : vargraph( graph ), reads_index( index ), seed_len( len ), start_locus( s )
+        { }
+        /* ====================  ACCESSORS      ====================================== */
+        /**
+         *  @brief  getter function for vargraph.
+         */
+          inline const VarGraph*
+        get_vargraph (  ) const
         {
-          friend class Traverser;
+          return this->vargraph;
+        }  /* -----  end of method get_vargraph  ----- */
 
-          public:
-          // Constructors
-          Param(const Dna5QRecords &reads_, unsigned int seed_len_)
-          {
-            this->reads = reads_;
-            TIMED_BLOCK(readsIndexTimer, "index-reads") {
-              this->reads_index = Dna5QStringSetIndex < TIndexSpec >(this->reads.str);
-            }
-            this->seed_len = seed_len_;
-            TIMED_BLOCK(seedingTimer, "seeding") {
-              this->seeds = seeding ( this->reads.str, this->seed_len,
-                                      FixedLengthNonOverlapping() );
-            }
-            TIMED_BLOCK(seedsIndexTimer, "index-seeds") {
-              this->seeds_index = Dna5QStringSetIndex < TIndexSpec >(this->seeds);
-            }
-          }
-
-          // Attributes getters and setters
-          inline const Dna5QRecords     &get_reads()
-          { return this->reads; }
-
-          inline const Dna5QStringSetIndex < TIndexSpec > &get_reads_index()
-          { return this->reads_index; }
-
-          inline Dna5QStringSetIndex < TIndexSpec > &mutable_get_reads_index()
-          { return this->reads_index; }
-
-          inline const Dna5QStringSet &get_seeds()
-          { return this->seeds; }
-
-          inline Dna5QStringSet &mutable_get_seeds()
-          { return this->seeds; }
-
-          inline const Dna5QStringSetIndex < TIndexSpec > &get_seeds_index()
-          { return this->seeds_index; }
-
-          inline Dna5QStringSetIndex < TIndexSpec > &mutable_get_seeds_index()
-          { return this->seeds_index; }
-
-          inline unsigned int          get_seed_len()
-          { return this->seed_len; }
-
-          private:
-          Dna5QRecords     reads;
-          Dna5QStringSetIndex < TIndexSpec > reads_index;
-          Dna5QStringSet seeds;
-          Dna5QStringSetIndex < TIndexSpec > seeds_index;
-          unsigned int   seed_len;
-        };
-
-        // Constructors
-        Traverser(const VarGraph *graph,
-                      Traverser::Param *trav_params,
-                      vg::Position start) :
-          vargraph(graph), parameters(trav_params), s_locus(start),
-          c_locus(start), path_length(0), finished(false)
+        /**
+         *  @brief  getter function for reads_index.
+         */
+          inline const index_type*
+        get_reads_index (  ) const
         {
-          this->iters_state.push_back(
-              IterState({
-                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, Traverser::IterType >(this->parameters->reads_index),
-                0})
-              );
-        }
+          return this->reads_index;
+        }  /* -----  end of method get_reads_index  ----- */
 
-        Traverser(const VarGraph &graph,
-                      Traverser::Param &trav_params,
-                      vg::Position start) :
-          Traverser(&graph, &trav_params, start)
-        {}
-
-        Traverser(const Traverser & other)
+        /**
+         *  @brief  getter function for seed_len.
+         */
+          inline unsigned int
+        get_seed_len (  ) const
         {
-          this->vargraph = other.vargraph;
-          this->parameters = other.parameters;
-          this->s_locus = other.s_locus;
-          this->c_locus = other.c_locus;
-          this->iters_state = other.iters_state;
-          this->path_length = other.path_length;
-          this->finished = other.finished;
-        }
+          return this->seed_len;
+        }  /* -----  end of method get_seed_len  ----- */
 
-        Traverser(Traverser && other) noexcept
+        /**
+         *  @brief  getter function for start_locus.
+         */
+          inline vg::Position
+        get_start_locus (  ) const
         {
-          this->vargraph = other.vargraph;
-          this->parameters = other.parameters;
-          this->s_locus = std::move(other.s_locus);
-          this->c_locus = std::move(other.c_locus);
-          this->iters_state = std::move(other.iters_state);
-          this->path_length = other.path_length;
-          this->finished = other.finished;
-        }
-
-        Traverser & operator=(const Traverser & other)
+          return this->start_locus;
+        }  /* -----  end of method get_start_locus  ----- */
+        /* ====================  MUTATORS       ====================================== */
+        /**
+         *  @brief  setter function for vargraph.
+         */
+          inline void
+        set_vargraph ( const VarGraph* value )
         {
-          Traverser tmp(other);
-          *this = std::move(tmp);
-          return *this;
-        }
+          this->vargraph = value;
+        }  /* -----  end of method set_vargraph  ----- */
 
-        Traverser & operator=(Traverser && other) noexcept
+        /**
+         *  @brief  setter function for reads_index.
+         */
+          inline void
+        set_reads_index ( index_type* value )
         {
-          this->vargraph = other.vargraph;
-          this->parameters = other.parameters;
-          this->s_locus = std::move(other.s_locus);
-          this->c_locus = std::move(other.c_locus);
-          this->iters_state = std::move(other.iters_state);
-          this->path_length = other.path_length;
-          this->finished = other.finished;
+          this->reads_index = value;
+        }  /* -----  end of method set_reads_index  ----- */
 
-          return *this;
-        }
-
-        ~Traverser() noexcept {}
-
-        Traverser(const Traverser & other, vg::Position new_locus) :
-          Traverser(other)
+        /**
+         *  @brief  setter function for seed_len.
+         */
+          inline void
+        set_seed_len ( unsigned int value )
         {
-          this->c_locus = new_locus;
-        }
+          this->seed_len = value;
+        }  /* -----  end of method set_seed_len  ----- */
 
-        // Traverse interface functions (are friends!)
-        friend void move_forward< TIndexSpec >(Traverser &ptrav,
-                                                      std::vector< Traverser > &new_ptravs);
-        friend bool is_finished< TIndexSpec >(Traverser &ptrav);
-        friend bool is_valid< TIndexSpec >(Traverser &ptrav);
-        friend void get_results< TIndexSpec >(Traverser &ptrav,
-                                                     std::vector< Traverser::Output > &results);
-
-        // Attributes getters and setters
-        inline const VarGraph *              get_vargraph()
-        { return this->vargraph; }
-
-        inline const Traverser< TIndexSpec >::Param *  get_paramters()
-        { return this->parameters; }
-
-        inline vg::Position                  get_s_locus()
-        { return this->s_locus; }
-
-        inline vg::Position                  get_c_locus()
-        { return this->c_locus; }
-
-        inline unsigned int                  get_path_length()
-        { return this->path_length; }
-
-#ifndef NDEBUG
-        static inline unsigned long long int inc_total_go_down(unsigned int by=0)
+        /**
+         *  @brief  setter function for start_locus.
+         */
+          inline void
+        set_start_locus ( vg::Position value )
         {
-          static unsigned long long int total_go_down = 0;
-          if (by != 0) total_go_down += by;
-          return total_go_down;
-        }
-#endif
-
-      private:
-        // Internal typedefs and classes
-        typedef struct {
-          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, Traverser::IterType > iter;
-          unsigned int   boffset;
-        } IterState;
-
-        // Attributes
-        const VarGraph *         vargraph;        // pointer to variation graph.
-        Traverser< TIndexSpec >::Param *   parameters;      // pointer to params (shared between traversers).
-        vg::Position             s_locus;         // starting locus
-        vg::Position             c_locus;         // current locus
-        std::vector< IterState > iters_state;
-        unsigned int             path_length;
-        bool                     finished;
-
-        // Internal methods
-        inline bool is_seed_hit()
-        {
-          return (this->path_length == this->parameters->seed_len);
-        }
-
-        inline bool go_down(IterState &its, seqan::Value< seqan::Dna5QString >::Type c)
-        {
-#ifndef NDEBUG
-          Traverser::inc_total_go_down(1);
-#endif
-          // XXX: assume "N" as a mismatch.
-          if (c == 'N' || c == 'n') return false;
-
-          if (its.boffset == 0) {
-            if (!seqan::goDown(its.iter, c)) return false;
-
-            its.boffset = parentEdgeLength(its.iter) - 1;
-          } else if (c == parentEdgeLabel(its.iter)[ parentEdgeLength(its.iter) - its.boffset ]) {
-            --its.boffset;
-          } else {
-            return false;
-          }
-
-          return true;
-        }
-
-        inline void go_down_all(seqan::Value< seqan::Dna5QString >::Type c)
-        {
-          static std::vector<int> to_be_deleted;
-          for (unsigned int i = 0; i < this->iters_state.size(); ++i)
-          {
-            if(!this->go_down(this->iters_state[i], c)) to_be_deleted.push_back(i);
-          }
-
-          if (to_be_deleted.size() < this->iters_state.size()) ++this->path_length;
-
-          for (auto idx : to_be_deleted)
-          {
-            this->iters_state.erase(this->iters_state.begin()+idx);
-          }
-          to_be_deleted.clear();
-        }
-
-        inline void one_node_forward()
-        {
-          VarGraph::nodeid_type c_node_id = this->c_locus.node_id();
-          const VarGraph::node_type &c_node = this->vargraph->node(c_node_id);
-          seqan::Dna5QString partseq = c_node.sequence().substr(this->c_locus.offset());
-
-          long unsigned int i;
-          for (i = 0;
-              i < seqan::length(partseq) &&
-              !this->iters_state.empty() &&
-              this->path_length < this->parameters->get_seed_len();
-              ++i)
-          {
-            this->go_down_all(partseq[i]);
-          }
-        }
-
-        inline void get_results(std::vector< Traverser< TIndexSpec >::Output > &results)
-        {
-          for (auto its : this->iters_state)
-          {
-            using TSAValue = typename seqan::SAValue< Dna5QStringSetIndex < TIndexSpec >>::Type;
-            seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
-            for (unsigned i = 0; i < length(saPositions); ++i)
-            {
-              Traverser::Output hit;
-              seqan::setBeginPositionH ( hit, this->s_locus.node_id());
-              seqan::setEndPositionH ( hit, this->s_locus.offset());
-              seqan::setBeginPositionV ( hit, saPositions[i].i1);  // Read ID.
-              seqan::setEndPositionV ( hit, saPositions[i].i2);    // Position in the read.
-
-              results.push_back(std::move(hit));
-            }
-          }
-        }
-    };
+          this->start_locus = value;
+        }  /* -----  end of method set_start_locus  ----- */
+      protected:
+        /* ====================  DATA MEMBERS  ======================================= */
+        const VarGraph* vargraph;      /**< @brief Pointer to variation graph. */
+        index_type* reads_index;       /**< @brief Pointer to reads index. */
+        unsigned int seed_len;         /**< @brief Seed length. */
+        vg::Position start_locus;      /**< @brief Starting point. */
+        std::vector< typename traits_type::TState > frontier_states;
+    };  /* ----------  end of template class TraverserBase  ---------- */
 }
 
-#endif  // end of TRAVERSER_H__
+#endif  // end of TRAVERSER_BASE_H__

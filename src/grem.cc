@@ -203,7 +203,8 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
     std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
 {
-  Mapper< Traverser< TIndexSpec > > mapper(vargraph);
+  typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
+  Mapper< TTraverser > mapper( &vargraph, seed_len );
 
   Dna5QStringSet paths;
   std::vector < VarGraph::NodeCoverage > paths_covered_nodes;
@@ -238,8 +239,8 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
    // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;
   std::unordered_set< Dna5QStringSetPosition > covered_reads;
-  std::function< void(typename Traverser< TIndexSpec >::Output const &) > write =
-    [&found, &covered_reads] (typename Traverser< TIndexSpec >::Output const & seed_hit){
+  std::function< void(typename TTraverser::output_type const &) > write =
+    [&found, &covered_reads] (typename TTraverser::output_type const & seed_hit){
     ++found;
     covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
@@ -257,22 +258,19 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
 
       if (length(reads_chunk.id) == 0) break;
 
-      typename Traverser< TIndexSpec >::Param params(reads_chunk, seed_len);
-      mapper.seeds_on_paths ( paths_index, params, write );
+      mapper.set_reads( std::move( reads_chunk ) );
+      mapper.seeds_on_paths ( paths_index, write );
       LOG(INFO) << "Total number of seeds found on paths: " << found;
-      mapper.traverse ( params, write );
-
-      clear(reads_chunk.str);
-      clear(reads_chunk.id);
+      mapper.traverse ( write );
     }
   }
 
   LOG(INFO) << "Total number of seeds found: " << found;
   LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
-  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_points().size();
+  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_loci().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
-            << Traverser< TIndexSpec >::inc_total_go_down(0);
+            << TTraverser::stats_type::get_total_nof_godowns();
 #endif
 }
 
