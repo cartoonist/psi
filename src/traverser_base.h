@@ -226,6 +226,12 @@ namespace grem
         TraverserBase( const VarGraph* graph, index_type* index, unsigned int len, vg::Position s )
           : vargraph( graph ), reads_index( index ), seed_len( len ), start_locus( s )
         { }
+
+        TraverserBase( const VarGraph* graph, index_type* index, unsigned int len )
+          : vargraph( graph ), reads_index( index ), seed_len( len )
+        {
+          this->set_start_locus( 0, 0 );
+        }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for vargraph.
@@ -297,6 +303,16 @@ namespace grem
         set_start_locus ( vg::Position value )
         {
           this->start_locus = value;
+        }  /* -----  end of method set_start_locus  ----- */
+
+        /**
+         *  @brief  setter function for start_locus.
+         */
+          inline void
+        set_start_locus ( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
+        {
+          this->start_locus.set_node_id( node_id );
+          this->start_locus.set_offset( offset );
         }  /* -----  end of method set_start_locus  ----- */
       protected:
         /* ====================  DATA MEMBERS  ======================================= */

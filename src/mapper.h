@@ -412,13 +412,10 @@ namespace grem
           unsigned int locus_counter = 0;
           unsigned int nof_reports = 0;
 #endif
+          TTraverser traverser( this->vargraph, &(this->reads_index), this->seed_len );
           for (auto locus : this->starting_loci)
           {
-            TTraverser traverser( this->vargraph,
-                &( this->reads_index ),
-                this->seed_len,
-                locus );
-
+            traverser.set_start_locus( locus );
             traverser.run( callback );
 #ifndef NDEBUG
             ++locus_counter;
