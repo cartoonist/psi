@@ -66,6 +66,150 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
   }
 }
 
+SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
+{
+  std::vector< VarGraph::nodeid_type > nodes
+    = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
+  std::vector< VarGraph::nodeid_type > other_nodes
+    = { 56, 123, 9, 10, 27, 9, 10 };
+  auto path_basic_test = [&nodes, &other_nodes]( const auto& path ){
+    REQUIRE( length( path ) == nodes.size() );
+    for ( const auto& n : nodes ) {
+      REQUIRE( contains( path, n ) );
+    }
+    for ( const auto& on : other_nodes ) {
+      REQUIRE( !contains( path, on ) );
+    }
+    REQUIRE( contains( path, nodes.begin(), nodes.end() ));
+    REQUIRE( !contains( path, other_nodes.begin(), other_nodes.end() ) );
+  };
+
+  GIVEN( "A small variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    WHEN( "A Full path in the graph constructed at once" )
+    {
+      Path< Full > path( &vargraph );
+      path.set_nodes( nodes );
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path );
+      }
+    }
+
+    WHEN( "A Full path in the graph constructed incrementally" )
+    {
+      Path< Full > path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( path, n );
+      }
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path );
+      }
+    }
+  }
+}
+
+SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
+{
+  std::vector< VarGraph::nodeid_type > nodes
+    = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
+  std::string init_sequence = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTA"
+    "TTTGAAGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
+
+  GIVEN( "A small variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    GIVEN( "A Full path in the graph" )
+    {
+      Path< Full > path( &vargraph );
+      //path.set_nodes( nodes );
+      for ( const auto& n : nodes ) {
+        add_node( path, n );
+      }
+
+      REQUIRE( path.get_sequence() == init_sequence );
+
+      WHEN( "The last node is trimmed" )
+      {
+        VarGraph::offset_type trimmed_len
+          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        trim( path, 37 );
+
+        THEN( "Its length and sequence should be decreased accordingly" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim further" )
+      {
+        std::size_t trim_len = 0;
+        auto it = path.get_nodes().end();
+        for ( it -= 6; it != path.get_nodes().end(); ++it ) {
+          trim_len += vargraph.node_length( *it );
+        }
+        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        trim( path, 29 );
+        THEN( "Its length and sequence should be decreased accordingly" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing zero as node ID" )
+      {
+        VarGraph::offset_type trimmed_len
+          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        trim( path, 0 );
+        THEN( "The last node should be trimmed" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing no parameter" )
+      {
+        VarGraph::offset_type trimmed_len
+          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        trim( path );
+        THEN( "The last node should be trimmed" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing unavailable node ID" )
+      {
+        trim( path, 70 );
+        THEN( "It should be empty" )
+        {
+          REQUIRE( path.get_sequence().length() == 0 );
+        }
+      }
+    }
+  }
+}
+
 // VarGraph graph iterators test scenarios.
 SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
 {

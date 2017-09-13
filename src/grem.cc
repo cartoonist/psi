@@ -48,6 +48,7 @@ using namespace grem;
 // TODO: handle 'N's.
 // TODO: comments' first letter?
 // TODO: fix code style: spacing.
+// TODO: inconsistency: some public methods are interface functions, some are members.
 
 // Forwards
   void

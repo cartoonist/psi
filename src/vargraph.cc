@@ -28,25 +28,8 @@
 
 namespace grem
 {
-  /**
-   *  @brief  Get string value of the given path.
-   *
-   *  @param  path The given path as a set of node IDs.
-   *  @return string representation of the path in the variation graph.
-   *
-   *  Get string representation of a path in the variation graph.
-   */
-  std::string
-    VarGraph::get_string ( std::vector < nodeid_type > &path ) const
-    {
-      std::string repr_str;
-      for ( const auto& node_id : path ) {
-        repr_str += this->node_sequence( node_id );
-      }
-      return repr_str;
-    }  /* -----  end of method VarGraph::get_string  ----- */
-
   /* VarGraph iterators template specialization  --------------------------------- */
+
   template< typename TSpec >
     using VarGraphIterTraits = typename GraphIter< VarGraph, TSpec >::TTraits;
 
