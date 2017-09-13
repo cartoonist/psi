@@ -57,7 +57,6 @@ namespace grem
       typedef decltype( vg::Node().id() ) nodeid_type;          /**< @brief Node ID type. */
       typedef std::size_t rank_type;                            /**< @brief Node ID type. */
       typedef decltype( vg::Position().offset() ) offset_type;  /**< @brief Node offset type. */
-      typedef std::unordered_set< nodeid_type > NodeCoverage;
 
       // Constructors
       VarGraph( void ) : XG( ) { }
@@ -1035,11 +1034,11 @@ namespace grem
       typedef Value Level;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
-      typedef std::vector< VarGraph::NodeCoverage > TSet;
+      typedef std::vector< Path< Compact > > TSet;
       typedef struct {
         Value start;                            /**< @brief Start node ID. */
         bool end;                               /**< @brief End flag. */
-        VarGraph::NodeCoverage current_path;
+        Path< Compact > current_path;
         unsigned int setback;
       } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
@@ -1064,15 +1063,14 @@ namespace seqan {
 }  /* -----  end of namespace seqan  ----- */
 
 namespace grem {
-  /* Haplotyper iterator interface function declarations  ------------------------ */
+  /* Haplotyper iterator interface function declaration  ------------------------- */
 
-  void
-    get_uniq_haplotype ( std::vector < VarGraph::nodeid_type > &haplotype,
-        typename seqan::Iterator < VarGraph, Haplotyper >::Type &iter,
-        int tries=0 );
+    void
+  get_uniq_haplotype( Path<>& haplotype,
+      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+      int tries=0 );
 
-  /* END OF Haplotyper iterator interface function declarations  ----------------- */
-
+  /* END OF Haplotyper iterator interface function declaration  ------------------ */
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef VARGRAPH_H__  ----- */

@@ -223,33 +223,33 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      std::vector < VarGraph::nodeid_type > haplotype1;
-      std::vector < VarGraph::nodeid_type > haplotype2;
-      std::vector < VarGraph::nodeid_type > haplotype3;
-      std::vector < VarGraph::nodeid_type > haplotype4;
-      std::vector < VarGraph::nodeid_type > haplotype5;
-      std::vector < VarGraph::nodeid_type > haplotype6;
-      std::vector < VarGraph::nodeid_type > haplotype7;
-      std::vector < VarGraph::nodeid_type > haplotype8;
-      get_uniq_haplotype ( haplotype1, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype2, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype3, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype4, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype5, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype6, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype7, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype8, hap_itr, 1 );
+      Path<> haplotype1( &vargraph );
+      Path<> haplotype2( &vargraph );
+      Path<> haplotype3( &vargraph );
+      Path<> haplotype4( &vargraph );
+      Path<> haplotype5( &vargraph );
+      Path<> haplotype6( &vargraph );
+      Path<> haplotype7( &vargraph );
+      Path<> haplotype8( &vargraph );
+      get_uniq_haplotype( haplotype1, hap_itr, 1 );
+      get_uniq_haplotype( haplotype2, hap_itr, 1 );
+      get_uniq_haplotype( haplotype3, hap_itr, 1 );
+      get_uniq_haplotype( haplotype4, hap_itr, 1 );
+      get_uniq_haplotype( haplotype5, hap_itr, 1 );
+      get_uniq_haplotype( haplotype6, hap_itr, 1 );
+      get_uniq_haplotype( haplotype7, hap_itr, 1 );
+      get_uniq_haplotype( haplotype8, hap_itr, 1 );
 
       THEN ( "they should be unique" )
       {
-        std::string hapstr1 = vargraph.get_string ( haplotype1 );
-        std::string hapstr2 = vargraph.get_string ( haplotype2 );
-        std::string hapstr3 = vargraph.get_string ( haplotype3 );
-        std::string hapstr4 = vargraph.get_string ( haplotype4 );
-        std::string hapstr5 = vargraph.get_string ( haplotype5 );
-        std::string hapstr6 = vargraph.get_string ( haplotype6 );
-        std::string hapstr7 = vargraph.get_string ( haplotype7 );
-        std::string hapstr8 = vargraph.get_string ( haplotype8 );
+        std::string hapstr1 = sequence( haplotype1 );
+        std::string hapstr2 = sequence( haplotype2 );
+        std::string hapstr3 = sequence( haplotype3 );
+        std::string hapstr4 = sequence( haplotype4 );
+        std::string hapstr5 = sequence( haplotype5 );
+        std::string hapstr6 = sequence( haplotype6 );
+        std::string hapstr7 = sequence( haplotype7 );
+        std::string hapstr8 = sequence( haplotype8 );
         unsigned int matched = 0;
         if ( hapstr1 == hapstr2 ) matched += pow ( 2, 0 );
         if ( hapstr1 == hapstr3 ) matched += pow ( 2, 1 );
@@ -290,14 +290,14 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
       }
       AND_THEN ( "they should have the correct length" )
       {
-        REQUIRE ( haplotype1.size() == 10 );
-        REQUIRE ( haplotype2.size() == 10 );
-        REQUIRE ( haplotype3.size() == 10 );
-        REQUIRE ( haplotype4.size() == 10 );
-        REQUIRE ( haplotype5.size() == 10 );
-        REQUIRE ( haplotype6.size() == 10 );
-        REQUIRE ( haplotype7.size() == 10 );
-        REQUIRE ( haplotype8.size() == 10 );
+        REQUIRE( length( haplotype1 ) == 10 );
+        REQUIRE( length( haplotype2 ) == 10 );
+        REQUIRE( length( haplotype3 ) == 10 );
+        REQUIRE( length( haplotype4 ) == 10 );
+        REQUIRE( length( haplotype5 ) == 10 );
+        REQUIRE( length( haplotype6 ) == 10 );
+        REQUIRE( length( haplotype7 ) == 10 );
+        REQUIRE( length( haplotype8 ) == 10 );
       }
     }
   }
@@ -312,60 +312,51 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      std::vector < VarGraph::nodeid_type > haplotype1;
-      std::vector < VarGraph::nodeid_type > haplotype2;
-      std::vector < VarGraph::nodeid_type > haplotype3;
-      get_uniq_haplotype ( haplotype1, hap_itr );
-      get_uniq_haplotype ( haplotype2, hap_itr );
-      get_uniq_haplotype ( haplotype3, hap_itr );
+      Path<> haplotype1( &vargraph );
+      Path<> haplotype2( &vargraph );
+      Path<> haplotype3( &vargraph );
+      get_uniq_haplotype( haplotype1, hap_itr );
+      get_uniq_haplotype( haplotype2, hap_itr );
+      get_uniq_haplotype( haplotype3, hap_itr );
 
       THEN ( "they should be unique" )
       {
-        std::string hapstr1 = vargraph.get_string ( haplotype1 );
-        std::string hapstr2 = vargraph.get_string ( haplotype2 );
-        std::string hapstr3 = vargraph.get_string ( haplotype3 );
-        REQUIRE ( hapstr1 != hapstr2 );
-        REQUIRE ( hapstr2 != hapstr3 );
-        REQUIRE ( hapstr1 != hapstr3 );
+        std::string hapstr1 = sequence( haplotype1 );
+        std::string hapstr2 = sequence( haplotype2 );
+        std::string hapstr3 = sequence( haplotype3 );
+        REQUIRE( hapstr1 != hapstr2 );
+        REQUIRE( hapstr2 != hapstr3 );
+        REQUIRE( hapstr1 != hapstr3 );
       }
       AND_THEN ( "they should have the correct length" )
       {
-        REQUIRE ( haplotype1.size() == 147 );
-        REQUIRE ( haplotype2.size() > 130 );  // randomised path.
-        REQUIRE ( haplotype3.size() > 130 );  // randomised path.
+        REQUIRE( length( haplotype1 ) == 147 );
+        REQUIRE( length( haplotype2 ) > 130 );  // randomised path.
+        REQUIRE( length( haplotype3 ) > 130 );  // randomised path.
       }
       AND_THEN ( "they all should cover 'merge' nodes" )
       {
-        std::vector< VarGraph::NodeCoverage > paths_coverage;
-        VarGraph::NodeCoverage cpath;
-        std::copy ( haplotype1.begin(), haplotype1.end(),
-            std::inserter ( cpath, cpath.end() ) );
-        paths_coverage.push_back ( cpath );
-        cpath.clear();
-        std::copy ( haplotype2.begin(), haplotype2.end(),
-            std::inserter ( cpath, cpath.end() ) );
-        paths_coverage.push_back ( cpath );
-        cpath.clear();
-        std::copy ( haplotype3.begin(), haplotype3.end(),
-            std::inserter ( cpath, cpath.end() ) );
-        paths_coverage.push_back ( cpath );
+        std::vector< Path<> > paths_set;
+        paths_set.push_back( haplotype1 );
+        paths_set.push_back( haplotype2 );
+        paths_set.push_back( haplotype3 );
 
-        REQUIRE ( get_path_coverage ( haplotype1.front(), paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 2, paths_coverage ) != 3 );
-        REQUIRE ( get_path_coverage ( 6, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 9, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 18, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 20, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 210, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 207, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 205, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 202, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 200, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 96, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 99, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 101, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 104, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( haplotype1.back(), paths_coverage ) == 3 );
+        REQUIRE( get_path_coverage( haplotype1.get_nodes().front(), paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 2, paths_set ) != 3 );
+        REQUIRE( get_path_coverage( 6, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 9, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 18, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 20, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 210, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 207, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 205, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 202, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 200, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 96, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 99, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 101, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 104, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( haplotype1.get_nodes().back(), paths_set ) == 3 );
       }
     }
   }
