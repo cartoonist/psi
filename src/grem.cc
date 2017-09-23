@@ -33,6 +33,7 @@
 #include "sequence.h"
 #include "utils.h"
 #include "options.h"
+#include "stat.h"
 #include "logger.h"
 #include "release.h"
 
@@ -183,8 +184,8 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   else if ( !paths.load( paths_index_file, &vargraph, path_num ) ) {
     LOG(INFO) << "No valid paths index found. Picking paths...";
     mapper.pick_paths( paths, path_num );
-    TIMED_BLOCK(pathIndexingTimer, "path-indexing")
     {
+      auto timer = Timer( "path-indexing" );
       LOG(INFO) << "Indexing the paths...";
       paths.create_index();
       LOG(INFO) << "Saving paths index...";
@@ -216,12 +217,12 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
 
   Dna5QRecords reads_chunk;
 
-  TIMED_BLOCK(t, "seed-finding")
   {
+    auto timer = Timer( "seed-finding" );
     while (true)
     {
-      TIMED_BLOCK(loadChunkTimer, "load-chunk")
       {
+        auto timer = Timer( "load-chunk" );
         readRecords(reads_chunk, reads_infile, chunk_size);
       }
 
