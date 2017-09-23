@@ -31,13 +31,163 @@
 #include "pathset.h"
 #include "utils.h"
 #include "logger.h"
+#include "stat.h"
+
 
 namespace grem
 {
-  template <class TTraverser>
+  // :TODO:Mon Sep 25 00:59:\@cartoonist: Fix MapperStat to be thread-safe like TraverserStat.
+  /**
+   *  @brief  MapperStat template class.
+   *
+   *  Collect statistics from a `Mapper` class instance(s) in running time.
+   */
+  template< typename TSpec = void >
+    class MapperStat : public Timer
+    {
+      public:
+        /**
+         *  @brief  MapperStat constructor.
+         *
+         *  Start the timer.
+         */
+        MapperStat( const std::string& name )
+          : Timer( name )
+        { }
+
+        /**
+         *  @brief  Get the current processing locus.
+         *
+         *  @return The reference to static variable `current_locus`.
+         *
+         *  It is set to the current processing locus when the mapper is in the middle
+         *  of the "traversal" phase.
+         */
+          static inline vg::Position&
+        get_current_locus( )
+        {
+          static vg::Position current_locus;
+          return current_locus;
+        }  /* -----  end of method get_current_locus  ----- */
+
+        /**
+         *  @brief  Set the current processing locus.
+         *
+         *  @param  value The value to be set as current locus.
+         *
+         *  It sets the current processing locus when the mapper is in the middle of
+         *  the "traversal" phase.
+         */
+          static inline void
+        set_current_locus( const vg::Position& value )
+        {
+          get_current_locus() = value;
+        }  /* -----  end of method set_current_locus  ----- */
+
+        /**
+         *  @brief  Get the index of the current processing locus in the starting loci.
+         *
+         *  @return The reference to static variable `current_locus_idx`.
+         *
+         *  It is set to the index of the current processing locus in the starting loci
+         *  vector when the mapper is in the middle of the "traversal" phase.
+         */
+          static inline std::size_t&
+        get_current_locus_idx( )
+        {
+          static std::size_t current_locus_idx;
+          return current_locus_idx;
+        }  /* -----  end of method get_current_locus_idx  ----- */
+
+        /**
+         *  @brief  Set the index of the current processing locus in the starting loci.
+         *
+         *  @param  value The value to be set as current locus index.
+         *
+         *  It sets the index of the current processing locus in the starting loci
+         *  vector when the mapper is in the middle of the "traversal" phase.
+         */
+          static inline void
+        set_current_locus_idx( const std::size_t& value )
+        {
+          get_current_locus_idx() = value;
+        }  /* -----  end of method set_current_locus_idx  ----- */
+
+        /**
+         *  @brief  Get the total number of loci in the starting loci vector.
+         *
+         *  @return The reference to static variable `total_nof_loci`.
+         */
+          static inline std::size_t&
+        get_total_nof_loci( )
+        {
+          static std::size_t total_nof_loci;
+          return total_nof_loci;
+        }  /* -----  end of method get_total_nof_loci  ----- */
+
+        /**
+         *  @brief  Set the total number of loci in the starting loci vector.
+         *
+         *  @param  value The value to be set as total number of loci.
+         */
+          static inline void
+        set_total_nof_loci( const std::size_t& value )
+        {
+          get_total_nof_loci() = value;
+        }  /* -----  end of method set_total_nof_loci  ----- */
+    };  /* ----------  end of template class MapperStat  ---------- */
+
+  /**
+   *  @brief  MapperStat template specialization for no-stat.
+   *
+   *  Do nothing.
+   */
+  template< >
+    class MapperStat< NoStat >
+    {
+      public:
+        /* ====================  METHODS       ======================================= */
+        MapperStat( const std::string& ) { }
+        ~MapperStat() { }
+        static inline std::chrono::microseconds get_duration( const std::string& )
+        {
+          return std::chrono::duration_cast< std::chrono::microseconds >(
+              Timer::clock_type::duration::zero() );
+        }
+        static inline std::chrono::microseconds get_lap( const std::string& )
+        {
+          return std::chrono::duration_cast< std::chrono::microseconds >(
+              Timer::clock_type::duration::zero() );
+        }
+          static inline vg::Position&
+        get_current_locus( )
+        {
+          static vg::Position current_locus;
+          return current_locus;
+        }
+        static inline void set_current_locus( const vg::Position& value ) { }
+          static inline std::size_t&
+        get_current_locus_idx( )
+        {
+          static std::size_t current_locus_idx;
+          return current_locus_idx;
+        }
+        static inline void set_current_locus_idx( const std::size_t& value ) { }
+          static inline std::size_t&
+        get_total_nof_loci( )
+        {
+          static std::size_t total_nof_loci;
+          return total_nof_loci;
+        }
+        static inline void set_total_nof_loci( const std::size_t& value ) { }
+    };  /* ----------  end of template class MapperStat  ---------- */
+
+  template< class TTraverser, typename TStatSpec = void >
     class Mapper
     {
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename Stat< Mapper >::Type stats_type;
         /* ====================  LIFECYCLE      ====================================== */
         Mapper( const VarGraph *graph,
             Dna5QRecords&& reads,
@@ -212,7 +362,7 @@ namespace grem
             if ( n == 0 ) return;
 
             LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
-            TIMED_SCOPE(pickPathsTimer, "pick-paths");
+            auto timer = stats_type( "pick-paths" );
 
             seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph );
 
@@ -244,7 +394,7 @@ namespace grem
             if ( length( paths.string_set ) == 0 ) return;
 
             LOG(INFO) << "Finding seeds on paths...";
-            TIMED_SCOPE(pathsSeedFindTimer, "paths-seed-find");
+            auto timer = stats_type( "paths-seed-find" );
 
             // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
             //                                      Check `index_iter.h`.
@@ -257,6 +407,7 @@ namespace grem
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );
+            auto timer = stats_type( "add-starts" );
 
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( this->vargraph );
             std::vector< VarGraph::nodeid_type > trav_path;
@@ -335,7 +486,7 @@ namespace grem
           //       this distance between inter-node loci.
           // **UPDATE** This algorithm use better approximation.
           // TODO: Add documentation.
-          TIMED_SCOPE(addAllLociTimer, "add-starts");
+          auto timer = stats_type( "add-starts" );
 
           seqan::Iterator<VarGraph, BFS>::Type itr(this->vargraph);
 
@@ -387,26 +538,18 @@ namespace grem
           inline void
         traverse ( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {
-          TIMED_SCOPE(traverseTimer, "traverse");
-#ifndef NDEBUG
-          unsigned int locus_counter = 0;
-          unsigned int nof_reports = 0;
-#endif
+          auto timer = stats_type( "traverse" );
+          stats_type::set_total_nof_loci( this->starting_loci.size() );
+
           TTraverser traverser( this->vargraph, &(this->reads_index), this->seed_len );
-          for (auto locus : this->starting_loci)
+          for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
+            const auto& locus = this->starting_loci[ idx ];
+            stats_type::set_current_locus( locus );
+            stats_type::set_current_locus_idx( idx );
+
             traverser.set_start_locus( locus );
             traverser.run( callback );
-#ifndef NDEBUG
-            ++locus_counter;
-            if (locus_counter % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
-            {
-              locus_counter = 0;
-              ++nof_reports;
-              PERFORMANCE_CHECKPOINT_WITH_ID(traverseTimer,
-                  std::to_string(nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO));
-            }
-#endif
           }
         }
       private:
@@ -423,19 +566,31 @@ namespace grem
           inline void
         index_reads( )
         {
-          TIMED_BLOCK(readsIndexTimer, "index-reads")
           {
+            auto timer = stats_type( "index-reads" );
             this->reads_index = typename TTraverser::index_type( this->reads.str );
           }
-          TIMED_BLOCK(seedingTimer, "seeding") {
+          {
+            auto timer = stats_type( "seeding" );
             this->seeds =
               seeding ( this->reads.str, this->seed_len, FixedLengthNonOverlapping() );
           }
-          TIMED_BLOCK(seedsIndexTimer, "index-seeds") {
+          {
+            auto timer = stats_type( "index-seeds" );
             this->seeds_index = typename TTraverser::index_type( this->seeds );
           }
         }
     };
+
+  /**
+   *  @brief  Stat template class specialization for `MapperStat`.
+   */
+  template< class TTraverser, typename TSpec >
+    class Stat< Mapper< TTraverser, TSpec > >
+    {
+      public:
+        typedef MapperStat< TSpec > Type;
+    };  /* ----------  end of template class Stat  ---------- */
 }
 
 #endif  // end of MAPPER_H__
