@@ -19,6 +19,7 @@
 #define MAPPER_H__
 
 #include <fstream>
+#include <type_traits>
 #include <vector>
 #include <iterator>
 #include <functional>
@@ -403,73 +404,48 @@ namespace grem
 
         template< typename TIndexSpec >
             inline void
-          add_all_loci( PathSet< TIndexSpec >& paths, unsigned int seed_len,
+          add_all_loci( PathSet< TIndexSpec >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );
             auto timer = stats_type( "add-starts" );
 
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( this->vargraph );
-            std::vector< VarGraph::nodeid_type > trav_path;
-            unsigned int trav_len = 0;
+            Path< Full > trav_path( this->vargraph );
 
-            // :TODO:Sun Jun 11 21:36:\@cartoonist: traverse the graph using BFS instead
-            //   of iterating over node list would be more cache oblivious.
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
-              VarGraph::nodeid_type start_node_id = this->vargraph->rank_to_id( rank );
-              unsigned int label_len = this->vargraph->node_sequence( start_node_id ).length();
+              VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
+              auto label_len = this->vargraph->node_length( id );
+              std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
 
-              bool set = false;
-              unsigned int init_offset = ( label_len < seed_len - 1 ) ? 0 : label_len - seed_len + 1;
-              for ( unsigned int offset = init_offset; offset < label_len; offset += step ) {
-                // :TODO:Mon May 22 14:40:\@cartoonist: missed some locations when the
-                //     the length of branch node's label is less than seed_len.
-                if ( ! this->vargraph->is_branch ( start_node_id ) &&
-                    covered_by ( start_node_id, paths.paths_set ) &&
-                    this->vargraph->has_edges_from ( start_node_id ) &&
-                      this->vargraph->node_sequence(
-                        this->vargraph->edges_from ( start_node_id ).at(0).to() )
-                        .length() > seed_len ) {
-                    continue;
-                }
-
-                if ( set ) {
-                  this->add_start( start_node_id, offset );
-                  continue;
-                }
-
-                go_begin ( bt_itr, start_node_id );
-
+              go_begin ( bt_itr, id );
+              while ( !at_end( bt_itr ) && offset != 0 ) {
                 while ( !at_end( bt_itr ) ) {
-                  while ( !at_end( bt_itr ) ) {
-                    trav_path.push_back ( *bt_itr );
-                    if ( *bt_itr != start_node_id ) {
-                      trav_len += this->vargraph->node_sequence( *bt_itr ).length();
-                    }
-                    else {
-                      trav_len = label_len - offset;
-                    }
+                  add_node( trav_path, *bt_itr );
+                  if ( trav_path.get_sequence().length() < offset - 1 + k ) ++bt_itr;
+                  else break;
+                }
 
-                    if ( trav_len < seed_len ) ++bt_itr;
-                    else break;
-                  }
-
-                  if ( ! covered_by ( trav_path, paths.paths_set ) ) {
-                    this->add_start( start_node_id, offset );
-                    set = true;
+                Path< Full > current_path = trav_path;
+                while ( !covered_by( current_path.get_nodes(), paths.paths_set ) ) {
+                  auto trimmed_len = current_path.get_sequence().length()
+                    - this->vargraph->node_length( current_path.get_nodes().back() );
+                  if ( trimmed_len <= k - 1 ) {
+                    offset = 0;
                     break;
                   }
-
-                  --bt_itr;
-
-                  VarGraph::nodeid_type poped_id = 0;
-                  while ( !trav_path.empty() && poped_id != *bt_itr ) {
-                    poped_id = trav_path.back();
-                    trav_len -= this->vargraph->node_sequence( poped_id ).length();
-                    trav_path.pop_back();
-                  }
+                  offset = trimmed_len - k + 1;
+                  trim( current_path );
                 }
+                --bt_itr;
+                trim( trav_path, *bt_itr );
               }
+
+              for ( auto f = offset; f < label_len; f += step ) {
+                this->add_start( id, f );
+              }
+
+              clear( trav_path );
             }
 
             LOG(INFO) << "Number of starting points selected (from "
@@ -479,13 +455,9 @@ namespace grem
 
         inline void add_all_loci(unsigned int step=1)
         {
-          // TODO: mention in the documentation that the `step` is approximately preserved in
-          //       the whole graph. This means that for example add_all_loci(2) would add
-          //       the first loci in each node and then add other loci with distance 2 (every
-          //       other loci) within the node. So at the end, it won't necessarily preserve
-          //       this distance between inter-node loci.
-          // **UPDATE** This algorithm use better approximation.
           // TODO: Add documentation.
+          // TODO: mention in the documentation that the `step` is approximately preserved in
+          //       the whole graph.
           auto timer = stats_type( "add-starts" );
 
           seqan::Iterator<VarGraph, BFS>::Type itr(this->vargraph);
@@ -493,37 +465,29 @@ namespace grem
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
           VarGraph::nodeid_type prenode_level = 0;
-          std::string seq;
-          while (!at_end(itr))
-          {
-            if (prenode_level != level(itr))
-            {
+          while (!at_end(itr)) {
+            if (prenode_level != level(itr)) {
               prenode_remain = remain_estimate;
               remain_estimate = 0;
               prenode_level = level(itr);
             }
 
-            seq = this->vargraph->node_sequence(*itr);
-
+            auto seq_len = this->vargraph->node_length(*itr);
             unsigned long int cursor = (step - prenode_remain) % step;
-            while (cursor < seq.length())
-            {
+            while (cursor < seq_len) {
               this->add_start(*itr, cursor);
               cursor += step;
             }
 
             unsigned long int new_remain;
-            if (step - prenode_remain > seq.length())
-            {
-              new_remain = prenode_remain + seq.length();
+            if (step - prenode_remain > seq_len) {
+              new_remain = prenode_remain + seq_len;
             }
-            else
-            {
-              new_remain = (seq.length() - step + prenode_remain) % step;
+            else {
+              new_remain = (seq_len - step + prenode_remain) % step;
             }
 
-            if (remain_estimate < new_remain)
-            {
+            if (remain_estimate < new_remain) {
               remain_estimate = new_remain;
             }
 
