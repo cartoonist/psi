@@ -189,6 +189,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   typedef decltype( mapper ) TMapper;
   std::signal( SIGUSR1, signal_handler< TMapper > );
 
+  LOG(INFO) << "Loading paths index...";
   // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
   PathSet< seqan::IndexEsa<> > paths;
   if ( path_num == 0 ) {
@@ -196,7 +197,9 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   }
   else if ( !paths.load( paths_index_file, &vargraph, path_num ) ) {
     LOG(INFO) << "No valid paths index found. Picking paths...";
+    LOG(INFO) << "Picking " << path_num << " different path(s) on the graph...";
     mapper.pick_paths( paths, path_num );
+    LOG(INFO) << "Picking paths: " << Timer::get_duration( "pick-paths" ).count() << " us";
     {
       auto timer = Timer( "path-indexing" );
       LOG(INFO) << "Indexing the paths...";
@@ -207,6 +210,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
         LOG(INFO) << "Skipping...";
       }
     }
+    LOG(INFO) << "Path indexing: " << Timer::get_duration( "path-indexing" ).count() << " us";
   }
   else {
     LOG(INFO) << "Paths index found. Loaded.";
@@ -217,7 +221,12 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     return;
   }
 
+  LOG(INFO) << "Selecting starting loci...";
   mapper.add_all_loci( paths, seed_len, start_every );
+  LOG(INFO) << "Add starting loci: " << Timer::get_duration( "add-starts" ).count() << " us";
+  LOG(INFO) << "Number of starting points selected (in "
+            << mapper.get_vargraph()->node_count << " nodes): "
+            << mapper.get_starting_loci().size();
 
    // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;
@@ -230,33 +239,47 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
 
   Dna5QRecords reads_chunk;
 
+  LOG(INFO) << "Traverse the graph from selected starting points...";
   {
     auto timer = Timer( "seed-finding" );
     while (true)
     {
+      LOG(INFO) << "Reading the next reads chunk...";
       {
         auto timer = Timer( "load-chunk" );
         readRecords(reads_chunk, reads_infile, chunk_size);
       }
 
       if (length(reads_chunk.id) == 0) break;
+      LOG(INFO) << "Load reads chunk: " << Timer::get_duration( "load-chunk" ).count() << " us";
 
       mapper.set_reads( std::move( reads_chunk ) );
+      LOG(INFO) << "Seeding: " << Timer::get_duration( "seeding" ).count() << " us";
+      LOG(INFO) << "Finding seeds on paths...";
+      auto pre_found = found;
       mapper.seeds_on_paths( paths, write );
-      LOG(INFO) << "Total number of seeds found on paths: " << found;
+      LOG(INFO) << "Seed finding on paths: " << Timer::get_duration( "paths-seed-find" ).count() << " us";
+      LOG(INFO) << "Total number of seeds found on paths: " << found - pre_found;
+      LOG(INFO) << "Traversing...";
       mapper.traverse ( write );
+      LOG(INFO) << "Traverse: " << Timer::get_duration( "traverse" ).count() << " us";
       clear( reads_chunk.id );
       clear( reads_chunk.str );
     }
   }
 
+  LOG(INFO) << "Seed finding: " << Timer::get_duration( "seed-finding" ).count() << " us";
+  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_loci().size();
   LOG(INFO) << "Total number of seeds found: " << found;
   LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
-  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_loci().size();
-#ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
             << TTraverser::stats_type::get_total_nof_godowns();
-#endif
+
+  LOG(INFO) << "All Timers";
+  LOG(INFO) << "----------";
+  for ( const auto& timer : Timer::get_timers() ) {
+    LOG(INFO) << timer.first << ": " << Timer::get_duration( timer.first ).count() << " us";
+  }
 }
 
 

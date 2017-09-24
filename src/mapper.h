@@ -362,7 +362,6 @@ namespace grem
           {
             if ( n == 0 ) return;
 
-            LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
             auto timer = stats_type( "pick-paths" );
 
             seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph );
@@ -394,7 +393,6 @@ namespace grem
           {
             if ( length( paths.string_set ) == 0 ) return;
 
-            LOG(INFO) << "Finding seeds on paths...";
             auto timer = stats_type( "paths-seed-find" );
 
             // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
@@ -447,10 +445,6 @@ namespace grem
 
               clear( trav_path );
             }
-
-            LOG(INFO) << "Number of starting points selected (from "
-                      << this->vargraph->node_count << "): "
-                      << this->starting_loci.size();
           }
 
         inline void add_all_loci(unsigned int step=1)
@@ -493,10 +487,6 @@ namespace grem
 
             ++itr;
           }
-
-          LOG(INFO) << "Number of starting points selected (from "
-                    << this->vargraph->node_count << "): "
-                    << this->starting_loci.size();
         }
         /* ====================  METHODS       ======================================= */
           inline void
