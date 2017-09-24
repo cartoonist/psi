@@ -191,22 +191,22 @@ namespace grem
         typedef typename Stat< Mapper >::Type stats_type;
         /* ====================  LIFECYCLE      ====================================== */
         Mapper( const VarGraph *graph,
-            Dna5QRecords&& reads,
+            Dna5QRecords&& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : vargraph( graph ), reads( std::move( reads ) ), seed_len( len ),
+          : vargraph( graph ), reads( std::move( r ) ), seed_len( len ),
           seed_mismatches( mismatches )
         {
-          if ( length( reads.str ) != 0 ) {
+          if ( length( this->reads.str ) != 0 ) {
             this->index_reads();
           }
         }
 
         Mapper( const VarGraph *graph,
-            const Dna5QRecords& reads,
+            const Dna5QRecords& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( graph , Dna5QRecords( reads ), len, mismatches )
+          : Mapper( graph , Dna5QRecords( r ), len, mismatches )
         { }
 
         Mapper( const VarGraph *graph,

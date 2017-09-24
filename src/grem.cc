@@ -232,6 +232,8 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
       mapper.seeds_on_paths( paths, write );
       LOG(INFO) << "Total number of seeds found on paths: " << found;
       mapper.traverse ( write );
+      clear( reads_chunk.id );
+      clear( reads_chunk.str );
     }
   }
 
