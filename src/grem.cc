@@ -14,6 +14,7 @@
  */
 
 #include <cstdlib>
+#include <csignal>
 #include <iostream>
 #include <ios>
 #include <fstream>
@@ -62,6 +63,13 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
     std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ );
 
+template< typename TMapper >
+    void
+  signal_handler( int signal );
+
+  void
+default_signal_handler( int signal ) { /* Do nothing */ }
+
   seqan::ArgumentParser::ParseResult
 parse_args ( Options & options, int argc, char *argv[] );
 
@@ -93,6 +101,8 @@ int main(int argc, char *argv[])
   // Verify that the version of the library that we linked against is
   // compatible with the version of the headers we compiled against.
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  std::signal( SIGUSR1, default_signal_handler );
 
   /* Configure loggers */
   config_logger(options);
@@ -176,6 +186,9 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
   Mapper< TTraverser > mapper( &vargraph, seed_len );
 
+  typedef decltype( mapper ) TMapper;
+  std::signal( SIGUSR1, signal_handler< TMapper > );
+
   // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
   PathSet< seqan::IndexEsa<> > paths;
   if ( path_num == 0 ) {
@@ -244,6 +257,26 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   LOG(INFO) << "Total number of 'godown' operations: "
             << TTraverser::stats_type::get_total_nof_godowns();
 #endif
+}
+
+
+template< typename TMapper >
+  void
+signal_handler( int signal )
+{
+  std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
+            << "---------------------------" << std::endl;
+  std::cout << "Elapsed time in traversal phase: "
+            << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
+            << std::endl;
+  std::cout << "Current node: ("
+            << Stat< TMapper >::Type::get_current_locus().node_id() << ", "
+            << Stat< TMapper >::Type::get_current_locus().offset() << ")" << std::endl;
+  auto idx = Stat< TMapper >::Type::get_current_locus_idx();
+  auto total = Stat< TMapper >::Type::get_total_nof_loci();
+  unsigned int wlen = std::to_string( total ).length();
+  std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
+            << total << " [%" << std::setw(3) << idx * 100 / total << "]" << std::endl;
 }
 
 
