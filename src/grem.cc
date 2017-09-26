@@ -443,6 +443,8 @@ main( int argc, char *argv[] )
   /* Start mapping... */
   startup( options );
 
+  /* Close all loggers. */
+  drop_all_loggers();
   /* Delete all global objects allocated by libprotobuf. */
   google::protobuf::ShutdownProtobufLibrary();
 

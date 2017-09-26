@@ -85,5 +85,29 @@ namespace grem {
   {
     return spdlog::get( name );
   }  /* -----  end of function get_logger  ----- */
+
+  /**
+   *  @brief  Release and close a logger by name.
+   *
+   *  @param  name The name of the logger.
+   *
+   *  It is a wrapper function for `spdlog::drop` method.
+   */
+    inline void
+  drop_logger( const std::string& name )
+  {
+    spdlog::drop( name );
+  }  /* -----  end of function drop_all_loggers  ----- */
+
+  /**
+   *  @brief  Release and close all loggers.
+   *
+   *  It is a wrapper function for `spdlog::drop_all` method.
+   */
+    inline void
+  drop_all_loggers( )
+  {
+    spdlog::drop_all();
+  }  /* -----  end of function drop_all_loggers  ----- */
 }  /* -----  end of namespace grem  ----- */
 #endif  // LOGGER_H__
