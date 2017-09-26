@@ -23,11 +23,9 @@
 #include "stat.h"
 #include "logger.h"
 
-INITIALIZE_EASYLOGGINGPP
 
 using namespace grem;
 using namespace std::chrono_literals;
-
 
 SCENARIO ( "Test the Timer", "[stat]" )
 {

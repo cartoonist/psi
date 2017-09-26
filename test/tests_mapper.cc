@@ -24,10 +24,8 @@
 #include "traverser.h"
 #include "logger.h"
 
-INITIALIZE_EASYLOGGINGPP
 
 using namespace grem;
-
 
 SCENARIO ( "Pick genome-wide paths", "[mapper]" )
 {

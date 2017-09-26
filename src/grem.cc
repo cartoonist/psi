@@ -38,8 +38,6 @@
 #include "logger.h"
 #include "release.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace seqan;
 using namespace grem;
 

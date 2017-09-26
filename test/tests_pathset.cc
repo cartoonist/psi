@@ -24,10 +24,8 @@
 #include "index.h"
 #include "logger.h"
 
-INITIALIZE_EASYLOGGINGPP
 
 using namespace grem;
-
 
 SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
 {

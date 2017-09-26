@@ -21,7 +21,7 @@
 #include <ios>
 #include <exception>
 
-#include <stream/src/stream.hpp>
+#include "stream/stream.h"
 
 #include "vargraph.h"
 #include "logger.h"
