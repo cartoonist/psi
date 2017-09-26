@@ -139,7 +139,7 @@ namespace grem
         /* ====================  METHODS       ======================================= */
         static inline void update_avg_pathlens( )
         {
-          assert( !get_avg_pathlens_mutex.try_lock() );  // should be already locked.
+          assert( !get_avg_pathlens_mutex().try_lock() );  // should be already locked.
 
           if ( get_partial_nof_paths() == 0 ) return;
 
