@@ -421,6 +421,10 @@ namespace grem
               while ( !at_end( bt_itr ) && offset != 0 ) {
                 while ( !at_end( bt_itr ) ) {
                   add_node( trav_path, *bt_itr );
+                  // :TODO:Fri Sep 29 00:45:\@cartoonist: in some cases when this loop
+                  //     breaks when `bt_itr` is at end but below condition is not met,
+                  //     a few unnecessary loci would be added. Bring `add_start` in the
+                  //     outer loop and add neccessary loci in the loop; not outside it.
                   if ( trav_path.get_sequence().length() < offset - 1 + k ) ++bt_itr;
                   else break;
                 }
@@ -491,7 +495,7 @@ namespace grem
         }
         /* ====================  METHODS       ======================================= */
           inline void
-        traverse ( std::function< void( typename TTraverser::output_type const& ) >& callback )
+        traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {
           auto timer = stats_type( "traverse" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
