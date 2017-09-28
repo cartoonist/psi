@@ -1002,7 +1002,9 @@ namespace grem
       };
 
       typedef std::unordered_set< TContainer::value_type, pair_hash, pair_pred > TSet;
-      typedef void* TState;
+      typedef struct {
+        std::size_t lb_visited_rank;  /**< @brief lower-bound for rank of visited nodes. */
+      } TState;
     };
 
   /**

@@ -454,6 +454,29 @@ SCENARIO ( "Variation graph breadth-first traverse (BFS)", "[graph][iterator][bf
           ++truth;
           ++bfs_itr;
         }
+        REQUIRE( truth == 211 );
+      }
+    }
+  }
+  GIVEN ( "A variation graph with more than one connected component" )
+  {
+    std::string vgpath = _testdir + "/data/multi/multi.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph( ifs );
+
+    WHEN ( "traverse the graph using BFS graph iterator" )
+    {
+      seqan::Iterator< VarGraph, BFS >::Type bfs_itr (vargraph);
+
+      THEN ( "nodes should be traversed in BFS order" )
+      {
+        VarGraph::nodeid_type truth = 1;
+        while ( !at_end( bfs_itr ) ) {
+          REQUIRE ( *bfs_itr == truth );  // The graph is such that its BFS is in order.
+          ++truth;
+          ++bfs_itr;
+        }
+        REQUIRE( truth == 226 );
       }
     }
   }

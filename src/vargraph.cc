@@ -38,6 +38,35 @@ namespace grem
 
   /* BFS template specialization  ------------------------------------------------ */
 
+  /* Internal functions specialization. */
+
+  /**
+   *  @brief  Search the graph for next unvisited node.
+   *
+   *  @return the node ID of the next visited node or `0` if all are visited.
+   *
+   *  The lower-bound for visited rank is also updated so that any node with smaller
+   *  rank is visited. So in order to find the next unvisited node, we should search
+   *  among nodes with higher ranks.
+   */
+  template< >
+      VarGraphIterTraits< BFS >::Value
+    GraphIter< VarGraph, BFS >::next_unvisited( )
+    {
+      TTraits::Value next_node = 0;
+      while ( this->state.lb_visited_rank <= this->vargraph_ptr->max_node_rank() ) {
+        next_node = this->vargraph_ptr->rank_to_id( this->state.lb_visited_rank );
+        if ( !(*this)[ next_node ] ) break;
+        ++this->state.lb_visited_rank;
+      }
+      if ( this->state.lb_visited_rank <= this->vargraph_ptr->max_node_rank() ) {
+        return next_node;
+      }
+      else {
+        return 0;
+      }
+    }  /* -----  end of template function get_next_unvisited  ----- */
+
   /* Interface functions specialization. */
 
   template< >
@@ -63,6 +92,11 @@ namespace grem
         start_node_id = g.rank_to_id( 1 );
       }
 
+      begin_itr.state.lb_visited_rank = 1;
+      if ( g.id_to_rank( start_node_id ) == 1 ) {
+        ++begin_itr.state.lb_visited_rank;
+      }
+
       begin_itr.vargraph_ptr = &g;
       begin_itr.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
       begin_itr.visited.insert( std::make_pair( start_node_id, 0 ) );
@@ -83,6 +117,11 @@ namespace grem
       }
       else {
         start_node_id = it.vargraph_ptr->rank_to_id( 1 );
+      }
+
+      it.state.lb_visited_rank = 1;
+      if ( it.vargraph_ptr->id_to_rank( start_node_id ) == 1 ) {
+        ++it.state.lb_visited_rank;
       }
 
       it.visiting_buffer.clear();
@@ -111,31 +150,54 @@ namespace grem
     {
       typedef VarGraphIterTraits< BFS > TTraits;
 
+      if ( this->visiting_buffer.empty() ) return *this;
+
       TTraits::Level plevel = level( *this );
-      if (this->vargraph_ptr->has_edges_from(this->itr_value))
-      {
-        auto edges = this->vargraph_ptr->edges_from(this->itr_value);
-        auto edges = this->vargraph_ptr->edges_from( this->itr_value );
-        for (auto it = edges.begin(); it != edges.end(); ++it) {
-          TTraits::Value adj_node = (*it).to();
-          if (visited.find(std::make_pair(adj_node, 0)) == // level doesn't matter (see
-              visited.end())                               //   method `pair_pred`).
-          {
-            this->visiting_buffer.push_back(
-                std::make_pair(adj_node, plevel + 1));
-            if ( this->vargraph_ptr->is_merge (adj_node) ) {  // Just add merges for efficiency.
-              this->visited.insert(std::make_pair(adj_node, plevel + 1));
-            }
-          }
+      auto edges = this->vargraph_ptr->edges_from( this->itr_value );
+      for (auto it = edges.begin(); it != edges.end(); ++it) {
+        TTraits::Value adj_node = (*it).to();
+        if ( !(*this)[ adj_node ] ) {
+          this->visiting_buffer.push_back( std::make_pair( adj_node, plevel + 1 ) );
+          this->visited.insert( std::make_pair( adj_node, plevel + 1 ) );
         }
       }
+      this->visiting_buffer.pop_front();
+
       if ( !this->visiting_buffer.empty() ) {
-        this->visiting_buffer.pop_front();
         this->itr_value = this->visiting_buffer.front().first;
+      }
+      else {
+        this->itr_value = this->next_unvisited();
+        if ( this->itr_value != 0 ) {
+          this->visiting_buffer.push_back( std::make_pair( this->itr_value, 0 ) );
+          this->visited.insert( std::make_pair( this->itr_value, 0 ) );
+        }
+      }
+
+      if ( this->itr_value != 0 &&
+          this->state.lb_visited_rank == this->vargraph_ptr->id_to_rank( this->itr_value ) ) {
+        ++this->state.lb_visited_rank;
       }
 
       return *this;
     }
+
+  /**
+   *  @brief  Check whether a node ID is visited by the BFS iterator or not.
+   *
+   *  @param  id The ID of the query node.
+   *  @return `true` if node is visited by BFS; otherwise `false`.
+   *
+   *  It queries visited set for the node ID. Level doesn't matter so it is set to zero
+   *  (see method `pair_pred`).
+   */
+  template< >
+  template< typename TId >
+      bool
+    GraphIter< VarGraph, BFS >::operator[]( const TId& id )
+    {
+      return this->visited.find( std::make_pair( id, 0 ) ) != this->visited.end();
+    }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::operator[]  ----- */
 
   /* END OF BFS template specialization  ----------------------------------------- */
 
