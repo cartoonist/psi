@@ -180,6 +180,7 @@ namespace grem {
         load_paths_set( const std::string& filepath_prefix, const VarGraph* vargraph,
             unsigned int path_num )
         {
+          this->paths_set.clear();
           this->paths_set.reserve( path_num );
           for ( unsigned int i = 0; i < path_num; ++i ) {
             std::string file_path = filepath_prefix + std::to_string( i );
