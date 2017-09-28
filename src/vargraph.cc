@@ -367,6 +367,7 @@ namespace grem
       }
 
       it.itr_value = start_node_id;
+      it.state.start = start_node_id;
       it.visiting_buffer.clear();
       it.state.end = false;  // Re-set at-end flag.
       it.visited.clear();
