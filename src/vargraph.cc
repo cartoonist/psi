@@ -40,21 +40,22 @@ namespace grem
 
   /* Interface functions specialization. */
 
-  template < >
-    bool at_end ( GraphIter < VarGraph, BFS > &it )
+  template< >
+      bool
+    at_end( GraphIter< VarGraph, BFS >& it )
     {
       return it.visiting_buffer.empty();
     }
 
-  template < >
-    GraphIter< VarGraph, BFS >
-    begin ( const VarGraph &g, VarGraphIterTraits< BFS >::Value start )
+  template< >
+      GraphIter< VarGraph, BFS >
+    begin( const VarGraph& g, VarGraphIterTraits< BFS >::Value start )
     {
       typedef VarGraphIterTraits< BFS > TTraits;
 
       GraphIter < VarGraph, BFS > begin_itr;
-      TTraits::Value start_node_id;
 
+      TTraits::Value start_node_id;
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -63,21 +64,20 @@ namespace grem
       }
 
       begin_itr.vargraph_ptr = &g;
-      begin_itr.visiting_buffer.push_back(std::make_pair(start_node_id, 0));
-      begin_itr.visited.insert(std::make_pair(start_node_id, 0));
+      begin_itr.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
+      begin_itr.visited.insert( std::make_pair( start_node_id, 0 ) );
       begin_itr.itr_value = begin_itr.visiting_buffer.front().first;
 
       return begin_itr;
     }
 
-  template < >
-    void go_begin ( GraphIter < VarGraph, BFS > &it,
-        VarGraphIterTraits< BFS >::Value start )
+  template< >
+      void
+    go_begin( GraphIter< VarGraph, BFS >& it, VarGraphIterTraits< BFS >::Value start )
     {
       typedef VarGraphIterTraits< BFS > TTraits;
 
       TTraits::Value start_node_id;
-
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -86,14 +86,15 @@ namespace grem
       }
 
       it.visiting_buffer.clear();
-      it.visiting_buffer.push_back ( std::make_pair ( start_node_id, 0 ) );
+      it.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
       it.visited.clear();
-      it.visited.insert ( std::make_pair ( start_node_id, 0 ) );
+      it.visited.insert( std::make_pair( start_node_id, 0 ) );
       it.itr_value = it.visiting_buffer.front().first;
     }  /* -----  end of template function go_begin  ----- */
 
-  template < >
-    VarGraphIterTraits< BFS >::Level level( GraphIter < VarGraph, BFS > & it )
+  template< >
+      VarGraphIterTraits< BFS >::Level
+    level( GraphIter< VarGraph, BFS >& it )
     {
       if ( !it.visiting_buffer.empty() ) {
         return it.visiting_buffer.front().second;
@@ -104,18 +105,18 @@ namespace grem
 
   /* Member functions specialization. */
 
-  template < >
-    GraphIter<VarGraph, BFS> &
-    GraphIter<VarGraph, BFS>::operator++ ( )
+  template< >
+      GraphIter< VarGraph, BFS >&
+    GraphIter< VarGraph, BFS >::operator++( )
     {
       typedef VarGraphIterTraits< BFS > TTraits;
 
-      TTraits::Level plevel = level(*this);
+      TTraits::Level plevel = level( *this );
       if (this->vargraph_ptr->has_edges_from(this->itr_value))
       {
         auto edges = this->vargraph_ptr->edges_from(this->itr_value);
-        for (auto it = edges.begin(); it != edges.end(); ++it)
-        {
+        auto edges = this->vargraph_ptr->edges_from( this->itr_value );
+        for (auto it = edges.begin(); it != edges.end(); ++it) {
           TTraits::Value adj_node = (*it).to();
           if (visited.find(std::make_pair(adj_node, 0)) == // level doesn't matter (see
               visited.end())                               //   method `pair_pred`).
@@ -255,21 +256,22 @@ namespace grem
   /* Haplotyper template specialization  ----------------------------------------- */
 
   /* Interface functions specialization. */
-  template < >
-    bool at_end ( GraphIter < VarGraph, Haplotyper > &it )
+  template< >
+      bool
+    at_end( GraphIter< VarGraph, Haplotyper >& it )
     {
       return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
-  template < >
-    GraphIter < VarGraph, Haplotyper >
-    begin ( const VarGraph &g, VarGraphIterTraits< Haplotyper >::Value start )
+  template< >
+      GraphIter< VarGraph, Haplotyper >
+    begin( const VarGraph& g, VarGraphIterTraits< Haplotyper >::Value start )
     {
       typedef VarGraphIterTraits< Haplotyper > TTraits;
 
       GraphIter < VarGraph, Haplotyper > begin_itr;
-      TTraits::Value start_node_id;
 
+      TTraits::Value start_node_id;
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -287,14 +289,14 @@ namespace grem
       return begin_itr;
     }  /* -----  end of template function begin  ----- */
 
-  template < >
-    void go_begin ( GraphIter < VarGraph, Haplotyper > &it,
+  template< >
+      void
+    go_begin( GraphIter< VarGraph, Haplotyper >& it,
         VarGraphIterTraits< Haplotyper >::Value start )
     {
       typedef VarGraphIterTraits< Haplotyper > TTraits;
 
       TTraits::Value start_node_id;
-
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -313,9 +315,9 @@ namespace grem
 
   /* Member functions specialization. */
 
-  template < >
-    void
-    GraphIter < VarGraph, Haplotyper >::set_setback ( )
+  template< >
+      void
+    GraphIter< VarGraph, Haplotyper >::set_setback( )
     {
       this->state.setback = (( this->visited.size() == 0 /* first path */||
                                this->visited.size() % 2 /* odd */) ?
@@ -330,13 +332,13 @@ namespace grem
    *  setback in order to cover more k-mers from all paths in the graph; i.e. generating
    *  more diverse haplotypes.
    */
-  template < >
-    GraphIter < VarGraph, Haplotyper > &
-    GraphIter < VarGraph, Haplotyper >::operator++ ( )
+  template< >
+      GraphIter< VarGraph, Haplotyper >&
+    GraphIter< VarGraph, Haplotyper >::operator++( )
     {
       typedef VarGraphIterTraits< Haplotyper > TTraits;
 
-      if ( !this->vargraph_ptr->has_edges_from ( this->itr_value ) ) {
+      if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
         this->state.end = true;
         return *this;
       }
@@ -347,15 +349,15 @@ namespace grem
       }
 
       TTraits::Value next_candidate = 0;
-      auto fwd_edges = this->vargraph_ptr->edges_from ( this->itr_value );
+      auto fwd_edges = this->vargraph_ptr->edges_from( this->itr_value );
       if ( this->state.setback == 0 || fwd_edges.size() == 1 ) {
         next_candidate = fwd_edges[0].to();
       }
       else {
         // Search for a forward node such that the setback path is not in previous paths.
         for ( auto e : fwd_edges ) {
-          this->visiting_buffer.push_back ( e.to() );
-          if ( covered_by ( this->visiting_buffer, this->visited ) ) {  // Visited?
+          this->visiting_buffer.push_back( e.to() );
+          if ( covered_by( this->visiting_buffer, this->visited ) ) {  // Visited?
             this->visiting_buffer.pop_back();
             continue;                             // Next edge.
           }
@@ -365,27 +367,27 @@ namespace grem
       }
       // If no unvisited setback path found, use a node with least path coverage.
       if ( next_candidate == 0 ) {
-        next_candidate = least_covered_adjacent ( *this->vargraph_ptr,
+        next_candidate = least_covered_adjacent( *this->vargraph_ptr,
             this->itr_value, this->visited );
       }
       // If all forward edges are visited, pick one randomly with uniform distribution.
       if ( next_candidate == 0 ) {
         next_candidate =
-          get_random_adjacent ( ( *this->vargraph_ptr ),  this->itr_value );
+          get_random_adjacent( ( *this->vargraph_ptr ),  this->itr_value );
       }
 
       this->itr_value = next_candidate;
       if ( this->state.setback != 0 ) {
-        this->visiting_buffer.push_back ( this->itr_value );
+        this->visiting_buffer.push_back( this->itr_value );
       }
       add_node( this->state.current_path, this->itr_value );
 
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator++  ----- */
 
-  template < >
-    GraphIter < VarGraph, Haplotyper > &
-    GraphIter < VarGraph, Haplotyper >::operator-- ( int )
+  template< >
+      GraphIter< VarGraph, Haplotyper >&
+    GraphIter< VarGraph, Haplotyper >::operator--( int )
     {
       this->itr_value = this->state.start;    // Reset the iterator to the start node.
       this->visiting_buffer.clear();
@@ -398,9 +400,9 @@ namespace grem
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::operator--  ----- */
 
-  template < >
-    GraphIter < VarGraph, Haplotyper > &
-    GraphIter < VarGraph, Haplotyper >::operator-- ( )
+  template< >
+      GraphIter< VarGraph, Haplotyper >&
+    GraphIter< VarGraph, Haplotyper >::operator--( )
     {
       this->visited.push_back( this->state.current_path );
       this->set_setback();
@@ -416,12 +418,12 @@ namespace grem
    *
    *  Check whether the given path is generated before or not.
    */
-  template < >
-  template < typename TContainer >
-    bool
-    GraphIter < VarGraph, Haplotyper >::operator[] ( const TContainer &path )
+  template< >
+  template< typename TContainer >
+      bool
+    GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer &path )
     {
-      return covered_by ( path, this->visited );
+      return covered_by( path, this->visited );
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::operator[]  ----- */
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
@@ -448,11 +450,11 @@ namespace grem
   {
     do {
       clear( haplotype );
-      while ( !at_end ( iter ) ) {
+      while ( !at_end( iter ) ) {
         add_node( haplotype, *iter );
         ++iter;
       }
-      if ( tries-- && iter [ haplotype.get_nodes() ] ) {
+      if ( tries-- && iter[ haplotype.get_nodes() ] ) {
         iter--;  // discard the traversed path and reset the Haplotyper iterator.
       }
       else {
@@ -460,7 +462,7 @@ namespace grem
         break;
       }
       /* trying again */
-    } while (true);
+    } while ( true );
   }
 
   /* END OF Haplotyper iterator interface function  ------------------------------ */

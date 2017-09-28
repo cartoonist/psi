@@ -444,12 +444,12 @@ SCENARIO ( "Variation graph breadth-first traverse (BFS)", "[graph][iterator][bf
 
     WHEN ( "traverse the graph using BFS graph iterator" )
     {
-      seqan::Iterator < VarGraph, BFS >::Type bfs_itr (vargraph);
+      seqan::Iterator< VarGraph, BFS >::Type bfs_itr (vargraph);
 
       THEN ( "nodes should be traversed in BFS order" )
       {
         VarGraph::nodeid_type truth = 1;
-        while ( !at_end ( bfs_itr ) ) {
+        while ( !at_end( bfs_itr ) ) {
           REQUIRE ( *bfs_itr == truth );  // The graph is such that its BFS is in order.
           ++truth;
           ++bfs_itr;

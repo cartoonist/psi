@@ -114,7 +114,7 @@ namespace grem {
         /* Private constructor. */
         GraphIter() : vargraph_ptr(nullptr) {}
         /* Internal methods. */
-        void set_setback ( );
+        void set_setback( );
 
         /* ====================  DATA MEMBERS  ======================================= */
 

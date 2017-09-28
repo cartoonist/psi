@@ -972,7 +972,7 @@ namespace grem
   /**
    *  @brief  Breadth-first search graph iterator tag.
    *
-   *  Specialization of generic graph iterator tag BFSIter for VarGraph.
+   *  Specialization of generic graph iterator tag BFS for VarGraph.
    */
   template< >
     struct GraphIterTraits < VarGraph, BFS >
