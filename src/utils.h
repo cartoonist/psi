@@ -39,15 +39,14 @@ namespace grem {
    *  A wrapper function for `seqan::readRecords` method to read the records into named
    *  string set.
    */
-  inline void
-    readRecords ( Dna5QRecords &records,
-        seqan::SeqFileIn &infile, unsigned int num_record )
-    {
-      CharStringSet quals;
-      seqan::readRecords ( records.id, records.str, quals, infile, num_record );
-      assignQualities ( records.str, quals );
-      return;
-    }  /* -----  end of function readRecords  ----- */
+    inline void
+  readRecords( Dna5QRecords& records, seqan::SeqFileIn& infile, unsigned int num_record )
+  {
+    CharStringSet quals;
+    seqan::readRecords( records.id, records.str, quals, infile, num_record );
+    assignQualities( records.str, quals );
+    return;
+  }  /* -----  end of function readRecords  ----- */
 
 
   /**
@@ -60,7 +59,7 @@ namespace grem {
    *  It checks the first string whether the second one is one of its suffixes or not.
    */
     inline bool
-  ends_with ( std::string str, std::string suf )
+  ends_with( std::string str, std::string suf )
   {
     if ( suf.length() <= str.length() ) {
       if ( std::equal( suf.rbegin(), suf.rend(), str.rbegin() ) ) {
@@ -81,7 +80,7 @@ namespace grem {
    *  portability.
    */
     inline bool
-  readable ( const std::string& file_name )
+  readable( const std::string& file_name )
   {
     std::ifstream ifs( file_name );
     return ifs.good();
@@ -98,7 +97,7 @@ namespace grem {
    *  portability.
    */
     inline bool
-  writable ( const std::string& file_name )
+  writable( const std::string& file_name )
   {
     std::ofstream ofs( file_name );
     if ( ofs.good() ) {
