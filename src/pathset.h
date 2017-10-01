@@ -42,7 +42,7 @@ namespace grem {
         Dna5QStringSetIndex< TIndexSpec > index;
         std::vector< Path<> > paths_set;
         /* ====================  TYPEDEFS      ======================================= */
-        typedef typename decltype( paths_set )::size_type size_type;
+        typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( ) = default;
         /* ====================  METHODS       ======================================= */
@@ -50,25 +50,23 @@ namespace grem {
          *  @brief  Load the set of paths and its index from file.
          *
          *  @param[in]   filepath_prefix The file path prefix of the saved set of paths.
-         *  @param[in]   path_num The number of paths.
+         *  @param[in]   vargraph A pointer to the graph whose paths is loading.
          *  @return `true` if the set of paths are successfully loaded from file;
          *          otherwise `false`.
          *
          *  It first loads the index from the file. Then, the nodes and string sets will
-         *  be loaded. The number of saved paths and requested number of paths should be
-         *  the same.
+         *  be loaded.
          */
           inline bool
-        load( const std::string& filepath_prefix, const VarGraph* vargraph,
-            unsigned int path_num )
+        load( const std::string& filepath_prefix, const VarGraph* vargraph )
         {
+          clear( this->string_set );
+          clear( this->index );
+
           if ( open( this->index, filepath_prefix.c_str() ) &&
-              this->load_paths_set( filepath_prefix + "_path_", vargraph, path_num ) ) {
+              this->load_paths_set( filepath_prefix + "_paths", vargraph ) ) {
             this->string_set = indexText( this->index );
-            const auto& nof_loaded_paths = length( this->string_set );
-            if ( nof_loaded_paths == path_num ) {
-              return true;
-            }
+            return true;
           }
           return false;
         }  /* -----  end of method load  ----- */
@@ -85,10 +83,11 @@ namespace grem {
           inline bool
         save( const std::string& filepath_prefix )
         {
-          if ( !writable( filepath_prefix ) ) return false;
-          seqan::save( this->index, filepath_prefix.c_str() );
-          this->save_paths_set( filepath_prefix + "_path_" );
-          return true;
+          if ( seqan::save( this->index, filepath_prefix.c_str() ) &&
+              this->save_paths_set( filepath_prefix + "_paths" ) ) {
+            return true;
+          }
+          return false;
         }  /* -----  end of method save  ----- */
 
         /**
@@ -168,30 +167,33 @@ namespace grem {
         /**
          *  @brief  Load nodes sets of paths set from file.
          *
-         *  @param[in]   filepath_prefix The file path prefix of the saved paths.
-         *  @param[in]   path_num The number of paths.
+         *  @param[in]   filepath The file path of the saved paths.
+         *  @param[in]   vargraph A pointer to the graph whose paths is loading.
          *  @return `true` if the nodes sets are successfully loaded from file; otherwise
          *          `false`.
          *
-         *  It deserializes the node IDs saved in the files whose names can be obtained by
-         *  appending the path number to the given path prefix.
+         *  It deserializes the paths set. The paths are prefixed by the number of paths.
          */
           inline bool
-        load_paths_set( const std::string& filepath_prefix, const VarGraph* vargraph,
-            unsigned int path_num )
+        load_paths_set( const std::string& filepath, const VarGraph* vargraph )
         {
-          this->paths_set.clear();
-          this->paths_set.reserve( path_num );
-          for ( unsigned int i = 0; i < path_num; ++i ) {
-            std::string file_path = filepath_prefix + std::to_string( i );
-            Path<> path( vargraph );
-            try {
-              grem::load( path, file_path );
-            } catch ( const std::runtime_error& ) {
-              this->paths_set.clear();
-              return false;
+          std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
+          if ( !ifs ) return false;
+          size_type path_num = 0;
+
+          try {
+            deserialize( ifs, path_num );
+            this->paths_set.clear();
+            this->paths_set.reserve( path_num );
+            for ( unsigned int i = 0; i < path_num; ++i ) {
+              Path<> path( vargraph );
+              grem::load( path, ifs );
+              this->paths_set.push_back( std::move( path ) );
             }
-            this->paths_set.push_back( std::move( path ) );
+          }
+          catch ( const std::runtime_error& ) {
+            this->paths_set.clear();
+            return false;
           }
 
           return true;
@@ -200,20 +202,29 @@ namespace grem {
         /**
          *  @brief  Save nodes sets of paths set into file.
          *
-         *  @param[in]   filepath_prefix The file path prefix of the file to be written.
+         *  @param[in]   filepath The file path of the file to be written.
+         *  @return `true` if the nodes sets are successfully written to file; otherwise
+         *          `false`.
          *
-         *  It serializes the node IDs of the paths to the files - a file for each path -
-         *  whose names can be obtained by appending the path number to the given path prefix.
+         *  It serializes the paths to the files followed by the number of paths.
          */
-          inline void
-        save_paths_set( const std::string& filepath_prefix )
+          inline bool
+        save_paths_set( const std::string& filepath )
         {
-          unsigned int i = 0;
-          for ( const auto& path : this->paths_set ) {
-            std::string file_path = filepath_prefix + std::to_string ( i );
-            grem::save( path, file_path );
-            ++i;
+          std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
+          if( !ofs ) return false;
+
+          try {
+            serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
+            for ( const auto& path : this->paths_set ) {
+              grem::save( path, ofs );
+            }
           }
+          catch ( const std::runtime_error& ) {
+            return false;
+          }
+
+          return true;
         }  /* -----  end of function save_paths_set  ----- */
     };  /* -----  end of template class PathSet  ----- */
 }  /* -----  end of namespace grem  ----- */
