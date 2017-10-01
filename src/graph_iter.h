@@ -19,12 +19,27 @@
 #ifndef  GRAPH_ITER_H__
 #define  GRAPH_ITER_H__
 
+#include <seqan/basic.h>
+
+
 namespace grem {
 
   /* FORWARDS  ------------------------------------------------------------------- */
 
   template< typename TGraph, typename TSpec >
     class GraphIter;
+
+  /* GraphIter strategies. */
+  struct BFSStrategy;
+  struct DFSStrategy;
+  struct BacktrackStrategy;
+  struct HaplotypeStrategy;
+
+  /* GraphIter specialization tags. */
+  typedef seqan::Tag< BFSStrategy > BFS;
+  typedef seqan::Tag< DFSStrategy > DFS;
+  typedef seqan::Tag< BacktrackStrategy > Backtracker;
+  typedef seqan::Tag< HaplotypeStrategy > Haplotyper;
 
   /* Graph iterator traits. */
   template< typename TGraph, typename TSpec >
@@ -58,8 +73,6 @@ namespace grem {
    *  type). They can be initialized and check if it reached to the end by `begin` and
    *  `end` interface functions, respectively.
    */
-  // :TODO:Thu Mar 16 17:04:\@cartoonist: Fix the problem of determining the end of an
-  //   iterator.
   template < typename TGraph, typename TSpec >
     class GraphIter
     {

@@ -959,16 +959,6 @@ namespace grem
 
   /* Traits template specialization  ------------------------------------------- */
 
-  struct BFSStrategy;
-  struct DFSStrategy;
-  struct BacktrackStrategy;
-  struct HaplotypeStrategy;
-
-  typedef seqan::Tag< BFSStrategy > BFS;
-  typedef seqan::Tag< DFSStrategy > DFS;
-  typedef seqan::Tag< BacktrackStrategy > Backtracker;
-  typedef seqan::Tag< HaplotypeStrategy > Haplotyper;
-
   /**
    *  @brief  Breadth-first search graph iterator tag.
    *
