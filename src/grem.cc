@@ -101,10 +101,15 @@ template< typename TPathSet, typename TMapper >
     auto log = get_logger( "main" );
     log->info( "Loading paths index..." );
 
+    if ( paths.load( paths_index_file, mapper.get_vargraph() ) ) {
+      log->info( "Paths index found. Loaded." );
+      return;
+    }
+
     if ( path_num == 0 ) {
       log->info( "Specified number of path is 0. Skipping paths indexing..." );
     }
-    else if ( !paths.load( paths_index_file, mapper.get_vargraph(), path_num ) ) {
+    else {
       log->info( "No valid paths index found. Picking paths..." );
 
       log->info( "Picking {} different path(s) on the graph...", path_num );
@@ -123,9 +128,6 @@ template< typename TPathSet, typename TMapper >
         }
       }
       log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
-    }
-    else {
-      log->info( "Paths index found. Loaded." );
     }
   }
 
