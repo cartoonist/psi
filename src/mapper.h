@@ -356,23 +356,27 @@ namespace grem
          *
          *  This method generates a set of (probably) unique whole-genome paths from the
          *  variation graph.
+         *
+         *  XXX: We assume that each connect component in the graph has one and only one
+         *  path indicating a sample haplotype in that region.
          */
         template< typename TIndexSpec >
             void
           pick_paths( PathSet< TIndexSpec >& paths, int n )
           {
             if ( n == 0 ) return;
-
             auto timer = stats_type( "pick-paths" );
 
-            seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph );
-
-            paths.reserve( n );
-            for ( int i = 0; i < n; ++i ) {
-              Path<> new_path( this->vargraph );
-              reserve( new_path, this->vargraph->node_count );
-              get_uniq_haplotype( new_path, hap_itr );
-              paths.add_path( std::move( new_path ) );
+            paths.reserve( n * this->vargraph->path_count );
+            for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
+              const auto& path_name = this->vargraph->path_name( rank );
+              auto s = this->vargraph->node_at_path_position( path_name, 0 );
+              seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
+              for ( int i = 0; i < n; ++i ) {
+                Path<> new_path( this->vargraph );
+                get_uniq_haplotype( new_path, hap_itr );
+                paths.add_path( std::move( new_path ) );
+              }
             }
           }  /* -----  end of template function pick_paths  ----- */
 
