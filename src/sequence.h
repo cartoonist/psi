@@ -97,7 +97,7 @@ namespace grem {
    *        may overlap its previous.
    */
   inline Dna5QStringSet
-    seeding ( Dna5QStringSet string_set, unsigned int k, FixedLengthNonOverlapping )
+    seeding( const Dna5QStringSet& string_set, unsigned int k, FixedLengthNonOverlapping )
     {
       Dna5QStringSet seeds;
       reserve ( seeds, static_cast<int>( lengthSum ( string_set ) / k ) );
