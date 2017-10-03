@@ -53,20 +53,26 @@ namespace grem {
 
   /* Interface functions  -------------------------------------------------------- */
   /**
-   *  @brief  Read records from the input file into named string set.
+   *  @brief  Read records from the input file into a sequence record set.
    *
-   *  @param[out]  records Named string set to store records in the input file.
+   *  @param[out]  records Sequence record set to store records in the input file.
    *  @param[in,out]  infile The input file.
    *  @param[in]  num_record Read this number of record from the input file.
    *
-   *  A wrapper function for `seqan::readRecords` method to read the records into named
-   *  string set.
+   *  A wrapper function for `seqan::readRecords` method to read the records into
+   *  sequence record set. If `num_record` is equal to zero, it reads all recrods.
    */
     inline void
-  readRecords( Dna5QRecords& records, seqan::SeqFileIn& infile, unsigned int num_record )
+  readRecords( Dna5QRecords& records, seqan::SeqFileIn& infile,
+      unsigned int num_record = 0 )
   {
     CharStringSet quals;
-    seqan::readRecords( records.id, records.str, quals, infile, num_record );
+    if ( num_record != 0 ) {
+      seqan::readRecords( records.id, records.str, quals, infile, num_record );
+    }
+    else {
+      seqan::readRecords( records.id, records.str, quals, infile );
+    }
     assignQualities( records.str, quals );
     return;
   }  /* -----  end of function readRecords  ----- */
