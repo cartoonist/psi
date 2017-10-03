@@ -22,12 +22,13 @@
 
 #include <seqan/sequence.h>
 
+
 namespace grem {
   // :TODO:Tue Sep 05 09:36:\@cartoonist: clear the code up from direct usage of seqan::Dna5QString.
   /* Typedefs  ------------------------------------------------------------------- */
-  typedef seqan::StringSet< seqan::CharString >    CharStringSet;
-  typedef seqan::StringSet< seqan::Dna5QString >   Dna5QStringSet;
-  typedef seqan::Position < Dna5QStringSet >::Type Dna5QStringSetPosition;
+  typedef seqan::StringSet< seqan::CharString > CharStringSet;
+  typedef seqan::StringSet< seqan::Dna5QString > Dna5QStringSet;
+  typedef seqan::Position< Dna5QStringSet >::Type Dna5QStringSetPosition;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   /* Data structures  ------------------------------------------------------------ */
@@ -37,16 +38,15 @@ namespace grem {
    *
    *  It is a wrapper class on StringSet associating an ID to each string.
    */
-  template < typename TStringSet >
-    class NamedStringSet
-    {
+  template< typename TStringSet >
+    class NamedStringSet {
       public:
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet str;
         CharStringSet id;
     };  /* ----------  end of template class NamedStringSet  ---------- */
 
-  typedef NamedStringSet < Dna5QStringSet > Dna5QRecords;
+  typedef NamedStringSet< Dna5QStringSet > Dna5QRecords;
 
   /* END OF Data structures  ----------------------------------------------------- */
 
