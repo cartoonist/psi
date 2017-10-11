@@ -191,7 +191,7 @@ namespace grem
         typedef typename Stat< Mapper >::Type stats_type;
         typedef TTraverser traverser_type;
         /* ====================  LIFECYCLE      ====================================== */
-        Mapper( const VarGraph *graph,
+        Mapper( const VarGraph* graph,
             Dna5QRecords&& r,
             unsigned int len,
             unsigned char mismatches = 0 )
@@ -203,14 +203,14 @@ namespace grem
           }
         }
 
-        Mapper( const VarGraph *graph,
+        Mapper( const VarGraph* graph,
             const Dna5QRecords& r,
             unsigned int len,
             unsigned char mismatches = 0 )
           : Mapper( graph , Dna5QRecords( r ), len, mismatches )
         { }
 
-        Mapper( const VarGraph *graph,
+        Mapper( const VarGraph* graph,
             unsigned int len,
             unsigned char mismatches = 0 )
           : Mapper( graph , Dna5QRecords( ), len, mismatches )
@@ -220,7 +220,7 @@ namespace grem
          *  @brief  getter function for vargraph.
          */
           inline const VarGraph*
-        get_vargraph ( ) const
+        get_vargraph( ) const
         {
           return this->vargraph;
         }  /* -----  end of method get_vargraph  ----- */
@@ -238,7 +238,7 @@ namespace grem
          *  @brief  getter function for seed_len.
          */
           inline unsigned int
-        get_seed_len ( ) const
+        get_seed_len( ) const
         {
           return this->seed_len;
         }  /* -----  end of method get_seed_len  ----- */
@@ -247,7 +247,7 @@ namespace grem
          *  @brief  getter function for seed_mismatches.
          */
           inline unsigned char
-        get_seed_mismatches ( ) const
+        get_seed_mismatches( ) const
         {
           return this->seed_mismatches;
         }  /* -----  end of method get_seed_mismatches  ----- */
@@ -256,7 +256,7 @@ namespace grem
          *  @brief  getter function for reads.
          */
           inline const Dna5QRecords&
-        get_reads ( ) const
+        get_reads( ) const
         {
           return this->reads;
         }  /* -----  end of method get_reads  ----- */
@@ -265,7 +265,7 @@ namespace grem
          *  @brief  setter function for vargraph.
          */
           inline void
-        set_vargraph ( const VarGraph* value )
+        set_vargraph( const VarGraph* value )
         {
           this->vargraph = value;
         }  /* -----  end of method set_vargraph  ----- */
@@ -296,7 +296,7 @@ namespace grem
          *  @brief  setter function for seed_len.
          */
           inline void
-        set_seed_len ( unsigned int value )
+        set_seed_len( unsigned int value )
         {
           this->seed_len = value;
         }  /* -----  end of method set_seed_len  ----- */
@@ -305,7 +305,7 @@ namespace grem
          *  @brief  setter function for seed_mismatches.
          */
           inline void
-        set_seed_mismatches ( unsigned char value )
+        set_seed_mismatches( unsigned char value )
         {
           this->seed_mismatches = value;
         }  /* -----  end of method set_seed_mismatches  ----- */
@@ -316,7 +316,7 @@ namespace grem
          *  Move assignment.
          */
           inline void
-        set_reads ( Dna5QRecords&& value )
+        set_reads( Dna5QRecords&& value )
         {
           this->reads = std::move( value );
           this->index_reads();
@@ -328,13 +328,13 @@ namespace grem
          *  Copy assignment.
          */
           inline void
-        set_reads ( const Dna5QRecords& value )
+        set_reads( const Dna5QRecords& value )
         {
           this->set_reads( Dna5QRecords( value ) );
         }  /* -----  end of method set_reads  ----- */
 
           inline void
-        add_start( const vg::Position &locus )
+        add_start( const vg::Position& locus )
         {
           this->starting_loci.push_back( locus );
         }
@@ -345,7 +345,7 @@ namespace grem
           vg::Position locus;
           locus.set_node_id( node_id );
           locus.set_offset( offset );
-          this->add_start ( locus );
+          this->add_start( locus );
         }
         /* ====================  METHODS        ====================================== */
         /**
@@ -413,7 +413,7 @@ namespace grem
             if ( paths.size() == 0 ) return this->add_all_loci( step );
             auto timer = stats_type( "add-starts" );
 
-            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( this->vargraph );
+            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
             Path< Full > trav_path( this->vargraph );
 
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
@@ -421,7 +421,7 @@ namespace grem
               auto label_len = this->vargraph->node_length( id );
               std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
 
-              go_begin ( bt_itr, id );
+              go_begin( bt_itr, id );
               while ( !at_end( bt_itr ) && offset != 0 ) {
                 while ( !at_end( bt_itr ) ) {
                   add_node( trav_path, *bt_itr );
@@ -456,41 +456,41 @@ namespace grem
             }
           }
 
-        inline void add_all_loci(unsigned int step=1)
+        inline void add_all_loci( unsigned int step=1 )
         {
           // TODO: Add documentation.
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph.
           auto timer = stats_type( "add-starts" );
 
-          seqan::Iterator<VarGraph, BFS>::Type itr(this->vargraph);
+          seqan::Iterator<VarGraph, BFS>::Type itr( this->vargraph );
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
           VarGraph::nodeid_type prenode_level = 0;
-          while (!at_end(itr)) {
-            if (prenode_level != level(itr)) {
+          while ( !at_end( itr ) ) {
+            if ( prenode_level != level( itr ) ) {
               prenode_remain = remain_estimate;
               remain_estimate = 0;
-              prenode_level = level(itr);
+              prenode_level = level( itr );
             }
 
-            auto seq_len = this->vargraph->node_length(*itr);
-            unsigned long int cursor = (step - prenode_remain) % step;
-            while (cursor < seq_len) {
-              this->add_start(*itr, cursor);
+            auto seq_len = this->vargraph->node_length( *itr );
+            unsigned long int cursor = ( step - prenode_remain ) % step;
+            while ( cursor < seq_len ) {
+              this->add_start( *itr, cursor );
               cursor += step;
             }
 
             unsigned long int new_remain;
-            if (step - prenode_remain > seq_len) {
+            if ( step - prenode_remain > seq_len ) {
               new_remain = prenode_remain + seq_len;
             }
             else {
-              new_remain = (seq_len - step + prenode_remain) % step;
+              new_remain = ( seq_len - step + prenode_remain ) % step;
             }
 
-            if (remain_estimate < new_remain) {
+            if ( remain_estimate < new_remain ) {
               remain_estimate = new_remain;
             }
 
@@ -536,7 +536,7 @@ namespace grem
           {
             auto timer = stats_type( "seeding" );
             this->seeds =
-              seeding ( this->reads.str, this->seed_len, FixedLengthNonOverlapping() );
+              seeding( this->reads.str, this->seed_len, FixedLengthNonOverlapping() );
           }
           {
             auto timer = stats_type( "index-seeds" );
