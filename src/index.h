@@ -29,24 +29,24 @@ namespace grem {
   template < typename TIndexSpec >
     using Dna5QStringSetIndex = seqan::Index< Dna5QStringSet, TIndexSpec >;
 
-  typedef seqan::FastFMIndexConfig<void, uint64_t, 2, 1> TFMIndexConfig;
+  typedef seqan::FastFMIndexConfig< void, uint64_t, 2, 1 > TFMIndexConfig;
 
-  template < typename TText >
-    using TBiFMIndex = seqan::Index < TText,
-          seqan::BidirectionalIndex < seqan::FMIndex < void, TFMIndexConfig > > >;
+  template< typename TText >
+    using TBiFMIndex = seqan::Index< TText,
+          seqan::BidirectionalIndex< seqan::FMIndex< void, TFMIndexConfig > > >;
 
-  template < typename TText >
-    using TFMIndex = seqan::Index < TText, seqan::FMIndex < void, TFMIndexConfig > >;
+  template< typename TText >
+    using TFMIndex = seqan::Index< TText, seqan::FMIndex< void, TFMIndexConfig > >;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
-  template < typename TText >
+  template< typename TText >
     void
-  create_index ( seqan::Index < TText, seqan::IndexEsa<> > & index )
+  create_index( seqan::Index< TText, seqan::IndexEsa<> >& index )
   {
-    indexRequire ( index, seqan::EsaSA() );
-    indexRequire ( index, seqan::EsaLcp() );
-    indexRequire ( index, seqan::EsaChildtab() );
-    indexRequire ( index, seqan::EsaBwt() );
+    indexRequire( index, seqan::EsaSA() );
+    indexRequire( index, seqan::EsaLcp() );
+    indexRequire( index, seqan::EsaChildtab() );
+    indexRequire( index, seqan::EsaBwt() );
   }
 
 }  /* -----  end of namespace grem  ----- */
@@ -57,11 +57,11 @@ namespace seqan {
    *
    *  @note This change limit the length of the reads to 2^16 (=65536).
    */
-  template < >
-  struct SAValue< StringSet < Dna5QString > >
-  {
-    typedef Pair<long unsigned int, long unsigned int, Tag<Pack_> > Type;
-  };
+  template< >
+    struct SAValue< StringSet< Dna5QString > >
+    {
+      typedef Pair< long unsigned int, long unsigned int, Tag<Pack_> > Type;
+    };
 }  /* -----  end of namespace seqan  ----- */
 
 #endif  /* ----- #ifndef INDEX_H__  ----- */
