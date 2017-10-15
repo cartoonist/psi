@@ -121,13 +121,17 @@ template< typename TPathSet, typename TMapper >
         log->info( "Indexing the paths..." );
         /* Index the paths. */
         paths.create_index();
+      }
+      log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
+      {
+        auto timer = Timer( "save-paths" );
         log->info( "Saving paths index..." );
         /* Serialize the indexed paths. */
         if ( !paths.save( paths_index_file.c_str() ) ) {
           log->warn( "Paths index file is not specified or not writable. Skipping..." );
         }
       }
-      log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
+      log->info( "Saved paths in {} us.", Timer::get_duration( "save-paths" ).count() );
     }
   }
 
