@@ -127,7 +127,7 @@ template< typename TPathSet, typename TMapper >
         auto timer = Timer( "save-paths" );
         log->info( "Saving paths index..." );
         /* Serialize the indexed paths. */
-        if ( !paths.save( paths_index_file.c_str() ) ) {
+        if ( !paths.save( paths_index_file ) ) {
           log->warn( "Paths index file is not specified or not writable. Skipping..." );
         }
       }
