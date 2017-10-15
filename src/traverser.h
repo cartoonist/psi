@@ -22,16 +22,16 @@
 #include "traverser_dfs.h"
 
 namespace grem {
-  template< typename TIndexSpec,
+  template< typename TIndex,
     typename TStrategy,
     template<typename> class TMatchingTraits,
     typename TStatSpec = void >
     class Traverser;
 
-  template< typename IndexSpec, typename TStatSpec >
-    class Traverser< IndexSpec, BFS, ExactMatching, TStatSpec > {
+  template< typename TIndex, typename TStatSpec >
+    class Traverser< TIndex, BFS, ExactMatching, TStatSpec > {
       public:
-        typedef TraverserBFS< IndexSpec, ExactMatching, TStatSpec > Type;
+        typedef TraverserBFS< TIndex, ExactMatching, TStatSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
 }  /* -----  end of namespace grem  ----- */
 

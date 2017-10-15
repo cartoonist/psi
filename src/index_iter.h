@@ -566,24 +566,25 @@ namespace grem {
       return "";
     }
 
-  template < typename TOccurrence1, typename TOccurrence2, typename TCallback >
+  template < typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
     void
-    _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, TCallback callback )
+    _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
     {
       seqan::Seed < seqan::Simple > hit;
 
       setBeginPositionH ( hit, oc1.i1 );
       setEndPositionH ( hit, oc1.i2 );
-      setBeginPositionV ( hit, oc2.i1 );
+      auto id = position_to_id( *rec2, oc2.i1 );
+      setBeginPositionV ( hit, id );
       setEndPositionV ( hit, oc2.i2 );
 
       callback ( hit );
     }
 
-  template < typename TIndex1, typename TIndex2, typename TCallback >
+  template < typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
     void
-    _kmer_exact_match_impl ( TIndex1 &smaller, TIndex2 &bigger, unsigned int k,
-        bool rev_params, TCallback callback )
+    _kmer_exact_match_impl ( TIndex1 &smaller, TIndex2 &bigger, const TRecords2* rec2,
+        unsigned int k, bool rev_params, TCallback callback )
     {
       typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
       typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
@@ -594,8 +595,7 @@ namespace grem {
 
       TIndexIter< TIndex1, TIterSpec > smaller_itr ( smaller );
       TIndexIter< TIndex2, TIterSpec > bigger_itr ( bigger );
-
-      seqan::Dna5QString kmer;
+      TIterRawText< TIndexIter< TIndex1, TIterSpec > > kmer;
       while ( length( kmer = next_kmer ( smaller_itr, k ) ) != 0 ) {
         if ( goDown ( bigger_itr, kmer ) ) {
           occurrences1 = getOccurrences ( smaller_itr );
@@ -607,10 +607,10 @@ namespace grem {
             for ( unsigned int j = 0; j < occur_size2; ++j ) {
 
               if ( !rev_params ) {
-                _add_seed ( occurrences1[i], occurrences2[j], callback );
+                _add_seed ( occurrences1[i], occurrences2[j], rec2, callback );
               }
               else {
-                _add_seed ( occurrences2[j], occurrences1[i], callback );
+                _add_seed ( occurrences2[j], occurrences1[i], rec2, callback );
               }
 
             }
@@ -624,18 +624,19 @@ namespace grem {
       }
     }
 
-  template < typename TIndex1, typename TIndex2, typename TCallback >
+  template < typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
     void
-    kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, unsigned int k, TCallback callback )
+    kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, const TRecords2* rec2, unsigned int k,
+        TCallback callback )
     {
       auto fst_len = length ( indexRawText ( fst ) );
       auto snd_len = length ( indexRawText ( snd ) );
 
       if ( fst_len <= snd_len ) {
-        _kmer_exact_match_impl ( fst, snd, k, false, callback );
+        _kmer_exact_match_impl ( fst, snd, rec2, k, false, callback );
       }
       else {
-        _kmer_exact_match_impl ( snd, fst, k, true, callback );
+        _kmer_exact_match_impl ( snd, fst, rec2, k, true, callback );
       }
     }
 

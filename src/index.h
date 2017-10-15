@@ -26,9 +26,6 @@
 
 namespace grem {
   /* Typedefs  ------------------------------------------------------------------- */
-  template < typename TIndexSpec >
-    using Dna5QStringSetIndex = seqan::Index< Dna5QStringSet, TIndexSpec >;
-
   typedef seqan::FastFMIndexConfig< void, uint64_t, 2, 1 > TFMIndexConfig;
 
   template< typename TText >
@@ -55,10 +52,11 @@ namespace seqan {
   /**
    *  @brief  Saving memory by overriding SAValue type.
    *
-   *  @note This change limit the length of the reads to 2^16 (=65536).
+   *  @note This change limit the length of the reads to 2^32 (=4,294,967,295) in 32-bit
+   *        systems and to 2^64 (=18,446,744,073,709,551,615) in 64-bit ones.
    */
-  template< >
-    struct SAValue< StringSet< Dna5QString > >
+  template< typename TSpec >
+    struct SAValue< grem::Dna5QStringSet< TSpec > >
     {
       typedef Pair< long unsigned int, long unsigned int, Tag<Pack_> > Type;
     };

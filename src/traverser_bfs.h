@@ -26,33 +26,38 @@ namespace grem {
    *
    *  Traverser a graph from a starting point and find seed hits using the read index.
    */
-  template< typename TIndexSpec,
+  template< typename TIndex,
     template<typename> class TMatchingTraits,
     typename TStatSpec >
     class TraverserBFS;
 
-  template< typename TIndexSpec, typename TStatSpec >
-    class TraverserBFS< TIndexSpec, ExactMatching, TStatSpec >
-    : public TraverserBase< TIndexSpec, BFS, ExactMatching, TStatSpec >
+  template< typename TIndex, typename TStatSpec >
+    class TraverserBFS< TIndex, ExactMatching, TStatSpec >
+    : public TraverserBase< TIndex, BFS, ExactMatching, TStatSpec >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef TraverserBase< TIndexSpec, BFS, ExactMatching, TStatSpec > TBase;
+        typedef TraverserBase< TIndex, BFS, ExactMatching, TStatSpec > TBase;
         typedef typename TBase::output_type output_type;
-        typedef typename TBase::indexspec_type indexspec_type;
-        typedef typename TBase::iterspec_type iterspec_type;
         typedef typename TBase::index_type index_type;
+        typedef typename TBase::indexspec_type indexspec_type;
+        typedef typename TBase::stringset_type stringset_type;
+        typedef typename TBase::text_type text_type;
+        typedef typename TBase::records_type records_type;
+        typedef typename TBase::iterspec_type iterspec_type;
         typedef typename TBase::iterator_type iterator_type;
         typedef typename TBase::traits_type traits_type;
         typedef typename TBase::TSAValue TSAValue;
         typedef typename TBase::stats_type stats_type;
         /* ====================  LIFECYCLE     ======================================= */
-        TraverserBFS( const VarGraph* graph, index_type* index, unsigned int len, vg::Position s )
-          : TBase( graph, index, len, s )
+        TraverserBFS( const VarGraph* graph, const records_type* r, TIndex* index,
+            unsigned int len, vg::Position s )
+          : TBase( graph, r, index, len, s )
         { }
 
-        TraverserBFS( const VarGraph* graph, index_type* index, unsigned int len )
-          : TBase( graph, index, len )
+        TraverserBFS( const VarGraph* graph, const records_type* r, TIndex* index,
+            unsigned int len )
+          : TBase( graph, r, index, len )
         { }
         /* ====================  METHODS       ======================================= */
           inline void
@@ -100,8 +105,7 @@ namespace grem {
               output_type hit;
               seqan::setBeginPositionH ( hit, this->start_locus.node_id() );
               seqan::setEndPositionH ( hit, this->start_locus.offset() );
-              // :FIXME:Fri Sep 01 05:42:\@cartoonist: Read ID here is rank in chunk! actual id = rank + offset.
-              seqan::setBeginPositionV ( hit, saPositions[i].i1 );  // Read ID.
+              seqan::setBeginPositionV ( hit, position_to_id( *(this->reads), saPositions[i].i1 ) );  // Read ID.
               seqan::setEndPositionV ( hit, saPositions[i].i2 );    // Position in the read.
               callback( hit );
             }

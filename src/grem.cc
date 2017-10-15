@@ -139,14 +139,14 @@ template< typename TIndexSpec  >
       const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
   {
     auto log = get_logger( "main" );
-    typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
-    Mapper< TTraverser > mapper( &vargraph, seed_len );
-
-    typedef decltype( mapper ) TMapper;
+    typedef seqan::Index< Dna5QStringSet< grem::Dependent >, TIndexSpec > TIndex;
+    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
+    typedef Mapper< TTraverser > TMapper;
+    TMapper mapper( &vargraph, seed_len );
     std::signal( SIGUSR1, signal_handler< TMapper > );
 
     // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-    PathSet< seqan::IndexEsa<> > paths;
+    PathSet< seqan::Dna5QString, seqan::IndexEsa<> > paths;
     prepare_paths_index( paths, mapper, paths_index_file, path_num );
 
     if ( nomapping ) {
@@ -161,28 +161,34 @@ template< typename TIndexSpec  >
     log->info( "Number of starting points selected (in {} nodes): {}",
         mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
 
-     // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
+    Records< Dna5QStringSet<> > reads;
+    log->info( "Reading all reads from file..." );
+    {
+      auto timer = Timer( "read-reads" );
+      readRecords( reads, reads_infile );
+    }
+    log->info( "Read all reads in {} us.",
+        Timer::get_duration( "read-reads" ).count() );
+
     unsigned long long int found = 0;
-    std::unordered_set< Dna5QStringSetPosition > covered_reads;
+    std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write =
       [&found, &covered_reads] (typename TTraverser::output_type const & seed_hit){
       ++found;
       covered_reads.insert(seqan::beginPositionV(seed_hit));
     };
 
-    Dna5QRecords reads_chunk;
-
+    Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
     log->info( "Finding seeds..." );
     {
       auto timer = Timer( "seed-finding" );
       while (true)
       {
-        log->info( "Reading the next reads chunk..." );
+        log->info( "Loading the next reads chunk..." );
         {
           auto timer = Timer( "load-chunk" );
-          readRecords( reads_chunk, reads_infile, chunk_size );
+          if ( ! load_chunk( reads_chunk, reads, chunk_size ) ) break;
         }
-        if (length(reads_chunk.id) == 0) break;
         log->info( "Loaded reads chunk in {} us.",
             Timer::get_duration( "load-chunk" ).count() );
 
@@ -200,9 +206,6 @@ template< typename TIndexSpec  >
         log->info( "Traversing..." );
         mapper.traverse ( write );
         log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
-
-        clear( reads_chunk.id );
-        clear( reads_chunk.str );
       }
     }
     log->info( "found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );

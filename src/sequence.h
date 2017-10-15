@@ -27,10 +27,46 @@
 namespace grem {
   // :TODO:Tue Sep 05 09:36:\@cartoonist: clear the code up from direct usage of seqan::Dna5QString.
   /* Typedefs  ------------------------------------------------------------------- */
-  typedef seqan::StringSet< seqan::CharString > CharStringSet;
-  typedef seqan::StringSet< seqan::Dna5QString > Dna5QStringSet;
-  typedef seqan::Position< Dna5QStringSet >::Type Dna5QStringSetPosition;
+  template< typename TSpec = seqan::Owner<> >
+    using CharStringSet = seqan::StringSet< seqan::CharString, TSpec >;
+  template< typename TSpec = seqan::Owner<> >
+    using Dna5QStringSet = seqan::StringSet< seqan::Dna5QString, TSpec >;
+  typedef seqan::Dependent< seqan::Generous > Dependent;
   /* END OF Typedefs  ------------------------------------------------------------ */
+
+  /* Meta-functions  ------------------------------------------------------------- */
+
+  template< typename TStringSet >
+    class MakeOwner;
+
+  template< typename TStringSet >
+    class MakeDependent;
+
+  template< typename TText >
+    class MakeOwner< seqan::StringSet< TText, grem::Dependent > > {
+      public:
+        typedef seqan::StringSet< TText, seqan::Owner<> > Type;
+    };
+
+  template< typename TText >
+    class MakeOwner< seqan::StringSet< TText, seqan::Owner<> > > {
+      public:
+        typedef seqan::StringSet< TText, seqan::Owner<> > Type;
+    };
+
+  template< typename TText >
+    class MakeDependent< seqan::StringSet< TText, seqan::Owner<> > > {
+      public:
+        typedef seqan::StringSet< TText, grem::Dependent > Type;
+    };
+
+  template< typename TText >
+    class MakeDependent< seqan::StringSet< TText, grem::Dependent > > {
+      public:
+        typedef seqan::StringSet< TText, grem::Dependent > Type;
+    };
+
+  /* END OF Meta-functions  ------------------------------------------------------ */
 
   /* Data structures  ------------------------------------------------------------ */
 
@@ -44,10 +80,146 @@ namespace grem {
       public:
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet str;
-        CharStringSet id;
+        CharStringSet<> name;
     };  /* ----------  end of template class NamedStringSet  ---------- */
 
-  typedef NamedStringSet< Dna5QStringSet > Dna5QRecords;
+  /* Forwards */
+  template< typename TStringSet >
+    class Records;
+
+  /* Records interface functions */
+  template< typename TText >
+      inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
+    position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition pos )
+    {
+      if ( pos >= length( records.str ) || pos < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos;          /**< @brief In Owner records ID and position are identical. */
+    }
+
+  template< typename TText >
+      inline typename Records< seqan::StringSet< TText, grem::Dependent > >::TId
+    position_to_id( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
+        typename Records< seqan::StringSet< TText, grem::Dependent > >::TPosition pos )
+    {
+      if ( pos >= length( records.str ) || pos < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      assert( records.o_str != nullptr );
+      return records.offset + pos;
+    }
+
+
+  template< typename TText >
+      inline void
+    clear( Records< seqan::StringSet< TText, seqan::Owner<> > >&records )
+    {
+      clear( records.str );
+      clear( records.name );
+    }
+
+  template< typename TText >
+      inline void
+    clear( Records< seqan::StringSet< TText, grem::Dependent > >&records )
+    {
+      clear( records.str );
+      records.offset = 0;
+      records.o_str = nullptr;
+    }
+
+  template< typename TText, typename TStringSetSpec >
+      inline typename Records< seqan::StringSet< TText, TStringSetSpec > >::TSize
+    length( const Records< seqan::StringSet< TText, TStringSetSpec > >& records )
+    {
+      return length( records.str );
+    }
+
+  template< typename TText >
+      inline bool
+    load_chunk( Records< seqan::StringSet< TText, grem::Dependent > >& records,
+        const Records< seqan::StringSet< TText, seqan::Owner<> > >& ref,
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n,
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition start_pos )
+    {
+      if ( start_pos >= length( ref.str ) || start_pos < 0 )
+      {
+        return false;
+      }
+
+      clear( records.str );
+      records.offset = start_pos;
+      records.o_str = &ref.str;
+      auto i = start_pos;
+      for ( ; i < n + start_pos && i < length( ref.str ); ++i ) {
+        appendValue( records.str, ref.str[ i ] );
+      }
+      return true;
+    }
+
+  template< typename TText >
+      inline bool
+    load_chunk( Records< seqan::StringSet< TText, grem::Dependent > >& records,
+        const Records< seqan::StringSet< TText, seqan::Owner<> > >& ref,
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n )
+    {
+      if ( length( records.str ) == 0 ) {
+        return load_chunk( records, ref, n, 0 );
+      }
+      return load_chunk( records, ref, n, records.offset + n );
+    }
+
+  template< typename TText >
+    class Records< seqan::StringSet< TText, seqan::Owner<> > >
+    : public NamedStringSet< seqan::StringSet< TText, seqan::Owner<> > > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
+        typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
+        typedef typename seqan::Position< TStringSet >::Type TPosition;
+        typedef typename seqan::Id< TStringSet >::Type TId;
+        typedef typename seqan::Size< TStringSet >::Type TSize;
+        typedef typename seqan::Value< TStringSet >::Type TValue;
+    };
+
+  template< typename TText >
+    class Records< seqan::StringSet< TText, grem::Dependent > > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef seqan::StringSet< TText, grem::Dependent > TStringSet;
+        typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
+        typedef typename seqan::Position< TStringSet >::Type TPosition;
+        typedef typename seqan::Id< TStringSet >::Type TId;
+        typedef typename seqan::Size< TStringSet >::Type TSize;
+        typedef typename seqan::Value< TStringSet >::Type TValue;
+        /* ====================  DATA MEMBERS  ======================================= */
+        TStringSet str;
+        /* ====================  LIFECYCLE     ======================================= */
+        Records( ) : offset( 0 ), o_str( nullptr ) { }
+        /* ====================  INTERFACE FUNCTIONS  ================================ */
+          friend TId
+        position_to_id< TText >( const Records& records, TPosition pos );
+
+          friend void
+        clear< TText >( Records& records );
+
+          friend bool
+        load_chunk< TText >( Records& records,
+            const Records< TRefStringSet >& ref,
+            typename Records< TRefStringSet >::TPosition n,
+            typename Records< TRefStringSet >::TPosition start_pos );
+
+          friend bool
+        load_chunk< TText >( Records& records,
+            const Records< TRefStringSet >& ref,
+            typename Records< TRefStringSet >::TPosition n );
+
+      protected:
+        /* ====================  DATA MEMBERS  ======================================= */
+        std::size_t offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
+        const TRefStringSet* o_str;  /**< @brief original string set. */
+    };
 
   /* END OF Data structures  ----------------------------------------------------- */
 
@@ -62,44 +234,50 @@ namespace grem {
    *  A wrapper function for `seqan::readRecords` method to read the records into
    *  sequence record set. If `num_record` is equal to zero, it reads all recrods.
    */
-    inline void
-  readRecords( Dna5QRecords& records, seqan::SeqFileIn& infile,
-      unsigned int num_record = 0 )
-  {
-    CharStringSet quals;
-    if ( num_record != 0 ) {
-      seqan::readRecords( records.id, records.str, quals, infile, num_record );
-    }
-    else {
-      seqan::readRecords( records.id, records.str, quals, infile );
-    }
-    assignQualities( records.str, quals );
-    return;
-  }  /* -----  end of function readRecords  ----- */
+  template< typename TText >
+      inline void
+    readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+        seqan::SeqFileIn& infile,
+        unsigned int num_record = 0 )
+    {
+      CharStringSet<> quals;
+      if ( num_record != 0 ) {
+        seqan::readRecords( records.name, records.str, quals, infile, num_record );
+      }
+      else {
+        seqan::readRecords( records.name, records.str, quals, infile );
+      }
+      assignQualities( records.str, quals );
+      return;
+    }  /* -----  end of template function readRecords  ----- */
 
   /* Seeding strategies */
-  struct FixedLengthNonOverlappingSeeding;
+  struct GreedyNonOverlapStrategy;
 
   /* Seeding strategy tags */
-  typedef seqan::Tag< FixedLengthNonOverlappingSeeding > FixedLengthNonOverlapping;
+  typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
 
   /**
    *  @brief  Seeding by partitioning each sequence into non-overlapping k-mers.
    *
+   *  @param  seeds The resulting set of strings containing seeds.
    *  @param  string_set The string set from which seeds are extracted.
    *  @param  k The length of the seeds.
    *  @param  tag Tag for fixed-length non-overlapping seeding strategy.
-   *  @return A set of strings containing seeds.
    *
    *  Extract a set of non-overlapping seeds of length k.
    *
    *  NOTE: In case that the length of sequence is not dividable by k the last seed
-   *        may overlap its previous.
+   *        may overlap its previous (greedy).
    */
-  inline Dna5QStringSet
-    seeding( const Dna5QStringSet& string_set, unsigned int k, FixedLengthNonOverlapping )
+  template< typename TText, typename TStringSetSpec >
+      inline void
+    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
+        const seqan::StringSet< TText, TStringSetSpec >& string_set,
+        unsigned int k,
+        GreedyNonOverlapping )
     {
-      Dna5QStringSet seeds;
+      clear( seeds );
       reserve ( seeds, static_cast<int>( lengthSum ( string_set ) / k ) );
 
       for ( unsigned int idx = 0; idx < length ( string_set ); ++idx ) {
@@ -109,8 +287,6 @@ namespace grem {
         unsigned int last = length ( string_set[idx] ) - k;
         appendValue ( seeds, infixWithLength ( string_set[idx], last, k ) );
       }
-
-      return seeds;
     }  /* -----  end of function seeding  ----- */
   /* END OF Interface functions  ------------------------------------------------- */
 

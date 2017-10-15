@@ -190,9 +190,13 @@ namespace grem
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename Stat< Mapper >::Type stats_type;
         typedef TTraverser traverser_type;
+        typedef Records< typename TTraverser::stringset_type > readsrecord_type;
+        typedef typename TTraverser::index_type readsindex_type;
+        typedef typename MakeOwner< typename TTraverser::stringset_type >::Type seedsrecord_type;
+        typedef seqan::Index< seedsrecord_type, typename TTraverser::indexspec_type > seedsindex_type;
         /* ====================  LIFECYCLE      ====================================== */
         Mapper( const VarGraph* graph,
-            Dna5QRecords&& r,
+            readsrecord_type&& r,
             unsigned int len,
             unsigned char mismatches = 0 )
           : vargraph( graph ), reads( std::move( r ) ), seed_len( len ),
@@ -204,16 +208,16 @@ namespace grem
         }
 
         Mapper( const VarGraph* graph,
-            const Dna5QRecords& r,
+            const readsrecord_type& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( graph , Dna5QRecords( r ), len, mismatches )
+          : Mapper( graph , readsrecord_type( r ), len, mismatches )
         { }
 
         Mapper( const VarGraph* graph,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( graph , Dna5QRecords( ), len, mismatches )
+          : Mapper( graph , readsrecord_type( ), len, mismatches )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
@@ -255,7 +259,7 @@ namespace grem
         /**
          *  @brief  getter function for reads.
          */
-          inline const Dna5QRecords&
+          inline const readsrecord_type&
         get_reads( ) const
         {
           return this->reads;
@@ -316,7 +320,7 @@ namespace grem
          *  Move assignment.
          */
           inline void
-        set_reads( Dna5QRecords&& value )
+        set_reads( readsrecord_type&& value )
         {
           this->reads = std::move( value );
           this->index_reads();
@@ -328,9 +332,9 @@ namespace grem
          *  Copy assignment.
          */
           inline void
-        set_reads( const Dna5QRecords& value )
+        set_reads( const readsrecord_type& value )
         {
-          this->set_reads( Dna5QRecords( value ) );
+          this->set_reads( readsrecord_type( value ) );
         }  /* -----  end of method set_reads  ----- */
 
           inline void
@@ -360,9 +364,9 @@ namespace grem
          *  XXX: We assume that each connect component in the graph has one and only one
          *  path indicating a sample haplotype in that region.
          */
-        template< typename TIndexSpec >
+        template< typename TText, typename TIndexSpec >
             void
-          pick_paths( PathSet< TIndexSpec >& paths, int n )
+          pick_paths( PathSet< TText, TIndexSpec >& paths, int n )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -391,9 +395,9 @@ namespace grem
          *  both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-        template< typename TIndexSpec >
+        template< typename TText, typename TIndexSpec >
             inline void
-          seeds_on_paths( PathSet< TIndexSpec >& paths,
+          seeds_on_paths( PathSet< TText, TIndexSpec >& paths,
               std::function< void(typename TTraverser::output_type const &) >& callback )
           {
             if ( length( paths.string_set ) == 0 ) return;
@@ -402,12 +406,12 @@ namespace grem
 
             // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
             //                                      Check `index_iter.h`.
-            kmer_exact_matches( paths.index, this->seeds_index, this->seed_len, callback );
+            kmer_exact_matches( paths.index, this->seeds_index, &(this->reads), this->seed_len, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
-        template< typename TIndexSpec >
+        template< typename TText, typename TIndexSpec >
             inline void
-          add_all_loci( PathSet< TIndexSpec >& paths, unsigned int k,
+          add_all_loci( PathSet< TText, TIndexSpec >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );
@@ -504,43 +508,44 @@ namespace grem
           auto timer = stats_type( "traverse" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
 
-          TTraverser traverser( this->vargraph, &(this->reads_index), this->seed_len );
+          TTraverser traverser( this->vargraph, &(this->reads), &(this->reads_index), this->seed_len );
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
             const auto& locus = this->starting_loci[ idx ];
-            stats_type::set_current_locus( locus );
-            stats_type::set_current_locus_idx( idx );
+            stats_type::set_lastproc_locus( locus );
 
             traverser.set_start_locus( locus );
             traverser.run( callback );
+
+            stats_type::set_lastdone_locus_idx( idx );
           }
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const VarGraph* vargraph;
         std::vector< vg::Position > starting_loci;
-        Dna5QRecords reads;
+        readsrecord_type reads;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
-        typename TTraverser::index_type reads_index;
-        Dna5QStringSet seeds;
-        typename TTraverser::index_type seeds_index;
+        readsindex_type reads_index;
+        seedsrecord_type seeds;
+        seedsindex_type seeds_index;
         /* ====================  METHODS       ======================================= */
           inline void
         index_reads( )
         {
           {
             auto timer = stats_type( "index-reads" );
-            this->reads_index = typename TTraverser::index_type( this->reads.str );
+            this->reads_index = readsindex_type( this->reads.str );
           }
           {
             auto timer = stats_type( "seeding" );
-            this->seeds =
-              seeding( this->reads.str, this->seed_len, FixedLengthNonOverlapping() );
+            seeding( this->seeds, this->reads.str, this->seed_len,
+                GreedyNonOverlapping() );
           }
           {
             auto timer = stats_type( "index-seeds" );
-            this->seeds_index = typename TTraverser::index_type( this->seeds );
+            this->seeds_index = seedsindex_type( this->seeds );
           }
         }
     };

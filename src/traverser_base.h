@@ -44,7 +44,7 @@
 namespace grem
 {
   /* Forwards */
-  template< typename TIndexSpec,
+  template< typename TIndex,
     typename TStrategy,
     template<typename> class TMatchingTraits,
     typename TStatSpec >
@@ -191,17 +191,17 @@ namespace grem
   /**
    *  @brief  Stat template class specialization for `TraverserBase`.
    */
-  template< typename TIndexSpec,
+  template< typename TIndex,
     typename TStrategy,
     template<typename> class TMatchingTraits,
     typename TSpec >
-    class Stat< TraverserBase< TIndexSpec, TStrategy, TMatchingTraits, TSpec > >
+    class Stat< TraverserBase< TIndex, TStrategy, TMatchingTraits, TSpec > >
     {
       public:
         typedef TraverserStat< TSpec > Type;
     };
 
-  template< typename TIndexSpec,
+  template< typename TIndex,
     typename TStrategy,
     template<typename> class TMatchingTraits,
     typename TStatSpec >
@@ -212,23 +212,28 @@ namespace grem
         // :TODO:Tue Aug 29 14:49:\@cartoonist: Use grem::Seed class instead of Output.
         /**< @brief The output type. */
         typedef seqan::Seed < seqan::Simple > output_type;
-        /**< @brief Index iterator template specialization parameter. */
-        typedef TIndexSpec indexspec_type;
+        typedef TIndex index_type;
+        typedef typename seqan::Spec< TIndex >::Type indexspec_type;
+        typedef typename seqan::Fibre< TIndex, seqan::FibreText >::Type stringset_type;
+        typedef typename seqan::Value< stringset_type >::Type text_type;
+        typedef Records< stringset_type > records_type;
         typedef TopDownFine< seqan::ParentLinks<> > iterspec_type;
-        typedef Dna5QStringSetIndex< TIndexSpec > index_type;
-        typedef TIndexIter< index_type, iterspec_type > iterator_type;
+        typedef TIndexIter< TIndex, iterspec_type > iterator_type;
         typedef TMatchingTraits< iterator_type > traits_type;
-        typedef typename seqan::SAValue< index_type >::Type TSAValue;
+        typedef typename seqan::SAValue< TIndex >::Type TSAValue;
         typedef typename Stat< TraverserBase >::Type stats_type;
         /* ====================  DATA MEMBERS  ======================================= */
         static const auto max_mismatches = traits_type::max_mismatches;
         /* ====================  LIFECYCLE      ====================================== */
-        TraverserBase( const VarGraph* graph, index_type* index, unsigned int len, vg::Position s )
-          : vargraph( graph ), reads_index( index ), seed_len( len ), start_locus( s )
+        TraverserBase( const VarGraph* graph, const records_type* r, TIndex* index,
+            unsigned int len, vg::Position s )
+          : vargraph( graph ), reads( r ), reads_index( index ), seed_len( len ),
+          start_locus( s )
         { }
 
-        TraverserBase( const VarGraph* graph, index_type* index, unsigned int len )
-          : vargraph( graph ), reads_index( index ), seed_len( len )
+        TraverserBase( const VarGraph* graph, const records_type* r, TIndex* index,
+            unsigned int len )
+          : vargraph( graph ), reads( r ), reads_index( index ), seed_len( len )
         {
           this->set_start_locus( 0, 0 );
         }
@@ -243,9 +248,18 @@ namespace grem
         }  /* -----  end of method get_vargraph  ----- */
 
         /**
+         *  @brief  getter function for reads.
+         */
+          inline const records_type*
+        get_reads( ) const
+        {
+          return this->reads;
+        }  /* -----  end of method get_reads  ----- */
+
+        /**
          *  @brief  getter function for reads_index.
          */
-          inline const index_type*
+          inline const TIndex*
         get_reads_index (  ) const
         {
           return this->reads_index;
@@ -279,10 +293,19 @@ namespace grem
         }  /* -----  end of method set_vargraph  ----- */
 
         /**
+         *  @brief  setter function for reads.
+         */
+          inline void
+        set_reads( const records_type* value )
+        {
+          this->reads = value;
+        }  /* -----  end of method set_reads  ----- */
+
+        /**
          *  @brief  setter function for reads_index.
          */
           inline void
-        set_reads_index ( index_type* value )
+        set_reads_index ( TIndex* value )
         {
           this->reads_index = value;
         }  /* -----  end of method set_reads_index  ----- */
@@ -317,7 +340,8 @@ namespace grem
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         const VarGraph* vargraph;      /**< @brief Pointer to variation graph. */
-        index_type* reads_index;       /**< @brief Pointer to reads index. */
+        const records_type* reads;     /**< @brief Pointer to reads record. */
+        TIndex* reads_index;           /**< @brief Pointer to reads index. */
         unsigned int seed_len;         /**< @brief Seed length. */
         vg::Position start_locus;      /**< @brief Starting point. */
         std::vector< typename traits_type::TState > frontier_states;
