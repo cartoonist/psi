@@ -98,31 +98,31 @@ template< typename TPathSet, typename TMapper >
   prepare_paths_index( TPathSet& paths, TMapper& mapper,
       const std::string& paths_index_file, unsigned int path_num )
   {
+    /* Get the main logger. */
     auto log = get_logger( "main" );
     log->info( "Loading paths index..." );
-
+    /* Load the genome-wide paths for the variation graph if available. */
     if ( paths.load( paths_index_file, mapper.get_vargraph() ) ) {
       log->info( "Paths index found. Loaded." );
       return;
     }
-
+    /* No genome-wide paths requested. */
     if ( path_num == 0 ) {
       log->info( "Specified number of path is 0. Skipping paths indexing..." );
     }
     else {
       log->info( "No valid paths index found. Picking paths..." );
-
       log->info( "Picking {} different path(s) on the graph...", path_num );
+      /* Generate the requested number of genome-wide paths. */
       mapper.pick_paths( paths, path_num );
       log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
-
       {
         auto timer = Timer( "index-paths" );
-
         log->info( "Indexing the paths..." );
+        /* Index the paths. */
         paths.create_index();
-
         log->info( "Saving paths index..." );
+        /* Serialize the indexed paths. */
         if ( !paths.save( paths_index_file.c_str() ) ) {
           log->warn( "Paths index file is not specified or not writable. Skipping..." );
         }
@@ -138,15 +138,20 @@ template< typename TIndexSpec  >
       unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
       const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
   {
+    /* Get the main logger. */
     auto log = get_logger( "main" );
+    /* Method typedefs. */
     typedef seqan::Index< Dna5QStringSet< grem::Dependent >, TIndexSpec > TIndex;
     typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
     typedef Mapper< TTraverser > TMapper;
+    /* The mapper for input variation graph. */
     TMapper mapper( &vargraph, seed_len );
+    /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
-
+    /* Genome-wide paths set. */
     // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
     PathSet< seqan::Dna5QString, seqan::IndexEsa<> > paths;
+    /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index_file, path_num );
 
     if ( nomapping ) {
@@ -155,16 +160,19 @@ template< typename TIndexSpec  >
     }
 
     log->info( "Selecting starting loci..." );
+    /* Locate starting points. */
     mapper.add_all_loci( paths, seed_len, start_every );
     log->info( "Selected starting loci in {} us.",
         Timer::get_duration( "add-starts" ).count() );
     log->info( "Number of starting points selected (in {} nodes): {}",
         mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
 
+    /* All DNA reads to be mapped. */
     Records< Dna5QStringSet<> > reads;
     log->info( "Reading all reads from file..." );
     {
       auto timer = Timer( "read-reads" );
+      /* Load all reads from file. */
       readRecords( reads, reads_infile );
     }
     log->info( "Read all reads in {} us.",
@@ -178,6 +186,7 @@ template< typename TIndexSpec  >
       covered_reads.insert(seed_hit.read_id);
     };
 
+    /* Reads are mapped in chunks. */
     Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
     log->info( "Finding seeds..." );
     {
@@ -187,29 +196,29 @@ template< typename TIndexSpec  >
         log->info( "Loading the next reads chunk..." );
         {
           auto timer = Timer( "load-chunk" );
+          /* Load a chunk from reads set. */
           if ( ! load_chunk( reads_chunk, reads, chunk_size ) ) break;
         }
         log->info( "Loaded reads chunk in {} us.",
             Timer::get_duration( "load-chunk" ).count() );
-
+        /* Give the current chunk to the mapper. */
         mapper.set_reads( std::move( reads_chunk ) );
         log->info( "Seeding was done in {} us.",
             Timer::get_duration( "seeding" ).count() );
-
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
+        /* Find seeds on genome-wide paths. */
         mapper.seeds_on_paths( paths, write );
         log->info( "Found seed on paths in {} us.",
             Timer::get_duration( "paths-seed-find" ).count() );
         log->info( "Total number of seeds found on paths: {}", found - pre_found );
-
         log->info( "Traversing..." );
+        /* Find seeds on variation graph by traversing starting points. */
         mapper.traverse ( write );
         log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
       }
     }
     log->info( "found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );
-
     report( mapper, covered_reads, found );
   }
 
