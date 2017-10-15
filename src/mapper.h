@@ -20,6 +20,7 @@
 
 #include <fstream>
 #include <type_traits>
+#include <atomic>
 #include <vector>
 #include <iterator>
 #include <functional>
@@ -37,7 +38,6 @@
 
 namespace grem
 {
-  // :TODO:Mon Sep 25 00:59:\@cartoonist: Fix MapperStat to be thread-safe like TraverserStat.
   /**
    *  @brief  MapperStat template class.
    *
@@ -47,6 +47,12 @@ namespace grem
     class MapperStat : public Timer
     {
       public:
+        /* ====================  MEMBER TYPES  ======================================= */
+        struct Coordinates {
+          VarGraph::nodeid_type node_id;
+          VarGraph::offset_type offset;
+        };
+        /* ====================  LIFECYCLE     ======================================= */
         /**
          *  @brief  MapperStat constructor.
          *
@@ -55,64 +61,36 @@ namespace grem
         MapperStat( const std::string& name )
           : Timer( name )
         { }
-
+        /* ====================  ACCESSORS     ======================================= */
         /**
-         *  @brief  Get the current processing locus.
+         *  @brief  Get the last processing locus.
          *
-         *  @return The reference to static variable `current_locus`.
+         *  @return The reference to static variable `lastproc_locus`.
          *
-         *  It is set to the current processing locus when the mapper is in the middle
+         *  It is set to the last processing locus when the mapper is in the middle
          *  of the "traversal" phase.
          */
-          static inline vg::Position&
-        get_current_locus( )
+          static inline std::atomic< Coordinates >&
+        get_lastproc_locus( )
         {
-          static vg::Position current_locus;
-          return current_locus;
-        }  /* -----  end of method get_current_locus  ----- */
+          static std::atomic< Coordinates > lastproc_locus( { 0, 0 } );
+          return lastproc_locus;
+        }  /* -----  end of method get_lastproc_locus  ----- */
 
         /**
-         *  @brief  Set the current processing locus.
+         *  @brief  Get the index of the last done processing locus in the starting loci.
          *
-         *  @param  value The value to be set as current locus.
+         *  @return The reference to static variable `lastdone_locus_idx`.
          *
-         *  It sets the current processing locus when the mapper is in the middle of
-         *  the "traversal" phase.
-         */
-          static inline void
-        set_current_locus( const vg::Position& value )
-        {
-          get_current_locus() = value;
-        }  /* -----  end of method set_current_locus  ----- */
-
-        /**
-         *  @brief  Get the index of the current processing locus in the starting loci.
-         *
-         *  @return The reference to static variable `current_locus_idx`.
-         *
-         *  It is set to the index of the current processing locus in the starting loci
+         *  It is set to the index of the last done processing locus in the starting loci
          *  vector when the mapper is in the middle of the "traversal" phase.
          */
-          static inline std::size_t&
-        get_current_locus_idx( )
+          static inline std::atomic< std::size_t >&
+        get_lastdone_locus_idx( )
         {
-          static std::size_t current_locus_idx;
-          return current_locus_idx;
-        }  /* -----  end of method get_current_locus_idx  ----- */
-
-        /**
-         *  @brief  Set the index of the current processing locus in the starting loci.
-         *
-         *  @param  value The value to be set as current locus index.
-         *
-         *  It sets the index of the current processing locus in the starting loci
-         *  vector when the mapper is in the middle of the "traversal" phase.
-         */
-          static inline void
-        set_current_locus_idx( const std::size_t& value )
-        {
-          get_current_locus_idx() = value;
-        }  /* -----  end of method set_current_locus_idx  ----- */
+          static std::atomic< std::size_t > lastdone_locus_idx( 0 );
+          return lastdone_locus_idx;
+        }  /* -----  end of method get_lastdone_locus_idx  ----- */
 
         /**
          *  @brief  Get the total number of loci in the starting loci vector.
@@ -122,9 +100,37 @@ namespace grem
           static inline std::size_t&
         get_total_nof_loci( )
         {
-          static std::size_t total_nof_loci;
+          static std::size_t total_nof_loci = 0;
           return total_nof_loci;
         }  /* -----  end of method get_total_nof_loci  ----- */
+        /* ====================  METHODS       ======================================= */
+        /**
+         *  @brief  Set the last processing locus.
+         *
+         *  @param  value The value to be set as last processing locus.
+         *
+         *  It sets the last processing locus when the mapper is in the middle of
+         *  the "traversal" phase.
+         */
+          static inline void
+        set_lastproc_locus( const vg::Position& value )
+        {
+          get_lastproc_locus().store( { value.node_id(), value.offset() } );
+        }  /* -----  end of method set_lastproc_locus  ----- */
+
+        /**
+         *  @brief  Set the index of the last done processing locus in the starting loci.
+         *
+         *  @param  value The value to be set as last done locus index.
+         *
+         *  It sets the index of the last done processing locus in the starting loci
+         *  vector when the mapper is in the middle of the "traversal" phase.
+         */
+          static inline void
+        set_lastdone_locus_idx( const std::size_t& value )
+        {
+          get_lastdone_locus_idx().store( value );
+        }  /* -----  end of method set_lastdone_locus_idx  ----- */
 
         /**
          *  @brief  Set the total number of loci in the starting loci vector.
@@ -147,9 +153,15 @@ namespace grem
     class MapperStat< NoStat >
     {
       public:
-        /* ====================  METHODS       ======================================= */
+        /* ====================  MEMBER TYPES  ======================================= */
+        struct Coordinates {
+          VarGraph::nodeid_type node_id;
+          VarGraph::offset_type offset;
+        };
+        /* ====================  LIFECYCLE     ======================================= */
         MapperStat( const std::string& ) { }
         ~MapperStat() { }
+        /* ====================  METHODS       ======================================= */
         static inline std::chrono::microseconds get_duration( const std::string& )
         {
           return std::chrono::duration_cast< std::chrono::microseconds >(
@@ -160,26 +172,28 @@ namespace grem
           return std::chrono::duration_cast< std::chrono::microseconds >(
               Timer::clock_type::duration::zero() );
         }
-          static inline vg::Position&
-        get_current_locus( )
+        /* ====================  ACCESSORS     ======================================= */
+          static inline std::atomic< Coordinates >&
+        get_lastproc_locus( )
         {
-          static vg::Position current_locus;
-          return current_locus;
+          static std::atomic< Coordinates > lastproc_locus( { 0, 0 } );
+          return lastproc_locus;
         }
-        static inline void set_current_locus( const vg::Position& value ) { }
-          static inline std::size_t&
-        get_current_locus_idx( )
+          static inline std::atomic< std::size_t >&
+        get_lastdone_locus_idx( )
         {
-          static std::size_t current_locus_idx;
-          return current_locus_idx;
+          static std::atomic< std::size_t > lastdone_locus_idx( 0 );
+          return lastdone_locus_idx;
         }
-        static inline void set_current_locus_idx( const std::size_t& value ) { }
           static inline std::size_t&
         get_total_nof_loci( )
         {
-          static std::size_t total_nof_loci;
+          static std::size_t total_nof_loci = 0;
           return total_nof_loci;
         }
+        /* ====================  METHODS       ======================================= */
+        static inline void set_lastproc_locus( const vg::Position& value ) { }
+        static inline void set_lastdone_locus_idx( const std::size_t& value ) { }
         static inline void set_total_nof_loci( const std::size_t& value ) { }
     };  /* ----------  end of template class MapperStat  ---------- */
 

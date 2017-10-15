@@ -61,10 +61,10 @@ signal_handler( int signal )
   std::cout << "Elapsed time in traversal phase: "
             << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
             << std::endl;
-  std::cout << "Current node: ("
-            << Stat< TMapper >::Type::get_current_locus().node_id() << ", "
-            << Stat< TMapper >::Type::get_current_locus().offset() << ")" << std::endl;
-  auto idx = Stat< TMapper >::Type::get_current_locus_idx();
+  auto pos = Stat< TMapper >::Type::get_lastproc_locus().load();
+  std::cout << "Current node: (" << pos.node_id << ", " << pos.offset << ")"
+            << std::endl;
+  auto idx = Stat< TMapper >::Type::get_lastdone_locus_idx().load();
   auto total = Stat< TMapper >::Type::get_total_nof_loci();
   unsigned int wlen = std::to_string( total ).length();
   std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
