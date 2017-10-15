@@ -39,11 +39,12 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
     VarGraph vargraph( gifs );
 
     typedef seqan::IndexEsa<> TIndexSpec;
-    typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
+    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
+    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
     Mapper< TTraverser > mapper( &vargraph, 30 );
 
     unsigned int nof_paths = 4;
-    PathSet< TIndexSpec > paths;
+    PathSet< seqan::Dna5QString, TIndexSpec > paths;
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a Mapper" )
     {
       mapper.pick_paths( paths, nof_paths );
@@ -77,7 +78,8 @@ SCENARIO ( "Add starting points when using paths index", "[mapper]" )
     VarGraph vargraph( gifs );
 
     typedef seqan::IndexEsa<> TIndexSpec;
-    typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
+    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
+    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
 
     unsigned char k = 12;
     unsigned char nof_paths = 4;
@@ -93,7 +95,7 @@ SCENARIO ( "Add starting points when using paths index", "[mapper]" )
     auto truth_itr = truth.begin();
 
     Mapper< TTraverser > mapper( &vargraph, k );
-    PathSet< TIndexSpec > paths;
+    PathSet< seqan::Dna5QString, TIndexSpec > paths;
 
     WHEN( "Find starting points using " + std::to_string( nof_paths ) + " paths" )
     {

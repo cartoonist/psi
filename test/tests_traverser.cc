@@ -37,7 +37,8 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
   GIVEN ( "A small variation graph and a set of reads" )
   {
     typedef seqan::IndexWotd<> TIndexSpec;
-    typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
+    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
+    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
 
     std::string vgpath = _testdir + "/data/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
@@ -51,15 +52,15 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
       throw std::runtime_error( "cannot open file " + readspath );
     }
 
-    Dna5QRecords reads;
+    Records< Dna5QStringSet<> > reads;
     readRecords( reads, reads_file, 10 );
-    Dna5QStringSetIndex< TIndexSpec > reads_index( reads.str );
+    seqan::Index< Dna5QStringSet<>, TIndexSpec > reads_index( reads.str );
 
     unsigned int seed_len = 10;
 
     WHEN ( "Run a traverser on all loci with seed length " + std::to_string( seed_len ) )
     {
-      TTraverser traverser( &vargraph, &reads_index, seed_len );
+      TTraverser traverser( &vargraph, &reads, &reads_index, seed_len );
 
       unsigned int counter = 0;
       std::size_t truth[10][2] = { {1, 0}, {1, 1}, {9, 4}, {9, 17}, {16, 0}, {17, 0},
