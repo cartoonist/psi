@@ -36,7 +36,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGETS       := ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathset ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/tests_sequence ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathset ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -71,6 +71,9 @@ ${BINDIR}/tests_mapper: tests_mapper.o tests_main.o ${SRCDIR}/vargraph.o
 	${LINK}
 
 ${BINDIR}/tests_stat: tests_stat.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_sequence: tests_sequence.o tests_main.o
 	${LINK}
 
 # general rule for compiling cc files.
