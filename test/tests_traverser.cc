@@ -69,10 +69,10 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
       std::function< void( typename TTraverser::output_type const& ) > count_hits =
         [&counter, &truth]( typename TTraverser::output_type const& hit ) {
           if ( counter < 10 ) {
-            REQUIRE( beginPositionH( hit ) == truth[ counter ][0] );
-            REQUIRE( endPositionH( hit ) == truth[ counter ][1] );
-            REQUIRE( beginPositionV( hit ) == counter );
-            REQUIRE( endPositionV( hit ) == 0 );
+            REQUIRE( hit.node_id == truth[ counter ][0] );
+            REQUIRE( hit.node_offset == truth[ counter ][1] );
+            REQUIRE( hit.read_id == counter );
+            REQUIRE( hit.read_offset == 0 );
           }
           else {
             assert( false );  // shouldn't be reached.

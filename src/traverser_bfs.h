@@ -103,10 +103,11 @@ namespace grem {
             for ( unsigned i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;
-              seqan::setBeginPositionH ( hit, this->start_locus.node_id() );
-              seqan::setEndPositionH ( hit, this->start_locus.offset() );
-              seqan::setBeginPositionV ( hit, position_to_id( *(this->reads), saPositions[i].i1 ) );  // Read ID.
-              seqan::setEndPositionV ( hit, saPositions[i].i2 );    // Position in the read.
+              hit.node_id = this->start_locus.node_id();
+              hit.node_offset = this->start_locus.offset();
+              auto id = position_to_id( *(this->reads), saPositions[i].i1 );
+              hit.read_id = id;                // Read ID.
+              hit.read_offset = saPositions[i].i2;  // Position in the read.
               callback( hit );
             }
           }

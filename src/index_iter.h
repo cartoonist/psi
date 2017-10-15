@@ -22,7 +22,8 @@
 #include <functional>
 
 #include <seqan/index.h>
-#include <seqan/seeds.h>
+
+#include "seed.h"
 
 namespace grem {
   /**
@@ -439,7 +440,7 @@ namespace grem {
    *  texts' indexes.
    */
   template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( std::vector < seqan::Seed < seqan::Simple > > &seeds,
+    void kmer_exact_matches ( std::vector < Seed<> > &seeds,
         TFineIndexIter < TIndex1, seqan::ParentLinks<> > &first,
         TFineIndexIter < TIndex2, seqan::ParentLinks<> > &second,
         unsigned int k)
@@ -460,12 +461,11 @@ namespace grem {
           seeds.reserve ( seeds.size() + len1 * len2 );
           for (unsigned i = 0; i < len1; ++i) {
             for (unsigned j = 0; j < len2; ++j) {
-              // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
-              seqan::Seed < seqan::Simple > hit;
-              seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
-              seqan::setEndPositionH ( hit, saPositions1[i].i2 );
-              seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
-              seqan::setEndPositionV ( hit, saPositions2[j].i2 );
+              Seed<> hit;
+              hit.node_id = saPositions1[i].i1;
+              hit.node_offset = saPositions1[i].i2;
+              hit.read_id = saPositions2[j].i1;
+              hit.read_offset = saPositions2[j].i2;
 
               seeds.push_back ( std::move (hit) );
             }
@@ -501,7 +501,7 @@ namespace grem {
     }  /* -----  end of template function kmer_exact_matches  ----- */
 
   template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( std::vector < seqan::Seed < seqan::Simple > > &seeds,
+    void kmer_exact_matches ( std::vector < Seed<> > &seeds,
         TIndexIter < TIndex1, seqan::TopDown < seqan::ParentLinks<> > > &first,
         TIndexIter < TIndex2, seqan::TopDown < seqan::ParentLinks<> > > &second,
         unsigned int k)
@@ -523,12 +523,11 @@ namespace grem {
           seeds.reserve ( seeds.size() + len1 * len2 );
           for (unsigned i = 0; i < len1; ++i) {
             for (unsigned j = 0; j < len2; ++j) {
-              // :TODO:Wed Mar 08 10:01:\@cartoonist: typdef SimpleSeed in seed.h?
-              seqan::Seed < seqan::Simple > hit;
-              seqan::setBeginPositionH ( hit, saPositions1[i].i1 );
-              seqan::setEndPositionH ( hit, saPositions1[i].i2 );
-              seqan::setBeginPositionV ( hit, saPositions2[j].i1 );
-              seqan::setEndPositionV ( hit, saPositions2[j].i2 );
+              Seed<> hit;
+              hit.node_id = saPositions1[i].i1;
+              hit.node_offset = saPositions1[i].i2;
+              hit.read_id = saPositions2[j].i1;
+              hit.read_offset = saPositions2[j].i2;
 
               seeds.push_back ( std::move (hit) );
             }
@@ -570,13 +569,13 @@ namespace grem {
     void
     _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
     {
-      seqan::Seed < seqan::Simple > hit;
-
-      setBeginPositionH ( hit, oc1.i1 );
-      setEndPositionH ( hit, oc1.i2 );
+      Seed<> hit;
+      // :TODO:Wed Oct 11 23:34:\@cartoonist: convert path position to node ID.
+      hit.node_id = oc1.i1;
+      hit.node_offset = oc1.i2;
       auto id = position_to_id( *rec2, oc2.i1 );
-      setBeginPositionV ( hit, id );
-      setEndPositionV ( hit, oc2.i2 );
+      hit.read_id = id;
+      hit.read_offset = oc2.i2;
 
       callback ( hit );
     }
@@ -595,6 +594,7 @@ namespace grem {
 
       TIndexIter< TIndex1, TIterSpec > smaller_itr ( smaller );
       TIndexIter< TIndex2, TIterSpec > bigger_itr ( bigger );
+      // :TODO:Sat Oct 14 02:21:\@cartoonist: Both TIndex1 and TIndex2 should have the same text type.
       TIterRawText< TIndexIter< TIndex1, TIterSpec > > kmer;
       while ( length( kmer = next_kmer ( smaller_itr, k ) ) != 0 ) {
         if ( goDown ( bigger_itr, kmer ) ) {

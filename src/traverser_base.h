@@ -29,8 +29,6 @@
 #include <array>
 #include <functional>
 
-#include <seqan/seeds.h>
-
 #include "vargraph.h"
 #include "logger.h"
 #include "sequence.h"
@@ -209,9 +207,7 @@ namespace grem
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        // :TODO:Tue Aug 29 14:49:\@cartoonist: Use grem::Seed class instead of Output.
-        /**< @brief The output type. */
-        typedef seqan::Seed < seqan::Simple > output_type;
+        typedef Seed<> output_type;
         typedef TIndex index_type;
         typedef typename seqan::Spec< TIndex >::Type indexspec_type;
         typedef typename seqan::Fibre< TIndex, seqan::FibreText >::Type stringset_type;

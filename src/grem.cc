@@ -23,7 +23,6 @@
 #include <functional>
 #include <unordered_set>
 
-#include <seqan/seeds.h>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 
@@ -32,6 +31,7 @@
 #include "traverser.h"
 #include "pathset.h"
 #include "sequence.h"
+#include "seed.h"
 #include "utils.h"
 #include "options.h"
 #include "stat.h"
@@ -175,7 +175,7 @@ template< typename TIndexSpec  >
     std::function< void(typename TTraverser::output_type const &) > write =
       [&found, &covered_reads] (typename TTraverser::output_type const & seed_hit){
       ++found;
-      covered_reads.insert(seqan::beginPositionV(seed_hit));
+      covered_reads.insert(seed_hit.read_id);
     };
 
     Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
