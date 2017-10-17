@@ -193,6 +193,11 @@ template< typename TIndexSpec  >
     log->info( "Read all reads in {} us.",
         Timer::get_duration( "read-reads" ).count() );
 
+    /* If chunksize is zero (unspecified), set it to the no of reads; i.e. one chunk. */
+    if ( chunk_size == 0 ) {
+      chunk_size = length( reads );
+    }
+
     unsigned long long int found = 0;
     std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write =
@@ -338,9 +343,10 @@ setup_argparser( seqan::ArgumentParser& parser )
   setRequired(parser, "l");
 
   // chunk size -- **required** option.
-  addOption(parser, seqan::ArgParseOption("c", "chunk-size", "Reads chunk size.",
-                                          seqan::ArgParseArgument::INTEGER, "INT"));
-  setRequired(parser, "c");
+  addOption(parser, seqan::ArgParseOption("c", "chunk-size",
+        "Reads chunk size. Set it to zero to consider all reads as one chunk (default).",
+        seqan::ArgParseArgument::INTEGER, "INT"));
+  setDefaultValue(parser, "c", 0);
 
   // starting loci interval
   addOption(parser, seqan::ArgParseOption("e", "start-every", "Start from every given "
