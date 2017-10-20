@@ -140,10 +140,11 @@ template< typename TPathSet, typename TMapper >
 
 template< typename TIndexSpec  >
     void
-  find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, unsigned int seed_len,
-      unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-      bool paths_index, const std::string& paths_index_file, bool nomapping,
-      bool dumpstarts, const std::string& starts_path, TIndexSpec const /* Tag */ )
+  find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, seqan::File<>& output_file,
+      unsigned int seed_len, unsigned int chunk_size, unsigned int start_every,
+      unsigned int path_num, bool paths_index, const std::string& paths_index_file,
+      bool nomapping, bool dumpstarts, const std::string& starts_path,
+      TIndexSpec const /* Tag */ )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
@@ -202,9 +203,14 @@ template< typename TIndexSpec  >
 
     unsigned long long int found = 0;
     std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
-    std::function< void(typename TTraverser::output_type const &) > write =
-      [&found, &covered_reads] (typename TTraverser::output_type const & seed_hit){
+    std::function< void(typename TTraverser::output_type const &) > write_callback =
+      [&found, &output_file, &covered_reads]
+      (typename TTraverser::output_type const & seed_hit){
       ++found;
+      write( output_file, &seed_hit.node_id, 1 );
+      write( output_file, &seed_hit.node_offset, 1 );
+      write( output_file, &seed_hit.read_id, 1 );
+      write( output_file, &seed_hit.read_offset, 1 );
       covered_reads.insert(seed_hit.read_id);
     };
 
@@ -230,13 +236,13 @@ template< typename TIndexSpec  >
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */
-        mapper.seeds_on_paths( paths, write );
+        mapper.seeds_on_paths( paths, write_callback );
         log->info( "Found seed on paths in {} us.",
             Timer::get_duration( "paths-seed-find" ).count() );
         log->info( "Total number of seeds found on paths: {}", found - pre_found );
         log->info( "Traversing..." );
         /* Find seeds on variation graph by traversing starting loci. */
-        mapper.traverse ( write );
+        mapper.traverse ( write_callback );
         log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
       }
     }
@@ -281,9 +287,18 @@ startup( const Options & options )
   }
   VarGraph vargraph( ifs, xg_format );
 
+  seqan::File<> output_file;
+  auto mode = seqan::OPEN_CREATE | seqan::OPEN_WRONLY;
+  if ( !open( output_file, options.output_path.c_str(), mode ) ) {
+    std::string msg = "could not open file '" + options.output_path + "'!";
+    log->error( msg );
+    throw std::runtime_error( msg );
+  }
+
   switch ( options.index ) {
     case IndexType::Wotd: find_seeds ( vargraph,
                               reads_infile,
+                              output_file,
                               options.seed_len,
                               options.chunk_size,
                               options.start_every,
@@ -297,6 +312,7 @@ startup( const Options & options )
                           break;
     case IndexType::Esa: find_seeds ( vargraph,
                              reads_infile,
+                             output_file,
                              options.seed_len,
                              options.chunk_size,
                              options.start_every,
@@ -334,6 +350,13 @@ setup_argparser( seqan::ArgumentParser& parser )
   setValidValues(fqfile_arg, "fq fastq");
   addOption(parser, fqfile_arg);
   setRequired(parser, "f");
+
+  // output file
+  // :TODO:Sat Oct 21 00:06:\@cartoonist: output should be alignment in the GAM format.
+  seqan::ArgParseOption outfile_arg( "o", "output", "Output file.",
+      seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" );
+  addOption( parser, outfile_arg );
+  setDefaultValue( parser, "o", "out.gam" );
 
   // paths index file
   seqan::ArgParseOption paths_index_arg ( "I", "paths-index", "Paths index file.",
@@ -410,6 +433,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   std::string indexname;
 
   getOptionValue( options.fq_path, parser, "fastq" );
+  getOptionValue( options.output_path, parser, "output" );
   getOptionValue( options.seed_len, parser, "seed-length" );
   getOptionValue( options.chunk_size, parser, "chunk-size" );
   getOptionValue( options.start_every, parser, "start-every" );

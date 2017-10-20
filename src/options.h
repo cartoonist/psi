@@ -73,6 +73,7 @@ namespace grem
     IndexType index;
     std::string rf_path;
     std::string fq_path;
+    std::string output_path;
     std::string log_path;
     std::string paths_index_file;
     std::string starts_path;
