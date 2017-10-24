@@ -52,22 +52,24 @@ namespace grem {
         auto color_sink = std::make_shared< spdlog::sinks::ansicolor_stdout_sink_mt >();
         sinks.push_back( color_sink );
       }
+      if ( options.verbose ) {
+        sinks.back()->set_level( spdlog::level::info );
+      }
+      else {
+        sinks.back()->set_level( spdlog::level::warn );
+      }
     }
 
     if ( !options.nolog && !options.nologfile ) {
       auto simple
         = std::make_shared< spdlog::sinks::simple_file_sink_mt >( options.log_path );
       sinks.push_back( simple );
+      // Always verbose for file sink.
+      sinks.back()->set_level( spdlog::level::info );
     }
 
     auto main_logger
       = std::make_shared< spdlog::logger >( "main", begin(sinks), end(sinks) );
-    if ( options.verbose ) {
-      main_logger->set_level( spdlog::level::info );
-    }
-    else {
-      main_logger->set_level( spdlog::level::warn );
-    }
 
     spdlog::register_logger( main_logger );
   }
