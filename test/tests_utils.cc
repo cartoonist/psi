@@ -51,6 +51,100 @@ SCENARIO( "Two strings can be checked for suffix match", "[utils]" )
       REQUIRE( !ends_with( str, "arizona" ) );
     }
   }
+
+  GIVEN( "A seqan string" )
+  {
+    seqan::CharString str( "mississipi" );
+    seqan::CharString pattern;
+
+    THEN( "Suffix strings should be matched" )
+    {
+      pattern = "pi";
+      REQUIRE( ends_with( str, pattern ) );
+      pattern = "issipi";
+      REQUIRE( ends_with( str, pattern ) );
+      pattern = "";
+      REQUIRE( ends_with( str, pattern ) );
+      pattern = "mississipi";
+      REQUIRE( ends_with( str, pattern ) );
+    }
+
+    THEN( "Non-suffix strings should not be matched")
+    {
+      pattern = "m";
+      REQUIRE( !ends_with( str, pattern ) );
+      pattern = "missi";
+      REQUIRE( !ends_with( str, pattern ) );
+      pattern = "issi";
+      REQUIRE( !ends_with( str, pattern ) );
+      pattern = "MISSISSIPI";
+      REQUIRE( !ends_with( str, pattern ) );
+      pattern = "I";
+      REQUIRE( !ends_with( str, pattern ) );
+      pattern = "arizona";
+      REQUIRE( !ends_with( str, pattern ) );
+    }
+  }
+}
+
+SCENARIO( "Two strings can be checked for prefix match", "[utils]" )
+{
+  GIVEN( "A string" )
+  {
+    std::string str( "mississipi" );
+
+    THEN( "Prefix strings should be matched" )
+    {
+      REQUIRE( starts_with( str, "mi" ) );
+      REQUIRE( starts_with( str, "missis" ) );
+      REQUIRE( starts_with( str, "" ) );
+      REQUIRE( starts_with( str, "mississipi" ) );
+    }
+
+    THEN( "Non-prefix strings should not be matched")
+    {
+      REQUIRE( !starts_with( str, "i" ) );
+      REQUIRE( !starts_with( str, "ssipi" ) );
+      REQUIRE( !starts_with( str, "issi" ) );
+      REQUIRE( !starts_with( str, "MISSISSIPI" ) );
+      REQUIRE( !starts_with( str, "I" ) );
+      REQUIRE( !starts_with( str, "arizona" ) );
+    }
+  }
+
+  GIVEN( "A seqan string" )
+  {
+    seqan::CharString str( "mississipi" );
+    seqan::CharString pattern;
+
+    THEN( "Prefix strings should be matched" )
+    {
+      pattern = "mi";
+      REQUIRE( starts_with( str, pattern ) );
+      pattern = "missis";
+      REQUIRE( starts_with( str, pattern ) );
+      pattern = "";
+      REQUIRE( starts_with( str, pattern ) );
+      pattern = "mississipi";
+      REQUIRE( starts_with( str, pattern ) );
+    }
+
+    THEN( "Non-prefix strings should not be matched")
+    {
+      pattern = "i";
+      REQUIRE( !starts_with( str, pattern ) );
+      pattern = "ssipi";
+      REQUIRE( !starts_with( str, pattern ) );
+      pattern = "issi";
+      REQUIRE( !starts_with( str, pattern ) );
+      pattern = "MISSISSIPI";
+      REQUIRE( !starts_with( str, pattern ) );
+      pattern = "I";
+      REQUIRE( !starts_with( str, pattern ) );
+      pattern = "arizona";
+      REQUIRE( !starts_with( str, pattern ) );
+    }
+  }
 }
 
 SCENARIO( "Serialize and deserialize a vector", "[utils]" )
