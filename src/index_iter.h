@@ -424,9 +424,95 @@ namespace grem {
       typename seqan::Iterator < TIndex, TopDownFine < TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
-  /* Top-down fine interator interface function declarations  -------------------- */
+  /* Index interator interface functions  ---------------------------------------- */
 
-  /* END OF Top-down fine interator interface function declarations  ------------- */
+  template< typename TIndex, typename TIterSpec >
+      inline bool
+    go_right_stree( seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return goRight( iter );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline bool
+    go_right_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return goRight( iter, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline bool
+    go_down_stree( seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return goDown( iter );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline bool
+    go_down_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return goDown( iter, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec, typename TPattern >
+      inline bool
+    go_down_stree( seqan::Iter< TIndex, TIterSpec >& iter, TPattern&& p )
+    {
+      return goDown( iter, p );
+    }
+
+  template< typename TText, typename TIterSpec, typename TPattern >
+      inline bool
+    go_down_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter,
+        TPattern&& p )
+    {
+      return goDown( iter, p, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline auto
+    parent_edge_char_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return parentEdgeLabel( iter )[0];
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline auto
+    parent_edge_char_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return parentEdgeLabel( iter, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline unsigned int
+    parent_edge_len_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return length( parentEdgeLabel( iter ) );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline unsigned int
+    parent_edge_len_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      if ( isRoot( iter ) ) return 0;
+      return length( parentEdgeLabel( iter, seqan::Rev() ) );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline auto
+    get_occurrences_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return getOccurrences( iter );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline auto
+    get_occurrences_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return getOccurrences( iter, seqan::Rev() );
+    }
+
+  /* END OF Index interator interface functions  --------------------------------- */
 
   template < typename TIter >
     TIterRawText < TIter >
