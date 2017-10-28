@@ -26,14 +26,13 @@
 
 namespace grem {
   /* Typedefs  ------------------------------------------------------------------- */
-  typedef seqan::FastFMIndexConfig< void, uint64_t, 2, 1 > TFMIndexConfig;
 
-  template< typename TText >
-    using TBiFMIndex = seqan::Index< TText,
-          seqan::BidirectionalIndex< seqan::FMIndex< void, TFMIndexConfig > > >;
+  // Configured FMIndex template specialization tags.
+  // :TODO:Mon Oct 23 02:11:\@cartoonist: Change all `typedef`s to `using`.
+  using TFMIndexConfig = seqan::FastFMIndexConfig< void, uint64_t, 2, 1 >;
+  using CFMIndex = seqan::FMIndex< void, TFMIndexConfig >;
+  using CBiFMIndex = seqan::BidirectionalIndex< grem::CFMIndex >;
 
-  template< typename TText >
-    using TFMIndex = seqan::Index< TText, seqan::FMIndex< void, TFMIndexConfig > >;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   template< typename TText >
@@ -45,6 +44,27 @@ namespace grem {
     indexRequire( index, seqan::EsaChildtab() );
     indexRequire( index, seqan::EsaBwt() );
   }
+
+  template< typename TIndex >
+      inline void
+    _create_fm_index( TIndex& index )
+    {
+      indexRequire( index, seqan::FibreSALF() );
+    }
+
+  template< typename TText >
+      inline void
+    create_index( seqan::Index< TText, grem::CFMIndex >& index )
+    {
+      _create_fm_index( index );
+    }
+
+  template< typename TText >
+      inline void
+    create_index( seqan::Index< TText, grem::CBiFMIndex >& index )
+    {
+      _create_fm_index( index );
+    }
 
 }  /* -----  end of namespace grem  ----- */
 

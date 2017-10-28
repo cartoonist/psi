@@ -157,8 +157,7 @@ template< typename TIndexSpec  >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide paths set. */
-    // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-    PathSet< seqan::Dna5QString, seqan::IndexEsa<> > paths;
+    PathSet< seqan::Dna5QString, grem::CFMIndex > paths;
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, paths_index_file, path_num );
 
@@ -231,8 +230,6 @@ template< typename TIndexSpec  >
             Timer::get_duration( "load-chunk" ).count() );
         /* Give the current chunk to the mapper. */
         mapper.set_reads( std::move( reads_chunk ) );
-        log->info( "Seeding was done in {} us.",
-            Timer::get_duration( "seeding" ).count() );
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */

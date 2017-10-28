@@ -536,8 +536,8 @@ namespace grem {
     }
 
   template < typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
-    void
-    _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
+      inline void
+    _add_seed( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
     {
       Seed<> hit;
       // :TODO:Wed Oct 11 23:34:\@cartoonist: convert path position to node ID.
@@ -610,25 +610,29 @@ namespace grem {
       }
     }
 
-  template < typename TIndex, typename TStringSet, typename TCallback >
-    void
-    kmer_exact_matches ( TIndex &paths_index, TStringSet &seeds, TCallback callback )
+  // :TODO:Sat Oct 28 03:17:\@cartoonist: implement an iterator over string set to get
+  //       seeds using different strategy tags instead of passing `step` parameter.
+  template< typename TIndex, typename TRecords2, typename TCallback >
+      inline void
+    kmer_exact_matches( TIndex& paths_index, const TRecords2& reads, unsigned int k,
+        unsigned int step, TCallback callback )
     {
-      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
       typedef typename seqan::SAValue< TIndex >::Type TSAValue;
 
-      seqan::String< TSAValue > paths_occurrences;
-      TIndexIter< TIndex, TIterSpec > paths_itr ( paths_index );
-      for ( unsigned int idx = 0; idx < length ( seeds ); ++idx ) {
-        if ( goDown ( paths_itr, seeds[idx] ) ) {
-          paths_occurrences = getOccurrences ( paths_itr );
-          for ( unsigned int i; i < length ( paths_occurrences ); ++i ) {
-            // :FIXME:Mon Aug 14 21:32:\@cartoonist: seed occurrences should not be 0.
-            _add_seed ( paths_occurrences[i], 0, callback );
+      if ( k == 0 || step == 0 ) return;
+
+      seqan::Finder< TIndex > paths_finder( paths_index );
+      TSAValue read_occurrence;
+      for ( std::size_t idx = 0; idx < length( reads ); ++idx ) {
+        read_occurrence.i1 = idx;
+        for ( std::size_t off = 0; off < length( reads[idx] ) - k + 1; off += step ) {
+          auto&& seed = infixWithLength( reads[idx], off, k );
+          read_occurrence.i2 = off;
+          while ( find( paths_finder, seed ) ) {
+            _add_seed( beginPosition( paths_finder ), read_occurrence, &reads, callback );
           }
-          clear ( paths_occurrences );
+          clear( paths_finder );
         }
-        goRoot ( paths_itr );
       }
     }
 }  /* -----  end of namespace grem  ----- */
