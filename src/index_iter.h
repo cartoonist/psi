@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <functional>
+#include <algorithm>
 
 #include <seqan/index.h>
 
@@ -514,28 +515,39 @@ namespace grem {
 
   /* END OF Index interator interface functions  --------------------------------- */
 
-  template < typename TIter >
-    TIterRawText < TIter >
-    next_kmer ( TIter &itr, unsigned int k )
+  template< typename TIter >
+      inline bool
+    next_kmer( TIter& itr, unsigned int& cp_len, unsigned int k )
     {
+      cp_len = repLength( itr );
       do {
-        if ( repLength ( itr ) >= k ||
-            !goDown ( itr ) ||
-            parentEdgeLabel ( itr )[0] == 'N' ) {
-            if ( !goRight ( itr ) ) {
-              while ( goUp ( itr ) && !goRight ( itr ) );
-            }
+        if ( repLength( itr ) >= k ||
+            !go_down_stree( itr ) ||
+            parent_edge_char_stree( itr ) == 'N' ) {
+          if ( !go_right_stree( itr ) ) {
+            while ( goUp( itr ) && !go_right_stree( itr ) );
+          }
+          cp_len = std::min( cp_len,
+              static_cast< unsigned int >( repLength( itr ) - parent_edge_len_stree( itr ) ) );
         }
 
-        if ( repLength ( itr ) >= k ) {
-          return prefix ( representative ( itr ), k );
+        if ( repLength( itr ) >= k ) {
+          return true;
         }
-      } while ( !isRoot ( itr ) );        /* -----  end do-while  ----- */
+      } while ( !isRoot( itr ) );        /* -----  end do-while  ----- */
 
-      return "";
+      return false;
     }
 
-  template < typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
+  template< typename TIter >
+      inline typename seqan::Size< TIter >::Type
+    upto_prefix( TIter& itr, const unsigned int& cp_len )
+    {
+      while( repLength( itr ) > cp_len ) goUp( itr );
+      return repLength( itr );
+    }
+
+  template< typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
       inline void
     _add_seed( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
     {
@@ -547,66 +559,57 @@ namespace grem {
       hit.read_id = id;
       hit.read_offset = oc2.i2;
 
-      callback ( hit );
+      callback( hit );
     }
 
-  template < typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
-    void
-    _kmer_exact_match_impl ( TIndex1 &smaller, TIndex2 &bigger, const TRecords2* rec2,
-        unsigned int k, bool rev_params, TCallback callback )
+  template< typename TIter1, typename TIter2, typename TRecords2, typename TCallback >
+      inline void
+    _kmer_exact_match_impl( TIter1& fst_itr, TIter2& snd_itr, const TRecords2* rec2,
+        unsigned int k, bool swapped, TCallback callback )
     {
-      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
-      typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
-      typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
+      unsigned int cp_len;
+      while ( next_kmer( fst_itr, cp_len, k ) ) {
+        auto&& s = upto_prefix( snd_itr, cp_len );
 
-      seqan::String< TSAValue1 > occurrences1;
-      seqan::String< TSAValue2 > occurrences2;
-
-      TIndexIter< TIndex1, TIterSpec > smaller_itr ( smaller );
-      TIndexIter< TIndex2, TIterSpec > bigger_itr ( bigger );
-      // :TODO:Sat Oct 14 02:21:\@cartoonist: Both TIndex1 and TIndex2 should have the same text type.
-      TIterRawText< TIndexIter< TIndex1, TIterSpec > > kmer;
-      while ( length( kmer = next_kmer ( smaller_itr, k ) ) != 0 ) {
-        if ( goDown ( bigger_itr, kmer ) ) {
-          occurrences1 = getOccurrences ( smaller_itr );
-          occurrences2 = getOccurrences ( bigger_itr );
-          auto occur_size1 = length ( occurrences1 );
-          auto occur_size2 = length ( occurrences2 );
+        if ( go_down_stree( snd_itr, infix( representative( fst_itr ), s, k ) ) ) {
+          auto&& occurrences1 = get_occurrences_stree( fst_itr );
+          auto&& occurrences2 = get_occurrences_stree( snd_itr );
+          auto&& occur_size1 = length( occurrences1 );
+          auto&& occur_size2 = length( occurrences2 );
 
           for ( unsigned int i = 0; i < occur_size1; ++i ) {
             for ( unsigned int j = 0; j < occur_size2; ++j ) {
-
-              if ( !rev_params ) {
-                _add_seed ( occurrences1[i], occurrences2[j], rec2, callback );
+              if ( !swapped ) {
+                _add_seed( occurrences1[i], occurrences2[j], rec2, callback );
               }
               else {
-                _add_seed ( occurrences2[j], occurrences1[i], rec2, callback );
+                _add_seed( occurrences2[j], occurrences1[i], rec2, callback );
               }
-
             }
           }
-
-          clear ( occurrences1 );
-          clear ( occurrences2 );
         }
-
-        goRoot ( bigger_itr );
       }
     }
 
-  template < typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
+  template< typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
     void
-    kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, const TRecords2* rec2, unsigned int k,
+    kmer_exact_matches( TIndex1& fst, TIndex2& snd, const TRecords2* rec2, unsigned int k,
         TCallback callback )
     {
-      auto fst_len = length ( indexRawText ( fst ) );
-      auto snd_len = length ( indexRawText ( snd ) );
+      if ( k == 0 ) return;
+
+      auto fst_len = length( indexRawText( fst ) );
+      auto snd_len = length( indexRawText( snd ) );
+
+      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
+      TIndexIter< TIndex1, TIterSpec > fst_itr( fst );
+      TIndexIter< TIndex2, TIterSpec > snd_itr( snd );
 
       if ( fst_len <= snd_len ) {
-        _kmer_exact_match_impl ( fst, snd, rec2, k, false, callback );
+        _kmer_exact_match_impl( fst_itr, snd_itr, rec2, k, false, callback );
       }
       else {
-        _kmer_exact_match_impl ( snd, fst, rec2, k, true, callback );
+        _kmer_exact_match_impl( snd_itr, fst_itr, rec2, k, true, callback );
       }
     }
 
