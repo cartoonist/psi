@@ -89,6 +89,17 @@ namespace grem {
 
   /* Records interface functions */
   template< typename TText >
+      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
+    position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
+        typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type pos )
+    {
+      if ( pos >= length( strset ) || pos < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos;
+    }
+
+  template< typename TText >
       inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
     position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition pos )
