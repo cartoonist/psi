@@ -98,6 +98,74 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
   }
 }
 
+SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
+{
+  unsigned int k = 20;
+  GIVEN( "A k-mer of length " + std::to_string( k ) + " with all 'A'" )
+  {
+    seqan::DnaString kmer;
+    for ( unsigned int i = 0; i < k; ++i ) appendValue( kmer, 'A' );
+
+    WHEN( "It is incremented" )
+    {
+      unsigned int s = increment_kmer( kmer );
+      REQUIRE( s == length( kmer ) - 1 );
+      THEN( "It should be the next lexicographical kmer" )
+      {
+        REQUIRE( kmer == "AAAAAAAAAAAAAAAAAAAC" );
+      }
+    }
+
+    WHEN( "It is incremented at two positions in the middle of the string" )
+    {
+      unsigned int s = increment_kmer( kmer, 12 );
+      REQUIRE( s == 11 );
+      s = increment_kmer( kmer, 17 );
+      REQUIRE( s == 16 );
+      THEN( "It should be the next lexicographical kmer at those positions" )
+      {
+        REQUIRE( kmer == "AAAAAAAAAAACAAAACAAA" );
+      }
+    }
+
+    WHEN( "It is incremented at a position out of range" )
+    {
+      unsigned int s = increment_kmer( kmer, 32 );
+      REQUIRE( s == length( kmer ) - 1 );
+      THEN( "It should be the next lexicographical kmer at last character" )
+      {
+        REQUIRE( kmer == "AAAAAAAAAAAAAAAAAAAC" );
+      }
+    }
+
+    WHEN( "It is incremented at a position out of range" )
+    {
+      unsigned int s = increment_kmer( kmer, -1 );
+      REQUIRE( s == length( kmer ) - 1 );
+      THEN( "It should be the next lexicographical kmer at last character" )
+      {
+        REQUIRE( kmer == "AAAAAAAAAAAAAAAAAAAC" );
+      }
+    }
+  }
+
+  GIVEN( "A k-mer of length " + std::to_string( k ) + " with all 'T'" )
+  {
+    seqan::DnaString kmer;
+    for ( unsigned int i = 0; i < k; ++i ) appendValue( kmer, 'T' );
+
+    WHEN( "It is incremented" )
+    {
+      unsigned int s = increment_kmer( kmer );
+      REQUIRE( s == -1 );
+      THEN( "It should not be changed" )
+      {
+        REQUIRE( kmer == "TTTTTTTTTTTTTTTTTTTT" );
+      }
+    }
+  }
+}
+
 SCENARIO( "Seeding", "[seeding][sequence]" )
 {
   unsigned int reads_num = 10;
