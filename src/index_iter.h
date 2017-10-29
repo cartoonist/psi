@@ -564,6 +564,28 @@ namespace grem {
 
   template< typename TIter1, typename TIter2, typename TRecords2, typename TCallback >
       inline void
+    _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords2* rec2,
+        TCallback callback, bool swapped = false )
+    {
+      auto&& occurrences1 = get_occurrences_stree( itr1 );
+      auto&& occurrences2 = get_occurrences_stree( itr2 );
+      auto&& occur_size1 = length( occurrences1 );
+      auto&& occur_size2 = length( occurrences2 );
+
+      for ( unsigned int i = 0; i < occur_size1; ++i ) {
+        for ( unsigned int j = 0; j < occur_size2; ++j ) {
+          if ( !swapped ) {
+            _add_seed( occurrences1[i], occurrences2[j], rec2, callback );
+          }
+          else {
+            _add_seed( occurrences2[j], occurrences1[i], rec2, callback );
+          }
+        }
+      }
+    }
+
+  template< typename TIter1, typename TIter2, typename TRecords2, typename TCallback >
+      inline void
     _kmer_exact_match_impl( TIter1& fst_itr, TIter2& snd_itr, const TRecords2* rec2,
         unsigned int k, bool swapped, TCallback callback )
     {
@@ -572,28 +594,17 @@ namespace grem {
         auto&& s = upto_prefix( snd_itr, cp_len );
 
         if ( go_down_stree( snd_itr, infix( representative( fst_itr ), s, k ) ) ) {
-          auto&& occurrences1 = get_occurrences_stree( fst_itr );
-          auto&& occurrences2 = get_occurrences_stree( snd_itr );
-          auto&& occur_size1 = length( occurrences1 );
-          auto&& occur_size2 = length( occurrences2 );
-
-          for ( unsigned int i = 0; i < occur_size1; ++i ) {
-            for ( unsigned int j = 0; j < occur_size2; ++j ) {
-              if ( !swapped ) {
-                _add_seed( occurrences1[i], occurrences2[j], rec2, callback );
-              }
-              else {
-                _add_seed( occurrences2[j], occurrences1[i], rec2, callback );
-              }
-            }
-          }
+          _add_occurrences( fst_itr, snd_itr, rec2, callback, swapped );
         }
       }
     }
 
-  template< typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
-    void
-    kmer_exact_matches( TIndex1& fst, TIndex2& snd, const TRecords2* rec2, unsigned int k,
+  template< typename TText, typename TIndexSpec1, typename TIndexSpec2, typename TRecords2, typename TCallback >
+      inline void
+    kmer_exact_matches( seqan::Index< TText, TIndexSpec1 >& fst,
+        seqan::Index< TText, TIndexSpec2 >& snd,
+        const TRecords2* rec2,
+        unsigned int k,
         TCallback callback )
     {
       if ( k == 0 ) return;
@@ -601,6 +612,8 @@ namespace grem {
       auto fst_len = length( indexRawText( fst ) );
       auto snd_len = length( indexRawText( snd ) );
 
+      typedef seqan::Index< TText, TIndexSpec1 > TIndex1;
+      typedef seqan::Index< TText, TIndexSpec2 > TIndex2;
       typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
       TIndexIter< TIndex1, TIterSpec > fst_itr( fst );
       TIndexIter< TIndex2, TIterSpec > snd_itr( snd );
