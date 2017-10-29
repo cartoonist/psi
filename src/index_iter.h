@@ -626,6 +626,48 @@ namespace grem {
       }
     }
 
+  template< typename TIndex, typename TIterSpec >
+      inline typename seqan::Size< IndexIter< TIndex, TopDownFine< TIterSpec > > >::Type
+    upto_prefix( IndexIter< TIndex, TopDownFine< TIterSpec > >& itr,
+        const unsigned int& cp_len )
+    {
+      while( rep_length( itr ) > cp_len ) go_up( itr );
+      return rep_length( itr );
+    }
+
+  template< typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
+      inline void
+    kmer_exact_matches( IndexIter< TIndex1, TopDownFine< seqan::ParentLinks<> > >& fst_itr,
+        IndexIter< TIndex2, TopDownFine< seqan::ParentLinks<> > >& snd_itr,
+        const TRecords2* rec2,
+        unsigned int k,
+        TCallback callback )
+    {
+      if ( k == 0 ) return;
+
+      seqan::DnaString seed;                   // seed = A..(k)..A
+      for ( unsigned int i = 0; i < k; ++i ) appendValue( seed, 'A' );
+
+      int s = 0;
+      do {
+        unsigned int plen;
+        bool fst_agreed = true;
+        bool snd_agreed = true;
+
+        upto_prefix( fst_itr, s );
+        upto_prefix( snd_itr, s );
+        for ( plen = s; fst_agreed && snd_agreed && plen < k; ++plen ) {
+          fst_agreed = go_down( fst_itr, seed[plen] );
+          snd_agreed = go_down( snd_itr, seed[plen] );
+        }
+        if ( fst_agreed && snd_agreed ) {
+          _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec2, callback );
+          plen = 0;
+        }
+        s = increment_kmer( seed, plen );
+      } while ( s >= 0 );
+    }
+
   // :TODO:Sat Oct 28 03:17:\@cartoonist: implement an iterator over string set to get
   //       seeds using different strategy tags instead of passing `step` parameter.
   template< typename TIndex, typename TRecords2, typename TCallback >

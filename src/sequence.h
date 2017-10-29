@@ -247,6 +247,7 @@ namespace grem {
   /* END OF Data structures  ----------------------------------------------------- */
 
   /* Interface functions  -------------------------------------------------------- */
+
   /**
    *  @brief  Read records from the input file into a sequence record set.
    *
@@ -273,6 +274,40 @@ namespace grem {
       assignQualities( records.str, quals );
       return;
     }  /* -----  end of template function readRecords  ----- */
+
+  /**
+   *  @brief  Get next lexicographical k-mer in a specific position in the string.
+   *
+   *  @param  str The input k-mer.
+   *  @param  rank The rank of the character which should be incremented (1-based).
+   *  @return The lowest rank at which the character is not modified. In case that
+   *          there is no k-mer it returns negative value of -1.
+   *
+   *  The value of input string would be changed to next lexicographical k-mer by
+   *  incrementing the character at position '`rank` - 1', the carry over may change
+   *  the other characters at lower ranks. The lowest rank at which the character is not
+   *  modified will be returned.
+   */
+  template< typename TText >
+      inline int
+    increment_kmer( TText& str, unsigned long int rank = 0 )
+    {
+      static const unsigned int max_value = ordValue( maxValue( str[0] ) );
+      static const unsigned int min_value = ordValue( minValue( str[0] ) );
+
+      int _rank = std::min( rank - 1, length( str ) - 1 );
+
+      while ( 0 <= _rank && ordValue( str[_rank] ) == max_value ) {
+        str[_rank] = min_value;
+        _rank--;
+      }
+      if ( _rank >= 0 ) {
+        str[_rank] = ordValue( str[_rank] ) + 1;
+        return _rank;
+      }
+      for( unsigned int i = 0; i < length( str ); ++i ) str[i] = max_value;
+      return -1;
+    }
 
   /* Seeding strategies */
   struct GreedyOverlapStrategy;
