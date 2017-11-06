@@ -33,9 +33,6 @@ namespace grem
 {
   /* VarGraph iterators template specialization  --------------------------------- */
 
-  template< typename TSpec >
-    using VarGraphIterTraits = typename GraphIter< VarGraph, TSpec >::TTraits;
-
   /* BFS template specialization  ------------------------------------------------ */
 
   /* Internal functions specialization. */
@@ -50,7 +47,7 @@ namespace grem
    *  among nodes with higher ranks.
    */
   template< >
-      VarGraphIterTraits< BFS >::Value
+      typename seqan::Value< GraphIter< VarGraph, BFS > >::Type
     GraphIter< VarGraph, BFS >::next_unvisited( )
     {
       TTraits::Value next_node = 0;
@@ -78,13 +75,14 @@ namespace grem
 
   template< >
       GraphIter< VarGraph, BFS >
-    begin( const VarGraph& g, VarGraphIterTraits< BFS >::Value start )
+    begin( const VarGraph& g,
+        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
     {
-      typedef VarGraphIterTraits< BFS > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
 
       GraphIter< VarGraph, BFS > begin_itr;
 
-      TTraits::Value start_node_id;
+      TValue start_node_id;
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -107,11 +105,12 @@ namespace grem
 
   template< >
       void
-    go_begin( GraphIter< VarGraph, BFS >& it, VarGraphIterTraits< BFS >::Value start )
+    go_begin( GraphIter< VarGraph, BFS >& it,
+        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
     {
-      typedef VarGraphIterTraits< BFS > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
 
-      TTraits::Value start_node_id;
+      TValue start_node_id;
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -132,7 +131,7 @@ namespace grem
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
-      VarGraphIterTraits< BFS >::Level
+      typename seqan::Level< GraphIter< VarGraph, BFS > >::Type
     level( GraphIter< VarGraph, BFS >& it )
     {
       if ( !it.visiting_buffer.empty() ) {
@@ -148,14 +147,15 @@ namespace grem
       GraphIter< VarGraph, BFS >&
     GraphIter< VarGraph, BFS >::operator++( )
     {
-      typedef VarGraphIterTraits< BFS > TTraits;
+      typedef typename seqan::Level< GraphIter< VarGraph, BFS > >::Type TLevel;
+      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
 
       if ( this->visiting_buffer.empty() ) return *this;
 
-      TTraits::Level plevel = level( *this );
+      TLevel plevel = level( *this );
       auto edges = this->vargraph_ptr->edges_from( this->itr_value );
       for ( auto it = edges.begin(); it != edges.end(); ++it ) {
-        TTraits::Value adj_node = (*it).to();
+        TValue adj_node = (*it).to();
         if ( !(*this)[ adj_node ] ) {
           this->visiting_buffer.push_back( std::make_pair( adj_node, plevel + 1 ) );
           this->visited.insert( std::make_pair( adj_node, plevel + 1 ) );
@@ -213,12 +213,13 @@ namespace grem
 
   template< >
       GraphIter< VarGraph, Backtracker >
-    begin( const VarGraph& g, VarGraphIterTraits< Backtracker >::Value start )
+    begin( const VarGraph& g,
+        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
     {
-      typedef VarGraphIterTraits< Backtracker > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
 
       GraphIter< VarGraph, Backtracker > begin_itr;
-      TTraits::Value start_node_id;
+      TValue start_node_id;
 
       if ( start != 0 ) {
         start_node_id = start;
@@ -239,11 +240,11 @@ namespace grem
   template< >
       void
     go_begin( GraphIter< VarGraph, Backtracker >& it,
-        VarGraphIterTraits< Backtracker >::Value start )
+        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
     {
-      typedef VarGraphIterTraits< Backtracker > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
 
-      TTraits::Value start_node_id;
+      TValue start_node_id;
 
       if ( start != 0 ) {
         start_node_id = start;
@@ -264,14 +265,14 @@ namespace grem
       GraphIter< VarGraph, Backtracker >&
     GraphIter< VarGraph, Backtracker >::operator++( )
     {
-      typedef VarGraphIterTraits< Backtracker > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
 
       if ( this->state.buffer != 0 ) {                             // Any node buffered?
         this->itr_value = this->state.buffer;                      // Use it.
         this->state.buffer = 0;                                    // Clear up buffer.
       }
       else {                                                  // else
-        TTraits::Value cnode_id = this->itr_value;
+        TValue cnode_id = this->itr_value;
         if ( this->vargraph_ptr->has_edges_from( cnode_id ) ) {  // Any forward edge?
           // Go forward.
           this->itr_value = this->vargraph_ptr->edges_from( cnode_id ).at( 0 ).to();
@@ -329,13 +330,14 @@ namespace grem
 
   template< >
       GraphIter< VarGraph, Haplotyper >
-    begin( const VarGraph& g, VarGraphIterTraits< Haplotyper >::Value start )
+    begin( const VarGraph& g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
     {
-      typedef VarGraphIterTraits< Haplotyper > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
 
       GraphIter< VarGraph, Haplotyper > begin_itr;
 
-      TTraits::Value start_node_id;
+      TValue start_node_id;
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -356,11 +358,11 @@ namespace grem
   template< >
       void
     go_begin( GraphIter< VarGraph, Haplotyper >& it,
-        VarGraphIterTraits< Haplotyper >::Value start )
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
     {
-      typedef VarGraphIterTraits< Haplotyper > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
 
-      TTraits::Value start_node_id;
+      TValue start_node_id;
       if ( start != 0 ) {
         start_node_id = start;
       }
@@ -401,7 +403,7 @@ namespace grem
       GraphIter< VarGraph, Haplotyper >&
     GraphIter< VarGraph, Haplotyper >::operator++( )
     {
-      typedef VarGraphIterTraits< Haplotyper > TTraits;
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
 
       if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
         this->state.end = true;
@@ -413,7 +415,7 @@ namespace grem
         this->visiting_buffer.pop_front();
       }
 
-      TTraits::Value next_candidate = 0;
+      TValue next_candidate = 0;
       auto fwd_edges = this->vargraph_ptr->edges_from( this->itr_value );
       if ( this->state.setback == 0 || fwd_edges.size() == 1 ) {
         next_candidate = fwd_edges[0].to();

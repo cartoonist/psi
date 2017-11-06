@@ -1097,6 +1097,19 @@ namespace seqan {
         typedef grem::GraphIter < grem::VarGraph, TSpec > Type;
         /* ====================  TYPEDEFS      ======================================= */
     };  /* ----------  end of template class Iterator  ---------- */
+
+  template< typename TSpec >
+    struct Value< grem::GraphIter< grem::VarGraph, TSpec > > {
+      using Type = typename grem::GraphIter< grem::VarGraph, TSpec >::TTraits::Value;
+    };
+
+  template< typename T >
+    struct Level;
+
+  template< typename TSpec >
+    struct Level< grem::GraphIter< grem::VarGraph, TSpec > > {
+      using Type = typename grem::GraphIter< grem::VarGraph, TSpec >::TTraits::Level;
+    };
 }  /* -----  end of namespace seqan  ----- */
 
 namespace grem {
