@@ -116,16 +116,10 @@ namespace grem
     save( const Path< TSpec >& path, std::ostream& out );
   template< typename TSpec >
       void
-    _add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id );
-  template< typename TSpec >
-      void
     add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id );
   template< typename TSpec >
       std::string
     sequence( const Path< TSpec >& path );
-  template< typename TSpec >
-      void
-    _clear( Path< TSpec >& path );
   template< typename TSpec >
       void
     clear( Path< TSpec >& path );
@@ -146,9 +140,7 @@ namespace grem
 
   /* Path specialization tags. */
   struct CompactStrategy;
-  struct FullStrategy;
   typedef seqan::Tag< CompactStrategy > Compact;
-  typedef seqan::Tag< FullStrategy > Full;
 
   /**
    *  @brief  Path template class.
@@ -257,133 +249,7 @@ namespace grem
         trim< TSpec >( Path< TSpec >& path, VarGraph::nodeid_type node_id );
     };  /* -----  end of template class Path  ----- */
 
-  /**
-   *  @brief  Path template class specialized for Full path.
-   *
-   *  Represent a path in the variation graph with efficient node ID query and stored
-   *  path sequence.
-   */
-  template< >
-    class Path< Full >
-    {
-      private:
-        /* ====================  DATA MEMBERS  ======================================= */
-        const VarGraph* vargraph;
-        std::vector< VarGraph::nodeid_type > nodes;
-        std::unordered_set< VarGraph::nodeid_type > nodes_set;
-        std::string path_sequence;
-        /* ====================  METHODS       ======================================= */
-        /**
-         * @brief  pop the last node from the path.
-         */
-          inline void
-        pop_back( )
-        {
-          auto path_new_size = this->path_sequence.size()
-            - this->vargraph->node_length( this->nodes.back() );
-          this->path_sequence.resize( path_new_size );
-          this->nodes_set.erase( this->nodes_set.find( this->nodes.back() ) );
-          this->nodes.pop_back();
-        }  /* -----  end of method pop_back  ----- */
-      public:
-        /* ====================  TYPEDEFS      ======================================= */
-        typedef typename decltype( nodes )::size_type size_type;
-        /* ====================  LIFECYCLE     ======================================= */
-        Path( const VarGraph* g )
-          : vargraph( g )
-        { }
-
-        Path( const VarGraph* g, std::vector< VarGraph::nodeid_type >&& p )
-          : Path( g )
-        {
-          this->set_nodes( std::move( p ) );
-        }
-
-        Path( const VarGraph* g, const std::vector< VarGraph::nodeid_type >& p )
-          : Path( g, std::vector< VarGraph::nodeid_type >( p ) )
-        { }
-        /* ====================  ACCESSORS     ======================================= */
-
-        /**
-         *  @brief  getter function for vargraph.
-         */
-          inline const VarGraph*
-        get_vargraph( ) const
-        {
-          return this->vargraph;
-        }  /* -----  end of method get_vargraph  ----- */
-
-        /**
-         *  @brief  getter function for nodes.
-         */
-          inline const std::vector< VarGraph::nodeid_type >&
-        get_nodes( ) const
-        {
-          return this->nodes;
-        }  /* -----  end of method get_nodes  ----- */
-
-        /**
-         *  @brief  getter function for path_sequence.
-         */
-          inline const std::string&
-        get_sequence( ) const
-        {
-          return this->path_sequence;
-        }  /* -----  end of method get_sequence  ----- */
-        /* ====================  MUTATORS      ======================================= */
-        /**
-         *  @brief  setter function for vargraph.
-         */
-          inline void
-        set_vargraph( const VarGraph* value )
-        {
-          this->vargraph = value;
-        }  /* -----  end of method set_vargraph  ----- */
-
-        /**
-         *  @brief  setter function for nodes.
-         */
-          inline void
-        set_nodes( std::vector< VarGraph::nodeid_type >&& value )
-        {
-          this->nodes = std::move( value );
-          this->nodes_set.clear();
-          this->nodes_set.reserve( this->nodes.size() );
-          std::copy( this->nodes.begin(), this->nodes.end(),
-              std::inserter( this->nodes_set, this->nodes_set.end() ) );
-          this->path_sequence = sequence( *this );
-        }  /* -----  end of method set_nodes  ----- */
-
-        /**
-         *  @brief  setter function for nodes.
-         */
-          inline void
-        set_nodes( const std::vector< VarGraph::nodeid_type >& value )
-        {
-          this->set_nodes( std::vector< VarGraph::nodeid_type >( value ) );
-        }  /* -----  end of method set_nodes  ----- */
-        /* ====================  INTERFACE FUNCTIONS  ================================ */
-          friend void
-        save< Full >( const Path< Full >& path, std::ostream& out );
-          friend void
-        _add_node< Full >( Path< Full >& path, const VarGraph::nodeid_type& node_id );
-          friend void
-        add_node< Full >( Path< Full >& path, const VarGraph::nodeid_type& node_id );
-          friend std::string
-        sequence< Full >( const Path< Full >& path );
-          friend void
-        _clear< Full >( Path< Full >& path );
-          friend void
-        clear< Full >( Path< Full >& path );
-          friend void
-        reserve< Full >( Path< Full >& path, size_type size );
-          friend bool
-        contains< Full >( const Path< Full >& path, VarGraph::nodeid_type node_id );
-          friend void
-        trim< Full >( Path< Full >& path, VarGraph::nodeid_type node_id );
-    };  /* -----  end of specialized template class Path  ----- */
-
-  /* Normal and Full Path interface functions  --------------------------------- */
+  /* Normal Path interface functions  ------------------------------------------ */
 
   /**
    *  @brief  Save the path to an output stream.
@@ -429,45 +295,11 @@ namespace grem
    */
   template< typename TSpec >
       inline void
-    _add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id )
+    add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id )
     {
       path.nodes.push_back( node_id );
       path.nodes_set.insert( node_id );
     }  /* -----  end of template function add_node  ----- */
-
-  /**
-   *  @brief  Extend the path forward.
-   *
-   *  @param  path The path.
-   *  @param  node_id The new node ID.
-   *
-   *  Add the `node_id` to the end of the current path. Specialized for Normal Path.
-   */
-  template< >
-      inline void
-    add_node( Path<>& path, const VarGraph::nodeid_type& node_id )
-    {
-      _add_node( path, node_id );
-    }
-
-  /**
-   *  @brief  Extend the path forward.
-   *
-   *  @param  path The path.
-   *  @param  node_id The new node ID.
-   *
-   *  Add the `node_id` to the end of the current path. Specialized for Full Path.
-   */
-  template< >
-      inline void
-    add_node( Path< Full >& path, const VarGraph::nodeid_type& node_id )
-    {
-      _add_node( path, node_id );
-
-      assert( path.vargraph != nullptr );
-
-      path.path_sequence += path.vargraph->node_sequence( node_id );
-    }
 
   /**
    *  @brief  Compute sequence from the nodes vector.
@@ -499,40 +331,11 @@ namespace grem
    */
   template< typename TSpec >
       inline void
-    _clear( Path< TSpec >& path )
+    clear( Path< TSpec >& path )
     {
       path.nodes.clear();
       path.nodes_set.clear();
     }  /* -----  end of template function _clear  ----- */
-
-  /**
-   *  @brief  Clear the path.
-   *
-   *  @param  path The path.
-   *
-   *  Specialized for Normal Path.
-   */
-  template< >
-      inline void
-    clear( Path< >& path )
-    {
-      _clear( path );
-    }  /* -----  end of template function clear  ----- */
-
-  /**
-   *  @brief  Clear the path.
-   *
-   *  @param  path The path.
-   *
-   *  Specialized for Full Path.
-   */
-  template< >
-      inline void
-    clear( Path< Full >& path )
-    {
-      _clear( path );
-      path.path_sequence.clear();
-    }  /* -----  end of template function clear  ----- */
 
   /**
    *  @brief  Reserve memory for the path.
@@ -589,7 +392,7 @@ namespace grem
       }
     }  /* -----  end of template function trim  ----- */
 
-  /* END OF Normal and Full Path interface functions  -------------------------- */
+  /* END OF Normal Path interface functions  ----------------------------------- */
 
   /**
    *  @brief  Path template class Compact specialization.
