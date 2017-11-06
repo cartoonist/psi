@@ -26,6 +26,7 @@
 #include <deque>
 #include <utility>
 #include <cstdint>
+#include <functional>
 #include <random>
 
 #ifdef HAVE_MEMCPY
@@ -1167,8 +1168,8 @@ namespace grem
    *
    *  Specialization of generic graph iterator tag BacktrackerIter for VarGraph.
    */
-  template < >
-    struct GraphIterTraits < VarGraph, Backtracker > {
+  template< >
+    struct GraphIterTraits< VarGraph, Backtracker > {
       typedef VarGraph::nodeid_type Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
@@ -1185,8 +1186,8 @@ namespace grem
    *
    *  Specialization of generic graph iterator tag HaplotyperIter for VarGraph.
    */
-  template < >
-    struct GraphIterTraits < VarGraph, Haplotyper > {
+  template< >
+    struct GraphIterTraits< VarGraph, Haplotyper > {
       typedef VarGraph::nodeid_type Value;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
@@ -1210,11 +1211,11 @@ namespace seqan {
    *
    *  This class extends existing Iterator class in seqan namespace.
    */
-  template < typename TSpec >
-    class Iterator < grem::VarGraph, TSpec >
+  template< typename TSpec >
+    class Iterator< grem::VarGraph, TSpec >
     {
       public:
-        typedef grem::GraphIter < grem::VarGraph, TSpec > Type;
+        typedef grem::GraphIter< grem::VarGraph, TSpec > Type;
         /* ====================  TYPEDEFS      ======================================= */
     };  /* ----------  end of template class Iterator  ---------- */
 
