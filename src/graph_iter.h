@@ -96,7 +96,7 @@ namespace grem {
           go_begin < TGraph, TSpec >
           ( GraphIter<TGraph, TSpec> &it, value_type start );
 
-        /* Interface functions specific for BFS graph iterator. */
+        /* Interface functions specific for BFS graph iterator and Haplotyper. */
         friend level_type
           level < TGraph, TSpec > ( GraphIter< TGraph, TSpec > &it );
 

@@ -380,6 +380,13 @@ namespace grem
       it.state.setback = 0;
     }  /* -----  end of template function go_begin  ----- */
 
+  template< >
+      typename seqan::Level< GraphIter< VarGraph, Haplotyper > >::Type
+    level( GraphIter< VarGraph, Haplotyper >& it )
+    {
+      return it.visited.size();
+    }
+
   /* Member functions specialization. */
 
   template< >

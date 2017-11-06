@@ -1068,13 +1068,13 @@ namespace grem
   template < >
     struct GraphIterTraits < VarGraph, Haplotyper > {
       typedef VarGraph::nodeid_type Value;
-      typedef Value Level;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
       typedef std::vector< Path< Compact > > TSet;
+      typedef TSet::size_type Level;        /**< @brief No. of selected path so far. */
       typedef struct {
-        Value start;                            /**< @brief Start node ID. */
-        bool end;                               /**< @brief End flag. */
+        Value start;                        /**< @brief Start node ID. */
+        bool end;                           /**< @brief End flag. */
         Path< Compact > current_path;
         unsigned int setback;
       } TState;
