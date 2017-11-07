@@ -263,6 +263,38 @@ namespace grem {
 
 
   /**
+   *  @brief  Reserve the required memory for the container of size `size`.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  It calls reserve member function of the container.
+   */
+  template< typename TContainer, typename TSize >
+      inline void
+    _reserve( TContainer& container, TSize size )
+    {
+      container.reserve( size );
+    }
+
+
+  /**
+   *  @overload The `std::deque` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  Do nothing.
+   */
+  template< typename TObject, typename TSize >
+      inline void
+    _reserve( std::deque< TObject >& container, TSize size )
+    {
+      /* NOOP */
+    }
+
+
+  /**
    *  @brief  Deserialize a container from an input stream.
    *
    *  @param[in,out]  in The input stream.
@@ -278,7 +310,7 @@ namespace grem {
   {
     TSize size;
     deserialize( in, size );
-    container.reserve( size );
+    _reserve( container, size );
     for ( unsigned int i = 0; i < size; ++i ) {
       typename TContainer::value_type item;
       deserialize( in, item );

@@ -305,7 +305,7 @@ namespace grem
         set_nodes( const std::vector< VarGraph::nodeid_type >& value )
         {
           std::deque< VarGraph::nodeid_type > d;
-          d.reserve( value.size() );
+          // d.reserve( value.size() );         /**< @brief deques cannot be reserved. */
           std::copy( value.begin(), value.end(), std::back_inserter( d ) );
           this->set_nodes( std::move( d ) );
         }
@@ -644,7 +644,7 @@ namespace grem
       inline void
     reserve( Path< TSpec >& path, typename Path< TSpec >::size_type size )
     {
-      path.nodes.reserve( size );
+      //path.nodes.reserve( size );             /**< @brief deques cannot be reserved. */
       path.nodes_set.reserve( size );
     }  /* -----  end of template function reserve  ----- */
 
