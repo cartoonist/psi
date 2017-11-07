@@ -84,6 +84,12 @@ namespace grem {
         typedef typename TTraits::TContainer container_type;
         typedef typename TTraits::TSet set_type;
         typedef typename TTraits::TState state_type;
+        /* ====================  ACCESSORS     ======================================= */
+          inline const TGraph*
+        get_vargraph( ) const
+        {
+          return this->vargraph_ptr;
+        }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
         /* Common interface functions. */
         friend bool
