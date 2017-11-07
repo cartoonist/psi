@@ -47,7 +47,7 @@ namespace grem
    *  among nodes with higher ranks.
    */
   template< >
-      typename seqan::Value< GraphIter< VarGraph, BFS > >::Type
+      inline typename seqan::Value< GraphIter< VarGraph, BFS > >::Type
     GraphIter< VarGraph, BFS >::next_unvisited( )
     {
       TTraits::Value next_node = 0;
@@ -67,14 +67,14 @@ namespace grem
   /* Interface functions specialization. */
 
   template< >
-      bool
+      inline bool
     at_end( GraphIter< VarGraph, BFS >& it )
     {
       return it.visiting_buffer.empty();
     }
 
   template< >
-      GraphIter< VarGraph, BFS >
+      inline GraphIter< VarGraph, BFS >
     begin( const VarGraph& g,
         typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
     {
@@ -104,7 +104,7 @@ namespace grem
     }
 
   template< >
-      void
+      inline void
     go_begin( GraphIter< VarGraph, BFS >& it,
         typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
     {
@@ -131,7 +131,7 @@ namespace grem
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
-      typename seqan::Level< GraphIter< VarGraph, BFS > >::Type
+      inline typename seqan::Level< GraphIter< VarGraph, BFS > >::Type
     level( GraphIter< VarGraph, BFS >& it )
     {
       if ( !it.visiting_buffer.empty() ) {
@@ -144,7 +144,7 @@ namespace grem
   /* Member functions specialization. */
 
   template< >
-      GraphIter< VarGraph, BFS >&
+      inline GraphIter< VarGraph, BFS >&
     GraphIter< VarGraph, BFS >::operator++( )
     {
       typedef typename seqan::Level< GraphIter< VarGraph, BFS > >::Type TLevel;
@@ -193,7 +193,7 @@ namespace grem
    */
   template< >
   template< typename TId >
-      bool
+      inline bool
     GraphIter< VarGraph, BFS >::operator[]( const TId& id )
     {
       return this->visited.find( std::make_pair( id, 0 ) ) != this->visited.end();
@@ -205,14 +205,14 @@ namespace grem
 
   /* Interface functions specialization. */
   template< >
-      bool
+      inline bool
     at_end( GraphIter< VarGraph, Backtracker >& it )
     {
       return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template< >
-      GraphIter< VarGraph, Backtracker >
+      inline GraphIter< VarGraph, Backtracker >
     begin( const VarGraph& g,
         typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
     {
@@ -238,7 +238,7 @@ namespace grem
     }  /* -----  end of template function begin  ----- */
 
   template< >
-      void
+      inline void
     go_begin( GraphIter< VarGraph, Backtracker >& it,
         typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
     {
@@ -262,7 +262,7 @@ namespace grem
   /* Member functions specialization. */
 
   template< >
-      GraphIter< VarGraph, Backtracker >&
+      inline GraphIter< VarGraph, Backtracker >&
     GraphIter< VarGraph, Backtracker >::operator++( )
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
@@ -291,7 +291,7 @@ namespace grem
     }  /* -----  end of method GraphIter< VarGraph, Backtracker >::operator++  ----- */
 
   template< >
-      GraphIter< VarGraph, Backtracker >&
+      inline GraphIter< VarGraph, Backtracker >&
     GraphIter< VarGraph, Backtracker >::operator--( )
     {
       if ( this->state.buffer != 0 ) {                             // Any node buffered?
@@ -322,14 +322,14 @@ namespace grem
 
   /* Interface functions specialization. */
   template< >
-      bool
+      inline bool
     at_end( GraphIter< VarGraph, Haplotyper >& it )
     {
       return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template< >
-      GraphIter< VarGraph, Haplotyper >
+      inline GraphIter< VarGraph, Haplotyper >
     begin( const VarGraph& g,
         typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
     {
@@ -356,7 +356,7 @@ namespace grem
     }  /* -----  end of template function begin  ----- */
 
   template< >
-      void
+      inline void
     go_begin( GraphIter< VarGraph, Haplotyper >& it,
         typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
     {
@@ -381,7 +381,7 @@ namespace grem
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
-      typename seqan::Level< GraphIter< VarGraph, Haplotyper > >::Type
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper > >::Type
     level( GraphIter< VarGraph, Haplotyper >& it )
     {
       return it.visited.size();
@@ -390,7 +390,7 @@ namespace grem
   /* Member functions specialization. */
 
   template< >
-      void
+      inline void
     GraphIter< VarGraph, Haplotyper >::set_setback( )
     {
       this->state.setback = (( this->visited.size() == 0 /* first path */||
@@ -407,7 +407,7 @@ namespace grem
    *  more diverse haplotypes.
    */
   template< >
-      GraphIter< VarGraph, Haplotyper >&
+      inline GraphIter< VarGraph, Haplotyper >&
     GraphIter< VarGraph, Haplotyper >::operator++( )
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
@@ -460,7 +460,7 @@ namespace grem
     }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator++  ----- */
 
   template< >
-      GraphIter< VarGraph, Haplotyper >&
+      inline GraphIter< VarGraph, Haplotyper >&
     GraphIter< VarGraph, Haplotyper >::operator--( int )
     {
       this->itr_value = this->state.start;    // Reset the iterator to the start node.
@@ -475,7 +475,7 @@ namespace grem
     }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator--  ----- */
 
   template< >
-      GraphIter< VarGraph, Haplotyper >&
+      inline GraphIter< VarGraph, Haplotyper >&
     GraphIter< VarGraph, Haplotyper >::operator--( )
     {
       this->visited.push_back( this->state.current_path );
@@ -494,7 +494,7 @@ namespace grem
    */
   template< >
   template< typename TContainer >
-      bool
+      inline bool
     GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer& path )
     {
       return covered_by( path, this->visited );
