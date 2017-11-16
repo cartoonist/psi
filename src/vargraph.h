@@ -156,25 +156,46 @@ namespace grem
   /* END OF path interface functions forwards  --------------------------------- */
 
   /* Path specialization tags. */
+  struct DefaultStrategy;
+  struct DynamicStrategy;
   struct CompactStrategy;
+  typedef seqan::Tag< DefaultStrategy > Default;
+  typedef seqan::Tag< DynamicStrategy > Dynamic;
   typedef seqan::Tag< CompactStrategy > Compact;
+
+  template< typename TSpec >
+    struct PathTraits;
+
+  template< >
+    struct PathTraits< Default > {
+      typedef std::vector< VarGraph::nodeid_type > TNodeSequence;
+    };
+
+  template< >
+    struct PathTraits< Dynamic > {
+      typedef std::deque< VarGraph::nodeid_type > TNodeSequence;
+    };
 
   /**
    *  @brief  Path template class.
    *
    *  Represent a path in the variation graph with efficient node ID query.
    */
-  template< typename TSpec = void >
+  template< typename TSpec = Default >
     class Path
     {
+      private:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef PathTraits< TSpec > TTraits;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
+        typedef typename TTraits::TNodeSequence nodes_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const VarGraph* vargraph;
-        std::deque< VarGraph::nodeid_type > nodes;
+        nodes_type nodes;
         std::unordered_set< VarGraph::nodeid_type > nodes_set;
         seqsize_type seqlen;
         /* Loaded on demand. */
@@ -192,21 +213,15 @@ namespace grem
           : vargraph( g ), seqlen( 0 ), initialized( false )
         { }
 
-        Path( const VarGraph* g, std::deque< VarGraph::nodeid_type >&& p )
+        Path( const VarGraph* g, nodes_type&& p )
           : Path( g )
         {
           this->set_nodes( std::move( p ) );
         }
 
-        Path( const VarGraph* g, const std::deque< VarGraph::nodeid_type >& p )
-          : Path( g, std::deque< VarGraph::nodeid_type >( p ) )
+        Path( const VarGraph* g, const nodes_type& p )
+          : Path( g, nodes_type( p ) )
         { }
-
-        Path( const VarGraph* g, const std::vector< VarGraph::nodeid_type >& p )
-          : Path( g )
-        {
-          this->set_nodes( p );
-        }
         /* ====================  ACCESSORS     ======================================= */
         /**
          *  @brief  getter function for vargraph.
@@ -220,7 +235,7 @@ namespace grem
         /**
          *  @brief  getter function for nodes.
          */
-          inline const std::deque< VarGraph::nodeid_type >&
+          inline const nodes_type&
         get_nodes( ) const
         {
           return this->nodes;
@@ -273,7 +288,7 @@ namespace grem
          *  @brief  setter function for nodes.
          */
           inline void
-        set_nodes( std::deque< VarGraph::nodeid_type >&& value )
+        set_nodes( nodes_type&& value )
         {
           assert( path.vargraph != nullptr );
 
@@ -293,22 +308,10 @@ namespace grem
          *  @brief  setter function for nodes.
          */
           inline void
-        set_nodes( const std::deque< VarGraph::nodeid_type >& value )
+        set_nodes( const nodes_type& value )
         {
-          this->set_nodes( std::deque< VarGraph::nodeid_type >( value ) );
+          this->set_nodes( nodes_type( value ) );
         }  /* -----  end of method set_nodes  ----- */
-
-        /**
-         *  @brief  setter function for nodes (overloaded for `std::vector`).
-         */
-          inline void
-        set_nodes( const std::vector< VarGraph::nodeid_type >& value )
-        {
-          std::deque< VarGraph::nodeid_type > d;
-          // d.reserve( value.size() );         /**< @brief deques cannot be reserved. */
-          std::copy( value.begin(), value.end(), std::back_inserter( d ) );
-          this->set_nodes( std::move( d ) );
-        }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
         initialize< TSpec >( Path< TSpec >& path );
@@ -464,7 +467,7 @@ namespace grem
       inline void
     load( Path< TSpec >& path, std::istream& in )
     {
-      std::deque< VarGraph::nodeid_type > nodes;
+      typename Path< TSpec >::nodes_type  nodes;
       deserialize( in, nodes, std::back_inserter( nodes ) );
       path.set_nodes( std::move( nodes ) );
       load( path.bv_node_breaks, in );
@@ -644,7 +647,24 @@ namespace grem
       inline void
     reserve( Path< TSpec >& path, typename Path< TSpec >::size_type size )
     {
-      //path.nodes.reserve( size );             /**< @brief deques cannot be reserved. */
+      path.nodes.reserve( size );
+      path.nodes_set.reserve( size );
+    }  /* -----  end of template function reserve  ----- */
+
+  /**
+   *  @brief  Reserve memory for the path.
+   *
+   *  @param  path The path.
+   *  @param  size The target capacity.
+   *
+   *  Internal function to reserve memory for nodes and nodes set.
+   *
+   *  @overload for Dynamic Path.
+   */
+  template< >
+      inline void
+    reserve( Path< Dynamic >& path, Path< Dynamic >::size_type size )
+    {
       path.nodes_set.reserve( size );
     }  /* -----  end of template function reserve  ----- */
 
@@ -685,9 +705,14 @@ namespace grem
       if ( path.seq.length() != 0 ) path.seq.resize( path.get_sequence_len() );
     }  /* -----  end of method pop_back  ----- */
 
-  template< typename TSpec >
+  /**
+   * @brief  pop the last node from the path.
+   *
+   * NOTE: only implemented for Dynamic Path.
+   */
+  template< >
       inline void
-    pop_front( Path< TSpec >& path )
+    pop_front( Path< Dynamic >& path )
     {
       assert( path.vargraph != nullptr );
 
@@ -703,6 +728,17 @@ namespace grem
 
       if ( path.seq.length() != 0 ) path.seq = path.seq.substr( first_node_len );
     }
+
+  /**
+   *  @brief  setter function for nodes (overloaded for `std::vector`).
+   */
+    inline void
+  set_nodes( Path< Dynamic >& path, const std::vector< VarGraph::nodeid_type >& value )
+  {
+    Path< Dynamic >::nodes_type d;
+    std::copy( value.begin(), value.end(), std::back_inserter( d ) );
+    path.set_nodes( std::move( d ) );
+  }
 
   /**
    *  @brief  Trim the path from the node whose ID matches the given ID.
