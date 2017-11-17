@@ -84,6 +84,8 @@ namespace grem {
         typedef typename TTraits::TContainer container_type;
         typedef typename TTraits::TSet set_type;
         typedef typename TTraits::TState state_type;
+        /* ====================  DATA MEMBERS  ======================================= */
+        bool raise_on_end;          /**< @brief Throw an exception if it hits the end. */
         /* ====================  ACCESSORS     ======================================= */
           inline const TGraph*
         get_vargraph( ) const
@@ -124,7 +126,7 @@ namespace grem {
       private:
         /* ====================  METHODS       ======================================= */
         /* Private constructor. */
-        GraphIter() : vargraph_ptr(nullptr) {}
+        GraphIter() : raise_on_end( false ), vargraph_ptr( nullptr ) { }
         /* Internal methods. */
         value_type next_unvisited( );
         void set_setback( );

@@ -150,6 +150,10 @@ namespace grem
       typedef typename seqan::Level< GraphIter< VarGraph, BFS > >::Type TLevel;
       typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
 
+      if ( at_end( *this ) && this->raise_on_end ) {
+          throw std::range_error( "The iterator has reached the end." );
+      }
+
       if ( this->visiting_buffer.empty() ) return *this;
 
       TLevel plevel = level( *this );
@@ -266,6 +270,10 @@ namespace grem
     GraphIter< VarGraph, Backtracker >::operator++( )
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
+
+      if ( this->state.end && this->raise_on_end ) {
+        throw std::range_error( "The iterator has reached the end." );
+      }
 
       if ( this->state.buffer != 0 ) {                             // Any node buffered?
         this->itr_value = this->state.buffer;                      // Use it.
@@ -411,6 +419,10 @@ namespace grem
     GraphIter< VarGraph, Haplotyper >::operator++( )
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+
+      if ( this->state.end && this->raise_on_end ) {
+        throw std::range_error( "The iterator has reached the end." );
+      }
 
       if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
         this->state.end = true;
