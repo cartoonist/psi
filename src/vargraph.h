@@ -748,7 +748,7 @@ namespace grem
   }
 
   /**
-   *  @brief  Trim the path from the node whose ID matches the given ID.
+   *  @brief  Trim the path from the node whose ID matches the given ID from back.
    *
    *  @param  path The path to be trimmed.
    *  @param  node_id The node ID from where the path should be trimmed.
@@ -760,7 +760,7 @@ namespace grem
    */
   template< typename TSpec >
       inline void
-    trim( Path< TSpec >& path, VarGraph::nodeid_type node_id=0 )
+    trim_back( Path< TSpec >& path, VarGraph::nodeid_type node_id=0 )
     {
       bool found = false;
       while ( !found && length( path ) != 0 ) {
@@ -768,7 +768,31 @@ namespace grem
         if ( node_id == 0 || last_node == node_id ) found = true;
         pop_back( path );
       }
-    }  /* -----  end of template function trim  ----- */
+    }  /* -----  end of template function trim_back  ----- */
+
+  /**
+   *  @brief  Trim the path from the node whose ID matches the given ID from front.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  node_id The node ID from where the path should be trimmed.
+   *
+   *  It pops the first nodes in the nodes list until it reaches to the given node ID
+   *  inclusive. It will yield an empty path if `node_id` is not among the path nodes.
+   *  If `node_id` is equal to zero, an invalid node ID, it pops only the first node
+   *  from the path.
+   *
+   *  @note specific for Dynamic Paths.
+   */
+    inline void
+  trim_front( Path< Dynamic >& path, VarGraph::nodeid_type node_id=0 )
+  {
+    bool found = false;
+    while ( !found && length( path ) != 0 ) {
+      auto&& first_node = path.get_nodes().front();
+      if ( node_id == 0 || first_node == node_id ) found = true;
+      pop_front( path );
+    }
+  }  /* -----  end of template function trim_front  ----- */
 
   /* END OF Normal Path interface functions  ----------------------------------- */
 

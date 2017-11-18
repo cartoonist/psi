@@ -456,10 +456,10 @@ namespace grem
                     break;
                   }
                   offset = trimmed_len - k + 1;
-                  trim( current_path );
+                  trim_back( current_path );
                 }
                 --bt_itr;
-                trim( trav_path, *bt_itr );
+                trim_back( trav_path, *bt_itr );
               }
 
               for ( auto f = offset; f < label_len; f += step ) {
