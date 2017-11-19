@@ -388,11 +388,7 @@ namespace grem
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
               seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
-              for ( int i = 0; i < n; ++i ) {
-                Path<> new_path( this->vargraph );
-                get_uniq_haplotype( new_path, hap_itr );
-                paths.add_path( std::move( new_path ) );
-              }
+              for ( int i = 0; i < n; ++i ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
             }
           }  /* -----  end of template function pick_paths  ----- */
 
@@ -511,7 +507,7 @@ namespace grem
             ++itr;
           }
         }
-        /* ====================  METHODS       ======================================= */
+
           inline void
         traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {
