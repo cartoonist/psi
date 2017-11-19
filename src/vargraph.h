@@ -229,6 +229,31 @@ namespace grem
         Path( const VarGraph* g, const nodes_type& p )
           : Path( g, nodes_type( p ) )
         { }
+
+        Path( const Path& ) = default;
+        Path( Path&& ) = default;
+        Path& operator=( const Path& ) = default;
+        Path& operator=( Path&& ) = default;
+        ~Path() = default;
+        /* ====================  OPERATORS     ======================================= */
+        /**
+         *  @brief  Assign the path with another type of path.
+         *
+         *  @param  other The other path to use for assignment.
+         *  @return The reference to this instance after assignment.
+         *
+         *  @note If the type of the `other` path is the same as this path, the copy
+         *        assignment operator would be used.
+         */
+        template< typename TSpec2 >
+            inline Path&
+          operator=( const Path< TSpec2 >& other ) {
+            assert( this->vargraph == other.get_vargraph() );
+            nodes_type d;
+            std::copy( other.get_nodes().begin(), other.get_nodes().end(), std::back_inserter( d ) );
+            this->set_nodes( std::move( d ) );
+            return *this;
+          }
         /* ====================  ACCESSORS     ======================================= */
         /**
          *  @brief  getter function for vargraph.
@@ -474,7 +499,7 @@ namespace grem
       inline void
     load( Path< TSpec >& path, std::istream& in )
     {
-      typename Path< TSpec >::nodes_type  nodes;
+      typename Path< TSpec >::nodes_type nodes;
       deserialize( in, nodes, std::back_inserter( nodes ) );
       path.set_nodes( std::move( nodes ) );
       load( path.bv_node_breaks, in );
@@ -525,6 +550,57 @@ namespace grem
       }
       path.initialized = false;
     }  /* -----  end of template function add_node  ----- */
+
+  /**
+   *  @brief  Extend a path with another one (interface function).
+   *
+   *  @param  path The path to be extended.
+   *  @param  other The other path to use for extension.
+   *
+   *  @note It does not prevent self-extension. Use `operator+=` if this functionality
+   *        is desired.
+   */
+  template< typename TSpec1, typename TSpec2 >
+      inline void
+    extend( Path< TSpec1 >& path, const Path< TSpec2 >& other )
+    {
+      assert( path.get_vargraph() != other.get_vargraph() );
+      for ( const auto& node_id : other.get_nodes() ) {
+        add_node( path, node_id );
+      }
+    }
+
+  /**
+   *  @brief  Extend the path with another path of the same type.
+   *
+   *  @param  path The path to be extended.
+   *  @param  other The other path to use for extension.
+   *  @return The reference to this instance after extension.
+   */
+  template< typename TSpec >
+      inline Path< TSpec >&
+    operator+=( Path< TSpec >& path, const Path< TSpec >& other )
+    {
+      if ( &path != &other ) {
+        extend( path, other );
+      }
+      return path;
+    }
+
+  /**
+   *  @brief  Extend the path with another path of different type.
+   *
+   *  @param  path The path to be extended.
+   *  @param  other The other path to use for extension.
+   *  @return The reference to this instance after extension.
+   */
+  template< typename TSpec1, typename TSpec2 >
+      inline Path< TSpec1 >&
+    operator+=( Path< TSpec1 >& path, const Path< TSpec2 >& other )
+    {
+      extend( path, other );
+      return path;
+    }
 
   /**
    *  @brief  Get the node rank (0-based) in the path by a position in its sequence.
@@ -735,17 +811,6 @@ namespace grem
 
       if ( path.seq.length() != 0 ) path.seq = path.seq.substr( first_node_len );
     }
-
-  /**
-   *  @brief  setter function for nodes (overloaded for `std::vector`).
-   */
-    inline void
-  set_nodes( Path< Dynamic >& path, const std::vector< VarGraph::nodeid_type >& value )
-  {
-    Path< Dynamic >::nodes_type d;
-    std::copy( value.begin(), value.end(), std::back_inserter( d ) );
-    path.set_nodes( std::move( d ) );
-  }
 
   /**
    *  @brief  Trim the path from the node whose ID matches the given ID from back.
