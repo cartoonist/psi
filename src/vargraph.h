@@ -1849,7 +1849,7 @@ namespace grem {
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
 
-  /* Haplotyper iterator interface function  ------------------------------------- */
+  /* Haplotyper iterator interface functions  ------------------------------------ */
 
   /**
    *  @brief  Simulate a unique haplotype.
@@ -1864,29 +1864,110 @@ namespace grem {
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
-    void
-  get_uniq_haplotype( Path<>& haplotype,
-      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
-      int tries=0 )
-  {
-    do {
-      clear( haplotype );
-      while ( !at_end( iter ) ) {
-        add_node( haplotype, *iter );
+  template< typename TPathSet >
+      inline void
+    get_uniq_full_haplotype( TPathSet& paths,
+        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        int tries=0 )
+    {
+      Path<> haplotype( iter.get_vargraph() );
+      do {
+        while ( !at_end( iter ) ) {
+          add_node( haplotype, *iter );
+          ++iter;
+        }
+        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
+          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        }
+        else {
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          break;
+        }
+        /* trying again */
+      } while ( true );
+      paths.add_path( std::move( haplotype ) );
+    }
+
+  template< typename TSpec >
+      inline void
+    extend_to_k( Path< TSpec >& path,
+        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        unsigned int k )
+    {
+      while ( path.get_sequence_len() < k ) {
+        add_node( path, *iter );
         ++iter;
       }
-      if ( tries-- && iter[ haplotype.get_nodes() ] ) {
-        iter--;  // discard the traversed path and reset the Haplotyper iterator.
-      }
-      else {
-        --iter;  // save the traversed path and reset the Haplotyper iterator.
-        break;
-      }
-      /* trying again */
-    } while ( true );
+    }
+
+    inline void
+  move_forward( Path< Dynamic >& segment,
+      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+      unsigned int k )
+  {
+    add_node( segment, *iter );
+    ++iter;
+    while ( segment.get_sequence_len() -
+        iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
+      pop_front( segment );
+    }
   }
 
-  /* END OF Haplotyper iterator interface function  ------------------------------ */
+  template< typename TPathSet >
+      inline void
+    get_uniq_patches( TPathSet& paths,
+        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        unsigned int k )
+    {
+      iter.raise_on_end = true;
+      Path<> patch( iter.get_vargraph() );
+      Path< Dynamic > frontier( iter.get_vargraph() );
+      try {
+        while ( true ) {
+          // Bootstrap.
+          extend_to_k( frontier, iter, k );
+          // Check the next patch distance to merge with previous patch if is less than k.
+          if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
+            paths.add_path( patch );
+            clear( patch );
+          }
+          // Search for a patch of length k that is not covered by visited paths of `iter`.
+          while ( iter[ patch.get_nodes() ] ) move_forward( frontier, iter, k );
+          // Extend the patch.
+          patch += frontier;
+          while( !iter[ frontier.get_nodes() ] ) {
+            move_forward( frontier, iter, k );
+            add_node( patch, frontier.get_nodes().back() );
+          }
+          clear( frontier );
+        }
+      }
+      catch( const std::range_error& ) {
+        if ( length( patch ) > 0 ) {
+          paths.add_path( patch );
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+        }
+      }
+      iter.raise_on_end = false;
+    }
+
+  template< typename TPathSet >
+      inline bool
+    get_uniq_patched_haplotype( TPathSet& paths,
+        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        unsigned int context_len )
+    {
+      if ( level( iter ) == 0 ) {
+        get_uniq_full_haplotype( paths, iter );
+        return true;
+      }
+      unsigned int paths_no = length( paths.string_set );
+      get_uniq_patches( paths, iter, context_len );
+      if ( paths_no == length( paths.string_set ) ) return false;
+      return true;
+    }
+
+  /* END OF Haplotyper iterator interface functions  ----------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef VARGRAPH_H__  ----- */
