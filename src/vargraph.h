@@ -21,15 +21,11 @@
 
 #include <algorithm>
 #include <fstream>
-#include <ios>
 #include <stdexcept>
-#include <exception>
-#include <string>
 #include <vector>
 #include <unordered_set>
 #include <deque>
 #include <utility>
-#include <cstdint>
 #include <functional>
 #include <random>
 
@@ -46,12 +42,7 @@
 #  undef MACRO_STACK
 #endif
 
-#include <seqan/basic.h>
-#include <sdsl/bit_vectors.hpp>
-#include "stream/stream.h"
-
 #include "graph_iter.h"
-#include "utils.h"
 
 // :TODO:Tue Sep 26 17:03:\@cartoonist: split the header file into multiple ones?
 
