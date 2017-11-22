@@ -710,7 +710,7 @@ namespace grem {
         // Search for a forward node such that the setback path is not in previous paths.
         for ( auto e : fwd_edges ) {
           this->visiting_buffer.push_back( e.to() );
-          if ( covered_by( this->visiting_buffer, this->visited ) ) {  // Visited?
+          if ( (*this)[ this->visiting_buffer ] ) {  // Visited?
             this->visiting_buffer.pop_back();
             continue;                             // Next edge.
           }
@@ -776,7 +776,7 @@ namespace grem {
       inline bool
     GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer& path )
     {
-      return covered_by( path, this->visited );
+      return covered_by( path.begin(), path.end(), this->visited );
     }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator[]  ----- */
 
   /* END OF Haplotyper template specialization  ---------------------------------- */

@@ -1022,9 +1022,9 @@ namespace grem{
    *  path in the given set of paths. The path set should be a container of the Path
    *  class.
    */
-  template< class Iter1, class Iter2 >
+  template< class TIter1, class TIter2 >
       inline bool
-    covered_by( Iter1 begin, Iter1 end, Iter2 paths_set_begin, Iter2 paths_set_end )
+    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
     {
       for ( auto itr = paths_set_begin; itr != paths_set_end; ++itr ) {
         if ( contains( (*itr), begin, end ) )
@@ -1038,18 +1038,54 @@ namespace grem{
   /**
    *  @brief  Check whether a path is covered by a set of paths.
    *
-   *  @param  path_nodes The given path to be checked as a container of node IDs
+   *  @param  begin The begin iterator of the path as set of node IDs.
+   *  @param  end The end iterator of the path as set of node IDs.
    *  @param  paths_set A set of paths as a container of `Path`.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
    *          false -- including the case that the path is empty.
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
-  template< class TContainer1, class TContainer2 >
+  template< class TIter1, class TIter2, class TContainer >
       inline bool
-    covered_by( const TContainer1& path_nodes, const TContainer2& paths_set )
+    covered_by( TIter1 begin, TIter2 end, const TContainer& paths_set )
+    {
+      return covered_by( begin, end, paths_set.begin(), paths_set.end() );
+    }  /* -----  end of template function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  path_nodes The given path to be checked as a vector of node IDs.
+   *  @param  paths_set A set of paths as a container of `Path`.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
+   */
+  template< typename TNodeID, class TContainer >
+      inline bool
+    covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set )
     {
       return covered_by( path_nodes.begin(), path_nodes.end(),
+          paths_set.begin(), paths_set.end() );
+    }  /* -----  end of template function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  path The given path as Path class instance.
+   *  @param  paths_set A set of paths as a container of `Path`.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
+   */
+  template< typename TGraph, typename TSpec, class TContainer >
+      inline bool
+    covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set )
+    {
+      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
           paths_set.begin(), paths_set.end() );
     }  /* -----  end of template function covered_by  ----- */
 
@@ -1064,9 +1100,9 @@ namespace grem{
    *  This function simply checks if a node is on any of the path in the given set of
    *  paths.
    */
-  template< typename TContainer >
+  template< typename TNodeID, typename TContainer >
       inline bool
-    covered_by( VarGraph::nodeid_type node_id, const TContainer& paths_set )
+    covered_by( TNodeID node_id, const TContainer& paths_set )
     {
       for ( const auto& path : paths_set ) {
         if ( contains( path, node_id ) ) return true;
@@ -1084,9 +1120,9 @@ namespace grem{
    *
    *  This function get a node ID and return the number of paths that cover the node.
    */
-  template< typename TContainer >
+  template< typename TNodeID, typename TContainer >
       inline std::size_t
-    get_path_coverage( const VarGraph::nodeid_type& node_id, const TContainer& paths_set )
+    get_path_coverage( TNodeID const& node_id, const TContainer& paths_set )
     {
       std::size_t coverage = 0;
       for ( const auto & path : paths_set ) {

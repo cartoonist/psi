@@ -443,8 +443,8 @@ namespace grem
                   else break;
                 }
 
-                while ( !covered_by( current_path.get_nodes(), paths.paths_set ) ) {
                 Path< VarGraph > current_path = trav_path;
+                while ( !covered_by( current_path, paths.paths_set ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
