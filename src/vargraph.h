@@ -106,6 +106,27 @@ namespace grem
       }
   };
 
+  /* Path specialization tags. */
+  struct DefaultStrategy;
+  struct DynamicStrategy;
+  struct CompactStrategy;
+  typedef seqan::Tag< DefaultStrategy > Default;
+  typedef seqan::Tag< DynamicStrategy > Dynamic;
+  typedef seqan::Tag< CompactStrategy > Compact;
+
+  template< typename TGraph, typename TSpec >
+    struct PathTraits;
+
+  template< typename TGraph >
+    struct PathTraits< TGraph, Default > {
+      typedef std::vector< typename TGraph::nodeid_type > TNodeSequence;
+    };
+
+  template< typename TGraph >
+    struct PathTraits< TGraph, Dynamic > {
+      typedef std::deque< typename TGraph::nodeid_type > TNodeSequence;
+    };
+
   /* Path interface functions forwards  ---------------------------------------- */
 
   template< typename TGraph, typename TSpec >
@@ -157,27 +178,6 @@ namespace grem
     pop_front( Path< TGraph, Dynamic >& path );
 
   /* END OF path interface functions forwards  --------------------------------- */
-
-  /* Path specialization tags. */
-  struct DefaultStrategy;
-  struct DynamicStrategy;
-  struct CompactStrategy;
-  typedef seqan::Tag< DefaultStrategy > Default;
-  typedef seqan::Tag< DynamicStrategy > Dynamic;
-  typedef seqan::Tag< CompactStrategy > Compact;
-
-  template< typename TGraph, typename TSpec >
-    struct PathTraits;
-
-  template< typename TGraph >
-    struct PathTraits< TGraph, Default > {
-      typedef std::vector< typename TGraph::nodeid_type > TNodeSequence;
-    };
-
-  template< typename TGraph >
-    struct PathTraits< TGraph, Dynamic > {
-      typedef std::deque< typename TGraph::nodeid_type > TNodeSequence;
-    };
 
   /**
    *  @brief  Path template class.
@@ -1076,22 +1076,6 @@ namespace grem
       }
 
       return false;
-    }  /* -----  end of template function contains  ----- */
-
-  /**
-   *  @brief  Check whether this path contains another path.
-   *
-   *  @param  path The path.
-   *  @param  path_nodes The node IDs of the given path to be checked.
-   *  @return `true` if this path is a superset of the given path.
-   *
-   *  Overloaded. See `contains( const Path< TSpec >&, TIter, TIter )`.
-   */
-  template< typename TSpec, typename TContainer >
-      inline bool
-    contains( const Path< TSpec >& path, const TContainer& path_nodes )
-    {
-      return contains( path, path_nodes.begin(), path_nodes.end() );
     }  /* -----  end of template function contains  ----- */
 
   /**
