@@ -108,48 +108,53 @@ namespace grem
 
   /* Path interface functions forwards  ---------------------------------------- */
 
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
     class Path;
 
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       void
-    initialize( Path< TSpec >& path );
-  template< typename TSpec >
+    initialize( Path< TGraph, TSpec >& path );
+  template< typename TGraph, typename TSpec >
       void
-    save( const Path< TSpec >& path, std::ostream& out );
-  template< typename TSpec >
+    save( const Path< TGraph, TSpec >& path, std::ostream& out );
+  template< typename TGraph, typename TSpec >
       void
-    load( Path< TSpec >& path, std::istream& in );
-  template< typename TSpec >
+    load( Path< TGraph, TSpec >& path, std::istream& in );
+  template< typename TGraph, typename TSpec >
       void
-    add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id );
-  template< typename TSpec >
-      typename Path< TSpec >::size_type
-    rank( const Path< TSpec >& path, typename Path< TSpec >::seqsize_type pos );
-  template< typename TSpec >
-      typename Path< TSpec >::seqsize_type
-    select( const Path< TSpec >& path, typename Path< TSpec >::size_type rank );
-  template< typename TSpec >
-      typename Path< TSpec >::string_type
-    sequence( const Path< TSpec >& path );
-  template< typename TSpec >
+    add_node( Path< TGraph, TSpec >& path,
+        typename TGraph::nodeid_type const& node_id );
+  template< typename TGraph, typename TSpec >
+      typename Path< TGraph, TSpec >::size_type
+    rank( const Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type pos );
+  template< typename TGraph, typename TSpec >
+      typename Path< TGraph, TSpec >::seqsize_type
+    select( const Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::size_type rank );
+  template< typename TGraph, typename TSpec >
+      typename Path< TGraph, TSpec >::string_type
+    sequence( const Path< TGraph, TSpec >& path );
+  template< typename TGraph, typename TSpec >
       void
-    clear( Path< TSpec >& path );
-  template< typename TSpec >
+    clear( Path< TGraph, TSpec >& path );
+  template< typename TGraph, typename TSpec >
       void
-    reserve( Path< TSpec >& path, typename Path< TSpec >::size_type size );
-  template< typename TSpec >
-      typename Path< TSpec >::size_type
-    length( const Path< TSpec >& path );
-  template< typename TSpec >
+    reserve( Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::size_type size );
+  template< typename TGraph, typename TSpec >
+      typename Path< TGraph, TSpec >::size_type
+    length( const Path< TGraph, TSpec >& path );
+  template< typename TGraph, typename TSpec >
       bool
-    contains( const Path< TSpec >& path, VarGraph::nodeid_type node_id );
-  template< typename TSpec >
+    contains( const Path< TGraph, TSpec >& path,
+        typename TGraph::nodeid_type node_id );
+  template< typename TGraph, typename TSpec >
       void
-    pop_back( Path< TSpec >& path );
-  template< typename TSpec >
+    pop_back( Path< TGraph, TSpec >& path );
+  template< typename TGraph >
       void
-    pop_front( Path< TSpec >& path );
+    pop_front( Path< TGraph, Dynamic >& path );
 
   /* END OF path interface functions forwards  --------------------------------- */
 
@@ -161,17 +166,17 @@ namespace grem
   typedef seqan::Tag< DynamicStrategy > Dynamic;
   typedef seqan::Tag< CompactStrategy > Compact;
 
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
     struct PathTraits;
 
-  template< >
-    struct PathTraits< Default > {
-      typedef std::vector< VarGraph::nodeid_type > TNodeSequence;
+  template< typename TGraph >
+    struct PathTraits< TGraph, Default > {
+      typedef std::vector< typename TGraph::nodeid_type > TNodeSequence;
     };
 
-  template< >
-    struct PathTraits< Dynamic > {
-      typedef std::deque< VarGraph::nodeid_type > TNodeSequence;
+  template< typename TGraph >
+    struct PathTraits< TGraph, Dynamic > {
+      typedef std::deque< typename TGraph::nodeid_type > TNodeSequence;
     };
 
   /**
@@ -179,12 +184,12 @@ namespace grem
    *
    *  Represent a path in the variation graph with efficient node ID query.
    */
-  template< typename TSpec = Default >
+  template< typename TGraph, typename TSpec = Default >
     class Path
     {
       private:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef PathTraits< TSpec > TTraits;
+        typedef PathTraits< TGraph, TSpec > TTraits;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef std::string string_type;
@@ -192,9 +197,9 @@ namespace grem
         typedef typename TTraits::TNodeSequence nodes_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        const VarGraph* vargraph;
+        const TGraph* vargraph;
         nodes_type nodes;
-        std::unordered_set< VarGraph::nodeid_type > nodes_set;
+        std::unordered_set< typename TGraph::nodeid_type > nodes_set;
         seqsize_type seqlen;
         /* Loaded on demand. */
         string_type seq;
@@ -207,17 +212,17 @@ namespace grem
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes )::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
-        Path( const VarGraph* g )
+        Path( const TGraph* g )
           : vargraph( g ), seqlen( 0 ), initialized( false )
         { }
 
-        Path( const VarGraph* g, nodes_type&& p )
+        Path( const TGraph* g, nodes_type&& p )
           : Path( g )
         {
           this->set_nodes( std::move( p ) );
         }
 
-        Path( const VarGraph* g, const nodes_type& p )
+        Path( const TGraph* g, const nodes_type& p )
           : Path( g, nodes_type( p ) )
         { }
 
@@ -249,7 +254,7 @@ namespace grem
         /**
          *  @brief  getter function for vargraph.
          */
-          inline const VarGraph*
+          inline const TGraph*
         get_vargraph( ) const
         {
           return this->vargraph;
@@ -302,7 +307,7 @@ namespace grem
          *  @brief  setter function for vargraph.
          */
           inline void
-        set_vargraph( const VarGraph* value )
+        set_vargraph( const TGraph* value )
         {
           this->vargraph = value;
         }  /* -----  end of method set_vargraph  ----- */
@@ -337,27 +342,29 @@ namespace grem
         }  /* -----  end of method set_nodes  ----- */
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        initialize< TSpec >( Path< TSpec >& path );
+        initialize< TGraph, TSpec >( Path< TGraph, TSpec >& path );
           friend void
-        save< TSpec >( const Path< TSpec >& path, std::ostream& out );
+        save< TGraph, TSpec >( const Path< TGraph, TSpec >& path, std::ostream& out );
           friend void
-        load< TSpec >( Path< TSpec >& path, std::istream& in );
+        load< TGraph, TSpec >( Path< TGraph, TSpec >& path, std::istream& in );
           friend void
-        add_node< TSpec >( Path< TSpec >& path, const VarGraph::nodeid_type& node_id );
+        add_node< TGraph, TSpec >( Path< TGraph, TSpec >& path,
+            typename TGraph::nodeid_type const& node_id );
           friend size_type
-        rank< TSpec >( const Path< TSpec >& path, seqsize_type i );
+        rank< TGraph, TSpec >( const Path< TGraph, TSpec >& path, seqsize_type i );
           friend seqsize_type
-        select< TSpec >( const Path< TSpec >& path, size_type rank );
+        select< TGraph, TSpec >( const Path< TGraph, TSpec >& path, size_type rank );
           friend void
-        clear< TSpec >( Path< TSpec >& path );
+        clear< TGraph, TSpec >( Path< TGraph, TSpec >& path );
           friend void
-        reserve< TSpec >( Path< TSpec >& path, size_type size );
+        reserve< TGraph, TSpec >( Path< TGraph, TSpec >& path, size_type size );
           friend bool
-        contains< TSpec >( const Path< TSpec >& path, VarGraph::nodeid_type node_id );
+        contains< TGraph, TSpec >( const Path< TGraph, TSpec >& path,
+            typename TGraph::nodeid_type node_id );
           friend void
-        pop_back< TSpec >( Path< TSpec >& path );
+        pop_back< TGraph, TSpec >( Path< TGraph, TSpec >& path );
           friend void
-        pop_front< TSpec >( Path< TSpec >& path );
+        pop_front< TGraph >( Path< TGraph, Dynamic >& path );
     };  /* -----  end of template class Path  ----- */
 
   /* Normal Path interface functions  ------------------------------------------ */
@@ -384,16 +391,16 @@ namespace grem
    *
    *  which has a set bit at the first position of each node in the path.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    initialize( Path< TSpec >& path )
+    initialize( Path< TGraph, TSpec >& path )
     {
       if ( path.is_initialized() ) return;
 
       assert( path.vargraph != nullptr );
 
       sdsl::util::assign( path.bv_node_breaks, bit_vector( path.get_sequence_len(), 0 ) );
-      typename Path< TSpec >::seqsize_type cursor = 0;
+      typename Path< TGraph, TSpec >::seqsize_type cursor = 0;
       for ( const auto& node_id : path.nodes ) {
         cursor += path.vargraph->node_length( node_id );
         path.bv_node_breaks[ cursor - 1 ] = 1;
@@ -411,9 +418,9 @@ namespace grem
    *
    *  It saves the sequence of the node IDs into the given output stream.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    save( const Path< TSpec >& path, std::ostream& out )
+    save( const Path< TGraph, TSpec >& path, std::ostream& out )
     {
       assert( path.is_initialized() );
       serialize( out, path.nodes, path.nodes.begin(), path.nodes.end() );
@@ -428,12 +435,12 @@ namespace grem
    *
    *  It saves the sequence of the node IDs into the given output stream.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    save( Path< TSpec >& path, std::ostream& out )
+    save( Path< TGraph, TSpec >& path, std::ostream& out )
     {
       initialize( path );
-      save( std::add_const_t< Path< TSpec >& >( path ), out );
+      save( std::add_const_t< Path< TGraph, TSpec >& >( path ), out );
     }  /* -----  end of function save  ----- */
 
   /**
@@ -446,9 +453,9 @@ namespace grem
    *
    *  @overload for `std::string` as file name.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    save( const Path< TSpec >& path, const std::string& file_name )
+    save( const Path< TGraph, TSpec >& path, const std::string& file_name )
     {
       std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
       if( !ofs ) {
@@ -467,9 +474,9 @@ namespace grem
    *
    *  @overload for non-const Path instance.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    save( Path< TSpec >& path, const std::string& file_name )
+    save( Path< TGraph, TSpec >& path, const std::string& file_name )
     {
       std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
       if( !ofs ) {
@@ -486,11 +493,11 @@ namespace grem
    *
    *  It loads the sequence of the node IDs from the given input stream.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    load( Path< TSpec >& path, std::istream& in )
+    load( Path< TGraph, TSpec >& path, std::istream& in )
     {
-      typename Path< TSpec >::nodes_type nodes;
+      typename Path< TGraph, TSpec >::nodes_type nodes;
       deserialize( in, nodes, std::back_inserter( nodes ) );
       path.set_nodes( std::move( nodes ) );
       load( path.bv_node_breaks, in );
@@ -509,9 +516,9 @@ namespace grem
    *
    *  @overload for `std::string` as file name.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    load( Path< TSpec >& path, const std::string& file_name )
+    load( Path< TGraph, TSpec >& path, const std::string& file_name )
     {
       std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
       if( !ifs ) {
@@ -528,9 +535,9 @@ namespace grem
    *
    *  Internal function to add the `node_id` to the end of the current path.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id )
+    add_node( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type const& node_id )
     {
       assert( path.vargraph != nullptr );
       path.nodes.push_back( node_id );
@@ -551,9 +558,9 @@ namespace grem
    *  @note It does not prevent self-extension. Use `operator+=` if this functionality
    *        is desired.
    */
-  template< typename TSpec1, typename TSpec2 >
+  template< typename TGraph, typename TSpec1, typename TSpec2 >
       inline void
-    extend( Path< TSpec1 >& path, const Path< TSpec2 >& other )
+    extend( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
     {
       assert( path.get_vargraph() != other.get_vargraph() );
       for ( const auto& node_id : other.get_nodes() ) {
@@ -568,9 +575,9 @@ namespace grem
    *  @param  other The other path to use for extension.
    *  @return The reference to this instance after extension.
    */
-  template< typename TSpec >
-      inline Path< TSpec >&
-    operator+=( Path< TSpec >& path, const Path< TSpec >& other )
+  template< typename TGraph, typename TSpec >
+      inline Path< TGraph, TSpec >&
+    operator+=( Path< TGraph, TSpec >& path, const Path< TGraph, TSpec >& other )
     {
       if ( &path != &other ) {
         extend( path, other );
@@ -585,9 +592,9 @@ namespace grem
    *  @param  other The other path to use for extension.
    *  @return The reference to this instance after extension.
    */
-  template< typename TSpec1, typename TSpec2 >
-      inline Path< TSpec1 >&
-    operator+=( Path< TSpec1 >& path, const Path< TSpec2 >& other )
+  template< typename TGraph, typename TSpec1, typename TSpec2 >
+      inline Path< TGraph, TSpec1 >&
+    operator+=( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
     {
       extend( path, other );
       return path;
@@ -603,9 +610,10 @@ namespace grem
    *
    *  The value of `rank(pos)` is the node rank in the path's nodes queue.
    */
-  template< typename TSpec >
-      inline typename Path< TSpec >::size_type
-    rank( const Path< TSpec >& path, typename Path< TSpec >::seqsize_type pos )
+  template< typename TGraph, typename TSpec >
+      inline typename Path< TGraph, TSpec >::size_type
+    rank( const Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type pos )
     {
       assert( path.is_initialized() );
       assert( 0 <= pos && pos < path.get_sequence_len() );
@@ -623,9 +631,10 @@ namespace grem
    *  bit vector, the value of `select(rank)` is one base before the actual position to
    *  be returned. So, `select(rank) + 1` would be the desired position.
    */
-  template< typename TSpec >
-      inline typename Path< TSpec >::seqsize_type
-    select( const Path< TSpec >& path, typename Path< TSpec >::size_type rank )
+  template< typename TGraph, typename TSpec >
+      inline typename Path< TGraph, TSpec >::seqsize_type
+    select( const Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::size_type rank )
     {
       assert( path.is_initialized() );
       assert( 0 <= rank && rank < length( path ) );
@@ -642,9 +651,10 @@ namespace grem
    *
    *  It gets the node ID at rank `rank(pos)` in the node queue.
    */
-  template< typename TSpec >
-      inline VarGraph::nodeid_type
-    position_to_id( const Path< TSpec >& path, typename Path< TSpec >::seqsize_type pos )
+  template< typename TGraph, typename TSpec >
+      inline typename TGraph::nodeid_type
+    position_to_id( const Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type pos )
     {
       return path.get_nodes()[ rank( path, pos ) ];
     }
@@ -657,9 +667,10 @@ namespace grem
    *  @return The offset from the first base in the node on whose label the given
    *          position lies.
    */
-  template< typename TSpec >
-      inline VarGraph::offset_type
-    position_to_offset( const Path< TSpec >& path, typename Path< TSpec >::seqsize_type pos )
+  template< typename TGraph, typename TSpec >
+      inline typename TGraph::offset_type
+    position_to_offset( const Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type pos )
     {
       auto&& sel = select( path, rank( path, pos ) );
       assert( pos >= sel );
@@ -674,13 +685,13 @@ namespace grem
    *
    *  Compute the sequence of the path from nodes queue.
    */
-  template< typename TSpec >
-      inline typename Path< TSpec >::string_type
-    sequence( const Path< TSpec >& path )
+  template< typename TGraph, typename TSpec >
+      inline typename Path< TGraph, TSpec >::string_type
+    sequence( const Path< TGraph, TSpec >& path )
     {
       assert( path.get_vargraph() != nullptr );
 
-      typename Path< TSpec >::string_type repr_str;
+      typename Path< TGraph, TSpec >::string_type repr_str;
       repr_str.reserve( path.get_sequence_len() );
       for ( const auto& node_id : path.get_nodes() ) {
         repr_str += path.get_vargraph()->node_sequence( node_id );
@@ -695,9 +706,9 @@ namespace grem
    *
    *  Internal function to clear nodes queue and nodes set.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    clear( Path< TSpec >& path )
+    clear( Path< TGraph, TSpec >& path )
     {
       path.nodes.clear();
       path.nodes_set.clear();
@@ -717,28 +728,12 @@ namespace grem
    *
    *  Internal function to reserve memory for nodes and nodes set.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    reserve( Path< TSpec >& path, typename Path< TSpec >::size_type size )
+    reserve( Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::size_type size )
     {
-      path.nodes.reserve( size );
-      path.nodes_set.reserve( size );
-    }  /* -----  end of template function reserve  ----- */
-
-  /**
-   *  @brief  Reserve memory for the path.
-   *
-   *  @param  path The path.
-   *  @param  size The target capacity.
-   *
-   *  Internal function to reserve memory for nodes and nodes set.
-   *
-   *  @overload for Dynamic Path.
-   */
-  template< >
-      inline void
-    reserve( Path< Dynamic >& path, Path< Dynamic >::size_type size )
-    {
+      grem::reserve( path.nodes, size );        /* defined in `utils.h` */
       path.nodes_set.reserve( size );
     }  /* -----  end of template function reserve  ----- */
 
@@ -750,9 +745,9 @@ namespace grem
    *
    *  It gets the length of the path which is the number of nodes in the path.
    */
-  template< typename TSpec >
-      inline typename Path< TSpec >::size_type
-    length( const Path< TSpec >& path )
+  template< typename TGraph, typename TSpec >
+      inline typename Path< TGraph, TSpec >::size_type
+    length( const Path< TGraph, TSpec >& path )
     {
       return path.get_nodes().size();
     }  /* -----  end of template function length  ----- */
@@ -760,9 +755,9 @@ namespace grem
   /**
    * @brief  pop the last node from the path.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    pop_back( Path< TSpec >& path )
+    pop_back( Path< TGraph, TSpec >& path )
     {
       assert( path.vargraph != nullptr );
 
@@ -784,9 +779,9 @@ namespace grem
    *
    * NOTE: only implemented for Dynamic Path.
    */
-  template< >
+  template< typename TGraph >
       inline void
-    pop_front( Path< Dynamic >& path )
+    pop_front( Path< TGraph, Dynamic >& path )
     {
       assert( path.vargraph != nullptr );
 
@@ -814,9 +809,9 @@ namespace grem
    *  If `node_id` is equal to zero, an invalid node ID, it pops only the last node from
    *  the path.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    trim_back( Path< TSpec >& path, VarGraph::nodeid_type node_id=0 )
+    trim_back( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id=0 )
     {
       bool found = false;
       while ( !found && length( path ) != 0 ) {
@@ -839,35 +834,57 @@ namespace grem
    *
    *  @note specific for Dynamic Paths.
    */
-    inline void
-  trim_front( Path< Dynamic >& path, VarGraph::nodeid_type node_id=0 )
-  {
-    bool found = false;
-    while ( !found && length( path ) != 0 ) {
-      auto&& first_node = path.get_nodes().front();
-      if ( node_id == 0 || first_node == node_id ) found = true;
-      pop_front( path );
-    }
-  }  /* -----  end of template function trim_front  ----- */
+  template< typename TGraph >
+      inline void
+    trim_front( Path< TGraph, Dynamic >& path, typename TGraph::nodeid_type node_id=0 )
+    {
+      bool found = false;
+      while ( !found && length( path ) != 0 ) {
+        auto&& first_node = path.get_nodes().front();
+        if ( node_id == 0 || first_node == node_id ) found = true;
+        pop_front( path );
+      }
+    }  /* -----  end of template function trim_front  ----- */
 
   /* END OF Normal Path interface functions  ----------------------------------- */
+
+  /* Compact Path interface functions forwards  -------------------------------- */
+
+  template< typename TGraph >
+      inline void
+    save( const Path< TGraph, Compact >& path, std::ostream& out );
+  template< typename TGraph >
+      inline void
+    add_node( Path< TGraph, Compact >& path, typename TGraph::nodeid_type const& node_id );
+  template< typename TGraph >
+      inline void
+    clear( Path< TGraph, Compact >& path );
+  template< typename TGraph >
+      inline void
+    reserve( Path< TGraph, Compact >& path,
+        typename Path< TGraph, Compact >::size_type size );
+  template< typename TGraph >
+      inline typename Path< TGraph, Compact >::size_type
+    length( const Path< TGraph, Compact >& path );
+
+  /* END OF Compact Path interface functions forwards  ------------------------- */
 
   /**
    *  @brief  Path template class Compact specialization.
    *
    *  Represent a path in the variation graph with efficient node ID query.
    */
-  template< >
-    class Path< Compact >
+  template< typename TGraph >
+    class Path< TGraph, Compact >
     {
       public:
         /* ====================  DATA MEMBERS  ======================================= */
-        std::unordered_set< VarGraph::nodeid_type > nodes_set;
+        std::unordered_set< typename TGraph::nodeid_type > nodes_set;
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes_set )::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
         Path( ) = default;
-        Path( const std::vector< VarGraph::nodeid_type >& p )
+        Path( const std::vector< typename TGraph::nodeid_type >& p )
         {
           this->set_nodes( p );
         }
@@ -876,7 +893,7 @@ namespace grem
          *  @brief  Set the nodes in the path (clear the previous state).
          */
           inline void
-        set_nodes( const std::vector< VarGraph::nodeid_type >& value )
+        set_nodes( const std::vector< typename TGraph::nodeid_type >& value )
         {
           this->nodes_set.clear();
           this->nodes_set.reserve( value.size() );
@@ -885,19 +902,19 @@ namespace grem
         }  /* -----  end of method set_nodes  ----- */
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        save< Compact >( const Path< Compact >& path, std::ostream& out );
+        save< TGraph >( const Path< TGraph, Compact >& path, std::ostream& out );
           friend void
-        add_node< Compact >( Path< Compact >& path,
-            const VarGraph::nodeid_type& node_id );
+        add_node< TGraph >( Path< TGraph, Compact >& path,
+            typename TGraph::nodeid_type const& node_id );
           friend void
-        clear< Compact >( Path< Compact >& path );
+        clear< TGraph >( Path< TGraph, Compact >& path );
           friend void
-        reserve< Compact >( Path< Compact >& path, size_type size );
+        reserve< TGraph >( Path< TGraph, Compact >& path, size_type size );
           friend size_type
-        length< Compact >( const Path< Compact >& path );
+        length< TGraph >( const Path< TGraph, Compact >& path );
           friend bool
-        contains< Compact >( const Path< Compact >& path,
-            VarGraph::nodeid_type node_id );
+        contains< TGraph, Compact >( const Path< TGraph, Compact >& path,
+            typename TGraph::nodeid_type node_id );
     };  /* -----  end of specialized template class Path  ----- */
 
   /* Compact Path interface functions definitions  ----------------------------- */
@@ -910,9 +927,9 @@ namespace grem
    *
    *  It saves the sequence of the node IDs into the given output stream.
    */
-  template< >
+  template< typename TGraph >
       inline void
-    save( const Path< Compact >& path, std::ostream& out )
+    save( const Path< TGraph, Compact >& path, std::ostream& out )
     {
       serialize( out, path.nodes_set, path.nodes_set.begin(), path.nodes_set.end() );
     }  /* -----  end of function save  ----- */
@@ -925,9 +942,9 @@ namespace grem
    *
    *  It saves the sequence of the node IDs into the file.
    */
-  template< >
+  template< typename TGraph >
       inline void
-    save( const Path< Compact >& path, const std::string& file_name )
+    save( const Path< TGraph, Compact >& path, const std::string& file_name )
     {
       std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
       if( !ofs ) {
@@ -942,9 +959,10 @@ namespace grem
    *  @param  path The path.
    *  @param  node_id The new node ID to be added into the path node set.
    */
-  template< >
+  template< typename TGraph >
       inline void
-    add_node( Path< Compact >& path, const VarGraph::nodeid_type& node_id )
+    add_node( Path< TGraph, Compact >& path,
+        typename TGraph::nodeid_type const& node_id )
     {
       path.nodes_set.insert( node_id );
     }
@@ -954,9 +972,9 @@ namespace grem
    *
    *  @param  path The path.
    */
-  template< >
+  template< typename TGraph >
       inline void
-    clear( Path< Compact >& path )
+    clear( Path< TGraph, Compact >& path )
     {
       path.nodes_set.clear();
     }
@@ -969,9 +987,10 @@ namespace grem
    *
    *  It reserves memory for nodes set.
    */
-  template< >
+  template< typename TGraph >
       inline void
-    reserve( Path< Compact >& path, Path< Compact >::size_type size )
+    reserve( Path< TGraph, Compact >& path,
+        typename Path< TGraph, Compact >::size_type size )
     {
       path.nodes_set.reserve( size );
     }
@@ -984,9 +1003,9 @@ namespace grem
    *
    *  It gets the length of the path.
    */
-  template< >
-      inline Path< Compact >::size_type
-    length( const Path< Compact >& path )
+  template< typename TGraph >
+      inline typename Path< TGraph, Compact >::size_type
+    length( const Path< TGraph, Compact >& path )
     {
       return path.nodes_set.size();
     }  /* -----  end of function length  ----- */
@@ -1001,11 +1020,11 @@ namespace grem
    *
    *  Specialized for Compact Path.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline void
-    load( Path< Compact >& path, std::istream& in )
+    load( Path< TGraph, Compact >& path, std::istream& in )
     {
-      std::vector< VarGraph::nodeid_type > nodes;
+      std::vector< typename TGraph::nodeid_type > nodes;
       deserialize( in, nodes, std::back_inserter( nodes ) );
       path.set_nodes( std::move( nodes ) );
     }
@@ -1023,9 +1042,9 @@ namespace grem
    *
    *  Check if the given node ID presents in the path.
    */
-  template< typename TSpec >
+  template< typename TGraph, typename TSpec >
       inline bool
-    contains( const Path< TSpec >& path, VarGraph::nodeid_type node_id )
+    contains( const Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id )
     {
       return path.nodes_set.find( node_id ) != path.nodes_set.end();
     }  /* -----  end of template function contains  ----- */
@@ -1044,12 +1063,12 @@ namespace grem
    *  given path is present in the node set. It does not check the order of the
    *  nodes.
    */
-  template< typename TSpec, typename TIter >
+  template< typename TGraph, typename TSpec, typename TIter >
       inline bool
-    contains( const Path< TSpec >& path, TIter begin, TIter end )
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
     {
       if ( end - begin > 0 ) {
-        auto&& on_path = [&path]( const VarGraph::nodeid_type& i ) {
+        auto&& on_path = [&path]( typename TGraph::nodeid_type const& i ) {
           return contains( path, i );
         };
 
@@ -1314,12 +1333,12 @@ namespace grem
       typedef VarGraph::nodeid_type Value;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
-      typedef std::vector< Path< Compact > > TSet;
+      typedef std::vector< Path< VarGraph, Compact > > TSet;
       typedef TSet::size_type Level;        /**< @brief No. of selected path so far. */
       typedef struct {
         Value start;                        /**< @brief Start node ID. */
         bool end;                           /**< @brief End flag. */
-        Path< Compact > current_path;
+        Path< VarGraph, Compact > current_path;
         unsigned int setback;
       } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
@@ -1861,7 +1880,7 @@ namespace grem {
         typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
         int tries=0 )
     {
-      Path<> haplotype( iter.get_vargraph() );
+      Path< VarGraph > haplotype( iter.get_vargraph() );
       do {
         while ( !at_end( iter ) ) {
           add_node( haplotype, *iter );
@@ -1881,7 +1900,7 @@ namespace grem {
 
   template< typename TSpec >
       inline void
-    extend_to_k( Path< TSpec >& path,
+    extend_to_k( Path< VarGraph, TSpec >& path,
         typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
         unsigned int k )
     {
@@ -1892,7 +1911,7 @@ namespace grem {
     }
 
     inline void
-  move_forward( Path< Dynamic >& segment,
+  move_forward( Path< VarGraph, Dynamic >& segment,
       typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
       unsigned int k )
   {
@@ -1911,8 +1930,8 @@ namespace grem {
         unsigned int k )
     {
       iter.raise_on_end = true;
-      Path<> patch( iter.get_vargraph() );
-      Path< Dynamic > frontier( iter.get_vargraph() );
+      Path< VarGraph > patch( iter.get_vargraph() );
+      Path< VarGraph, Dynamic > frontier( iter.get_vargraph() );
       try {
         while ( true ) {
           // Bootstrap.

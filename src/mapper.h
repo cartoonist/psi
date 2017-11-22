@@ -424,7 +424,7 @@ namespace grem
             auto timer = stats_type( "add-starts" );
 
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
-            Path< > trav_path( this->vargraph );
+            Path< VarGraph > trav_path( this->vargraph );
 
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
@@ -443,8 +443,8 @@ namespace grem
                   else break;
                 }
 
-                Path< > current_path = trav_path;
                 while ( !covered_by( current_path.get_nodes(), paths.paths_set ) ) {
+                Path< VarGraph > current_path = trav_path;
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
