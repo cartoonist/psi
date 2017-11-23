@@ -173,7 +173,7 @@ namespace grem{
          */
         template< typename TSpec2 >
             inline Path&
-          operator=( const Path< TSpec2 >& other ) {
+          operator=( const Path< TGraph, TSpec2 >& other ) {
             assert( this->vargraph == other.get_vargraph() );
             nodes_type d;
             std::copy( other.get_nodes().begin(), other.get_nodes().end(), std::back_inserter( d ) );
