@@ -52,10 +52,10 @@ all: ${TARGETS}
 ${BINDIR}/test_linear: linear.o
 	${LINK}
 
-${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o ${SRCDIR}/vargraph.o
+${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o
 	${LINK}
 
-${BINDIR}/tests_traverser: tests_traverser.o tests_main.o ${SRCDIR}/vargraph.o
+${BINDIR}/tests_traverser: tests_traverser.o tests_main.o
 	${LINK}
 
 ${BINDIR}/tests_indexiter: tests_indexiter.o tests_main.o
@@ -64,10 +64,10 @@ ${BINDIR}/tests_indexiter: tests_indexiter.o tests_main.o
 ${BINDIR}/tests_utils: tests_utils.o tests_main.o
 	${LINK}
 
-${BINDIR}/tests_pathset: tests_pathset.o tests_main.o ${SRCDIR}/vargraph.o
+${BINDIR}/tests_pathset: tests_pathset.o tests_main.o
 	${LINK}
 
-${BINDIR}/tests_mapper: tests_mapper.o tests_main.o ${SRCDIR}/vargraph.o
+${BINDIR}/tests_mapper: tests_mapper.o tests_main.o
 	${LINK}
 
 ${BINDIR}/tests_stat: tests_stat.o tests_main.o

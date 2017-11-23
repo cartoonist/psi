@@ -39,14 +39,14 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
       throw std::runtime_error( "cannot open file " + vgpath );
     }
     VarGraph vargraph( gifs );
-    PathSet< seqan::Dna5QString, TIndexSpec > paths_set;
+    Dna5QPathSet< VarGraph, TIndexSpec > paths_set;
 
     unsigned int paths_num = 2;
     std::string file_path = "/tmp/test_pathset";
 
     paths_set.reserve( paths_num );
     for ( unsigned int i = 0; i < paths_num; ++i ) {
-      Path<> path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       for ( VarGraph::nodeid_type j = 3+i; j <= 210; j+=(i+1)*4 ) {
         add_node( path, j );
       }
@@ -59,7 +59,7 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
 
       THEN ( "Deserializing should yield the same paths" )
       {
-        PathSet< seqan::Dna5QString, TIndexSpec > loaded_paths;
+        Dna5QPathSet< VarGraph, TIndexSpec > loaded_paths;
         loaded_paths.load( file_path, &vargraph );
         REQUIRE ( loaded_paths.size() == paths_num );
         REQUIRE( length( loaded_paths.paths_set.at(0) ) == 52 );

@@ -91,9 +91,9 @@ SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
     }
     VarGraph vargraph( gifs );
 
-    WHEN( "A Full path in the graph constructed at once" )
+    WHEN( "A path in the graph constructed at once" )
     {
-      Path< Full > path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       path.set_nodes( nodes );
 
       THEN( "It should pass basic tests" )
@@ -102,9 +102,9 @@ SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
       }
     }
 
-    WHEN( "A Full path in the graph constructed incrementally" )
+    WHEN( "A path in the graph constructed incrementally" )
     {
-      Path< Full > path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       for ( const auto& n: nodes ) {
         add_node( path, n );
       }
@@ -133,9 +133,9 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
     }
     VarGraph vargraph( gifs );
 
-    GIVEN( "A Full path in the graph" )
+    GIVEN( "A path in the graph" )
     {
-      Path< Full > path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       //path.set_nodes( nodes );
       for ( const auto& n : nodes ) {
         add_node( path, n );
@@ -147,7 +147,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
       {
         VarGraph::offset_type trimmed_len
           = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
-        trim( path, 37 );
+        trim_back( path, 37 );
 
         THEN( "Its length and sequence should be decreased accordingly" )
         {
@@ -164,7 +164,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
           trim_len += vargraph.node_length( *it );
         }
         VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
-        trim( path, 29 );
+        trim_back( path, 29 );
         THEN( "Its length and sequence should be decreased accordingly" )
         {
           REQUIRE( path.get_sequence().length() == trimmed_len );
@@ -176,7 +176,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
       {
         VarGraph::offset_type trimmed_len
           = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
-        trim( path, 0 );
+        trim_back( path, 0 );
         THEN( "The last node should be trimmed" )
         {
           REQUIRE( path.get_sequence().length() == trimmed_len );
@@ -188,7 +188,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
       {
         VarGraph::offset_type trimmed_len
           = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
-        trim( path );
+        trim_back( path );
         THEN( "The last node should be trimmed" )
         {
           REQUIRE( path.get_sequence().length() == trimmed_len );
@@ -198,7 +198,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
 
       WHEN( "Trim by providing unavailable node ID" )
       {
-        trim( path, 70 );
+        trim_back( path, 70 );
         THEN( "It should be empty" )
         {
           REQUIRE( path.get_sequence().length() == 0 );
@@ -221,22 +221,22 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      Path<> haplotype1( &vargraph );
-      Path<> haplotype2( &vargraph );
-      Path<> haplotype3( &vargraph );
-      Path<> haplotype4( &vargraph );
-      Path<> haplotype5( &vargraph );
-      Path<> haplotype6( &vargraph );
-      Path<> haplotype7( &vargraph );
-      Path<> haplotype8( &vargraph );
-      get_uniq_haplotype( haplotype1, hap_itr, 1 );
-      get_uniq_haplotype( haplotype2, hap_itr, 1 );
-      get_uniq_haplotype( haplotype3, hap_itr, 1 );
-      get_uniq_haplotype( haplotype4, hap_itr, 1 );
-      get_uniq_haplotype( haplotype5, hap_itr, 1 );
-      get_uniq_haplotype( haplotype6, hap_itr, 1 );
-      get_uniq_haplotype( haplotype7, hap_itr, 1 );
-      get_uniq_haplotype( haplotype8, hap_itr, 1 );
+      Path< VarGraph > haplotype1( &vargraph );
+      Path< VarGraph > haplotype2( &vargraph );
+      Path< VarGraph > haplotype3( &vargraph );
+      Path< VarGraph > haplotype4( &vargraph );
+      Path< VarGraph > haplotype5( &vargraph );
+      Path< VarGraph > haplotype6( &vargraph );
+      Path< VarGraph > haplotype7( &vargraph );
+      Path< VarGraph > haplotype8( &vargraph );
+      get_uniq_full_haplotype( haplotype1, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype2, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype3, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype4, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype5, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype6, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype7, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype8, hap_itr, 1 );
 
       THEN ( "they should be unique" )
       {
@@ -310,12 +310,12 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      Path<> haplotype1( &vargraph );
-      Path<> haplotype2( &vargraph );
-      Path<> haplotype3( &vargraph );
-      get_uniq_haplotype( haplotype1, hap_itr );
-      get_uniq_haplotype( haplotype2, hap_itr );
-      get_uniq_haplotype( haplotype3, hap_itr );
+      Path< VarGraph > haplotype1( &vargraph );
+      Path< VarGraph > haplotype2( &vargraph );
+      Path< VarGraph > haplotype3( &vargraph );
+      get_uniq_full_haplotype( haplotype1, hap_itr );
+      get_uniq_full_haplotype( haplotype2, hap_itr );
+      get_uniq_full_haplotype( haplotype3, hap_itr );
 
       THEN ( "they should be unique" )
       {
@@ -334,7 +334,7 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
       }
       AND_THEN ( "they all should cover 'merge' nodes" )
       {
-        std::vector< Path<> > paths_set;
+        std::vector< Path< VarGraph > > paths_set;
         paths_set.push_back( haplotype1 );
         paths_set.push_back( haplotype2 );
         paths_set.push_back( haplotype3 );
