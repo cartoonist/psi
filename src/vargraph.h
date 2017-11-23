@@ -797,6 +797,36 @@ namespace grem {
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
+    inline void
+  get_uniq_full_haplotype( Path< VarGraph >& haplotype,
+      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+      int tries=0 )
+  {
+    do {
+      while ( !at_end( iter ) ) {
+        add_node( haplotype, *iter );
+        ++iter;
+      }
+      if ( tries-- && iter[ haplotype.get_nodes() ] ) {
+        iter--;  // discard the traversed path and reset the Haplotyper iterator.
+      }
+      else {
+        --iter;  // save the traversed path and reset the Haplotyper iterator.
+        break;
+      }
+      /* trying again */
+    } while ( true );
+  }
+
+  /**
+   *  @brief  Add a simulated haplotype to the given pathset.
+   *
+   *  @param  paths The pathset.
+   *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @param[in]  tries Number of tries if the generated haplotype is not unique.
+   *
+   *  @overload for `PathSet`.
+   */
   template< typename TPathSet >
       inline void
     get_uniq_full_haplotype( TPathSet& paths,
@@ -804,20 +834,7 @@ namespace grem {
         int tries=0 )
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
-      do {
-        while ( !at_end( iter ) ) {
-          add_node( haplotype, *iter );
-          ++iter;
-        }
-        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
-          iter--;  // discard the traversed path and reset the Haplotyper iterator.
-        }
-        else {
-          --iter;  // save the traversed path and reset the Haplotyper iterator.
-          break;
-        }
-        /* trying again */
-      } while ( true );
+      get_uniq_full_haplotype( haplotype, iter, tries );
       paths.add_path( std::move( haplotype ) );
     }
 
