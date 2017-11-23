@@ -45,9 +45,6 @@
 #include "path.h"
 #include "graph_iter.h"
 
-// :TODO:Tue Sep 26 17:03:\@cartoonist: Make graph iterators' specialization template for TGraph?
-//     and move it to `graph_iter.h`?
-
 
 namespace grem
 {
