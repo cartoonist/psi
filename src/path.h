@@ -331,7 +331,8 @@ namespace grem{
 
       assert( path.vargraph != nullptr );
 
-      sdsl::util::assign( path.bv_node_breaks, bit_vector( path.get_sequence_len(), 0 ) );
+      sdsl::util::assign( path.bv_node_breaks,
+          sdsl::bit_vector( path.get_sequence_len(), 0 ) );
       typename Path< TGraph, TSpec >::seqsize_type cursor = 0;
       for ( const auto& node_id : path.nodes ) {
         cursor += path.vargraph->node_length( node_id );
@@ -594,7 +595,7 @@ namespace grem{
     position_to_id( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
-      return path.get_nodes()[ rank( path, pos ) ];
+      return path.get_nodes().at( rank( path, pos ) );
     }
 
   /**
