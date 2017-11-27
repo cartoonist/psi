@@ -900,7 +900,7 @@ namespace grem {
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
       get_uniq_full_haplotype( haplotype, iter, tries );
-      paths.add_path( std::move( haplotype ) );
+      paths.push_back( std::move( haplotype ) );
     }
 
   template< typename TPathSet >
@@ -918,7 +918,7 @@ namespace grem {
           extend_to_k( frontier, iter, k );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
-            paths.add_path( patch );
+            paths.push_back( patch );
             clear( patch );
           }
           // Search for a patch of length k that is not covered by visited paths of `iter`.
@@ -934,7 +934,7 @@ namespace grem {
       }
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
-          paths.add_path( patch );
+          paths.push_back( patch );
           --iter;  // save the traversed path and reset the Haplotyper iterator.
         }
       }
@@ -951,9 +951,9 @@ namespace grem {
         get_uniq_full_haplotype( paths, iter );
         return true;
       }
-      unsigned int paths_no = length( paths.string_set );
+      unsigned int paths_no = paths.size();
       get_uniq_patches( paths, iter, context_len );
-      if ( paths_no == length( paths.string_set ) ) return false;
+      if ( paths_no == paths.size() ) return false;
       return true;
     }
 
