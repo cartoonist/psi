@@ -835,10 +835,10 @@ namespace grem {
       paths.add_path( std::move( haplotype ) );
     }
 
-  template< typename TSpec >
+  template< typename TPathSpec, typename TIterSpec >
       inline void
-    extend_to_k( Path< VarGraph, TSpec >& path,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+    extend_to_k( Path< VarGraph, TPathSpec >& path,
+        grem::GraphIter< VarGraph, TIterSpec >& iter,
         unsigned int k )
     {
       while ( path.get_sequence_len() < k ) {
@@ -847,17 +847,35 @@ namespace grem {
       }
     }
 
-    inline void
-  move_forward( Path< VarGraph, Dynamic >& segment,
-      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
-      unsigned int k )
-  {
-    add_node( segment, *iter );
-    ++iter;
-    while ( segment.get_sequence_len() -
-        iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
-      pop_front( segment );
+  template< typename TPathSpec >
+      inline void
+    extend_to_k( Path< VarGraph, TPathSpec >&,
+        grem::GraphIter< VarGraph, BFS >&,
+        unsigned int )
+    {
+      throw std::runtime_error( "Cannot be used by BFS iterator." );
     }
+
+  template< typename TIterSpec >
+      inline void
+    move_forward( Path< VarGraph, Dynamic >& segment,
+        grem::GraphIter< VarGraph, TIterSpec >& iter,
+        unsigned int k )
+    {
+      add_node( segment, *iter );
+      ++iter;
+      while ( segment.get_sequence_len() -
+          iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
+        pop_front( segment );
+      }
+    }
+
+    inline void
+  move_forward( Path< VarGraph, Dynamic >&,
+      grem::GraphIter< VarGraph, BFS >&,
+      unsigned int )
+  {
+    throw std::runtime_error( "Cannot be used by BFS iterator." );
   }
 
   template< typename TPathSet >
