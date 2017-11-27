@@ -782,6 +782,74 @@ namespace grem {
   /* Haplotyper iterator interface functions  ------------------------------------ */
 
   /**
+   *  @brief  Extend a path to length k using a graph iterator.
+   *
+   *  @param  path The extended path.
+   *  @param  iter The graph iterator.
+   *  @param  k The extension length.
+   *
+   *  Add nodes using graph iterator until the length of path reach k or longer.
+   */
+  template< typename TPathSpec, typename TIterSpec >
+      inline void
+    extend_to_k( Path< VarGraph, TPathSpec >& path,
+        grem::GraphIter< VarGraph, TIterSpec >& iter,
+        unsigned int k )
+    {
+      while ( path.get_sequence_len() < k ) {
+        add_node( path, *iter );
+        ++iter;
+      }
+    }
+
+  /**
+   *  @overload Prevent using BFS for extension.
+   */
+  template< typename TPathSpec >
+      inline void
+    extend_to_k( Path< VarGraph, TPathSpec >&,
+        grem::GraphIter< VarGraph, BFS >&,
+        unsigned int )
+    {
+      throw std::runtime_error( "Cannot be used by BFS iterator." );
+    }
+
+  /**
+   *  @brief  Move forward a segment and preserve its length of k.
+   *
+   *  @param  segment The segment to move.
+   *  @param  iter The graph iterator.
+   *  @param  k The segment length to be preserved.
+   *
+   *  After each call, the segment will be extended by one nodes. If poping nodes from
+   *  the start of the segment does not make it shorter than k, those are cut off.
+   */
+  template< typename TIterSpec >
+      inline void
+    move_forward( Path< VarGraph, Dynamic >& segment,
+        grem::GraphIter< VarGraph, TIterSpec >& iter,
+        unsigned int k )
+    {
+      add_node( segment, *iter );
+      ++iter;
+      while ( segment.get_sequence_len() -
+          iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
+        pop_front( segment );
+      }
+    }
+
+  /**
+   *  @overload Prevent using BFS for moving a segment.
+   */
+    inline void
+  move_forward( Path< VarGraph, Dynamic >&,
+      grem::GraphIter< VarGraph, BFS >&,
+      unsigned int )
+  {
+    throw std::runtime_error( "Cannot be used by BFS iterator." );
+  }
+
+  /**
    *  @brief  Simulate a unique haplotype.
    *
    *  @param[out]  haplotype The simulated haplotype as a Path.
@@ -834,49 +902,6 @@ namespace grem {
       get_uniq_full_haplotype( haplotype, iter, tries );
       paths.add_path( std::move( haplotype ) );
     }
-
-  template< typename TPathSpec, typename TIterSpec >
-      inline void
-    extend_to_k( Path< VarGraph, TPathSpec >& path,
-        grem::GraphIter< VarGraph, TIterSpec >& iter,
-        unsigned int k )
-    {
-      while ( path.get_sequence_len() < k ) {
-        add_node( path, *iter );
-        ++iter;
-      }
-    }
-
-  template< typename TPathSpec >
-      inline void
-    extend_to_k( Path< VarGraph, TPathSpec >&,
-        grem::GraphIter< VarGraph, BFS >&,
-        unsigned int )
-    {
-      throw std::runtime_error( "Cannot be used by BFS iterator." );
-    }
-
-  template< typename TIterSpec >
-      inline void
-    move_forward( Path< VarGraph, Dynamic >& segment,
-        grem::GraphIter< VarGraph, TIterSpec >& iter,
-        unsigned int k )
-    {
-      add_node( segment, *iter );
-      ++iter;
-      while ( segment.get_sequence_len() -
-          iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
-        pop_front( segment );
-      }
-    }
-
-    inline void
-  move_forward( Path< VarGraph, Dynamic >&,
-      grem::GraphIter< VarGraph, BFS >&,
-      unsigned int )
-  {
-    throw std::runtime_error( "Cannot be used by BFS iterator." );
-  }
 
   template< typename TPathSet >
       inline void
