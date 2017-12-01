@@ -26,6 +26,8 @@
 #include <functional>
 #include <algorithm>
 
+#include <sdsl/bit_vectors.hpp>
+
 #include "vargraph.h"
 #include "sequence.h"
 #include "index.h"
@@ -425,26 +427,21 @@ namespace grem
 
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
             Path< VarGraph > trav_path( this->vargraph );
+            Path< VarGraph > current_path( this->vargraph );
+            sdsl::bit_vector bv_starts;
 
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
               auto label_len = this->vargraph->node_length( id );
               std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
+              sdsl::util::assign( bv_starts, sdsl::bit_vector( label_len, 0 ) );
 
               go_begin( bt_itr, id );
               while ( !at_end( bt_itr ) && offset != 0 ) {
-                while ( !at_end( bt_itr ) ) {
-                  add_node( trav_path, *bt_itr );
-                  // :TODO:Fri Sep 29 00:45:\@cartoonist: in some cases when this loop
-                  //     breaks when `bt_itr` is at end but below condition is not met,
-                  //     a few unnecessary loci would be added. Bring `add_start` in the
-                  //     outer loop and add neccessary loci in the loop; not outside it.
-                  if ( trav_path.get_sequence_len() < offset - 1 + k ) ++bt_itr;
-                  else break;
-                }
-
-                Path< VarGraph > current_path = trav_path;
-                while ( !covered_by( current_path, paths.paths_set ) ) {
+                extend_to_k( trav_path, bt_itr, offset - 1 + k );
+                if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
+                while ( current_path.get_sequence_len() != 0 &&
+                    !covered_by( current_path, paths.paths_set ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
@@ -454,12 +451,19 @@ namespace grem
                   offset = trimmed_len - k + 1;
                   trim_back( current_path );
                 }
+                for ( auto f = offset;
+                    f < label_len && f + k < trav_path.get_sequence_len() + 1;
+                    f += step ) {
+                  bv_starts[f] = 1;
+                }
+
                 --bt_itr;
                 trim_back( trav_path, *bt_itr );
+                clear( current_path );
               }
 
-              for ( auto f = offset; f < label_len; f += step ) {
-                this->add_start( id, f );
+              for ( std::size_t f = 0; f < label_len; ++f ) {
+                if ( bv_starts[ f ] == 1 ) this->add_start( id, f );
               }
 
               clear( trav_path );
