@@ -670,6 +670,100 @@ SCENARIO ( "Get unique full haplotype using Haplotyper graph iterator", "[graph]
   }
 }
 
+SCENARIO( "A Haplotyper graph iterator raise on end", "[graph][iterator][haplotyper]" )
+{
+  GIVEN( "A small variation graph and a Haplotyper iterator with `raise_on_end` enabled" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph( ifs );
+    seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( vargraph );
+    hap_itr.raise_on_end = true;
+
+    WHEN( "A Haplotyper iterator reaches at end" )
+    {
+      while ( !at_end( hap_itr ) ) ++hap_itr;
+
+      THEN( "It raise an exception if it is incremented" )
+      {
+        REQUIRE_THROWS( *hap_itr );
+        REQUIRE_THROWS( ++hap_itr );
+      }
+    }
+  }
+}
+
+SCENARIO( "Extend a path to length k using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
+{
+  GIVEN ( "A small variation graph and a Haplotyper graph iterator" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph( ifs );
+    seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( vargraph );
+    unsigned int k = 5;
+
+    WHEN( "A path is extend to length " + std::to_string( k ) )
+    {
+      Path< VarGraph > path( &vargraph );
+      extend_to_k( path, hap_itr, k );
+      initialize(path);
+
+      THEN( "Its length should be extended" )
+      {
+        REQUIRE( path.get_sequence_len() == 8 );
+        REQUIRE( position_to_id( path, 7 ) == 1 );
+        REQUIRE( position_to_offset( path, 7 ) == 7 );
+      }
+    }
+
+    k = 14;
+
+    WHEN( "A path is extend to length " + std::to_string( k ) )
+    {
+      Path< VarGraph > path( &vargraph );
+      extend_to_k( path, hap_itr, k );
+      initialize(path);
+
+      THEN( "Its length should be extended" )
+      {
+        REQUIRE( path.get_sequence_len() == 14 );
+        REQUIRE( position_to_id( path, 13 ) == 7 );
+        REQUIRE( position_to_offset( path, 13 ) == 0 );
+      }
+    }
+  }
+}
+
+SCENARIO( "Get unique patched haplotypes using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
+{
+  GIVEN ( "A small variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph( ifs );
+    unsigned int context_len = 10;
+
+    WHEN( "Generate 16x patched haplotypes are generated using a Haplotyper iterator" )
+    {
+      seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( vargraph );
+      std::vector< Path< VarGraph > > pathset;
+
+      for ( auto i = 0; i < 32; ++i )
+        get_uniq_patched_haplotype( pathset, hap_itr, context_len );
+
+      for ( std::size_t i = 0; i < pathset.size(); ++i )
+        initialize( pathset.at( i ) );
+
+      THEN( "The number of patches should be in correct range" )
+      {
+        REQUIRE( pathset.size() >= 49 );
+        REQUIRE( pathset.size() <= 60 );
+      }
+    }
+  }
+}
+
 SCENARIO ( "Traverse a variation graph using backtracking algorithm", "[graph][iterator][backtracker]" )
 {
   GIVEN ( "A small variation graph" )
