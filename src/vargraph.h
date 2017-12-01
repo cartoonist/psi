@@ -416,7 +416,7 @@ namespace grem {
       typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
 
       if ( at_end( *this ) && this->raise_on_end ) {
-          throw std::range_error( "The iterator has reached the end." );
+        throw std::range_error( "The iterator has reached the end." );
       }
 
       if ( this->visiting_buffer.empty() ) return *this;
@@ -536,7 +536,7 @@ namespace grem {
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
 
-      if ( this->state.end && this->raise_on_end ) {
+      if ( at_end( *this ) && this->raise_on_end ) {
         throw std::range_error( "The iterator has reached the end." );
       }
 
@@ -685,7 +685,7 @@ namespace grem {
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
 
-      if ( this->state.end && this->raise_on_end ) {
+      if ( at_end( *this ) && this->raise_on_end ) {
         throw std::range_error( "The iterator has reached the end." );
       }
 
@@ -796,10 +796,11 @@ namespace grem {
         grem::GraphIter< VarGraph, TIterSpec >& iter,
         unsigned int k )
     {
-      while ( path.get_sequence_len() < k ) {
+      while ( !at_end( iter ) && path.get_sequence_len() < k ) {
         add_node( path, *iter );
         ++iter;
       }
+      iter.operator*();  /**< @brief Trigger the exception if it's at end and raise_on_end is true. */
     }
 
   /**
