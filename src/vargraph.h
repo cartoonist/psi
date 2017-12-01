@@ -880,31 +880,53 @@ namespace grem {
       iter.raise_on_end = true;
       Path< VarGraph > patch( iter.get_vargraph() );
       Path< VarGraph, Dynamic > frontier( iter.get_vargraph() );
+      typename Path< VarGraph, Dynamic >::nodes_type::value_type marked;
       try {
         while ( true ) {
+          marked = 0;
+          if ( 0 < length( frontier ) ) marked = frontier.get_nodes().back();
           // Bootstrap.
-          extend_to_k( frontier, iter, k );
+          extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
             paths.push_back( patch );
             clear( patch );
+            trim_front_by_len( frontier, k );
+          }
+          else if ( length( patch ) > 0 ) {
+            // Nodes from first to the `marked` are already added.
+            trim_front( frontier, marked );
+            marked = 0;
+            extend_to_k( frontier, iter, k );
           }
           // Search for a patch of length k that is not covered by visited paths of `iter`.
-          while ( iter[ patch.get_nodes() ] ) move_forward( frontier, iter, k );
+          while ( iter[ frontier.get_nodes() ] )
+          {
+            add_node( frontier, *iter );
+            trim_front_by_len( frontier, k );
+            ++iter;
+          }
           // Extend the patch.
           patch += frontier;
-          while( !iter[ frontier.get_nodes() ] ) {
-            move_forward( frontier, iter, k );
-            add_node( patch, frontier.get_nodes().back() );
+          while ( !iter[ frontier.get_nodes() ] ) {
+            add_node( frontier, *iter );
+            add_node( patch, *iter );
+            trim_front_by_len( frontier, k );
+            ++iter;
           }
-          clear( frontier );
         }
       }
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
+          if ( !iter[ frontier.get_nodes() ] &&
+              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end() ) )
+          {
+            if ( marked != 0 ) trim_front( frontier, marked );
+            patch += frontier;
+          }
           paths.push_back( patch );
-          --iter;  // save the traversed path and reset the Haplotyper iterator.
         }
+        --iter;  // save the traversed path and reset the Haplotyper iterator.
       }
       iter.raise_on_end = false;
     }
