@@ -816,41 +816,6 @@ namespace grem {
     }
 
   /**
-   *  @brief  Move forward a segment and preserve its length of k.
-   *
-   *  @param  segment The segment to move.
-   *  @param  iter The graph iterator.
-   *  @param  k The segment length to be preserved.
-   *
-   *  After each call, the segment will be extended by one nodes. If poping nodes from
-   *  the start of the segment does not make it shorter than k, those are cut off.
-   */
-  template< typename TIterSpec >
-      inline void
-    move_forward( Path< VarGraph, Dynamic >& segment,
-        grem::GraphIter< VarGraph, TIterSpec >& iter,
-        unsigned int k )
-    {
-      add_node( segment, *iter );
-      ++iter;
-      while ( segment.get_sequence_len() -
-          iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
-        pop_front( segment );
-      }
-    }
-
-  /**
-   *  @overload Prevent using BFS for moving a segment.
-   */
-    inline void
-  move_forward( Path< VarGraph, Dynamic >&,
-      grem::GraphIter< VarGraph, BFS >&,
-      unsigned int )
-  {
-    throw std::runtime_error( "Cannot be used by BFS iterator." );
-  }
-
-  /**
    *  @brief  Simulate a unique haplotype.
    *
    *  @param[out]  haplotype The simulated haplotype as a Path.
