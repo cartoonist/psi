@@ -866,7 +866,9 @@ namespace grem {
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
       get_uniq_full_haplotype( haplotype, iter, tries );
-      paths.push_back( std::move( haplotype ) );
+      if ( length( haplotype ) != 0 ){
+        paths.push_back( std::move( haplotype ) );
+      }
     }
 
   template< typename TPathSet >
