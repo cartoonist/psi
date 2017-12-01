@@ -761,6 +761,26 @@ namespace grem{
     }  /* -----  end of template function trim_back  ----- */
 
   /**
+   *  @brief  Trim the path from the back until further trimming would lead length of < k.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  k The length of k.
+   *
+   *  The nodes from back will be dropped from the path until to the point that further
+   *  trimming leads its length to be less than k.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    trim_back_by_len( Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type k )
+    {
+      while ( path.get_sequence_len() -
+          path.get_vargraph()->node_length( path.get_nodes().back() ) >= k ) {
+        pop_back( path );
+      }
+    }  /* -----  end of template function trim_back_by_len  ----- */
+
+  /**
    *  @brief  Trim the path from the node whose ID matches the given ID from front.
    *
    *  @param  path The path to be trimmed.
@@ -784,6 +804,26 @@ namespace grem{
         pop_front( path );
       }
     }  /* -----  end of template function trim_front  ----- */
+
+  /**
+   *  @brief  Trim the path from the front until further trimming would lead length of < k.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  k The length of k.
+   *
+   *  The nodes from front will be dropped from the path until to the point that further
+   *  trimming leads its length to be less than k.
+   */
+  template< typename TGraph >
+      inline void
+    trim_front_by_len( Path< TGraph, Dynamic >& path,
+        typename Path< TGraph, Dynamic >::seqsize_type k )
+    {
+      while ( path.get_sequence_len() -
+          path.get_vargraph()->node_length( path.get_nodes().front() ) >= k ) {
+        pop_front( path );
+      }
+    }  /* -----  end of template function trim_front_by_len  ----- */
 
   /* END OF Normal Path interface functions  ----------------------------------- */
 
