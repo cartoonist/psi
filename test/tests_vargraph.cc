@@ -417,6 +417,47 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
   }
 }
 
+SCENARIO( "Trim a path to the length of k", "[graph][path]" )
+{
+  GIVEN ( "A small variation graph and two paths: one Default and one Dynamic" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph( ifs );
+    Path< VarGraph > path( &vargraph );
+    Path< VarGraph, Dynamic > dyn_path( &vargraph );
+    path.set_nodes( { 2, 5, 6, 7, 9, 11, 12 } );
+    dyn_path = path;
+    unsigned int k = 5;
+
+    WHEN( "Trim-back a path to the length of " + std::to_string( k ) )
+    {
+      trim_back_by_len( path, k );
+      initialize( path );
+
+      THEN( "It should be trimmed to the length of " + std::to_string( k ) )
+      {
+        REQUIRE( path.get_sequence_len() == 5 );
+        REQUIRE( position_to_id( path, 0 ) == 2 );
+        REQUIRE( position_to_offset( path, 0 ) == 0 );
+      }
+    }
+
+    WHEN( "Trim-front a path to the length of " + std::to_string( k ) )
+    {
+      trim_front_by_len( dyn_path, k );
+      initialize( dyn_path );
+
+      THEN( "It should be moved one node forward preserving the length of at least " + std::to_string( k ) )
+      {
+        REQUIRE( dyn_path.get_sequence_len() == 5 );
+        REQUIRE( position_to_id( dyn_path, 4 ) == 12 );
+        REQUIRE( position_to_offset( dyn_path, 4 ) == 3 );
+      }
+    }
+  }
+}
+
 SCENARIO( "Query node coordinates by position in the path" )
 {
   std::vector< VarGraph::nodeid_type > nodes
