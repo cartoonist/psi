@@ -876,7 +876,7 @@ namespace grem {
     get_uniq_patches( TPathSet& paths,
         typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
         unsigned int k )
-    {
+    { // :TODO:Fri Dec 01 21:26:\@cartoonist: the length of pre-context sequence won't be k all the time.
       iter.raise_on_end = true;
       Path< VarGraph > patch( iter.get_vargraph() );
       Path< VarGraph, Dynamic > frontier( iter.get_vargraph() );
