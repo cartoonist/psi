@@ -20,6 +20,8 @@
 #ifndef  SEQUENCE_H__
 #define  SEQUENCE_H__
 
+#include <stdexcept>
+
 #include <seqan/seq_io.h>
 #include <seqan/sequence.h>
 
@@ -148,8 +150,16 @@ namespace grem {
     }
 
   template< typename TText, typename TStringSetSpec, typename TPosition >
-      inline auto
+      inline typename seqan::Reference< seqan::StringSet< TText, TStringSetSpec > const >::Type
     get_value( const Records< seqan::StringSet< TText, TStringSetSpec > >& records,
+        TPosition pos )
+    {
+      return records.str[pos];
+    }
+
+  template< typename TText, typename TStringSetSpec, typename TPosition >
+      inline typename seqan::Reference< seqan::StringSet< TText, TStringSetSpec > >::Type
+    get_value( Records< seqan::StringSet< TText, TStringSetSpec > >& records,
         TPosition pos )
     {
       return records.str[pos];
@@ -199,9 +209,11 @@ namespace grem {
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
-        typedef typename seqan::Value< TStringSet >::Type TValue;
         /* ====================  METHODS       ======================================= */
-        inline auto operator[]( TPosition pos ) const { return get_value( *this, pos ); }
+          inline typename seqan::Reference< TStringSet const >::Type
+        operator[]( TPosition pos ) const { return get_value( *this, pos ); }
+          inline typename seqan::Reference< TStringSet >::Type
+        operator[]( TPosition pos ) { return get_value( *this, pos ); }
     };
 
   template< typename TText >
@@ -213,13 +225,15 @@ namespace grem {
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
-        typedef typename seqan::Value< TStringSet >::Type TValue;
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet str;
         /* ====================  LIFECYCLE     ======================================= */
         Records( ) : offset( 0 ), o_str( nullptr ) { }
         /* ====================  METHODS       ======================================= */
-        inline auto operator[]( TPosition pos ) const { return get_value( *this, pos ); }
+          inline typename seqan::Reference< TStringSet const >::Type
+        operator[]( TPosition pos ) const { return get_value( *this, pos ); }
+          inline typename seqan::Reference< TStringSet >::Type
+        operator[]( TPosition pos ) { return get_value( *this, pos ); }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend TId
         position_to_id< TText >( const Records& records, TPosition pos );
@@ -237,7 +251,6 @@ namespace grem {
         load_chunk< TText >( Records& records,
             const Records< TRefStringSet >& ref,
             typename Records< TRefStringSet >::TPosition n );
-
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         std::size_t offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
