@@ -98,6 +98,85 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
   }
 }
 
+SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" )
+{
+  GIVEN( "A records containing four sequences with different lengths" )
+  {
+    Records< Dna5QStringSet<> > reads;
+    appendValue( reads.str, "aaaaaattttttcccccc" );
+    appendValue( reads.str, "acgtttacgtttacg" );
+    appendValue( reads.str, "acgtttacgtttacgtttacgttt" );
+    appendValue( reads.str, "acgtttacgtttacgtttacgtttaaaaaattttttc" );
+
+    unsigned int k = 6;
+    WHEN( "Enumerating non-overlapping " + std::to_string( k ) + "-mers in the records" )
+    {
+      typename seqan::Iterator< decltype( reads ), NonOverlapping >::Type iter( &reads, k );
+
+      THEN( "It should yield all non-overlapping " + std::to_string( k ) + "-mers in the records" )
+      {
+        REQUIRE( *iter++ == "aaaaaa" );
+        REQUIRE( *iter++ == "tttttt" );
+        REQUIRE( *iter++ == "cccccc" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "aaaaaa" );
+        REQUIRE( *iter++ == "tttttt" );
+        REQUIRE( at_end( iter ) == true );
+      }
+    }
+  }
+
+  GIVEN( "A records containing four sequences with same lengths" )
+  {
+    Records< Dna5QStringSet<> > reads;
+    appendValue( reads.str, "aaaaaattttttcccccc" );
+    appendValue( reads.str, "acgtttacgtttacg" );
+
+    unsigned int k = 6;
+    WHEN( "Enumerating overlapping " + std::to_string( k ) + "-mers in the records" )
+    {
+      typename seqan::Iterator< decltype( reads ), GreedyOverlapping >::Type iter( &reads, k );
+
+      THEN( "It should yield all overlapping " + std::to_string( k ) + "-mers in the records" )
+      {
+        REQUIRE( *iter++ == "aaaaaa" );
+        REQUIRE( *iter++ == "aaaaat" );
+        REQUIRE( *iter++ == "aaaatt" );
+        REQUIRE( *iter++ == "aaattt" );
+        REQUIRE( *iter++ == "aatttt" );
+        REQUIRE( *iter++ == "attttt" );
+        REQUIRE( *iter++ == "tttttt" );
+        REQUIRE( *iter++ == "tttttc" );
+        REQUIRE( *iter++ == "ttttcc" );
+        REQUIRE( *iter++ == "tttccc" );
+        REQUIRE( *iter++ == "ttcccc" );
+        REQUIRE( *iter++ == "tccccc" );
+        REQUIRE( *iter++ == "cccccc" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "cgttta" );
+        REQUIRE( *iter++ == "gtttac" );
+        REQUIRE( *iter++ == "tttacg" );
+        REQUIRE( *iter++ == "ttacgt" );
+        REQUIRE( *iter++ == "tacgtt" );
+        REQUIRE( *iter++ == "acgttt" );
+        REQUIRE( *iter++ == "cgttta" );
+        REQUIRE( *iter++ == "gtttac" );
+        REQUIRE( *iter++ == "tttacg" );
+        REQUIRE( at_end( iter ) == true );
+      }
+    }
+  }
+}
+
 SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
 {
   unsigned int k = 20;
