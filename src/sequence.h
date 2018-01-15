@@ -91,7 +91,7 @@ namespace grem {
 
   /* Records interface functions */
   template< typename TText >
-      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
+      inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
     position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
         typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type pos )
     {
@@ -99,6 +99,25 @@ namespace grem {
         throw std::runtime_error( "position out of range" );
       }
       return pos;
+    }
+
+  template< typename TText >
+      inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
+    position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
+        typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
+    {
+      return position_to_id( strset, pos.i1 );
+    }
+
+  template< typename TText >
+      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
+    position_to_offset( const seqan::StringSet< TText, seqan::Owner<> >& strset,
+        typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
+    {
+      if ( pos.i2 >= length( strset[pos.i1] ) || pos.i2 < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos.i2;
     }
 
   template< typename TText >
@@ -122,6 +141,25 @@ namespace grem {
       }
       assert( records.o_str != nullptr );
       return records.offset + pos;
+    }
+
+  template< typename TText, typename TSpec >
+      inline typename Records< seqan::StringSet< TText, TSpec > >::TId
+    position_to_id( const Records< seqan::StringSet< TText, TSpec > >& records,
+        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+    {
+      return position_to_id( records, pos.i1 );
+    }
+
+  template< typename TText, typename TSpec >
+      inline typename Records< seqan::StringSet< TText, TSpec > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, TSpec > >& records,
+        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+    {
+      if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos.i2;
     }
 
 
@@ -206,6 +244,7 @@ namespace grem {
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
+        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
@@ -222,6 +261,7 @@ namespace grem {
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, grem::Dependent > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
+        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
