@@ -560,11 +560,27 @@ namespace grem {
       callback( hit );
     }
 
+  template< typename TOccurrence >
+      inline void
+    _map_occurrences( TOccurrence& oc, unsigned int k, Forward )
+    {
+      /* NOOP */
+    }
+
+  template< typename TOccurrence >
+      inline void
+    _map_occurrences( TOccurrence& oc, unsigned int k, Reversed )
+    {
+      oc.i2 += k - 1;    /**< @brief End position of the occurrence. */
+    }
+
   template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords1* rec1,
-        const TRecords2* rec2, TCallback callback, bool swapped = false )
+        const TRecords2* rec2, unsigned int k, TCallback callback, bool swapped = false )
     {
+      typedef typename Direction< TRecords1 >::Type TPathDir;
+
       auto&& occurrences1 = get_occurrences_stree( itr1 );
       auto&& occurrences2 = get_occurrences_stree( itr2 );
       auto&& occur_size1 = length( occurrences1 );
@@ -573,9 +589,11 @@ namespace grem {
       for ( unsigned int i = 0; i < occur_size1; ++i ) {
         for ( unsigned int j = 0; j < occur_size2; ++j ) {
           if ( !swapped ) {
+            _map_occurrences( occurrences1[i], k, TPathDir() );
             _add_seed( occurrences1[i], occurrences2[j], rec1, rec2, callback );
           }
           else {
+            _map_occurrences( occurrences2[j], k, TPathDir() );
             _add_seed( occurrences2[j], occurrences1[i], rec1, rec2, callback );
           }
         }
@@ -592,7 +610,7 @@ namespace grem {
         auto&& s = upto_prefix( snd_itr, cp_len );
 
         if ( go_down_stree( snd_itr, infix( representative( fst_itr ), s, k ) ) ) {
-          _add_occurrences( fst_itr, snd_itr, rec1, rec2, callback, swapped );
+          _add_occurrences( fst_itr, snd_itr, rec1, rec2, k, callback, swapped );
         }
       }
     }
@@ -661,7 +679,7 @@ namespace grem {
           snd_agreed = go_down( snd_itr, seed[plen] );
         }
         if ( fst_agreed && snd_agreed ) {
-          _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, callback );
+          _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
           plen = 0;
         }
         s = increment_kmer( seed, plen );
