@@ -21,6 +21,7 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include <type_traits>
 
 #include "index.h"
 #include "seed.h"
@@ -686,29 +687,26 @@ namespace grem {
       } while ( s >= 0 );
     }
 
-  // :TODO:Sat Oct 28 03:17:\@cartoonist: implement an iterator over string set to get
-  //       seeds using different strategy tags instead of passing `step` parameter.
-  template< typename TIndex, typename TRecords1, typename TRecords2, typename TCallback >
+  template< typename TIndex, typename TRecords1, typename TRecords2, typename TSeedingStrategy, typename TCallback >
       inline void
     kmer_exact_matches( TIndex& paths_index, const TRecords1* pathset,
-        const TRecords2& reads, unsigned int k, unsigned int step, TCallback callback )
+        const TRecords2* reads, unsigned int k, TSeedingStrategy, TCallback callback )
     {
-      typedef typename seqan::SAValue< TIndex >::Type TSAValue;
+      typedef typename seqan::Iterator< TRecords2, TSeedingStrategy >::Type TSeedsIterator;
 
-      if ( k == 0 || step == 0 ) return;
+      static_assert( std::is_same< typename Direction< TRecords1 >::Type, Forward >::value,
+          "The paths should be forward sequences." );
+
+      if ( k == 0 ) return;
 
       seqan::Finder< TIndex > paths_finder( paths_index );
-      TSAValue read_occurrence;
-      for ( std::size_t idx = 0; idx < length( reads ); ++idx ) {
-        read_occurrence.i1 = idx;
-        for ( std::size_t off = 0; off < length( reads[idx] ) - k + 1; off += step ) {
-          auto&& seed = infixWithLength( reads[idx], off, k );
-          read_occurrence.i2 = off;
-          while ( find( paths_finder, seed ) ) {
-            _add_seed( beginPosition( paths_finder ), read_occurrence, pathset, &reads, callback );
-          }
-          clear( paths_finder );
+      TSeedsIterator seeds_itr( reads, k );
+      while ( !at_end( seeds_itr ) ) {
+        while ( find( paths_finder, *seeds_itr ) ) {
+          _add_seed( beginPosition( paths_finder ), get_position( seeds_itr ), pathset, reads, callback );
         }
+        ++seeds_itr;
+        clear( paths_finder );
       }
     }
 }  /* -----  end of namespace grem  ----- */
