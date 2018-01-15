@@ -378,9 +378,9 @@ namespace grem
          *  XXX: We assume that each connect component in the graph has one and only one
          *  path indicating a sample haplotype in that region.
          */
-        template< typename TGraph, typename TText, typename TIndexSpec >
+        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             void
-          pick_paths( PathSet< TGraph, TText, TIndexSpec >& paths, int n )
+          pick_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths, int n )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -405,9 +405,9 @@ namespace grem
          *  both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-        template< typename TGraph, typename TText, typename TIndexSpec >
+        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
-          seeds_on_paths( PathSet< TGraph, TText, TIndexSpec >& paths,
+          seeds_on_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) >& callback )
           {
             if ( length( paths.string_set ) == 0 ) return;
@@ -417,9 +417,9 @@ namespace grem
             kmer_exact_matches( paths.index, this->reads, this->seed_len, this->seed_len, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
-        template< typename TGraph, typename TText, typename TIndexSpec >
+        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
-          add_all_loci( PathSet< TGraph, TText, TIndexSpec >& paths, unsigned int k,
+          add_all_loci( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );

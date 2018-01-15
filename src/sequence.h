@@ -257,6 +257,28 @@ namespace grem {
         const TRefStringSet* o_str;  /**< @brief original string set. */
     };
 
+  /* Sequence directions strategies */
+  struct ForwardStrategy;
+  struct ReversedStrategy;
+
+  /* Sequence direction tags */
+  typedef seqan::Tag< ForwardStrategy > Forward;
+  typedef seqan::Tag< ReversedStrategy > Reversed;
+
+  /**
+   *  @brief  Meta-function getting direction of a set of paths.
+   */
+  template< typename TSpec >
+    struct Direction;
+
+  /**
+   *  @brief  Meta-function getting direction of paths in a `StringSet`.
+   */
+  template< typename TText, typename TSpec >
+    struct Direction< seqan::StringSet< TText, TSpec > > {
+      typedef Forward Type;
+    };
+
   /* Seeding strategies */
   struct GreedyOverlapStrategy;
   struct NonOverlapStrategy;

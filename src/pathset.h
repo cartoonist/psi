@@ -34,7 +34,7 @@ namespace grem {
    *  This class encapsulate the data structures to represent a set of path, its strings
    *  set, and its index. It also provides load/save functionalities.
    */
-  template< typename TGraph, typename TText, typename TIndexSpec >
+  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection = Forward >
     class PathSet {
       public:
         /* ====================  TYPEDEFS      ======================================= */
@@ -103,7 +103,7 @@ namespace grem {
           inline void
         add_path( Path< TGraph >&& new_path )
         {
-          TText path_str( sequence( new_path ) );
+          TText path_str( sequence( new_path, TSequenceDirection() ) );
           // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
           char fake_qual = 'I';
           assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
@@ -250,8 +250,16 @@ namespace grem {
 
   /* Typedefs  ----------------------------------------------------------------- */
 
-  template< typename TGraph, typename TIndexSpec >
-    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec >;
+  template< typename TGraph, typename TIndexSpec, typename TSequenceDirection = Forward >
+    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec, TSequenceDirection >;
+
+  /**
+   *  @brief  Meta-function getting direction of paths in a `PathSet`.
+   */
+  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
+    struct Direction< PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > > {
+      typedef TSequenceDirection Type;
+    };
 
   /* PathSet interface functions  ------------------------------------------------ */
 
@@ -260,6 +268,61 @@ namespace grem {
     length( PathSet< TGraph, TText, TIndexSpec >& set )
     {
       return set.size();
+    }
+
+  template< typename TIndex >
+    using TSAValue = typename seqan::SAValue< TIndex >::Type;
+
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::offset_type
+    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+    {
+      return position_to_offset( set.paths_set.at( pos.i1 ), pos.i2 );
+    }
+
+  /**
+   *  @note The input `pos` parameter should be the "end position" of the occurrence; e.g.:
+   *
+   *  The pattern 'ttc' is found in the reversed string:
+   *        0123 456 7890123
+   *        acga ctt taggtcc
+   *  the input `pos` parameter should be 6 (not 4) where the `real_pos` computed inside
+   *  the function would be the real position in forward sequence.
+   */
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::offset_type
+    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
+    {
+      auto real_pos = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      return position_to_offset( set.paths_set.at( pos.i1 ), real_pos );
+    }
+
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::nodeid_type
+    position_to_id( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+    {
+      return position_to_id( set.paths_set.at( pos.i1 ), pos.i2 );
+    }
+
+  /**
+   *  @note The input `pos` parameter should be the "end position" of the occurrence; e.g.:
+   *
+   *  The pattern 'ttc' is found in the reversed string:
+   *        0123 456 7890123
+   *        acga ctt taggtcc
+   *  the input `pos` parameter should be 6 (not 4) where the `real_pos` computed inside
+   *  the function would be the real position in forward sequence.
+   */
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::nodeid_type
+    position_to_id( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
+    {
+      auto real_pos = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      return position_to_id( set.paths_set.at( pos.i1 ), real_pos );
     }
 
   /* END OF PathSet interface functions  ----------------------------------------- */
