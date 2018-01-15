@@ -625,6 +625,12 @@ namespace grem {
         unsigned int k,
         TCallback callback )
     {
+      static_assert( ( std::is_same< TIndexSpec1, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
+          ( !std::is_same< TIndexSpec1, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
+          "The paths direction and the path index used are not compatible." );
+
       if ( k == 0 ) return;
 
       auto fst_len = length( indexRawText( fst ) );
@@ -662,6 +668,12 @@ namespace grem {
         unsigned int k,
         TCallback callback )
     {
+      static_assert( ( std::is_same< typename seqan::Spec< TIndex1 >::Type, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
+          ( !std::is_same< typename seqan::Spec< TIndex1 >::Type, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
+          "The paths direction and the path index used are not compatible." );
+
       if ( k == 0 ) return;
 
       seqan::DnaString seed;                   // seed = A..(k)..A
