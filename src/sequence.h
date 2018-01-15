@@ -276,6 +276,15 @@ namespace grem {
   template< typename TRecords, typename TSpec >
       inline bool
     at_end( const _RecordsIterBase< TRecords, TSpec >& iter );
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TId const&
+    get_id( const _RecordsIterBase< TRecords, TSpec >& iter );
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TTextPosition const&
+    get_offset( const _RecordsIterBase< TRecords, TSpec >& iter );
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TStringSetPosition const&
+    get_position( const _RecordsIterBase< TRecords, TSpec >& iter );
   /* END OF _RecordsIterBase interface functions  -------------------------------- */
 
   template< typename TStringSet, typename TSpec >
@@ -285,6 +294,7 @@ namespace grem {
         typedef Records< TStringSet > TRecords;
         typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Value< TStringSet >::Type TText;
+        typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Position< TText >::Type TTextPosition;
         typedef typename seqan::Infix< TText const >::Type TInfix;
         /* ====================  LIFECYCLE     ======================================= */
@@ -311,7 +321,13 @@ namespace grem {
         }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
         friend bool
-          at_end< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec > & );
+          at_end< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+        friend const TId&
+          get_id< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+        friend const TTextPosition&
+          get_offset< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+        friend const TStringSetPosition&
+          get_position< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
       protected:
         const TRecords* records;
         TStringSetPosition current_pos;
@@ -324,6 +340,27 @@ namespace grem {
     {
       if ( iter.current_pos.i1 >= length( *iter.records ) ) return true;
       return false;
+    }
+
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TId const&
+    get_id( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      return iter.current_pos.i1;
+    }
+
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TTextPosition const&
+    get_offset( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      return iter.current_pos.i2;
+    }
+
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TStringSetPosition const&
+    get_position( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      return iter.current_pos;
     }
 
   template< typename TRecords, typename TSpec >
@@ -340,6 +377,7 @@ namespace grem {
         typedef typename TRecords::TStringSet TStringSet;
         typedef typename TBase::TStringSetPosition TStringSetPosition;
         typedef typename TBase::TText TText;
+        typedef typename TBase::TId TId;
         typedef typename TBase::TTextPosition TTextPosition;
         typedef typename TBase::TInfix TInfix;
         /* ====================  LIFECYCLE     ======================================= */
@@ -376,6 +414,7 @@ namespace grem {
         typedef typename TRecords::TStringSet TStringSet;
         typedef typename TBase::TStringSetPosition TStringSetPosition;
         typedef typename TBase::TText TText;
+        typedef typename TBase::TId TId;
         typedef typename TBase::TTextPosition TTextPosition;
         typedef typename TBase::TInfix TInfix;
         /* ====================  LIFECYCLE     ======================================= */
