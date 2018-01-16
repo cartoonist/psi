@@ -158,7 +158,7 @@ template< typename TIndexSpec  >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide paths set. */
-    Dna5QPathSet< VarGraph, grem::CFMIndex > paths;
+    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths;
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, paths_index_file, path_num );
 
