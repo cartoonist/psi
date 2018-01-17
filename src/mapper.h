@@ -37,6 +37,8 @@
 #include "logger.h"
 #include "stat.h"
 
+#define INITIAL_BITVECTOR_SIZE 1024
+
 
 namespace grem
 {
@@ -428,20 +430,24 @@ namespace grem
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
             Path< VarGraph > trav_path( this->vargraph );
             Path< VarGraph > current_path( this->vargraph );
-            sdsl::bit_vector bv_starts;
+            sdsl::bit_vector bv_starts( INITIAL_BITVECTOR_SIZE, 0 );
+
+            std::vector< Path< TGraph, Compact > > paths_node_set;
+            compress( paths, paths_node_set );
 
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
               auto label_len = this->vargraph->node_length( id );
               std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
-              sdsl::util::assign( bv_starts, sdsl::bit_vector( label_len, 0 ) );
+              bv_starts.resize( label_len );
+              bv_starts.set_int( 0, 0, label_len );
 
               go_begin( bt_itr, id );
               while ( !at_end( bt_itr ) && offset != 0 ) {
                 extend_to_k( trav_path, bt_itr, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths.paths_set ) ) {
+                    !covered_by( current_path, paths_node_set ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
