@@ -327,6 +327,31 @@ namespace grem {
       return position_to_id( set.paths_set.at( pos.i1 ), real_pos );
     }
 
+  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
+      inline void
+    compress( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > const& set, TPathSet& out )
+    {
+      typedef typename TPathSet::value_type TPath;
+
+      auto pre_itr = set.paths_set.begin();
+      auto cur_itr = pre_itr + 1;
+
+      if ( pre_itr == set.paths_set.end() ) return;
+
+      TPath path = *pre_itr;
+      while ( cur_itr != set.paths_set.end() ) {
+        if ( (*pre_itr).get_nodes().back() > (*cur_itr).get_nodes().front() ) {
+          out.push_back( std::move( path ) );
+          clear( path );
+        }
+        path += *cur_itr;
+        pre_itr = cur_itr;
+        ++cur_itr;
+      }
+
+      out.push_back( std::move( path ) );
+    }
+
   /* END OF PathSet interface functions  ----------------------------------------- */
 
 }  /* -----  end of namespace grem  ----- */

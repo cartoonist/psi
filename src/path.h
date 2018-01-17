@@ -495,9 +495,6 @@ namespace grem{
       inline void
     extend( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
     {
-      if ( path.get_vargraph() != other.get_vargraph() ) {
-        throw std::runtime_error( "Mismatching variation graphs" );
-      }
       for ( const auto& node_id : other.get_nodes() ) {
         add_node( path, node_id );
       }
