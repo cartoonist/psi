@@ -891,6 +891,24 @@ namespace grem{
         {
           this->set_nodes( p );
         }
+
+        template< typename TSpec >
+          Path( const Path< TGraph, TSpec >& other )
+          {
+            this->set_nodes( other.get_nodes() );
+          }
+
+        template< typename TSpec >
+          Path& operator=( const Path< TGraph, TSpec >& other )
+          {
+            this->set_nodes( other.get_nodes() );
+          }
+
+        Path( const Path& ) = default;
+        Path( Path&& ) = default;
+        Path& operator=( const Path& ) = default;
+        Path& operator=( Path&& ) = default;
+        ~Path() = default;
         /* ====================  MUTATORS      ======================================= */
         /**
          *  @brief  Set the nodes in the path (clear the previous state).
