@@ -40,11 +40,13 @@ namespace grem {
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
         typedef seqan::Index< TStringSet, TIndexSpec > TIndex;
+        typedef Path< TGraph > TPath;
         typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
+        typedef TPath value_type;
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet string_set;
         TIndex index;
-        std::vector< Path< TGraph > > paths_set;
+        std::vector< TPath > paths_set;
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( ) = default;
         /* ====================  METHODS       ======================================= */
@@ -101,7 +103,7 @@ namespace grem {
          *  to the string set, and creates string set index.
          */
           inline void
-        add_path( Path< TGraph >&& new_path )
+        add_path( TPath&& new_path )
         {
           TText path_str( sequence( new_path, TSequenceDirection() ) );
           // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
@@ -121,16 +123,16 @@ namespace grem {
          *  Overloaded.
          */
           inline void
-        add_path( const Path< TGraph >& new_path )
+        add_path( const TPath& new_path )
         {
-          this->add_path( Path< TGraph >( new_path ) );
+          this->add_path( TPath( new_path ) );
         }
 
         /**
          *  @brief  alias: See `add_path`.
          */
           inline void
-        push_back( Path< TGraph >&& new_path )
+        push_back( TPath&& new_path )
         {
           this->add_path( std::move( new_path ) );
         }
@@ -139,9 +141,9 @@ namespace grem {
          *  @brief  alias: See `add_path`.
          */
           inline void
-        push_back( const Path< TGraph >& new_path )
+        push_back( const TPath& new_path )
         {
-          this->add_path( Path< TGraph >( new_path ) );
+          this->add_path( TPath( new_path ) );
         }
 
         /**
@@ -206,7 +208,7 @@ namespace grem {
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
             for ( unsigned int i = 0; i < path_num; ++i ) {
-              Path< TGraph > path( vargraph );
+              TPath path( vargraph );
               grem::load( path, ifs );
               this->paths_set.push_back( std::move( path ) );
             }
