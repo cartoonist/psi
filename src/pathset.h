@@ -42,14 +42,41 @@ namespace grem {
         typedef seqan::Index< TStringSet, TIndexSpec > TIndex;
         typedef Path< TGraph > TPath;
         typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
+        typedef uint64_t context_type;
         typedef TPath value_type;
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet string_set;
         TIndex index;
         std::vector< TPath > paths_set;
+        /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
+        context_type context;
         /* ====================  LIFECYCLE     ======================================= */
-        PathSet( ) = default;
+        PathSet( context_type _context=0 ) : context( _context ) { };
         /* ====================  METHODS       ======================================= */
+        /**
+         *  @brief  Get the shift required to add to trimmed position to get original one.
+         *
+         *  @param  pos Position in the path set.
+         *  @return the shift required to add to the position in the trimmed path in
+         *          order to get the position in the original path.
+         *
+         *  The parameter `pos` indicates one path in the path set. If `context` is
+         *  non-zero the path sequence in the string set is left-trimmed by the length
+         *  of `length( sequence( path.nodes[0] ) ) - context + 1`. So position found in
+         *  the trimmed path sequence needs to be converted to the original position in
+         *  the path by adding this amount.
+         */
+          inline unsigned int
+        get_context_shift( typename seqan::SAValue< TIndex >::Type const& pos ) const
+        {
+          if ( this->context != 0 ) {
+            const TGraph* vg = this->paths_set.at( pos.i1 ).get_vargraph();
+            return vg->node_length( this->paths_set.at( pos.i1 ).get_nodes()[0] )
+              - this->context + 1;
+          }
+          return 0;
+        }
+
         /**
          *  @brief  Load the set of paths and its index from file.
          *
@@ -105,7 +132,7 @@ namespace grem {
           inline void
         add_path( TPath&& new_path )
         {
-          TText path_str( sequence( new_path, TSequenceDirection() ) );
+          TText path_str( sequence( new_path, TSequenceDirection(), this->context ) );
           // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
           char fake_qual = 'I';
           assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
@@ -204,6 +231,7 @@ namespace grem {
           size_type path_num = 0;
 
           try {
+            deserialize( ifs, this->context );
             deserialize( ifs, path_num );
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
@@ -237,6 +265,7 @@ namespace grem {
           if( !ofs ) return false;
 
           try {
+            serialize( ofs, this->context );
             serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
             for ( const auto& path : this->paths_set ) {
               grem::save( path, ofs );
@@ -280,7 +309,8 @@ namespace grem {
     position_to_offset( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
     {
-      return position_to_offset( set.paths_set.at( pos.i1 ), pos.i2 );
+      auto context_shift = set.get_context_shift( pos );
+      return position_to_offset( set.paths_set.at( pos.i1 ), context_shift + pos.i2 );
     }
 
   /**
@@ -297,8 +327,10 @@ namespace grem {
     position_to_offset( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
     {
-      auto real_pos = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
-      return position_to_offset( set.paths_set.at( pos.i1 ), real_pos );
+      auto real_pos = pos;
+      real_pos.i2 = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      auto context_shift = set.get_context_shift( real_pos );
+      return position_to_offset( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
     }
 
   template< typename TGraph, typename TText, typename TIndexSpec >
@@ -306,7 +338,8 @@ namespace grem {
     position_to_id( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
     {
-      return position_to_id( set.paths_set.at( pos.i1 ), pos.i2 );
+      auto context_shift = set.get_context_shift( pos );
+      return position_to_id( set.paths_set.at( pos.i1 ), context_shift + pos.i2 );
     }
 
   /**
@@ -323,8 +356,10 @@ namespace grem {
     position_to_id( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
     {
-      auto real_pos = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
-      return position_to_id( set.paths_set.at( pos.i1 ), real_pos );
+      auto real_pos = pos;
+      real_pos.i2 = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      auto context_shift = set.get_context_shift( real_pos );
+      return position_to_id( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
     }
 
   template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
