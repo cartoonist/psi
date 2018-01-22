@@ -24,7 +24,7 @@
 #include <type_traits>
 #include <vector>
 #include <string>
-#include <unordered_set>
+#include <set>
 #include <deque>
 #include <algorithm>
 #include <utility>
@@ -126,7 +126,7 @@ namespace grem{
         /* ====================  DATA MEMBERS  ======================================= */
         const TGraph* vargraph;
         nodes_type nodes;
-        std::unordered_set< typename TGraph::nodeid_type > nodes_set;
+        std::set< typename TGraph::nodeid_type > nodes_set;
         seqsize_type seqlen;
         /* Loaded on demand. */
         string_type seq;
@@ -251,7 +251,7 @@ namespace grem{
 
           this->nodes = std::move( value );
           this->nodes_set.clear();
-          this->nodes_set.reserve( this->nodes.size() );
+          grem::reserve( this->nodes_set, this->nodes.size() );
           this->seqlen = 0;
           for ( const auto& node_id : this->nodes ) {
             this->nodes_set.insert( node_id );
@@ -712,7 +712,7 @@ namespace grem{
         typename Path< TGraph, TSpec >::size_type size )
     {
       grem::reserve( path.nodes, size );        /* defined in `utils.h` */
-      path.nodes_set.reserve( size );
+      grem::reserve( path.nodes_set, size );
     }  /* -----  end of template function reserve  ----- */
 
   /**
@@ -897,7 +897,7 @@ namespace grem{
     {
       public:
         /* ====================  DATA MEMBERS  ======================================= */
-        std::unordered_set< typename TGraph::nodeid_type > nodes_set;
+        std::set< typename TGraph::nodeid_type > nodes_set;
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes_set )::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
@@ -932,7 +932,7 @@ namespace grem{
         set_nodes( const std::vector< typename TGraph::nodeid_type >& value )
         {
           this->nodes_set.clear();
-          this->nodes_set.reserve( value.size() );
+          grem::reserve( this->nodes_set, value.size() );
           std::copy( value.begin(), value.end(),
               std::inserter( this->nodes_set, this->nodes_set.end() ) );
         }  /* -----  end of method set_nodes  ----- */
@@ -1028,7 +1028,7 @@ namespace grem{
     reserve( Path< TGraph, Compact >& path,
         typename Path< TGraph, Compact >::size_type size )
     {
-      path.nodes_set.reserve( size );
+      grem::reserve( path.nodes_set, size );
     }
 
   /**
