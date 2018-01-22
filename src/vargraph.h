@@ -908,6 +908,7 @@ namespace grem {
           }
           // Extend the patch.
           patch += frontier;
+          trim_front_by_len( frontier, k );
           while ( !iter[ frontier.get_nodes() ] ) {
             add_node( frontier, *iter );
             add_node( patch, *iter );
