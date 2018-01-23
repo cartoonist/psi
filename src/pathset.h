@@ -20,6 +20,7 @@
 #define  PATHSET_H__
 
 #include <vector>
+#include <algorithm>
 
 #include "vargraph.h"
 #include "sequence.h"
@@ -52,11 +53,21 @@ namespace grem {
         /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
         context_type context;
         bool lazy_mode;
+        bool sorted;
       public:
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( context_type ct=0, bool l=false )
-          : context( ct ), lazy_mode( l ) { };
-        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ) { };
+          : context( ct ), lazy_mode( l ), sorted( false ) { };
+        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ), sorted( false ) { };
+        /* ====================  ACCESSORS     ======================================= */
+        /**
+         *  @brief  return true if the paths in the set is sorted by their minimum node ID.
+         */
+          inline bool
+        is_sorted() const
+        {
+          return this->sorted;
+        }  /* -----  end of method is_sorted  ----- */
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Get the shift required to add to trimmed position to get original one.
@@ -139,6 +150,7 @@ namespace grem {
         {
           initialize( new_path );
           this->paths_set.push_back( std::move( new_path ) );
+          this->sorted = false;
           if ( !this->lazy_mode ) {
             this->add_path_sequence( std::prev(this->paths_set.end()), this->paths_set.end() );
           }
@@ -217,6 +229,23 @@ namespace grem {
           }
           grem::create_index( this->index );
         }  /* -----  end of method create_index  ----- */
+
+        /**
+         *  @brief  Sort the paths set by the minimum node ID in each path.
+         *
+         *  Sorting the paths in ascending order of minimum node ID in the paths. This
+         *  helps the `covered_by` query to search in the paths local to the query path.
+         */
+          inline void
+        sort()
+        {
+          auto compare = []( TPath& a, TPath& b ) {
+            return *a.get_nodes_set().begin() < *b.get_nodes_set().begin();
+          };
+
+          std::sort( this->paths_set.begin(), this->paths_set.end(), compare );
+          this->sorted = true;
+        }
       private:
         /**
          *  @brief  Add sequence of the paths in the set from `begin` to `end`.
@@ -258,9 +287,12 @@ namespace grem {
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
           size_type path_num = 0;
+          size_type sort_int = 0;
 
           try {
             deserialize( ifs, this->context );
+            deserialize( ifs, sort_int );
+            this->sorted = static_cast< bool >( sort_int );
             deserialize( ifs, path_num );
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
@@ -295,6 +327,7 @@ namespace grem {
 
           try {
             serialize( ofs, this->context );
+            serialize( ofs, static_cast< size_type >( this->sorted ) );
             serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
             for ( const auto& path : this->paths_set ) {
               grem::save( path, ofs );
