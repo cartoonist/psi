@@ -199,6 +199,15 @@ namespace grem{
         }  /* -----  end of method get_nodes  ----- */
 
         /**
+         *  @brief  getter function for nodes_set.
+         */
+          inline const std::set< typename TGraph::nodeid_type >&
+        get_nodes_set( ) const
+        {
+          return this->nodes_set;
+        }  /* -----  end of method get_nodes_set  ----- */
+
+        /**
          *  @brief  getter function for seqlen.
          */
           inline seqsize_type
@@ -924,6 +933,15 @@ namespace grem{
         Path& operator=( const Path& ) = default;
         Path& operator=( Path&& ) = default;
         ~Path() = default;
+        /* ====================  ACCESSORS     ======================================= */
+        /**
+         *  @brief  getter function for nodes_set.
+         */
+          inline const std::set< typename TGraph::nodeid_type >&
+        get_nodes_set( ) const
+        {
+          return this->nodes_set;
+        }  /* -----  end of method get_nodes_set  ----- */
         /* ====================  MUTATORS      ======================================= */
         /**
          *  @brief  Set the nodes in the path (clear the previous state).
