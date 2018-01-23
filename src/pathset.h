@@ -48,10 +48,15 @@ namespace grem {
         TStringSet string_set;
         TIndex index;
         std::vector< TPath > paths_set;
+      private:
         /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
         context_type context;
+        bool lazy_mode;
+      public:
         /* ====================  LIFECYCLE     ======================================= */
-        PathSet( context_type _context=0 ) : context( _context ) { };
+        PathSet( context_type ct=0, bool l=false )
+          : context( ct ), lazy_mode( l ) { };
+        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ) { };
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Get the shift required to add to trimmed position to get original one.
@@ -75,7 +80,7 @@ namespace grem {
               - this->context + 1;
           }
           return 0;
-        }
+        }  /* -----  end of method get_context_shift  ----- */
 
         /**
          *  @brief  Load the set of paths and its index from file.
@@ -127,19 +132,16 @@ namespace grem {
          *  @param  new_path The new path to be added.
          *
          *  It appends the new path to the paths set, adds its string representation
-         *  to the string set, and creates string set index.
+         *  to the string set, and creates string set index if it is not in lazy mode.
          */
           inline void
         add_path( TPath&& new_path )
         {
-          TText path_str( sequence( new_path, TSequenceDirection(), this->context ) );
-          // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
-          char fake_qual = 'I';
-          assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
-          appendValue( this->string_set, path_str );
-          this->index = TIndex( this->string_set );
           initialize( new_path );
-          paths_set.push_back( std::move( new_path ) );
+          this->paths_set.push_back( std::move( new_path ) );
+          if ( !this->lazy_mode ) {
+            this->add_path_sequence( std::prev(this->paths_set.end()), this->paths_set.end() );
+          }
         }  /* -----  end of method add_path  ----- */
 
         /**
@@ -210,9 +212,36 @@ namespace grem {
           inline void
         create_index( )
         {
+          if ( lazy_mode ) {
+            this->add_path_sequence( this->paths_set.begin(), this->paths_set.end() );
+          }
           grem::create_index( this->index );
         }  /* -----  end of method create_index  ----- */
       private:
+        /**
+         *  @brief  Add sequence of the paths in the set from `begin` to `end`.
+         *
+         *  @param  begin The begin iterator of the paths set to add.
+         *  @param  end The end iterator of the paths set to add.
+         *
+         *  It appends the sequence of the paths in the range `[begin, end)` to the
+         *  string set, and update string set index.
+         *
+         *  @note The quality score of the paths are considered `I`.
+         */
+        template< typename TIter >
+            inline void
+          add_path_sequence( TIter begin, TIter end )
+          {
+            for ( ; begin != end; ++begin ) {
+              TText path_str( sequence( *begin, TSequenceDirection(), this->context ) );
+              char fake_qual = 'I';  // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
+              assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
+              appendValue( this->string_set, path_str );
+            }
+            this->index = TIndex( this->string_set );
+          }
+
         /**
          *  @brief  Load nodes sets of paths set from file.
          *
