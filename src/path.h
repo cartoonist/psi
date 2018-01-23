@@ -1121,6 +1121,32 @@ namespace grem{
       inline bool
     contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
     {
+      if ( begin != end && contains( path, *begin ) ) {
+        auto l = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
+        if ( std::equal( begin, end, l ) ) return true;
+      }
+
+      return false;
+    }  /* -----  end of template function contains  ----- */
+
+  /**
+   *  @brief  Check whether this Compact path contains another path.
+   *
+   *  @param  path The Compact path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  The input path should be smaller than the path. It checks if the nodes of the
+   *  given path is present in the node set. It does not check the order of the
+   *  nodes.
+   */
+  template< typename TGraph, typename TIter >
+      inline bool
+    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end )
+    {
       if ( end - begin > 0 ) {
         auto&& on_path = [&path]( typename TGraph::nodeid_type const& i ) {
           return contains( path, i );
@@ -1150,8 +1176,8 @@ namespace grem{
       inline bool
     covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
     {
-      for ( auto itr = paths_set_begin; itr != paths_set_end; ++itr ) {
-        if ( contains( (*itr), begin, end ) )
+      for ( ; paths_set_begin != paths_set_end; ++paths_set_begin ) {
+        if ( contains( (*paths_set_begin), begin, end ) )
         {
           return true;
         }
