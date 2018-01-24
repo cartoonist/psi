@@ -122,11 +122,12 @@ namespace grem{
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
+        typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const TGraph* vargraph;
         nodes_type nodes;
-        std::set< typename TGraph::nodeid_type > nodes_set;
+        nodes_set_type nodes_set;
         seqsize_type seqlen;
         /* Loaded on demand. */
         string_type seq;
@@ -239,7 +240,7 @@ namespace grem{
         /**
          *  @brief  getter function for nodes_set.
          */
-          inline const std::set< typename TGraph::nodeid_type >&
+          inline const nodes_set_type&
         get_nodes_set( ) const
         {
           return this->nodes_set;
@@ -943,8 +944,10 @@ namespace grem{
     class Path< TGraph, Compact >
     {
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
         /* ====================  DATA MEMBERS  ======================================= */
-        std::set< typename TGraph::nodeid_type > nodes_set;
+        nodes_set_type nodes_set;
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes_set )::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
@@ -975,7 +978,7 @@ namespace grem{
         /**
          *  @brief  getter function for nodes_set.
          */
-          inline const std::set< typename TGraph::nodeid_type >&
+          inline const nodes_set_type&
         get_nodes_set( ) const
         {
           return this->nodes_set;
