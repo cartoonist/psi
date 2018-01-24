@@ -432,9 +432,6 @@ namespace grem
             Path< VarGraph > current_path( this->vargraph );
             sdsl::bit_vector bv_starts( INITIAL_BITVECTOR_SIZE, 0 );
 
-            std::vector< Path< TGraph, Compact > > paths_node_set;
-            compress( paths, paths_node_set );
-
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
               auto label_len = this->vargraph->node_length( id );
@@ -447,7 +444,7 @@ namespace grem
                 extend_to_k( trav_path, bt_itr, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths_node_set ) ) {
+                    !covered_by( current_path, paths ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {

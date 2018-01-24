@@ -118,6 +118,13 @@ template< typename TPathSet, typename TMapper >
       mapper.pick_paths( paths, path_num );
       log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
       {
+        auto timer = Timer( "sort-paths" );
+        log->info( "Sorting the paths..." );
+        /* Sort the paths. */
+        paths.sort();
+      }
+      log->info( "Sorted paths in {} us.", Timer::get_duration( "sort-paths" ).count() );
+      {
         auto timer = Timer( "index-paths" );
         log->info( "Indexing the paths..." );
         /* Index the paths. */
@@ -157,8 +164,8 @@ template< typename TIndexSpec  >
     TMapper mapper( &vargraph, seed_len );
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
-    /* Genome-wide paths set. */
-    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths( context );
+    /* Genome-wide paths set in lazy mode. */
+    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths( context, true );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, paths_index_file, path_num );
 
