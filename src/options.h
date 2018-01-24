@@ -70,6 +70,7 @@ namespace grem
     unsigned int chunk_size;
     unsigned int start_every;
     unsigned int path_num;
+    unsigned int context;
     IndexType index;
     std::string rf_path;
     std::string fq_path;
