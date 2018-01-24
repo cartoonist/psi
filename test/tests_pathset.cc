@@ -77,6 +77,52 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
   }
 }
 
+SCENARIO( "Get node ID/offset by position in the PathSet", "[pathset]" )
+{
+  GIVEN( "A VarGraph and PathSet within the graph" )
+  {
+    typedef seqan::IndexEsa<> TIndexSpec;
+
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath.c_str() );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    Dna5QPathSet< VarGraph, TIndexSpec > paths_set;
+    Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
+
+    REQUIRE( path.get_sequence_len() == 54 );
+    REQUIRE( length( path ) == 4 );
+
+    paths_set.add_path( std::move( path ) );
+
+    WHEN( "Query the positions in the path sequence" )
+    {
+      THEN( "The corresponding node ID/offset should be returned" )
+      {
+        REQUIRE( position_to_id( paths_set, { 0, 0 } ) == 205 );
+        REQUIRE( position_to_offset( paths_set, { 0, 0 } ) == 0 );
+        REQUIRE( position_to_id( paths_set, { 0, 14 } ) == 205 );
+        REQUIRE( position_to_offset( paths_set, { 0, 14 } ) == 14 );
+        REQUIRE( position_to_id( paths_set, { 0, 26 } ) == 205 );
+        REQUIRE( position_to_offset( paths_set, { 0, 26 } ) == 26 );
+        REQUIRE( position_to_id( paths_set, { 0, 27 } ) == 207 );
+        REQUIRE( position_to_offset( paths_set, { 0, 27 } ) == 0 );
+        REQUIRE( position_to_id( paths_set, { 0, 30 } ) == 207 );
+        REQUIRE( position_to_offset( paths_set, { 0, 30 } ) == 3 );
+        REQUIRE( position_to_id( paths_set, { 0, 51 } ) == 207 );
+        REQUIRE( position_to_offset( paths_set, { 0, 51 } ) == 24 );
+        REQUIRE( position_to_id( paths_set, { 0, 52 } ) == 209 );
+        REQUIRE( position_to_offset( paths_set, { 0, 52 } ) == 0 );
+        REQUIRE( position_to_id( paths_set, { 0, 53 } ) == 210 );
+        REQUIRE( position_to_offset( paths_set, { 0, 53 } ) == 0 );
+      }
+    }
+  }
+}
+
 SCENARIO( "Compress a PathSet", "[pathset]" )
 {
   GIVEN( "A Vargraph and a PathSet containing sparse patches" )
