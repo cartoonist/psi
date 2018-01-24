@@ -424,6 +424,49 @@ namespace grem {
       return position_to_id( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
     }
 
+  /**
+   *  @brief  Check whether a path is covered by a PathSet.
+   *
+   *  @param  path The given path as Path class instance.
+   *  @param  paths_set A set of paths as PathSet class instance.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
+   */
+  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection >
+      inline bool
+    covered_by( const Path< TGraph, TPathSpec >& path,
+        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set )
+    {
+      typedef typename PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >::TPath TPath;
+
+      /* Return `true` if the min node ID of the query path is less than the min node ID
+       * of the element path */
+      auto mn = []( Path< TGraph, TPathSpec > const& query, TPath const& element ) {
+        return *query.get_nodes_set().begin() < *element.get_nodes_set().begin();
+      };
+      /* Return `true` if the max node ID of the element path is less than the max node
+       * ID of the query path */
+      auto mx = []( TPath const& element, Path< TGraph, TPathSpec > const& query ) {
+        return *element.get_nodes_set().rbegin() < *query.get_nodes_set().rbegin();
+      };
+
+      if ( set.is_sorted() ) {
+        /* Find the lower bound and upper bound of the search. */
+        auto lbound = set.paths_set.begin();
+        while ( lbound != set.paths_set.end() && mx( *lbound, path ) ) ++lbound;
+        auto ubound = std::upper_bound( set.paths_set.begin(), set.paths_set.end(), path, mn );
+
+        return lbound < ubound &&
+          covered_by( path.get_nodes().begin(), path.get_nodes().end(), lbound, ubound );
+      }
+      else {
+        return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
+              set.paths_set.begin(), set.paths_set.end() );
+      }
+    }  /* -----  end of template function covered_by  ----- */
+
   template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
       inline void
     compress( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > const& set, TPathSet& out )
