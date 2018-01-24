@@ -148,8 +148,8 @@ namespace grem {
           inline void
         add_path( TPath&& new_path )
         {
-          initialize( new_path );
           this->paths_set.push_back( std::move( new_path ) );
+          initialize( this->paths_set.back() );
           this->sorted = false;
           if ( !this->lazy_mode ) {
             this->add_path_sequence( std::prev(this->paths_set.end()), this->paths_set.end() );

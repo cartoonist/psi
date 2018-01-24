@@ -153,10 +153,48 @@ namespace grem{
           : Path( g, nodes_type( p ) )
         { }
 
-        Path( const Path& ) = default;
-        Path( Path&& ) = default;
-        Path& operator=( const Path& ) = default;
-        Path& operator=( Path&& ) = default;
+        Path( const Path& other )
+        {
+          *this = other;  /**< @brief re-use copy assignment operator. */
+        }
+
+        Path( Path&& other )
+        {
+          *this = std::move( other );  /**< @brief re-use move assignment operator. */
+        }
+
+        Path& operator=( const Path& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = other.nodes;
+          this->nodes_set = other.nodes_set;
+          this->seqlen = other.seqlen;
+          this->seq = other.seq;
+          this->initialized = other.initialized;
+
+          sdsl::util::assign( this->bv_node_breaks, other.bv_node_breaks );
+          sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
+          sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
+
+          return *this;
+        }
+
+        Path& operator=( Path&& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = std::move( other.nodes );
+          this->nodes_set = std::move( other.nodes_set );
+          this->seqlen = other.seqlen;
+          this->seq = std::move( other.seq );
+          this->initialized = other.initialized;
+
+          this->bv_node_breaks.swap( other.bv_node_breaks );
+          sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
+          sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
+
+          return *this;
+        }
+
         ~Path() = default;
         /* ====================  OPERATORS     ======================================= */
         /**
