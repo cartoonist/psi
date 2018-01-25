@@ -307,6 +307,24 @@ SCENARIO( "Sort the paths in a PathSet", "[pathset]" )
         REQUIRE( paths_set.string_set[1] == "CAAGGGCTTTTAA" );
         REQUIRE( paths_set.string_set[2] == "CTACCCAGGCCATTTTAAGTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
       }
+
+      THEN( "Query path coverage in the PathSet should be limited to the local paths" )
+      {
+        Path< VarGraph > path( &vargraph, { 207, 209, 210 } );
+        REQUIRE( covered_by( path, paths_set ) );
+        path = Path< VarGraph >( &vargraph, { 207, 210 });
+        REQUIRE( !covered_by( path, paths_set ) );
+        path = Path< VarGraph >( &vargraph, { 197 });
+        REQUIRE( covered_by( path, paths_set ) );
+        path = Path< VarGraph >( &vargraph, { 210 });
+        REQUIRE( covered_by( path, paths_set ) );
+        path = Path< VarGraph >( &vargraph, { 171, 172, 174 });
+        REQUIRE( covered_by( path, paths_set ) );
+        path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 });
+        REQUIRE( covered_by( path, paths_set ) );
+        path = Path< VarGraph >( &vargraph, { 210, 268 });
+        REQUIRE( !covered_by( path, paths_set ) );
+      }
     }
   }
 }
