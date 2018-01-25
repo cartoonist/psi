@@ -85,10 +85,10 @@ namespace grem {
           inline unsigned int
         get_context_shift( typename seqan::SAValue< TIndex >::Type const& pos ) const
         {
-          if ( this->context != 0 ) {
-            const TGraph* vg = this->paths_set.at( pos.i1 ).get_vargraph();
-            return vg->node_length( this->paths_set.at( pos.i1 ).get_nodes()[0] )
-              - this->context + 1;
+          auto&& the_path = this->paths_set.at( pos.i1 );
+          auto flen = the_path.get_vargraph()->node_length( the_path.get_nodes()[0] );
+          if ( this->context != 0 && flen + 1 > this->context ) {
+            return flen - this->context + 1;
           }
           return 0;
         }  /* -----  end of method get_context_shift  ----- */

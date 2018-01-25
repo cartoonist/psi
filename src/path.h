@@ -680,8 +680,11 @@ namespace grem{
       /* If context is set (not zero) the first node is trimmed by length `context`. */
       auto iter = path.get_nodes().begin();
       if ( context != 0 ){
+        unsigned int off = ( path.get_vargraph()->node_length( *iter ) + 1 > context ?
+            path.get_vargraph()->node_length( *iter ) - context + 1 :
+            0 );
         repr_str += path.get_vargraph()->node_sequence( *iter )
-          .substr( path.get_vargraph()->node_length( *iter ) - context + 1 );
+          .substr( off );
         ++iter;
       }
 
