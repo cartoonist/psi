@@ -96,7 +96,7 @@ template< typename TMapper, typename TSet >
 
 template< typename TPathSet, typename TMapper >
     void
-  prepare_paths_index( TPathSet& paths, TMapper& mapper, bool paths_index,
+  prepare_paths_index( TPathSet& paths, TMapper& mapper, bool paths_index, bool patched,
       const std::string& paths_index_file, unsigned int path_num )
   {
     /* Get the main logger. */
@@ -115,7 +115,7 @@ template< typename TPathSet, typename TMapper >
       log->info( "No valid paths index found. Picking paths..." );
       log->info( "Picking {} different path(s) on the graph...", path_num );
       /* Generate the requested number of genome-wide paths. */
-      mapper.pick_paths( paths, path_num );
+      mapper.pick_paths( paths, path_num, patched );
       log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
       {
         auto timer = Timer( "sort-paths" );
@@ -150,7 +150,7 @@ template< typename TIndexSpec  >
     void
   find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int start_every,
-      unsigned int path_num, unsigned int context, bool paths_index,
+      unsigned int path_num, unsigned int context, bool paths_index, bool patched,
       const std::string& paths_index_file, bool nomapping, bool dumpstarts,
       const std::string& starts_path, TIndexSpec const /* Tag */ )
   {
@@ -167,7 +167,7 @@ template< typename TIndexSpec  >
     /* Genome-wide paths set in lazy mode. */
     Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths( context, true );
     /* Prepare (load or create) genome-wide paths. */
-    prepare_paths_index( paths, mapper, paths_index, paths_index_file, path_num );
+    prepare_paths_index( paths, mapper, paths_index, patched, paths_index_file, path_num );
 
     log->info( "Selecting starting loci..." );
     /* Locate starting loci. */
@@ -264,6 +264,7 @@ startup( const Options & options )
   log->info( "- Seed length: {}", options.seed_len );
   log->info( "- Number of paths: {}", options.path_num );
   log->info( "- Context length (used in patching): {}", options.context );
+  log->info( "- Patched: {}", ( options.patched ? "yes" : "no" ) );
   log->info( "- Paths index file: '{}'", options.paths_index_file );
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
@@ -311,6 +312,7 @@ startup( const Options & options )
                               options.path_num,
                               options.context,
                               options.paths_index,
+                              options.patched,
                               options.paths_index_file,
                               options.nomapping,
                               options.dumpstarts,
@@ -326,6 +328,7 @@ startup( const Options & options )
                              options.path_num,
                              options.context,
                              options.paths_index,
+                             options.patched,
                              options.paths_index_file,
                              options.nomapping,
                              options.dumpstarts,
@@ -396,6 +399,9 @@ setup_argparser( seqan::ArgumentParser& parser )
         "INT" ) );
   setDefaultValue(parser, "n", 0);
 
+  // whether use patched paths or full genome-wide paths
+  addOption(parser, seqan::ArgParseOption("P", "no-patched", "Use full genome-wide paths."));
+
   // context in patching the paths
   addOption( parser, seqan::ArgParseOption( "t", "context", "Context length in patching.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
@@ -453,6 +459,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   options.paths_index = isSet( parser, "paths-index" );
+  options.patched = !isSet( parser, "no-patched" );
   getOptionValue( options.paths_index_file, parser, "paths-index" );
   getOptionValue( indexname, parser, "index" );
   options.nomapping = isSet( parser, "only-index" );

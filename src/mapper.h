@@ -382,7 +382,8 @@ namespace grem
          */
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             void
-          pick_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths, int n )
+          pick_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
+              int n, bool patched=true )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -392,7 +393,10 @@ namespace grem
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
               seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
-              for ( int i = 0; i < n; ++i ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
+              for ( int i = 0; i < n; ++i ) {
+                if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
+                else get_uniq_full_haplotype( paths, hap_itr );
+              }
             }
           }  /* -----  end of template function pick_paths  ----- */
 
