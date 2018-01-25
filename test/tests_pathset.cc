@@ -275,6 +275,42 @@ SCENARIO( "String set of PathSet with non-zero context", "[pathset]" )
   }
 }
 
+SCENARIO( "Sort the paths in a PathSet", "[pathset]" )
+{
+  GIVEN( "A VarGraph" )
+  {
+    typedef seqan::IndexEsa<> TIndexSpec;
+
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath.c_str() );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    WHEN( "Sort the set of paths added to a PathSet in lazy mode" )
+    {
+      Dna5QPathSet< VarGraph, TIndexSpec, Forward > paths_set( true );
+      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
+      paths_set.add_path( ( path ) );
+      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 });
+      paths_set.add_path( ( path ) );
+      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 });
+      paths_set.add_path( ( path ) );
+
+      paths_set.sort();
+      paths_set.create_index();  /**< @brief Paths are added with this call. */
+
+      THEN( "The paths sequence set should be trimmed according to context" )
+      {
+        REQUIRE( paths_set.string_set[0] == "CTGCTCTTTCCCTCAATTGTTCATTTGTCTTATTGTCCAGGAATGAACC" );
+        REQUIRE( paths_set.string_set[1] == "CAAGGGCTTTTAA" );
+        REQUIRE( paths_set.string_set[2] == "CTACCCAGGCCATTTTAAGTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
+      }
+    }
+  }
+}
+
 SCENARIO( "Compress a PathSet", "[pathset]" )
 {
   GIVEN( "A Vargraph and a PathSet containing sparse patches" )
