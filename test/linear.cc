@@ -29,7 +29,7 @@
 #include "release.h"
 
 #define SEEDHITS_REPORT_BUF 1000
-#define TRAVERSE_CHECKPOINT_LOCI_NO 1000
+#define TRAVERSE_CHECKPOINT_LOCI_NO 1000000
 
 using namespace std;
 using namespace seqan;
@@ -130,6 +130,8 @@ parse_args(Options & options, int argc, char *argv[])
 
 bool go_down(IterState &its, seqan::Value< Dna5QString >::Type c)
 {
+  if ( c == 'N' ) return false;
+
   if (its.boffset == 0) {
     if (!seqan::goDown(its.index_iter, c)) return false;
 
@@ -177,6 +179,7 @@ int main(int argc, char *argv[])
     readRecord(ref_id, ref_seq, refInFile);
   }
   log->info("Reference loaded in {} us.", Timer::get_duration("load-ref").count());
+  log->info("Reference sequence length: {}.", length(ref_seq));
 
   SeqFileIn readsInFile;
   if (!open(readsInFile, options.fq_path.c_str()))
