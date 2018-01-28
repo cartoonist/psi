@@ -1148,6 +1148,31 @@ namespace grem{
     }  /* -----  end of template function contains  ----- */
 
   /**
+   *  @brief  Check whether this path contains a set of node IDs.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set to be checked.
+   *  @param  end The end iterator of node IDs set to be checked.
+   *  @return `true` if this path contains all node IDs in the range `[begin, end)`;
+   *          otherwise `false` -- including the case that the range `[begin, end)` is
+   *          empty; i.e. `begin == end`.
+   *
+   *  It checks if the nodes of the given path is present in the node set. It does not
+   *  check the order of the nodes.
+   */
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    contains_unordered( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
+    {
+      auto on_path = [&path]( typename TGraph::nodeid_type const& i ) {
+        return contains( path, i );
+      };
+
+      if ( begin != end && std::all_of( begin, end, on_path ) ) return true;
+      return false;
+    }
+
+  /**
    *  @brief  Check whether this path contains another path.
    *
    *  @param  path The path.
@@ -1191,15 +1216,7 @@ namespace grem{
       inline bool
     contains( const Path< TGraph, Compact >& path, TIter begin, TIter end )
     {
-      if ( end - begin > 0 ) {
-        auto&& on_path = [&path]( typename TGraph::nodeid_type const& i ) {
-          return contains( path, i );
-        };
-
-        if ( std::all_of( begin, end, on_path ) ) return true;
-      }
-
-      return false;
+      return contains_unordered( path, begin, end );
     }  /* -----  end of template function contains  ----- */
 
   /**
