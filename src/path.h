@@ -134,8 +134,8 @@ namespace grem{
         /* Loaded after calling `initialize`. */
         bool initialized;
         sdsl::bit_vector bv_node_breaks;
-        sdsl::rank_support_v<> rs_node_breaks;
-        sdsl::select_support_mcl<> ss_node_breaks;
+        sdsl::bit_vector::rank_1_type rs_node_breaks;
+        sdsl::bit_vector::select_1_type ss_node_breaks;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes )::size_type size_type;
@@ -1183,8 +1183,7 @@ namespace grem{
    *          `end == begin`.
    *
    *  The input path should be smaller than the path. It checks if the nodes of the
-   *  given path is present in the node set. It does not check the order of the
-   *  nodes.
+   *  given path is present in the node set. It DOES check the order of the nodes.
    */
   template< typename TGraph, typename TSpec, typename TIter >
       inline bool
