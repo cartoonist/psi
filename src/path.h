@@ -44,6 +44,12 @@ namespace grem{
   typedef seqan::Tag< DynamicStrategy > Dynamic;
   typedef seqan::Tag< CompactStrategy > Compact;
 
+  /* Path node existence query strategies */
+  struct OrderedStrategy;
+  struct UnorderedStrategy;
+  typedef seqan::Tag< OrderedStrategy > Ordered;
+  typedef seqan::Tag< UnorderedStrategy > Unordered;
+
   template< typename TGraph, typename TSpec >
     struct PathTraits;
 
@@ -1162,7 +1168,7 @@ namespace grem{
    */
   template< typename TGraph, typename TSpec, typename TIter >
       inline bool
-    contains_unordered( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Unordered )
     {
       auto on_path = [&path]( typename TGraph::nodeid_type const& i ) {
         return contains( path, i );
@@ -1187,9 +1193,11 @@ namespace grem{
    */
   template< typename TGraph, typename TSpec, typename TIter >
       inline bool
-    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Ordered )
     {
       if ( begin != end && contains( path, *begin ) ) {
+        // FIXME: below line is bottleneck: doesn't work for human genome scale;
+        //        e.g. use `map< nodeid, rank >` instead of `set< nodeid >` for Path.
         auto l = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
         if ( std::equal( begin, end, l ) ) return true;
       }
@@ -1213,9 +1221,47 @@ namespace grem{
    */
   template< typename TGraph, typename TIter >
       inline bool
-    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end )
+    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end, Default )
     {
-      return contains_unordered( path, begin, end );
+      return contains( path, begin, end, Unordered() );
+    }  /* -----  end of template function contains  ----- */
+
+  /**
+   *  @brief  Check whether this path contains another path.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  Overloaded Defaut behaviour for non-Compact paths.
+   */
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Default )
+    {
+      return contains( path, begin, end, Ordered() );
+    }
+
+  /**
+   *  @brief  Check whether this path contains another path.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  Overloaded with no strategy specified calling the Default `contains` for each path.
+   */
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
+    {
+      return contains( path, begin, end, Default() );
     }  /* -----  end of template function contains  ----- */
 
   /**
