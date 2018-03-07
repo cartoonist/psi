@@ -137,7 +137,7 @@ template< typename TPathSet, typename TMapper >
         /* Serialize the indexed paths. */
         if ( !paths_index ) {
           log->warn( "No paths index file is specified. Skipping..." );
-        } else if ( !paths.save( paths_index_file ) ) {
+        } else if ( !paths.serialize( paths_index_file ) ) {
           log->warn( "Specified paths index file is not writable. Skipping..." );
         }
       }
@@ -165,7 +165,7 @@ template< typename TIndexSpec  >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide paths set in lazy mode. */
-    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths( context, true );
+    PathSet< VarGraph, DiskString, grem::FMIndex<>, Forward > paths( context, true );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, patched, paths_index_file, path_num );
 

@@ -48,18 +48,18 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a Mapper" )
     {
       mapper.pick_paths( paths, nof_paths );
-      REQUIRE( length( paths.string_set ) == nof_paths );
+      REQUIRE( length( indexText( paths.index ) ) == nof_paths );
       THEN( "The paths should be unique" )
       {
-        REQUIRE( paths.string_set[0] ==
+        REQUIRE( indexText( paths.index )[0] ==
             "CAAATAAGATTTGAAAATTTTCTGGAGTTCTATAATATACCAACTCTCTG" );
-        REQUIRE( paths.string_set[1] ==
+        REQUIRE( indexText( paths.index )[1] ==
             "CAAATAAGGCTTGGAAATTTTCTGGAGTTCTATTATATTCCAACTCTCTG" );
-        REQUIRE( paths.string_set[2] != paths.string_set[0] );
-        REQUIRE( paths.string_set[2] != paths.string_set[1] );
-        REQUIRE( paths.string_set[3] != paths.string_set[0] );
-        REQUIRE( paths.string_set[3] != paths.string_set[1] );
-        REQUIRE( paths.string_set[3] != paths.string_set[2] );
+        REQUIRE( indexText( paths.index )[2] != indexText( paths.index )[0] );
+        REQUIRE( indexText( paths.index )[2] != indexText( paths.index )[1] );
+        REQUIRE( indexText( paths.index )[3] != indexText( paths.index )[0] );
+        REQUIRE( indexText( paths.index )[3] != indexText( paths.index )[1] );
+        REQUIRE( indexText( paths.index )[3] != indexText( paths.index )[2] );
       }
     }
   }

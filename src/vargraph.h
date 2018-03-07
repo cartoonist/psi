@@ -264,12 +264,12 @@ namespace grem
       typedef VarGraph::nodeid_type Value;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
-      typedef std::vector< Path< VarGraph, Compact > > TSet;
+      typedef std::vector< Path< VarGraph, Micro > > TSet;
       typedef TSet::size_type Level;        /**< @brief No. of selected path so far. */
       typedef struct {
         Value start;                        /**< @brief Start node ID. */
         bool end;                           /**< @brief End flag. */
-        Path< VarGraph, Compact > current_path;
+        Path< VarGraph, Micro > current_path;
         unsigned int setback;
       } TState;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
@@ -930,8 +930,9 @@ namespace grem {
       }
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
+          // :TODO:Thu Feb 08 15:49:\@cartoonist: `contains` should be called `Ordered` but it is slow!
           if ( !iter[ frontier.get_nodes() ] &&
-              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end() ) )
+              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end(), Unordered() ) )
           {
             if ( marked != 0 ) trim_front( frontier, marked );
             patch += frontier;

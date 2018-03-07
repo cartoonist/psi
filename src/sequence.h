@@ -20,10 +20,18 @@
 #ifndef  SEQUENCE_H__
 #define  SEQUENCE_H__
 
+#include <fstream>
 #include <stdexcept>
 
 #include <seqan/seq_io.h>
 #include <seqan/sequence.h>
+#include <sdsl/bit_vectors.hpp>
+
+#include "utils.h"
+#include "logger.h"
+
+
+#define SEQUENCE_DEFAULT_SENTINEL_CHAR '$'
 
 
 namespace grem {
@@ -72,6 +80,773 @@ namespace grem {
 
   /* Data structures  ------------------------------------------------------------ */
 
+  /* Forwards */
+  template< typename TSpec >
+    class YaString;
+
+  struct DiskBasedStrategy;
+  struct InMemoryStrategy;
+  typedef seqan::Tag< DiskBasedStrategy > DiskBased;
+  typedef seqan::Tag< InMemoryStrategy > InMemory;
+
+  typedef YaString< DiskBased > DiskString;
+  typedef YaString< InMemory > MemString;
+
+  template< >
+    class YaString< InMemory > : public std::string {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef std::string string_type;
+        typedef InMemory spec_type;
+        typedef spec_type device_type;
+        typedef string_type::size_type size_type;
+        typedef size_type pos_type;
+        /* ====================  LIFECYCLE     ======================================= */
+        using std::string::string;
+        /* ====================  METHODS       ======================================= */
+          inline void
+        serialize( std::ostream& out )
+        {
+          grem::serialize( out, this->begin(), this->end() );
+        }
+
+          inline void
+        load( std::istream& in )
+        {
+          this->clear();
+          grem::deserialize( in, *this, std::back_inserter( *this ) );
+        }
+
+          inline pos_type
+        get_position( pos_type p )
+        {
+          return p;
+        }
+    };
+
+  template< >
+    class YaString< DiskBased > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef DiskBased spec_type;
+        typedef spec_type device_type;
+        typedef std::string string_type;
+        typedef string_type::size_type size_type;
+        typedef uint64_t sint_type;       /**< @brief Type for serializing the length. */
+        typedef size_type pos_type;
+        /* ====================  LIFECYCLE     ======================================= */
+        YaString( const string_type& data, std::string _fpath )
+          : fpath( std::move( _fpath ) ), out( this->fpath ), len( 0 )
+        {
+          this->append( data );
+        }
+
+        YaString( string_type&& data, std::string _fpath )
+          : YaString( data, std::move( _fpath ) ) { }
+
+        YaString( const string_type& data )
+          : YaString( data, SEQAN_TEMP_FILENAME() ) { }
+
+        YaString( string_type&& data )
+          : YaString( data ) { }
+
+        YaString( )
+          : YaString( string_type() ) { }
+
+        YaString( const YaString& ) = delete;
+        YaString( YaString&& ) = default;
+        YaString& operator=( const YaString& ) = delete;
+        YaString& operator=( YaString&& ) = default;
+        ~YaString( ) = default;
+        /* ====================  ACCESSORS     ======================================= */
+          inline std::string
+        get_file_path()
+        {
+          this->close();
+          return this->fpath;
+        }
+        /* ====================  OPERATORS     ======================================= */
+        YaString& operator=( const string_type& data );
+
+          inline YaString&
+        operator+=( const string_type& str )
+        {
+          this->append( str );
+          return *this;
+        }
+
+          inline YaString&
+        operator+=( string_type&& str )
+        {
+          *this += str;  // re-use above overload of `operator+=`.
+          return *this;
+        }
+        /* ====================  METHODS       ======================================= */
+          inline bool
+        is_open( )
+        {
+          return this->out.is_open();
+        }
+
+          inline size_type
+        length( ) const
+        {
+          return this->len;
+        }
+
+          inline pos_type
+        get_position( pos_type p )
+        {
+          return p;
+        }
+
+          inline void
+        clear( )
+        {
+          this->close();
+          this->fpath = SEQAN_TEMP_FILENAME();
+          this->out = std::ofstream( this->fpath );
+          this->len = 0;
+        }
+
+        template< typename TSize, typename TTag = seqan::Exact >
+          inline void reserve( TSize size, TTag = TTag() ) { /* NO-OP */ }
+
+          inline void
+        serialize( std::ostream& out )
+        {
+          out.flush();
+          grem::serialize( out, this->fpath.begin(), this->fpath.end() );
+          grem::serialize( out, static_cast< sint_type >( len ) );
+        }
+
+          inline void
+        load( std::istream& in )
+        {
+          this->close();
+          this->fpath.clear();
+          grem::deserialize( in, this->fpath, std::back_inserter( this->fpath ) );
+          if ( !readable( this->fpath ) ) {
+            get_logger( "main" )->warn(
+                "File '{}' does not exist: disk-based string content cannot be read.",
+                this->fpath );
+          }
+
+          sint_type l;
+          grem::deserialize( in, l );
+          this->len = l;
+        }
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        std::string fpath;
+        std::ofstream out;
+        size_type len;
+        /* ====================  METHODS       ======================================= */
+          inline void
+        close( )
+        {
+          if ( this->is_open() ) this->out.close();
+        }
+
+          inline void
+        append( const string_type& data )
+        {
+          if ( data.length() == 0 ) return;
+          if ( !this->is_open() )
+            throw std::runtime_error( "attempting to write to a closed disk-based string." );
+          this->len += data.length();
+          this->out << data;
+        }
+    };
+
+    inline YaString< DiskBased >::size_type
+  length( YaString< DiskBased >& dstr )
+  {
+    return dstr.length();
+  }
+
+    inline void
+  clear( YaString< DiskBased >& dstr )
+  {
+    dstr.clear();
+  }
+
+    inline YaString< DiskBased >&
+  YaString< DiskBased >::operator=( const YaString< DiskBased >::string_type& data )
+  {
+    this->clear();
+    this->append( data );
+    return *this;
+  }
+
+  template< typename TSize >
+      inline void
+    reserve( YaString< DiskBased >& dstr, TSize const size )
+    {
+      dstr.reserve( size );
+    }
+
+  template< typename TSpec >
+      inline void
+    open( YaString< TSpec >& ystr, const std::string& file_name )
+    {
+      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
+      if( !ifs ) {
+        throw std::runtime_error( "cannot open file '" + file_name + "'" );
+      }
+      open( ystr, ifs );
+    }
+
+  template< typename TSpec >
+      inline void
+    save( YaString< TSpec >& ystr, const std::string& file_name )
+    {
+      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
+      if( !ofs ) {
+        throw std::runtime_error( "cannot open file '" + file_name + "'" );
+      }
+      save( ystr, ofs );
+    }
+
+  template< typename TString >
+    class YaInfix
+    : public std::pair< typename TString::size_type, typename TString::size_type > { };
+
+  template< typename TString >
+      inline typename TString::size_type
+    length( YaInfix< TString > const& inf )
+    {
+      assert( inf.second >= inf.first );
+      return inf.second - inf.first;
+    }
+
+  template< typename T1, typename T2 >
+    class YaPair : public std::pair< T1, T2 > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef std::pair< T1, T2 > base_type;
+        /* ====================  LIFECYCLE     ======================================= */
+        YaPair( T1 t1, T2 t2 )
+          : base_type( t1, t2 ), i1( t1 ), i2( t2 )
+        { }
+        /* ====================  DATA MEMBERS  ======================================= */
+        const T1 i1;
+        const T2 i2;
+    };
+}  /* -----  end of namespace grem  ----- */
+
+namespace seqan {
+  template< >
+    class StringSet< grem::DiskString, Owner<> > : public grem::DiskString {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef grem::DiskString value_type;
+        typedef grem::DiskString::string_type string_type;
+        typedef string_type::size_type stringsize_type;
+        typedef uint64_t size_type;       /**< @brief Type for serializing the length. */
+        typedef grem::DiskBased device_type;
+        typedef grem::YaPair< size_type, stringsize_type > pos_type;
+        /* ====================  LIFECYCLE     ======================================= */
+        StringSet( )
+          : grem::DiskString( ), count( 0 ), initialized( false ), bv_str_breaks( )
+        { }
+
+        StringSet( std::string _fpath )
+          : grem::DiskString( string_type(), std::move( _fpath ) ),
+          count( 0 ), initialized( false ), bv_str_breaks( )
+        { }
+
+        StringSet( const StringSet& ) = delete;
+        StringSet& operator=( const StringSet& ) = delete;
+
+        StringSet( StringSet&& other )
+          : grem::DiskString( std::move( other ) )
+        {
+          this->count = other.count;
+          this->initialized = other.initialized;
+          this->bv_str_breaks.swap( other.bv_str_breaks );
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+        }
+
+        StringSet& operator=( StringSet&& other )
+        {
+          grem::DiskString::operator=( std::move( other ) );
+          this->count = other.count;
+          this->initialized = other.initialized;
+          sdsl::util::clear( this->bv_str_breaks );
+          this->bv_str_breaks.swap( other.bv_str_breaks );
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          sdsl::util::clear( other.rs_str_breaks );
+          sdsl::util::clear( other.ss_str_breaks );
+          return *this;
+        }
+
+        ~StringSet( ) = default;
+        /* ====================  CONST MEMBERS ======================================= */
+        const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
+        /* ====================  OPERATORS     ======================================= */
+          inline grem::YaInfix< StringSet >
+        operator[]( size_type idx )
+        {
+          grem::YaInfix< StringSet > retval;
+          if ( !this->is_initialized() ) this->initialize();
+          retval.first = this->select( idx );
+          retval.second = this->select( idx + 1 ) - 1;
+          return retval;
+        }
+        /* ====================  METHODS       ======================================= */
+        void push_back( const string_type& str );
+
+          inline void
+        push_back( string_type&& str )
+        {
+          this->push_back( str );
+        }
+
+          inline size_type
+        get_id( stringsize_type strpos )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          return this->rank( strpos );
+        }
+
+          inline stringsize_type
+        get_offset( stringsize_type strpos )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          return strpos - this->select( this->rs_str_breaks( strpos ) );
+        }
+
+          inline pos_type
+        get_position( stringsize_type strpos )
+        {
+          pos_type pos( 0, 0 );
+          pos.first = this->get_id( strpos );
+          pos.second = this->get_offset( strpos );
+          return pos;
+        }
+
+          inline void
+        initialize( )
+        {
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialized = true;
+        }
+
+          inline bool
+        is_initialized( ) const
+        {
+          return this->initialized;
+        }
+
+          inline size_type
+        length( ) const
+        {
+          return this->count;
+        }
+
+          inline void
+        clear( )
+        {
+          grem::DiskString::clear();
+          this->count = 0;
+          sdsl::util::clear( this->bv_str_breaks );
+          sdsl::util::clear( this->rs_str_breaks );
+          sdsl::util::clear( this->ss_str_breaks );
+          initialized = false;
+        }
+
+        template< typename TSize, typename TTag = seqan::Exact >
+          inline void reserve( TSize, TTag = TTag() ) { /* NO-OP */ }
+
+          inline void
+        serialize( std::ostream& out )
+        {
+          grem::DiskString::serialize( out );
+          grem::serialize( out, this->count );
+          grem::serialize( out, static_cast< size_type >( this->initialized ) );
+          this->bv_str_breaks.serialize( out );
+        }
+
+          inline void
+        load( std::istream& in )
+        {
+          size_type i;
+          this->clear();
+          grem::DiskString::load( in );
+          grem::deserialize( in, this->count );
+          grem::deserialize( in, i );
+          this->initialized = bool( i );
+          this->bv_str_breaks.load( in );
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+        }
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        size_type count;
+        bool initialized;
+        sdsl::bit_vector bv_str_breaks;
+        sdsl::bit_vector::rank_1_type rs_str_breaks;
+        sdsl::bit_vector::select_1_type ss_str_breaks;
+        /* ====================  METHODS       ======================================= */
+          inline size_type
+        rank( stringsize_type strpos )
+        {
+          assert( this->is_initialized() );
+          assert( this->bv_str_breaks[ strpos ] != 1 );
+          return this->rs_str_breaks( strpos );
+        }
+
+          inline stringsize_type
+        select( size_type r )
+        {
+          assert( this->is_initialized() );
+          if ( r == 0 ) return 0;
+          return this->ss_str_breaks( r ) + 1;
+        }
+    };
+
+    inline void
+  StringSet< grem::DiskString, Owner<> >::push_back(
+      typename StringSet< grem::DiskString, Owner<> >::string_type const& str )
+  {
+    if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
+    ++this->count;
+    *this += str;
+    stringsize_type old_size = this->bv_str_breaks.size();
+    stringsize_type new_size = old_size + str.size() + 1;
+    this->bv_str_breaks.resize( new_size );
+    this->bv_str_breaks.set_int( old_size, 0, new_size - old_size );
+    this->bv_str_breaks[ new_size - 1 ] = 1;
+    this->initialized = false;
+  }
+
+    inline void
+  push_back( StringSet< grem::DiskString, Owner<> >& dstr,
+      typename StringSet< grem::DiskString, Owner<> >::string_type const& str )
+  {
+    dstr.push_back( str );
+  }
+
+    inline void
+  push_back( StringSet< grem::DiskString, Owner<> >& dstr,
+      typename StringSet< grem::DiskString, Owner<> >::string_type&& str )
+  {
+    dstr.push_back( str );
+  }
+
+    inline void
+  appendValue( StringSet< grem::DiskString, Owner<> >& dstr,
+      StringSet< grem::DiskString, Owner<> >::string_type& str )
+  {
+    push_back( dstr, str );
+  }
+
+    inline void
+  appendValue( StringSet< grem::DiskString, Owner<> >& dstr,
+      StringSet< grem::DiskString, Owner<> >::string_type&& str )
+  {
+    push_back( dstr, str );
+  }
+
+    inline StringSet< grem::DiskString, Owner<> >::size_type
+  length( const StringSet< grem::DiskString, Owner<> >& dstr )
+  {
+    return dstr.length();
+  }
+
+    inline void
+  clear( StringSet< grem::DiskString, Owner<> >& dstr )
+  {
+    dstr.clear();
+  }
+
+  template< typename TSize >
+      inline void
+    reserve( StringSet< grem::DiskString, Owner<> >& dstr,
+        TSize const size )
+    {
+      dstr.reserve( size );
+    }
+
+  template< >
+    class StringSet< grem::MemString, Owner<> > : public grem::MemString {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef grem::MemString value_type;
+        typedef grem::MemString::string_type string_type;
+        typedef string_type::size_type stringsize_type;
+        typedef uint64_t size_type;
+        typedef grem::InMemory device_type;
+        typedef grem::YaPair< size_type, stringsize_type > pos_type;
+        /* ====================  LIFECYCLE     ======================================= */
+        StringSet( )
+          : grem::MemString( ), count( 0 ), initialized( false ), bv_str_breaks( )
+        { }
+
+        StringSet( const StringSet& other )
+          : grem::MemString( other )
+        {
+          this->count = other.count;
+          this->initialized = other.initialized;
+          this->bv_str_breaks = other.bv_str_breaks;
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+        }
+
+        StringSet( StringSet&& other )
+          : grem::MemString( std::move( other ) )
+        {
+          this->count = other.count;
+          this->initialized = other.initialized;
+          this->bv_str_breaks.swap( other.bv_str_breaks );
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+        }
+
+        StringSet& operator=( const StringSet& other )
+        {
+          grem::MemString::operator=( other );
+          this->count = other.count;
+          this->initialized = other.initialized;
+          this->bv_str_breaks = other.bv_str_breaks;
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          return *this;
+        }
+
+        StringSet& operator=( StringSet&& other )
+        {
+          grem::MemString::operator=( std::move( other ) );
+          this->count = other.count;
+          this->initialized = other.initialized;
+          sdsl::util::clear( this->bv_str_breaks );
+          this->bv_str_breaks.swap( other.bv_str_breaks );
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          sdsl::util::clear( other.rs_str_breaks );
+          sdsl::util::clear( other.ss_str_breaks );
+          return *this;
+        }
+
+        ~StringSet( ) = default;
+        /* ====================  CONST MEMBERS ======================================= */
+        const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
+        /* ====================  OPERATORS     ======================================= */
+          inline grem::YaInfix< StringSet >
+        operator[]( size_type idx )
+        {
+          grem::YaInfix< StringSet > retval;
+          if ( !this->is_initialized() ) this->initialize();
+          retval.first = this->select( idx );
+          retval.second = this->select( idx + 1 ) - 1;
+          return retval;
+        }
+        /* ====================  METHODS       ======================================= */
+        void push_back( const string_type& str );
+
+          inline void
+        push_back( string_type&& str )
+        {
+          this->push_back( str );
+        }
+
+          inline size_type
+        get_id( stringsize_type strpos )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          return this->rank( strpos );
+        }
+
+          inline stringsize_type
+        get_offset( stringsize_type strpos )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          return strpos - this->select( this->rs_str_breaks( strpos ) );
+        }
+
+          inline pos_type
+        get_position( stringsize_type strpos )
+        {
+          pos_type pos( 0, 0 );
+          pos.first = this->get_id( strpos );
+          pos.second = this->get_offset( strpos );
+          return pos;
+        }
+
+          inline void
+        initialize( )
+        {
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialized = true;
+        }
+
+          inline bool
+        is_initialized( ) const
+        {
+          return this->initialized;
+        }
+
+          inline size_type
+        length( ) const
+        {
+          return this->count;
+        }
+
+          inline void
+        clear( )
+        {
+          grem::MemString::clear();
+          this->count = 0;
+          sdsl::util::clear( this->bv_str_breaks );
+          sdsl::util::clear( this->rs_str_breaks );
+          sdsl::util::clear( this->ss_str_breaks );
+          initialized = false;
+        }
+
+        template< typename TSize, typename TTag = seqan::Exact >
+          inline void reserve( TSize, TTag = TTag() ) { /* NO-OP */ }
+
+          inline void
+        serialize( std::ostream& out )
+        {
+          grem::MemString::serialize( out );
+          grem::serialize( out, this->count );
+          grem::serialize( out, static_cast< size_type >( this->initialized ) );
+          this->bv_str_breaks.serialize( out );
+        }
+
+          inline void
+        load( std::istream& in )
+        {
+          size_type i;
+          this->clear();
+          grem::MemString::load( in );
+          grem::deserialize( in, this->count );
+          grem::deserialize( in, i );
+          this->initialized = bool( i );
+          this->bv_str_breaks.load( in );
+          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
+          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+        }
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        size_type count;
+        bool initialized;
+        sdsl::bit_vector bv_str_breaks;
+        sdsl::bit_vector::rank_1_type rs_str_breaks;
+        sdsl::bit_vector::select_1_type ss_str_breaks;
+        /* ====================  METHODS       ======================================= */
+          inline size_type
+        rank( stringsize_type strpos )
+        {
+          assert( this->is_initialized() );
+          assert( this->bv_str_breaks[ strpos ] != 1 );
+          return this->rs_str_breaks( strpos );
+        }
+
+          inline stringsize_type
+        select( size_type r )
+        {
+          assert( this->is_initialized() );
+          if ( r == 0 ) return 0;
+          return this->ss_str_breaks( r ) + 1;
+        }
+    };
+
+    inline void
+  StringSet< grem::MemString, Owner<> >::push_back(
+      typename StringSet< grem::MemString, Owner<> >::string_type const& str )
+  {
+    if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
+    ++this->count;
+    *this += str;
+    stringsize_type old_size = this->bv_str_breaks.size();
+    stringsize_type new_size = old_size + str.size() + 1;
+    this->bv_str_breaks.resize( new_size );
+    this->bv_str_breaks.set_int( old_size, 0, new_size - old_size );
+    this->bv_str_breaks[ new_size - 1 ] = 1;
+    this->initialized = false;
+  }
+
+    inline void
+  push_back( StringSet< grem::MemString, Owner<> >& dstr,
+      typename StringSet< grem::MemString, Owner<> >::string_type const& str )
+  {
+    dstr.push_back( str );
+  }
+
+    inline void
+  push_back( StringSet< grem::MemString, Owner<> >& dstr,
+      typename StringSet< grem::MemString, Owner<> >::string_type&& str )
+  {
+    dstr.push_back( str );
+  }
+
+    inline void
+  appendValue( StringSet< grem::MemString, Owner<> >& dstr,
+      StringSet< grem::MemString, Owner<> >::string_type& str )
+  {
+    push_back( dstr, str );
+  }
+
+    inline void
+  appendValue( StringSet< grem::MemString, Owner<> >& dstr,
+      StringSet< grem::MemString, Owner<> >::string_type&& str )
+  {
+    push_back( dstr, str );
+  }
+
+    inline StringSet< grem::MemString, Owner<> >::size_type
+  length( const StringSet< grem::MemString, Owner<> >& dstr )
+  {
+    return dstr.length();
+  }
+
+    inline void
+  clear( StringSet< grem::MemString, Owner<> >& dstr )
+  {
+    dstr.clear();
+  }
+
+  template< typename TSize >
+      inline void
+    reserve( StringSet< grem::MemString, Owner<> >& dstr,
+        TSize const size )
+    {
+      dstr.reserve( size );
+    }
+
+  template< typename TSpec >
+      inline void
+    open( StringSet< grem::YaString< TSpec >, Owner<> >& ystrset,
+        const std::string& file_name )
+    {
+      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
+      if( !ifs ) {
+        throw std::runtime_error( "cannot open file '" + file_name + "'" );
+      }
+      open( ystrset, ifs );
+    }
+
+  template< typename TSpec >
+      inline void
+    save( StringSet< grem::YaString< TSpec >, Owner<> >& ystrset,
+        const std::string& file_name )
+    {
+      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
+      if( !ofs ) {
+        throw std::runtime_error( "cannot open file '" + file_name + "'" );
+      }
+      save( ystrset, ofs );
+    }
+}  /* -----  end of namespace seqan  ----- */
+
+namespace grem {
   /**
    *  @brief  String set with an ID associated with each string.
    *

@@ -42,7 +42,7 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
     Dna5QPathSet< VarGraph, TIndexSpec > paths_set;
 
     unsigned int paths_num = 2;
-    std::string file_path = "/tmp/test_pathset";
+    std::string file_path = SEQAN_TEMP_FILENAME();
 
     paths_set.reserve( paths_num );
     for ( unsigned int i = 0; i < paths_num; ++i ) {
@@ -55,7 +55,7 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
 
     WHEN ( "Serialize it to the file" )
     {
-      paths_set.save( file_path );
+      paths_set.serialize( file_path );
 
       THEN ( "Deserializing should yield the same paths" )
       {
@@ -151,9 +151,9 @@ SCENARIO( "String set of PathSet with non-zero context", "[pathset]" )
 
       THEN( "The paths sequence set should be trimmed according to context" )
       {
-        REQUIRE( paths_set.string_set[0] == "GTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
-        REQUIRE( paths_set.string_set[1] == "CAAGGGCTTTTAA" );
-        REQUIRE( paths_set.string_set[2] == "CATTTGTCTTATTGTCCAGGA" );
+        REQUIRE( indexText( paths_set.index )[0] == "GTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
+        REQUIRE( indexText( paths_set.index )[1] == "CAAGGGCTTTTAA" );
+        REQUIRE( indexText( paths_set.index )[2] == "CATTTGTCTTATTGTCCAGGA" );
       }
     }
 
@@ -170,9 +170,9 @@ SCENARIO( "String set of PathSet with non-zero context", "[pathset]" )
 
       THEN( "The paths sequence set should be trimmed according to context" )
       {
-        REQUIRE( paths_set.string_set[0] == "GTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
-        REQUIRE( paths_set.string_set[1] == "CAAGGGCTTTTAA" );
-        REQUIRE( paths_set.string_set[2] == "CATTTGTCTTATTGTCCAGGA" );
+        REQUIRE( indexText( paths_set.index )[0] == "GTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
+        REQUIRE( indexText( paths_set.index )[1] == "CAAGGGCTTTTAA" );
+        REQUIRE( indexText( paths_set.index )[2] == "CATTTGTCTTATTGTCCAGGA" );
       }
 
       THEN( "The node ID/offset by position in the PathSet should be shifted according to the context" )
@@ -245,9 +245,9 @@ SCENARIO( "String set of PathSet with non-zero context", "[pathset]" )
 
       THEN( "The paths sequence set should be trimmed according to context" )
       {
-        REQUIRE( paths_set.string_set[0] == "AATAGAGGGGCGTGGAAACAGGAATCATGTCCTTTG" );
-        REQUIRE( paths_set.string_set[1] == "AATTTTCGGGAAC" );
-        REQUIRE( paths_set.string_set[2] == "AGGACCTGTTATTCTGTTTAC" );
+        REQUIRE( indexText( paths_set.index )[0] == "AATAGAGGGGCGTGGAAACAGGAATCATGTCCTTTG" );
+        REQUIRE( indexText( paths_set.index )[1] == "AATTTTCGGGAAC" );
+        REQUIRE( indexText( paths_set.index )[2] == "AGGACCTGTTATTCTGTTTAC" );
       }
 
       THEN( "The node ID/offset by position in the PathSet should be shifted according to the context" )
@@ -303,9 +303,9 @@ SCENARIO( "Sort the paths in a PathSet", "[pathset]" )
 
       THEN( "The paths sequence set should be trimmed according to context" )
       {
-        REQUIRE( paths_set.string_set[0] == "CTGCTCTTTCCCTCAATTGTTCATTTGTCTTATTGTCCAGGAATGAACC" );
-        REQUIRE( paths_set.string_set[1] == "CAAGGGCTTTTAA" );
-        REQUIRE( paths_set.string_set[2] == "CTACCCAGGCCATTTTAAGTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
+        REQUIRE( indexText( paths_set.index )[0] == "CTGCTCTTTCCCTCAATTGTTCATTTGTCTTATTGTCCAGGAATGAACC" );
+        REQUIRE( indexText( paths_set.index )[1] == "CAAGGGCTTTTAA" );
+        REQUIRE( indexText( paths_set.index )[2] == "CTACCCAGGCCATTTTAAGTTTCCTGTACTAAGGACAAAGGTGCGGGGAGATAA" );
       }
 
       THEN( "Query path coverage in the PathSet should be limited to the local paths" )
@@ -369,7 +369,7 @@ SCENARIO( "Compress a PathSet", "[pathset]" )
 
     WHEN( "It is compressed" )
     {
-      std::vector< Path< VarGraph > > compressed;
+      std::vector< Path< VarGraph, Compact > > compressed;
       compress( paths_set, compressed );
 
       THEN( "The non-overlapping patches with non-decreasing node IDs should be combined" )

@@ -414,7 +414,7 @@ namespace grem
           seeds_on_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) >& callback )
           {
-            if ( length( paths.string_set ) == 0 ) return;
+            if ( length( indexText( paths.index ) ) == 0 ) return;
 
             auto timer = stats_type( "paths-seed-find" );
 
@@ -444,7 +444,7 @@ namespace grem
                 extend_to_k( trav_path, bt_itr, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths ) ) {
+                    !covered_by( current_path, paths, Unordered() ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
