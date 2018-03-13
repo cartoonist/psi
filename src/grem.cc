@@ -241,10 +241,12 @@ template< typename TIndexSpec  >
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */
-        mapper.seeds_on_paths( paths, write_callback );
-        log->info( "Found seed on paths in {} us.",
-            Timer::get_duration( "paths-seed-find" ).count() );
-        log->info( "Total number of seeds found on paths: {}", found - pre_found );
+        if ( path_num != 0 ){
+          mapper.seeds_on_paths( paths, write_callback );
+          log->info( "Found seed on paths in {} us.",
+              Timer::get_duration( "paths-seed-find" ).count() );
+          log->info( "Total number of seeds found on paths: {}", found - pre_found );
+        }
         log->info( "Traversing..." );
         /* Find seeds on variation graph by traversing starting loci. */
         mapper.traverse ( write_callback );
