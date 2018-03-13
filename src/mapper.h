@@ -19,7 +19,6 @@
 #define MAPPER_H__
 
 #include <fstream>
-#include <memory>
 #include <vector>
 #include <iterator>
 #include <functional>
@@ -29,6 +28,7 @@
 #include "sequence.h"
 #include "index.h"
 #include "index_iter.h"
+#include "utils.h"
 #include "logger.h"
 
 namespace grem
@@ -423,24 +423,18 @@ namespace grem
    *  considered as an offline index for seed finding.
    */
   void
-    save_paths_coverage ( std::vector< VarGraph::NodeCoverage > &paths_covered_nodes,
-        const std::string &path_prefix )
+    save_paths_coverage ( std::vector< VarGraph::NodeCoverage >& paths_covered_nodes,
+        const std::string path_prefix )
     {
       std::ofstream file_stream;
-      for ( unsigned int i = 0; i < paths_covered_nodes.size(); ++i ) {
-        const auto &covered_nodes = paths_covered_nodes[i];
-        file_stream.open ( path_prefix + "_path_" + std::to_string ( i ),
-            std::ofstream::out | std::ofstream::binary );
-
-        uint64_t set_size = covered_nodes.size();
-        file_stream.write
-          ( reinterpret_cast<char*>( &set_size ), sizeof ( uint64_t ) );
-        for ( const auto &node_id : covered_nodes ) {
-          file_stream.write
-            ( reinterpret_cast<const char*>( &node_id ), sizeof ( VarGraph::nodeid_type ) );
-        }
-
+      unsigned int i = 0;
+      for ( const auto& covered_nodes : paths_covered_nodes ) {
+        std::string file_path = path_prefix + std::to_string ( i );
+        file_stream.open( file_path, std::ofstream::out | std::ofstream::binary );
+        serialize( file_stream, covered_nodes,
+            covered_nodes.begin(), covered_nodes.end() );
         file_stream.close();
+        ++i;
       }
     }  /* -----  end of function save_paths_coverage  ----- */
 
@@ -456,33 +450,26 @@ namespace grem
    *  prefixed by the number of node IDs stored in the file.
    */
   bool
-    load_paths_coverage ( std::vector< VarGraph::NodeCoverage > &paths_covered_nodes,
-        const std::string &path_prefix, unsigned int path_num )
+    load_paths_coverage ( std::vector< VarGraph::NodeCoverage >& paths_covered_nodes,
+        const std::string path_prefix, unsigned int path_num )
     {
       std::ifstream file_stream;
-      VarGraph::NodeCoverage covered_nodes;
-      VarGraph::nodeid_type node_id;
 
+      VarGraph::NodeCoverage covered_nodes;
       paths_covered_nodes.reserve ( path_num );
 
       for ( unsigned int i = 0; i < path_num; ++i ) {
-        file_stream.open ( path_prefix + "_path_" + std::to_string ( i ),
-            std::ifstream::in | std::ifstream::binary );
+        std::string file_path = path_prefix + std::to_string ( i );
+        file_stream.open( file_path, std::ifstream::in | std::ifstream::binary );
+
         if ( !file_stream ) {
           paths_covered_nodes.clear();
           return false;
         }
 
-        uint64_t set_size;
-        file_stream.read ( reinterpret_cast<char*>( &set_size ), sizeof ( uint64_t ) );
-        covered_nodes.reserve ( set_size );
-        for ( unsigned int j = 0; j < set_size; ++j ) {
-          file_stream.read
-            ( reinterpret_cast<char*>( &node_id ), sizeof ( VarGraph::nodeid_type ) );
-          covered_nodes.insert ( node_id );
-        }
+        deserialize( file_stream, covered_nodes,
+            std::inserter( covered_nodes, covered_nodes.end() ));
         paths_covered_nodes.push_back ( covered_nodes );
-
         file_stream.close();
         covered_nodes.clear();
       }

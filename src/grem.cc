@@ -129,7 +129,7 @@ startup ( const Options & options )
 
   std::ifstream ifs( options.rf_path, std::ifstream::in | std::ifstream::binary );
   LOG(INFO) << "Loading the graph from file '" << options.rf_path << "'...";
-  if( !ifs.is_open() )
+  if( !ifs )
   {
     LOG(FATAL) << "could not open the file '" << options.rf_path << "'.";
   }
@@ -175,7 +175,7 @@ load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_
     const std::string &index_file, unsigned int path_num )
 {
   if ( !open ( paths_index, index_file.c_str() ) ||
-     !load_paths_coverage ( paths_covered_nodes, index_file, path_num ))
+     !load_paths_coverage ( paths_covered_nodes, index_file + "_path_", path_num ))
   {
     LOG(INFO) << "No valid paths index found. Creating one...";
     return false;
@@ -208,7 +208,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   Dna5QStringSet paths;
   std::vector < VarGraph::NodeCoverage > paths_covered_nodes;
   Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index;
-
+  // :TODO:Fri Aug 25 00:15:\@cartoonist: Move paths index part to Mapper class.
   // :TODO:Thu Apr 13 03:18:\@cartoonist: Load paths_covered_nodes.
   if ( path_num == 0 ) {
     LOG(INFO) << "Specified number of path is 0. Skipping paths indexing...";
@@ -224,7 +224,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
       create_index ( paths_index );
       LOG(INFO) << "Saving paths index...";
       save ( paths_index, paths_index_file.c_str() );
-      save_paths_coverage ( paths_covered_nodes, paths_index_file );
+      save_paths_coverage ( paths_covered_nodes, paths_index_file + "_path_" );
     }
   }
 
