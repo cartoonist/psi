@@ -40,16 +40,16 @@ namespace grem
 {
   /* Forwards */
   template< typename TIndexSpec >
-    class PathTraverser;
+    class Traverser;
 
   /** Traverse interface functions **
-   *  @note These methods should be specialized for any other PathTraverser
+   *  @note These methods should be specialized for any other Traverser
    *        classes.
    **/
   template< typename TIndexSpec >
   void
-    move_forward(PathTraverser< TIndexSpec > &ptrav,
-                 std::vector< PathTraverser< TIndexSpec >> &new_ptravs)
+    move_forward(Traverser< TIndexSpec > &ptrav,
+                 std::vector< Traverser< TIndexSpec >> &new_ptravs)
   {
     if (ptrav.finished)
       throw std::runtime_error("cannot move forward on a finalized path.");
@@ -79,36 +79,36 @@ namespace grem
         vg::Position new_pos;
         new_pos.set_node_id((*it)->to());
         new_pos.set_offset(0);
-        new_ptravs.push_back(PathTraverser< TIndexSpec >(ptrav, std::move(new_pos)));
+        new_ptravs.push_back(Traverser< TIndexSpec >(ptrav, std::move(new_pos)));
       }
     }
   }
 
   template< typename TIndexSpec >
   bool
-    is_finished(PathTraverser< TIndexSpec > & ptrav)
+    is_finished(Traverser< TIndexSpec > & ptrav)
   {
     return ptrav.finished;
   }
 
   template< typename TIndexSpec >
   bool
-    is_valid(PathTraverser< TIndexSpec > & ptrav)
+    is_valid(Traverser< TIndexSpec > & ptrav)
   {
     return ptrav.is_seed_hit();
   }
 
   template< typename TIndexSpec >
   void
-    get_results(PathTraverser< TIndexSpec > &ptrav,
-                std::vector< typename PathTraverser< TIndexSpec >::Output > &results)
+    get_results(Traverser< TIndexSpec > &ptrav,
+                std::vector< typename Traverser< TIndexSpec >::Output > &results)
   {
     if (is_valid(ptrav))
       ptrav.get_results(results);
   }
 
   template< typename TIndexSpec >
-    class PathTraverser
+    class Traverser
     {
       public:
         // Member typedefs and classes
@@ -126,7 +126,7 @@ namespace grem
         // Traverse parameters
         class Param
         {
-          friend class PathTraverser;
+          friend class Traverser;
 
           public:
           // Constructors
@@ -180,26 +180,26 @@ namespace grem
         };
 
         // Constructors
-        PathTraverser(const VarGraph *graph,
-                      PathTraverser::Param *trav_params,
+        Traverser(const VarGraph *graph,
+                      Traverser::Param *trav_params,
                       vg::Position start) :
           vargraph(graph), parameters(trav_params), s_locus(start),
           c_locus(start), path_length(0), finished(false)
         {
           this->iters_state.push_back(
               IterState({
-                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, PathTraverser::IterType >(this->parameters->reads_index),
+                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, Traverser::IterType >(this->parameters->reads_index),
                 0})
               );
         }
 
-        PathTraverser(const VarGraph &graph,
-                      PathTraverser::Param &trav_params,
+        Traverser(const VarGraph &graph,
+                      Traverser::Param &trav_params,
                       vg::Position start) :
-          PathTraverser(&graph, &trav_params, start)
+          Traverser(&graph, &trav_params, start)
         {}
 
-        PathTraverser(const PathTraverser & other)
+        Traverser(const Traverser & other)
         {
           this->vargraph = other.vargraph;
           this->parameters = other.parameters;
@@ -210,7 +210,7 @@ namespace grem
           this->finished = other.finished;
         }
 
-        PathTraverser(PathTraverser && other) noexcept
+        Traverser(Traverser && other) noexcept
         {
           this->vargraph = other.vargraph;
           this->parameters = other.parameters;
@@ -221,14 +221,14 @@ namespace grem
           this->finished = other.finished;
         }
 
-        PathTraverser & operator=(const PathTraverser & other)
+        Traverser & operator=(const Traverser & other)
         {
-          PathTraverser tmp(other);
+          Traverser tmp(other);
           *this = std::move(tmp);
           return *this;
         }
 
-        PathTraverser & operator=(PathTraverser && other) noexcept
+        Traverser & operator=(Traverser && other) noexcept
         {
           this->vargraph = other.vargraph;
           this->parameters = other.parameters;
@@ -241,27 +241,27 @@ namespace grem
           return *this;
         }
 
-        ~PathTraverser() noexcept {}
+        ~Traverser() noexcept {}
 
-        PathTraverser(const PathTraverser & other, vg::Position new_locus) :
-          PathTraverser(other)
+        Traverser(const Traverser & other, vg::Position new_locus) :
+          Traverser(other)
         {
           this->c_locus = new_locus;
         }
 
         // Traverse interface functions (are friends!)
-        friend void move_forward< TIndexSpec >(PathTraverser &ptrav,
-                                                      std::vector< PathTraverser > &new_ptravs);
-        friend bool is_finished< TIndexSpec >(PathTraverser &ptrav);
-        friend bool is_valid< TIndexSpec >(PathTraverser &ptrav);
-        friend void get_results< TIndexSpec >(PathTraverser &ptrav,
-                                                     std::vector< PathTraverser::Output > &results);
+        friend void move_forward< TIndexSpec >(Traverser &ptrav,
+                                                      std::vector< Traverser > &new_ptravs);
+        friend bool is_finished< TIndexSpec >(Traverser &ptrav);
+        friend bool is_valid< TIndexSpec >(Traverser &ptrav);
+        friend void get_results< TIndexSpec >(Traverser &ptrav,
+                                                     std::vector< Traverser::Output > &results);
 
         // Attributes getters and setters
         inline const VarGraph *              get_vargraph()
         { return this->vargraph; }
 
-        inline const PathTraverser< TIndexSpec >::Param *  get_paramters()
+        inline const Traverser< TIndexSpec >::Param *  get_paramters()
         { return this->parameters; }
 
         inline vg::Position                  get_s_locus()
@@ -285,13 +285,13 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, PathTraverser::IterType > iter;
+          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, Traverser::IterType > iter;
           unsigned int   boffset;
         } IterState;
 
         // Attributes
         const VarGraph *         vargraph;        // pointer to variation graph.
-        PathTraverser< TIndexSpec >::Param *   parameters;      // pointer to params (shared between traversers).
+        Traverser< TIndexSpec >::Param *   parameters;      // pointer to params (shared between traversers).
         vg::Position             s_locus;         // starting locus
         vg::Position             c_locus;         // current locus
         std::vector< IterState > iters_state;
@@ -307,7 +307,7 @@ namespace grem
         inline bool go_down(IterState &its, seqan::Value< seqan::Dna5QString >::Type c)
         {
 #ifndef NDEBUG
-          PathTraverser::inc_total_go_down(1);
+          Traverser::inc_total_go_down(1);
 #endif
           // XXX: assume "N" as a mismatch.
           if (c == 'N' || c == 'n') return false;
@@ -359,7 +359,7 @@ namespace grem
           }
         }
 
-        inline void get_results(std::vector< PathTraverser< TIndexSpec >::Output > &results)
+        inline void get_results(std::vector< Traverser< TIndexSpec >::Output > &results)
         {
           for (auto its : this->iters_state)
           {
@@ -367,7 +367,7 @@ namespace grem
             seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
             for (unsigned i = 0; i < length(saPositions); ++i)
             {
-              PathTraverser::Output hit;
+              Traverser::Output hit;
               seqan::setBeginPositionH ( hit, this->s_locus.node_id());
               seqan::setEndPositionH ( hit, this->s_locus.offset());
               seqan::setBeginPositionV ( hit, saPositions[i].i1);  // Read ID.

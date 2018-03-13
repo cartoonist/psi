@@ -201,7 +201,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
     std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
 {
-  Mapper< PathTraverser< TIndexSpec > > mapper(vargraph);
+  Mapper< Traverser< TIndexSpec > > mapper(vargraph);
 
   Dna5QStringSet paths;
   std::vector < VarGraph::NodeCoverage > paths_covered_nodes;
@@ -236,8 +236,8 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
    // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;
   std::unordered_set< Dna5QStringSetPosition > covered_reads;
-  std::function< void(typename PathTraverser< TIndexSpec >::Output const &) > write =
-    [&found, &covered_reads] (typename PathTraverser< TIndexSpec >::Output const & seed_hit){
+  std::function< void(typename Traverser< TIndexSpec >::Output const &) > write =
+    [&found, &covered_reads] (typename Traverser< TIndexSpec >::Output const & seed_hit){
     ++found;
     covered_reads.insert(seqan::beginPositionV(seed_hit));
   };
@@ -255,7 +255,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
 
       if (length(reads_chunk.id) == 0) break;
 
-      typename PathTraverser< TIndexSpec >::Param params(reads_chunk, seed_len);
+      typename Traverser< TIndexSpec >::Param params(reads_chunk, seed_len);
       mapper.seeds_on_paths ( paths_index, params, write );
       LOG(INFO) << "Total number of seeds found on paths: " << found;
       mapper.traverse ( params, write );
@@ -270,7 +270,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   LOG(INFO) << "Total number of starting points: " << mapper.get_starting_points().size();
 #ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
-            << PathTraverser< TIndexSpec >::inc_total_go_down(0);
+            << Traverser< TIndexSpec >::inc_total_go_down(0);
 #endif
 }
 
