@@ -30,11 +30,13 @@ CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFL
 CXXFLAGS     ?= -O3
 LIBS_CFLAGS  := -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \
+	        $(shell pkg-config --cflags xg) \
 	        $(shell pkg-config --cflags protobuf)
 LDFLAG       := -fopenmp \
 	        -lz \
 		-lbz2 \
 	        -lrt \
+	        $(shell pkg-config --libs xg) \
 	        $(shell pkg-config --libs protobuf)
 
 ##  Specifying source files to automatically generate dependencies:
@@ -46,7 +48,7 @@ TARGET       := ${BINDIR}/${BUILD}/grem
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
-LINK          = ${CXX} ${LDFLAG} -o $@
+LINK          = ${CXX} $^ ${LDFLAG} -o $@
 MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MG -MF $@
 
 # Specifying phony targets.
@@ -55,11 +57,11 @@ MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MG -MF $@
 # building target.
 all: ${TARGET}
 
-${BINDIR}/release/grem: grem.o vargraph.o vg.pb.o
-	${LINK} $^
+${BINDIR}/release/grem: grem.o vargraph.o
+	${LINK}
 
-${BINDIR}/debug/grem: grem.g.o vargraph.g.o vg.pb.g.o
-	${LINK} $^
+${BINDIR}/debug/grem: grem.g.o vargraph.g.o
+	${LINK}
 
 # general rule for compiling cc files.
 %.g.o: %.cc

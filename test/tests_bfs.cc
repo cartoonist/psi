@@ -15,6 +15,7 @@
  *  See LICENSE file for more information.
  */
 
+#include <fstream>
 #include <string>
 
 #include "tests_base.h"
@@ -30,8 +31,9 @@ SCENARIO ( "Variation graph breadth-first traverse (BFS)", "[graph][iterator]" )
 {
   GIVEN ( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.vg";
-    VarGraph vargraph(vgpath.c_str());
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph( ifs );
 
     WHEN ( "traverse the graph using BFS graph iterator" )
     {
@@ -39,7 +41,7 @@ SCENARIO ( "Variation graph breadth-first traverse (BFS)", "[graph][iterator]" )
 
       THEN ( "nodes should be traversed in BFS order" )
       {
-        VarGraph::NodeID truth = 1;
+        VarGraph::nodeid_type truth = 1;
         while ( !at_end ( bfs_itr ) ) {
           REQUIRE ( *bfs_itr == truth );  // The graph is such that its BFS is in order.
           ++truth;

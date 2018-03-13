@@ -126,18 +126,19 @@ startup ( const Options & options )
     LOG(FATAL) << "could not open the file '" << options.fq_path << "'.";
   }
 
-  VarGraph vargraph;
-  try
+  std::ifstream ifs( options.rf_path, std::ifstream::in | std::ifstream::binary );
+  LOG(INFO) << "Loading the graph from file '" << options.rf_path << "'...";
+  if( !ifs.is_open() )
   {
-    LOG(INFO) << "Loading the vg graph from file '" << options.rf_path << "'...";
+    LOG(FATAL) << "could not open the file '" << options.rf_path << "'.";
+  }
 
-    vargraph.extend_from_file(options.rf_path);
+  bool xg_format = true;
+  if ( ends_with( options.rf_path, ".vg" ) ) {
+    xg_format = false;
   }
-  catch(std::ios::failure &e)
-  {
-    LOG(ERROR) << "failed to open the file '" << options.rf_path << "'.";
-    LOG(FATAL) << "Caught an ios_base::failure: " << e.what();
-  }
+
+  VarGraph vargraph( ifs, xg_format );
 
   switch ( options.index ) {
     case IndexType::Wotd: find_seeds ( vargraph,
@@ -284,9 +285,9 @@ setup_argparser(seqan::ArgumentParser & parser)
   // add usage line.
   addUsageLine(parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"");
 
-  // vg file -- positional argument.
+  // graph file -- positional argument.
   seqan::ArgParseArgument vgfile_arg(seqan::ArgParseArgument::INPUT_FILE, POSARG1);
-  setValidValues(vgfile_arg, "vg");
+  setValidValues(vgfile_arg, "vg xg");
   addArgument(parser, vgfile_arg);
 
   // reads in FASTQ format -- **required** option.

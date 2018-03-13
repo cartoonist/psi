@@ -27,162 +27,6 @@
 
 namespace grem
 {
-  void
-    VarGraph::extend(vg::Graph &vg_graph)
-  {
-    for (int i = 0; i < vg_graph.node_size(); ++i)
-    {
-      vg::Node *node = vg_graph.mutable_node(i);
-
-      try
-      {
-        this->add_node(node);
-      }
-      catch(std::runtime_error &e)
-      {
-        LOG(WARNING) << "handling a std::runtime_error "
-                     << "while adding a node: " << e.what();
-      }
-    }
-
-    for (int i = 0; i < vg_graph.edge_size(); ++i)
-    {
-      vg::Edge *edge = vg_graph.mutable_edge(i);
-
-      try
-      {
-        this->add_edge(edge);
-      }
-      catch(std::runtime_error &e)
-      {
-        LOG(WARNING) << "handling a std::runtime_error "
-                     << "while adding an edge: " << e.what();
-      }
-    }
-
-    // TODO: add paths.
-  }
-
-  void
-    VarGraph::extend_from_file(std::ifstream &ifs)
-  {
-    TIMED_SCOPE(loadGraphTimer, "load-graph");
-
-    if (!ifs.is_open())
-    {
-      throw std::ios_base::failure("could not open the file.");
-    }
-
-    // Extend graph callback function.
-    std::function< void(vg::Graph&) > extend_graph = [this] (vg::Graph& g)
-    {
-      this->extend(g);
-    };
-    // Handle count callback function.
-    std::function< void(uint64_t) > handle_count = [](uint64_t count) {
-      LOG(DEBUG) << "Loading " << count << " graph(s)...";
-    };
-
-    stream::for_each(ifs, extend_graph, handle_count);
-  }
-
-  void
-    VarGraph::extend_from_file(const std::string &filename)
-  {
-    std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
-    this->extend_from_file(ifs);
-  }
-
-  void
-    VarGraph::extend_from_file(const char *filename)
-  {
-    std::string fname(filename);
-    this->extend_from_file(fname);
-  }
-
-  bool
-    VarGraph::has_node(const vg::Node* node) const
-  {
-    return this->has_node(node->id());
-  }
-
-  bool
-    VarGraph::has_node(NodeID node_id) const
-  {
-    auto got = this->nodes_by_id.find(node_id);
-
-    if (got == this->nodes_by_id.end()) return false;
-
-    return true;
-  }
-
-  bool
-    VarGraph::has_fwd_edge(vg::Node *node) const
-  {
-    return this->has_fwd_edge(node->id());
-  }
-
-  bool
-    VarGraph::has_fwd_edge(NodeID node_id) const
-  {
-    auto got = this->edges_by_id.find(node_id);
-
-    if (got == this->edges_by_id.end()) return false;
-
-    return true;
-  }
-
-  bool
-    VarGraph::is_branch ( vg::Node *node ) const
-    {
-      return this->is_branch(node->id());
-    }  /* -----  end of method VarGraph::is_branch  ----- */
-
-  bool
-    VarGraph::is_branch ( NodeID node_id ) const
-    {
-      if ( this->has_fwd_edge(node_id) ) {
-        return this->fwd_edges(node_id).size() > 1;
-      }
-      else {
-        return false;
-      }
-    }  /* -----  end of method VarGraph::is_branch  ----- */
-
-
-  bool
-    VarGraph::has_bwd_edge(vg::Node *node) const
-  {
-    return this->has_bwd_edge(node->id());
-  }
-
-  bool
-    VarGraph::has_bwd_edge(NodeID node_id) const
-  {
-    auto got = this->redges_by_id.find(node_id);
-
-    if (got == this->redges_by_id.end()) return false;
-
-    return true;
-  }
-
-  bool
-    VarGraph::is_merge ( vg::Node *node ) const
-    {
-      return this->is_merge(node->id());
-    }  /* -----  end of method VarGraph::is_merge  ----- */
-
-  bool
-    VarGraph::is_merge ( NodeID node_id ) const
-    {
-      if ( this->has_bwd_edge(node_id) ) {
-        return this->bwd_edges(node_id).size() > 1;
-      }
-      else {
-        return false;
-      }
-    }  /* -----  end of method VarGraph::is_merge  ----- */
-
   /**
    *  @brief  Get string value of the given path.
    *
@@ -192,59 +36,14 @@ namespace grem
    *  Get string representation of a path in the variation graph.
    */
   std::string
-    VarGraph::get_string ( std::vector < VarGraph::NodeID > &path ) const
+    VarGraph::get_string ( std::vector < nodeid_type > &path ) const
     {
       std::string repr_str;
-      for ( auto it = path.begin(); it != path.end(); ++it ) {
-        repr_str += this->node_by(*it).sequence();
+      for ( const auto& node_id : path ) {
+        repr_str += this->node_sequence( node_id );
       }
       return repr_str;
     }  /* -----  end of method VarGraph::get_string  ----- */
-
-  void
-    VarGraph::add_node(vg::Node *node)
-  {
-    if (node->id() == 0)
-    {
-      throw std::runtime_error("node ID 0 is not allowed in 'vg'. Skipping.");
-    }
-    else if (this->has_node(node))
-    {
-      std::string msg = "node ID " + std::to_string(node->id()) +
-                        " appears multiple times. Skipping.";
-      throw std::runtime_error(msg);
-    }
-
-    vg::Node *new_node = this->vg_graph.add_node();
-    *new_node = *node;
-    this->nodes_by_id[new_node->id()] = new_node;
-  }
-
-  bool
-    VarGraph::has_edge(vg::Edge *edge) const
-  {
-    // TODO: check for duplication. It needs map<pair<NodeID,NodeID>,vg::Edge*>.
-    return false;
-  }
-
-  void
-    VarGraph::add_edge(vg::Edge *edge)
-  {
-    if (this->has_edge(edge))
-    {
-      std::string msg = "edge " + std::to_string(edge->from()) +
-                        (edge->from_start() ? " start" : " end") +
-                        " <-> " + std::to_string(edge->to()) +
-                        (edge->to_end() ? " end" : " start") +
-                        " appears multiple times. Skipping.";
-      throw std::runtime_error(msg);
-    }
-
-    vg::Edge *new_edge = this->vg_graph.add_edge();
-    *new_edge = *edge;
-    this->edges_by_id[new_edge->from()].push_back(new_edge);
-    this->redges_by_id[new_edge->to()].push_back(new_edge);
-  }
 
   /* BFS template specialization  ------------------------------------------------ */
 
@@ -267,7 +66,7 @@ namespace grem
         start_node_id = start;
       }
       else {
-        start_node_id = g.node_at(0).id();
+        start_node_id = g.rank_to_id( 1 );
       }
 
       begin_itr.vargraph_ptr = &g;
@@ -288,7 +87,7 @@ namespace grem
         start_node_id = start;
       }
       else {
-        start_node_id = it.vargraph_ptr->node_at(0).id();
+        start_node_id = it.vargraph_ptr->rank_to_id( 1 );
       }
 
       it.visiting_buffer.clear();
@@ -315,12 +114,12 @@ namespace grem
     GraphIter<VarGraph, BFS<>>::operator++ ( )
     {
       BFS<>::Level plevel = level(*this);
-      if (this->vargraph_ptr->has_fwd_edge(this->itr_value))
+      if (this->vargraph_ptr->has_edges_from(this->itr_value))
       {
-        auto edges = this->vargraph_ptr->fwd_edges(this->itr_value);
+        auto edges = this->vargraph_ptr->edges_from(this->itr_value);
         for (auto it = edges.begin(); it != edges.end(); ++it)
         {
-          BFS<>::Value adj_node = (*it)->to();
+          BFS<>::Value adj_node = (*it).to();
           if (visited.find(std::make_pair(adj_node, 0)) == // level doesn't matter (see
               visited.end())                               //   method `pair_pred`).
           {
@@ -362,7 +161,7 @@ namespace grem
         start_node_id = start;
       }
       else {
-        start_node_id = g.node_at(0).id();
+        start_node_id = g.rank_to_id( 1 );
       }
 
       begin_itr.vargraph_ptr = &g;
@@ -405,13 +204,13 @@ namespace grem
       }
       else {                                                  // else
         Backtracker<>::Value cnode_id = this->itr_value;
-        if ( this->vargraph_ptr->has_fwd_edge(cnode_id) ) {  // Any forward edge?
+        if ( this->vargraph_ptr->has_edges_from(cnode_id) ) {  // Any forward edge?
           // Go forward.
-          this->itr_value = this->vargraph_ptr->fwd_edges(cnode_id).at(0)->to();
+          this->itr_value = this->vargraph_ptr->edges_from(cnode_id).at(0).to();
           // On each branch nodes enqueue other branches for traversing later.
-          auto edges = this->vargraph_ptr->fwd_edges(cnode_id);
+          auto edges = this->vargraph_ptr->edges_from(cnode_id);
           for ( int i = edges.size() - 1; i >= 1; --i ) {
-            this->visiting_buffer.push_back ( std::make_pair(cnode_id, edges[i]->to()) );
+            this->visiting_buffer.push_back ( std::make_pair(cnode_id, edges[i].to()) );
           }
         }
         else {
@@ -470,7 +269,7 @@ namespace grem
         start_node_id = start;
       }
       else {
-        start_node_id = g.node_at(0).id();
+        start_node_id = g.rank_to_id( 1 );
       }
 
       begin_itr.vargraph_ptr = &g;
@@ -528,7 +327,7 @@ namespace grem
     GraphIter < VarGraph, Haplotyper <> > &
     GraphIter < VarGraph, Haplotyper <> >::operator++ ( )
     {
-      if ( !this->vargraph_ptr->has_fwd_edge ( this->itr_value ) ) {
+      if ( !this->vargraph_ptr->has_edges_from ( this->itr_value ) ) {
         this->state.end = true;
         return *this;
       }
@@ -539,20 +338,20 @@ namespace grem
       }
 
       Haplotyper<>::Value next_candidate = 0;
-      auto fwd_edges = this->vargraph_ptr->fwd_edges ( this->itr_value );
+      auto fwd_edges = this->vargraph_ptr->edges_from ( this->itr_value );
       if ( this->state.setback == 0 || fwd_edges.size() == 1 ) {
-        next_candidate = fwd_edges[0]->to();
+        next_candidate = fwd_edges[0].to();
       }
       else {
         // Search for a forward node such that the setback path is not in previous paths.
         for ( auto e : fwd_edges ) {
-          this->visiting_buffer.push_back ( e->to() );
+          this->visiting_buffer.push_back ( e.to() );
           if ( covered_by ( this->visiting_buffer, this->visited ) ) {  // Visited?
             this->visiting_buffer.pop_back();
             continue;                             // Next edge.
           }
           this->visiting_buffer.pop_back();       // No change to the iterator state.
-          next_candidate = e->to();               // Found!
+          next_candidate = e.to();                // Found!
         }
       }
       // If no unvisited setback path found, use a node with least path coverage.
@@ -634,7 +433,7 @@ namespace grem
    *  `tries` times to generated a unique haplotype.
    */
   void
-    get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
+    get_uniq_haplotype ( std::vector < VarGraph::nodeid_type > &haplotype,
         typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter,
         int tries )
     {

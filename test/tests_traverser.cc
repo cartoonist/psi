@@ -77,7 +77,7 @@ SCENARIO ( "Serialize/deserialize paths nodes coverage into/from the file", "[tr
     std::string file_path = "/tmp/test_path_coverage";
 
     for ( unsigned int i = 0; i < paths_num; ++i ) {
-      for ( VarGraph::NodeID j = 100*(i+1); j < 100*(i+1) + 12; ++j ) {
+      for ( VarGraph::nodeid_type j = 100*(i+1); j < 100*(i+1) + 12; ++j ) {
         covered_nodes.insert ( j );
       }
       paths_node_coverage.push_back ( covered_nodes );
@@ -93,7 +93,7 @@ SCENARIO ( "Serialize/deserialize paths nodes coverage into/from the file", "[tr
         std::vector< VarGraph::NodeCoverage > paths_coverage_reloaded;
         load_paths_coverage ( paths_coverage_reloaded, file_path, paths_num );
 
-        std::vector< VarGraph::NodeID > sorted_node_ids;
+        std::vector< VarGraph::nodeid_type > sorted_node_ids;
         REQUIRE ( paths_coverage_reloaded.size() == paths_num );
         for ( unsigned int i = 0; i < paths_num; ++i ) {
           REQUIRE ( paths_coverage_reloaded[i].size() == 12 );
