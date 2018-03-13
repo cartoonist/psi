@@ -29,7 +29,7 @@
 #include <cstdint>
 #include <random>
 
-#include <seqan/index.h>
+#include <seqan/basic.h>
 
 #include "graph_iter.h"
 #include "vg.pb.h"
