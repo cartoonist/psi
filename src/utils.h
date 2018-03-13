@@ -44,6 +44,26 @@ namespace grem {
       assignQualities ( records.str, quals );
       return;
     }  /* -----  end of function readRecords  ----- */
+
+  /**
+   *  @brief  Check whether a string ends with another string.
+   *
+   *  @param  str The first string.
+   *  @param  suf The second string.
+   *  @return `true` if `suf` is a suffix of `str`; otherwise `false`.
+   *
+   *  It checks the first string whether the second one is one of its suffixes or not.
+   */
+    bool
+  ends_with ( std::string str, std::string suf )
+  {
+    if ( suf.length() <= str.length() ) {
+      if ( std::equal( suf.rbegin(), suf.rend(), str.rbegin() ) ) {
+        return true;
+      }
+    }
+    return false;
+  }  /* -----  end of function ends_with  ----- */
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef UTILS_H__  ----- */
