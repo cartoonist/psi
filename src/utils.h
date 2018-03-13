@@ -19,6 +19,8 @@
 #define  UTILS_H__
 
 #include <string>
+#include <vector>
+#include <memory>
 
 #include <seqan/seq_io.h>
 
@@ -64,6 +66,102 @@ namespace grem {
     }
     return false;
   }  /* -----  end of function ends_with  ----- */
+
+
+  typedef uint64_t TContainerSize;
+
+  /**
+   *  @brief  Container serialization implementation.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  size Size of the container.
+   *  @param[in]  begin The begin input iterator.
+   *  @param[in]  end The end input iterator.
+   *
+   *  First, the size of the container is written represented by `TSize` type followed
+   *  by all items between two input iterators are written.
+   */
+  template< typename TIter, typename TSize >
+    void
+  _serialize( std::ostream& out, TSize size, TIter begin, TIter end )
+  {
+    out.write( reinterpret_cast< char* >( &size ), sizeof( TSize ) );
+
+    for ( ; begin != end; ++begin ) {
+      out.write( reinterpret_cast< const char* >( &*begin ),
+          sizeof( typename TIter::value_type ));
+    }
+
+    out.flush();
+  }  /* -----  end of template function _serialize  ----- */
+
+
+  /**
+   *  @brief  Serialize an ordered container to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  begin The begin input iterator.
+   *  @param[in]  end The end input iterator.
+   *
+   *  It gets two iterators of a container and serialize it to the given output stream
+   *  by writing each item to the stream following the size of the container. The
+   *  `TSize` represents the size type.
+   */
+  template< typename TIter, typename TSize = TContainerSize >
+    void
+  serialize( std::ostream& out, TIter begin, TIter end )
+  {
+    TSize size = end - begin;
+    _serialize( out, size, begin, end );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Serialize an unordered container to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  container The container.
+   *  @param[in]  begin The begin input iterator.
+   *  @param[in]  end The end input iterator.
+   *
+   *  It gets two iterators of a container and serialize it to the given output stream
+   *  by writing each item to the stream following the size of the container. The
+   *  `TSize` represents the size type. Since the container is unordered, it needs
+   *  container itself to infer the size.
+   */
+  template< typename TContainer, typename TIter, typename TSize = TContainerSize >
+    void
+  serialize( std::ostream& out, TContainer container, TIter begin, TIter end )
+  {
+    TSize size = container.size();
+    _serialize( out, size, begin, end );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Deserialize a container from an input stream.
+   *
+   *  @param[in,out]  in The input stream.
+   *  @param[out]  container The output container.
+   *  @param[out]  itr The output iterator.
+   *
+   *  It gets an output container, and an output iterator. Then reads from input stream
+   *  and populate the container from serialized data.
+   */
+  template< typename TContainer, typename TOutIter, typename TSize = TContainerSize >
+    void
+  deserialize ( std::istream& in, TContainer& container, TOutIter itr )
+  {
+    TSize size;
+    in.read( reinterpret_cast< char* >( &size ), sizeof( TSize ) );
+    container.reserve( size );
+    for ( unsigned int i = 0; i < size; ++i ) {
+      typename TContainer::value_type item;
+      in.read( reinterpret_cast< char* >( &item ),
+          sizeof( typename TContainer::value_type ) );
+      *itr++ = item;
+    }
+  }  /* -----  end of template function deserialize  ----- */
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef UTILS_H__  ----- */
