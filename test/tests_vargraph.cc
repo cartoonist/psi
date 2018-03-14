@@ -345,7 +345,7 @@ SCENARIO ( "Traverse a variation graph using backtracking algorithm", "[graph][i
       // :TODO:Mon May 22 11:15:\@cartoonist: add a method to simulate a kmer.
       for ( unsigned int n_idx = 1; n_idx < vargraph.max_node_rank(); ++n_idx ) {
         VarGraph::nodeid_type start_node_id = vargraph.rank_to_id( n_idx );
-        unsigned int label_len = vargraph.node_sequence( start_node_id ).length();
+        unsigned int label_len = vargraph.node_length( start_node_id );
 
         for ( unsigned int offset = 0; offset < label_len; ++offset ) {
           go_begin ( bt_itr, start_node_id );
@@ -380,7 +380,7 @@ SCENARIO ( "Traverse a variation graph using backtracking algorithm", "[graph][i
             VarGraph::nodeid_type poped_id = 0;
             while ( !trav_path.empty() && poped_id != *bt_itr ) {
               poped_id = trav_path.back();
-              trav_len -= vargraph.node_sequence( poped_id ).length();
+              trav_len -= vargraph.node_length( poped_id );
               trav_path.pop_back();
             }
             trav_seq = trav_seq.substr ( 0, trav_len );

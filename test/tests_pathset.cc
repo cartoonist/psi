@@ -322,7 +322,7 @@ SCENARIO( "Sort the paths in a PathSet", "[pathset]" )
         REQUIRE( covered_by( path, paths_set ) );
         path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 });
         REQUIRE( covered_by( path, paths_set ) );
-        path = Path< VarGraph >( &vargraph, { 210, 268 });
+        path = Path< VarGraph >( &vargraph, { 2, 210 });
         REQUIRE( !covered_by( path, paths_set ) );
       }
     }

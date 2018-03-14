@@ -83,7 +83,7 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
       {
         for ( std::size_t r = 1; r <= vargraph.max_node_rank(); ++r ) {
           const auto& node_id = vargraph.rank_to_id( r );
-          VarGraph::offset_type seqlen = vargraph.node_sequence( node_id ).length();
+          VarGraph::offset_type seqlen = vargraph.node_length( node_id );
           for ( VarGraph::offset_type f = 0; f < seqlen; ++f ) {
             traverser.set_start_locus( node_id, f );
             traverser.run( count_hits );
