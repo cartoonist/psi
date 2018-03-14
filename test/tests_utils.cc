@@ -249,3 +249,109 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
     }
   }
 }
+
+SCENARIO( "Check if a file path is readable", "[utils]" )
+{
+  GIVEN( "A file name that exists and is readable" )
+  {
+    std::string tmpfpath = SEQAN_TEMP_FILENAME();
+    std::ofstream ofs( tmpfpath );
+    ofs.close();
+
+    THEN( "It should be readable" )
+    {
+      REQUIRE( readable( tmpfpath ) );
+    }
+  }
+
+  GIVEN( "A file name that does not exist" )
+  {
+    std::string tmpfpath = SEQAN_TEMP_FILENAME();
+
+    THEN( "It should not be readable" )
+    {
+      REQUIRE( ! readable( tmpfpath ) );
+    }
+  }
+
+  GIVEN( "A file name that exists, but is not readable" )
+  {
+    std::string filepath = "/root/.profile";
+
+    THEN( "It should not be readable" )
+    {
+      REQUIRE( ! readable( filepath ) );
+    }
+  }
+}
+
+SCENARIO( "Check if a file path is writable", "[utils]" )
+{
+  GIVEN( "A file name that exists and is writable" )
+  {
+    std::string tmpfpath = SEQAN_TEMP_FILENAME();
+    std::ofstream ofs( tmpfpath );
+    ofs.close();
+
+    THEN( "It should be writable" )
+    {
+      REQUIRE( writable( tmpfpath ) );
+    }
+  }
+
+  GIVEN( "A file name that does not exist" )
+  {
+    std::string tmpfpath = SEQAN_TEMP_FILENAME();
+
+    THEN( "It should be writable" )
+    {
+      REQUIRE( writable( tmpfpath ) );
+      REQUIRE( ! readable( tmpfpath ) );
+    }
+  }
+
+  GIVEN( "A file name that exists, but is not writable" )
+  {
+    std::string filepath = "/root/.profile";
+
+    THEN( "It should not be writable" )
+    {
+      REQUIRE( ! writable( filepath ) );
+    }
+  }
+}
+
+SCENARIO( "Check file appendability", "[utils]" )
+{
+  GIVEN( "A file name that exists and is appendable" )
+  {
+    std::string tmpfpath = SEQAN_TEMP_FILENAME();
+    std::ofstream ofs( tmpfpath );
+    ofs.close();
+
+    THEN( "It should be appendable" )
+    {
+      REQUIRE( appendable( tmpfpath ) );
+    }
+  }
+
+  GIVEN( "A file name that does not exist" )
+  {
+    std::string tmpfpath = SEQAN_TEMP_FILENAME();
+
+    THEN( "It should not be appendable" )
+    {
+      REQUIRE( ! appendable( tmpfpath ) );
+    }
+  }
+
+  GIVEN( "A file name that exists, but is not appendable" )
+  {
+    std::string filepath = "/root/.profile";
+
+    THEN( "It should not be appendable" )
+    {
+      REQUIRE( ! appendable( filepath ) );
+    }
+  }
+}

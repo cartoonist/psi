@@ -168,6 +168,24 @@ namespace grem {
   }  /* -----  end of function writable  ----- */
 
 
+  /**
+   *  @brief  Check if the given file exists and is appendable.
+   *
+   *  @param  file_name The name of the file to be checked.
+   *  @return `true` if exists and is appendable; otherwise `false`.
+   *
+   *  Use `std::ofstream` to check for writability of the given file because of
+   *  portability.
+   */
+    inline bool
+  appendable( const std::string& file_name )
+  {
+    if ( !readable( file_name ) ) return false;
+    std::ofstream ofs( file_name, std::ofstream::app );
+    return ofs.good();
+  }  /* -----  end of function appendable  ----- */
+
+
   typedef uint64_t TContainerSize;
 
   /**
