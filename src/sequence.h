@@ -205,7 +205,7 @@ namespace grem {
         {
           this->close();
           this->fpath = SEQAN_TEMP_FILENAME();
-          this->out = std::ofstream( this->fpath );
+          this->out.open( this->fpath );
           this->len = 0;
         }
 
@@ -230,6 +230,10 @@ namespace grem {
             get_logger( "main" )->warn(
                 "File '{}' does not exist: disk-based string content cannot be read.",
                 this->fpath );
+          }
+
+          if ( appendable( this->fpath ) ) {
+            this->out.open( this->fpath, std::ofstream::app );
           }
 
           sint_type l;
