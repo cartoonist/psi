@@ -276,7 +276,7 @@ SCENARIO( "Check if a file path is readable", "[utils]" )
 
   GIVEN( "A file name that exists, but is not readable" )
   {
-    std::string filepath = "/root/.profile";
+    std::string filepath = "/root/.Xauthority";
 
     THEN( "It should not be readable" )
     {
@@ -312,7 +312,7 @@ SCENARIO( "Check if a file path is writable", "[utils]" )
 
   GIVEN( "A file name that exists, but is not writable" )
   {
-    std::string filepath = "/root/.profile";
+    std::string filepath = "/root/.Xauthority";
 
     THEN( "It should not be writable" )
     {
@@ -347,7 +347,7 @@ SCENARIO( "Check file appendability", "[utils]" )
 
   GIVEN( "A file name that exists, but is not appendable" )
   {
-    std::string filepath = "/root/.profile";
+    std::string filepath = "/root/.Xauthority";
 
     THEN( "It should not be appendable" )
     {
