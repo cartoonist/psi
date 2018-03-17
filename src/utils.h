@@ -19,6 +19,7 @@
 #define  UTILS_H__
 
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -184,6 +185,26 @@ namespace grem {
     std::ofstream ofs( file_name, std::ofstream::app );
     return ofs.good();
   }  /* -----  end of function appendable  ----- */
+
+
+    inline std::string
+  get_env( const std::string& var )
+  {
+    const char* val = ::getenv( var.c_str() );
+    if ( val == 0 ) {
+      return "";
+    }
+    else {
+      return val;
+    }
+  }
+
+
+    inline std::string
+  get_tmpdir( )
+  {
+    return get_env( "TMPDIR" );
+  }
 
 
   typedef uint64_t TContainerSize;
@@ -465,9 +486,7 @@ namespace grem {
     {
       sdsl::util::clear( ev );
     }
-}  /* -----  end of namespace grem  ----- */
 
-namespace grem {
   /**
    *  @brief  Reserve the required memory for the vector of size `size`.
    *
