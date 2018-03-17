@@ -25,6 +25,7 @@
 #include <sdsl/suffix_arrays.hpp>
 
 #include "sequence.h"
+#include "utils.h"
 
 namespace grem {
   template< class TWT = sdsl::wt_huff<>, uint32_t TDens = 32, uint32_t TInvDens = 64 >
@@ -164,7 +165,14 @@ namespace seqan {
         Index< grem::YaString< grem::DiskBased >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
-      if ( index.constructible() ) construct( index.fm, index.text_p->get_file_path(), 1 );
+      if ( index.constructible() ) {
+        std::string tmpdir = grem::get_tmpdir();
+        sdsl::cache_config config;
+        if ( tmpdir.size() != 0 ) {
+          config.dir = std::move( tmpdir );
+        }
+        construct( index.fm, index.text_p->get_file_path(), config, 1 );
+      }
     }
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
@@ -182,7 +190,14 @@ namespace seqan {
         Index< StringSet< grem::YaString< grem::DiskBased > >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
-      if ( index.constructible() ) construct( index.fm, index.text_p->get_file_path(), 1 );
+      if ( index.constructible() ) {
+        std::string tmpdir = grem::get_tmpdir();
+        sdsl::cache_config config;
+        if ( tmpdir.size() != 0 ) {
+          config.dir = std::move( tmpdir );
+        }
+        construct( index.fm, index.text_p->get_file_path(), config, 1 );
+      }
     }
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
