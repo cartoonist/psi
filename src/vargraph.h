@@ -141,7 +141,7 @@ namespace grem
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
     std::uniform_int_distribution<> dis(0, fwd_edges.size() - 1);
 
-    return fwd_edges.at(dis(gen)).to();
+    return fwd_edges[ dis(gen) ].to();
   }  /* -----  end of function get_random_adjacent  ----- */
 
   /**
@@ -559,7 +559,7 @@ namespace grem {
         TValue cnode_id = this->itr_value;
         if ( this->vargraph_ptr->has_edges_from( cnode_id ) ) {  // Any forward edge?
           // Go forward.
-          this->itr_value = this->vargraph_ptr->edges_from( cnode_id ).at( 0 ).to();
+          this->itr_value = this->vargraph_ptr->edges_from( cnode_id )[ 0 ].to();
           // On each branch nodes enqueue other branches for traversing later.
           auto edges = this->vargraph_ptr->edges_from( cnode_id );
           for ( int i = edges.size() - 1; i >= 1; --i ) {

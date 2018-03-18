@@ -94,7 +94,8 @@ namespace grem {
         filter( std::size_t state_idx,
             std::function< void( output_type const& ) >& callback )
         {
-          auto& state = this->frontier_states.at( state_idx );
+          assert( state_idx < this->frontier_states.size() );
+          auto& state = this->frontier_states[ state_idx ];
           if ( state.mismatches != 0 && rep_length( state.iter ) == this->seed_len ) {
             // Cross out the state.
             state.mismatches = 0;
@@ -116,7 +117,8 @@ namespace grem {
           inline bool
         compute( std::size_t state_idx )
         {
-          auto& state = this->frontier_states.at( state_idx );
+          assert( state_idx < this->frontier_states.size() );
+          auto& state = this->frontier_states[ state_idx ];
           if ( state.mismatches == 0 )
           {
             return false;
@@ -145,7 +147,8 @@ namespace grem {
           inline void
         advance( std::size_t state_idx )
         {
-          auto& state = this->frontier_states.at( state_idx );
+          assert( state_idx < this->frontier_states.size() );
+          auto& state = this->frontier_states[ state_idx ];
           VarGraph::offset_type seqlen =
             this->vargraph->node_length( state.pos.node_id() );
           if ( state.mismatches == 0 || state.pos.offset() != seqlen )

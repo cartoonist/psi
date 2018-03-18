@@ -86,7 +86,8 @@ namespace grem {
           inline unsigned int
         get_context_shift( typename seqan::SAValue< TIndex >::Type const& pos ) const
         {
-          auto&& the_path = this->paths_set.at( pos.i1 );
+          assert( pos.i1 < this->paths_set.size() );
+          auto&& the_path = this->paths_set[ pos.i1 ];
           auto flen = the_path.get_vargraph()->node_length( the_path.get_nodes()[0] );
           if ( this->context != 0 && flen + 1 > this->context ) {
             return flen - this->context + 1;
@@ -409,7 +410,8 @@ namespace grem {
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
     {
       auto context_shift = set.get_context_shift( pos );
-      return position_to_offset( set.paths_set.at( pos.i1 ), context_shift + pos.i2 );
+      assert( pos.i1 < set.paths_set.size() );
+      return position_to_offset( set.paths_set[ pos.i1 ], context_shift + pos.i2 );
     }
 
   /**
@@ -429,7 +431,8 @@ namespace grem {
       auto real_pos = pos;
       real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
       auto context_shift = set.get_context_shift( real_pos );
-      return position_to_offset( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
+      assert( real_pos.i1 < set.paths_set.size() );
+      return position_to_offset( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
     }
 
   template< typename TGraph, typename TText, typename TIndexSpec >
@@ -438,7 +441,8 @@ namespace grem {
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
     {
       auto context_shift = set.get_context_shift( pos );
-      return position_to_id( set.paths_set.at( pos.i1 ), context_shift + pos.i2 );
+      assert( pos.i1 < set.paths_set.size() );
+      return position_to_id( set.paths_set[ pos.i1 ], context_shift + pos.i2 );
     }
 
   /**
@@ -458,7 +462,8 @@ namespace grem {
       auto real_pos = pos;
       real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
       auto context_shift = set.get_context_shift( real_pos );
-      return position_to_id( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
+      assert( real_pos.i1 < set.paths_set.size() );
+      return position_to_id( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
     }
 
   /**
