@@ -166,7 +166,7 @@ namespace seqan {
         FibreSALF )
     {
       if ( index.constructible() ) {
-        std::string tmpdir = grem::get_tmpdir();
+        std::string tmpdir = grem::get_tmpdir_env();
         sdsl::cache_config config;
         if ( tmpdir.size() != 0 ) {
           config.dir = std::move( tmpdir );
@@ -191,7 +191,7 @@ namespace seqan {
         FibreSALF )
     {
       if ( index.constructible() ) {
-        std::string tmpdir = grem::get_tmpdir();
+        std::string tmpdir = grem::get_tmpdir_env();
         sdsl::cache_config config;
         if ( tmpdir.size() != 0 ) {
           config.dir = std::move( tmpdir );

@@ -29,6 +29,10 @@
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 
+
+#define GREM_DEFAULT_TMPDIR "/tmp"
+#define GREM_TMPFILE_TEMPLATE "/grem-XXXXXX"
+
 namespace grem {
   /**
    *  @brief  Check whether a string ends with another string.
@@ -201,16 +205,24 @@ namespace grem {
 
 
     inline std::string
-  get_tmpdir( )
+  get_tmpdir_env( )
   {
     return get_env( "TMPDIR" );
   }
 
 
     inline std::string
+  get_tmpdir( )
+  {
+    std::string tmpdir = get_tmpdir_env();
+    if ( tmpdir.size() == 0 ) tmpdir = GREM_DEFAULT_TMPDIR;
+    return tmpdir;
+  }
+
+    inline std::string
   get_tmpfile( )
   {
-    std::string tmpfile_templ = get_tmpdir() + "/grem-XXXXXX";
+    std::string tmpfile_templ = get_tmpdir() + GREM_TMPFILE_TEMPLATE;
     char* tmpl = new char [ tmpfile_templ.size() + 1 ];
     std::strcpy( tmpl, tmpfile_templ.c_str() );
     int fd = mkstemp( tmpl );
