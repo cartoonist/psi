@@ -520,10 +520,8 @@ namespace seqan {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     ++this->count;
     *this += str;
-    stringsize_type old_size = this->bv_str_breaks.size();
-    stringsize_type new_size = old_size + str.size() + 1;
-    this->bv_str_breaks.resize( new_size );
-    this->bv_str_breaks.set_int( old_size, 0, new_size - old_size );
+    stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
+    grem::resize_zf( this->bv_str_breaks, new_size );
     this->bv_str_breaks[ new_size - 1 ] = 1;
     this->initialized = false;
   }
@@ -769,10 +767,8 @@ namespace seqan {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     ++this->count;
     *this += str;
-    stringsize_type old_size = this->bv_str_breaks.size();
-    stringsize_type new_size = old_size + str.size() + 1;
-    this->bv_str_breaks.resize( new_size );
-    this->bv_str_breaks.set_int( old_size, 0, new_size - old_size );
+    stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
+    grem::resize_zf( this->bv_str_breaks, new_size );
     this->bv_str_breaks[ new_size - 1 ] = 1;
     this->initialized = false;
   }

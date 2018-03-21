@@ -22,6 +22,7 @@
 #include <iterator>
 
 #include <seqan/sequence.h>
+#include <sdsl/bit_vectors.hpp>
 
 #include "tests_base.h"
 #include "utils.h"
@@ -352,6 +353,104 @@ SCENARIO( "Check file appendability", "[utils]" )
     THEN( "It should not be appendable" )
     {
       REQUIRE( ! appendable( filepath ) );
+    }
+  }
+}
+
+SCENARIO( "Resize a bit-vector with zero-filled bits", "[utils]" )
+{
+  typedef sdsl::bit_vector::size_type TSize;
+  GIVEN( "A bit vector with a byte-aligned size" )
+  {
+    TSize old_size = 128;
+    sdsl::bit_vector bv( old_size, 1 );
+
+    WHEN( "It is resized to byte-aligned size -- expansion" )
+    {
+      TSize new_size = 65536;
+      resize_zf( bv, new_size );
+
+      THEN( "Old bits should remain untouched" )
+      {
+        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
+      }
+      AND_THEN( "Newly allocated bits should be zero" )
+      {
+        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+      }
+    }
+
+    WHEN( "It is resized to a size which is not byte-aligned -- expansion" )
+    {
+      TSize new_size = 65700;
+      resize_zf( bv, new_size );
+
+      THEN( "Old bits should remain untouched" )
+      {
+        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
+      }
+      AND_THEN( "Newly allocated bits should be zero" )
+      {
+        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+      }
+    }
+
+    WHEN( "It is resized to smaller size -- contraction" )
+    {
+      TSize new_size = 2;
+      resize_zf( bv, new_size );
+
+      THEN( "Old bits should remain untouched" )
+      {
+        for ( TSize i = 0; i < new_size; ++i ) REQUIRE( bv[ i ] == 1 );
+      }
+    }
+  }
+
+  GIVEN( "A bit vector with a size which is not byte-aligned" )
+  {
+    TSize old_size = 110;
+    sdsl::bit_vector bv( old_size, 1 );
+
+    WHEN( "It is resized to byte-aligned size -- expansion" )
+    {
+      TSize new_size = 65536;
+      resize_zf( bv, new_size );
+
+      THEN( "Old bits should remain untouched" )
+      {
+        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
+      }
+      AND_THEN( "Newly allocated bits should be zero" )
+      {
+        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+      }
+    }
+
+    WHEN( "It is resized to a size which is not byte-aligned -- expansion" )
+    {
+      TSize new_size = 65700;
+      resize_zf( bv, new_size );
+
+      THEN( "Old bits should remain untouched" )
+      {
+        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
+      }
+      AND_THEN( "Newly allocated bits should be zero" )
+      {
+        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+      }
+    }
+
+    WHEN( "It is resized to smaller size -- contraction" )
+    {
+      TSize new_size = 2;
+      resize_zf( bv, new_size );
+
+      THEN( "Old bits should remain untouched" )
+      {
+        for ( TSize i = 0; i < new_size; ++i ) REQUIRE( bv[ i ] == 1 );
+      }
     }
   }
 }

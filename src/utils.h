@@ -136,6 +136,33 @@ namespace grem {
 
 
   /**
+   *  @brief  Resize and set all bits in [old_size...new_size) to 0 if the range is valid.
+   *
+   *  @param  bv The bit vector.
+   *  @param  new_size The size to which the bit vector is resized.
+   *
+   *  The number of bytes extended by `resize` is calculated including the last byte in
+   *  [old_size...new_size) when the range is not byte-aligned.
+   */
+  template< typename TBitVector >
+      inline void
+    resize_zf( TBitVector& bv, typename TBitVector::size_type new_size )
+    {
+      typedef typename TBitVector::size_type TSize;
+
+      TSize old_size = bv.size();
+      bv.resize( new_size );
+
+      if ( old_size >= new_size ) return;
+
+      TSize byte_offset = ( old_size >> 3 ) + 1;
+      TSize count = ( new_size  >> 3 ) - byte_offset + (TSize)( new_size % 8 != 0 );
+      bv.set_int( old_size, 0 );  /* zero the range [old_size...byte_offset*8). */
+      std::memset( ((unsigned char*)bv.data()) + byte_offset, 0, count );
+    }  /* -----  end of function resize_zf  ----- */
+
+
+  /**
    *  @brief  Check if the given file exists and is readable.
    *
    *  @param  file_name The name of the file to be checked.
