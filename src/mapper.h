@@ -518,6 +518,44 @@ namespace grem
           }
         }
 
+          inline bool
+        open_starts( const std::string& prefix, unsigned int seed_len,
+            unsigned int step_size )
+        {
+          std::string filepath = prefix + "_loci_"
+            "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
+          std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
+          if ( !ifs ) return false;
+
+          try {
+            deserialize( ifs, this->starting_loci );
+          }
+          catch ( const std::runtime_error& ) {
+            return false;
+          }
+
+          return true;
+        }
+
+          inline bool
+        save_starts( const std::string& prefix, unsigned int seed_len,
+            unsigned int step_size )
+        {
+          std::string filepath = prefix + "_loci_"
+            "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
+          std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
+          if ( !ofs ) return false;
+
+          try {
+            serialize( ofs, this->starting_loci );
+          }
+          catch ( const std::runtime_error& ) {
+            return false;
+          }
+
+          return true;
+        }
+
           inline void
         traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {

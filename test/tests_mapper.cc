@@ -22,6 +22,7 @@
 #include "tests_base.h"
 #include "mapper.h"
 #include "traverser.h"
+#include "utils.h"
 #include "logger.h"
 
 
@@ -66,7 +67,7 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
 }
 
 
-SCENARIO ( "Add starting points when using paths index", "[mapper]" )
+SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
 {
   GIVEN ( "A tiny variation graph" )
   {
@@ -97,7 +98,7 @@ SCENARIO ( "Add starting points when using paths index", "[mapper]" )
     Mapper< TTraverser > mapper( &vargraph, k );
     Dna5QPathSet< VarGraph, TIndexSpec > paths;
 
-    WHEN( "Find starting points using " + std::to_string( nof_paths ) + " paths" )
+    WHEN( "Find starting loci using " + std::to_string( nof_paths ) + " paths" )
     {
       mapper.pick_paths( paths, nof_paths );
       mapper.add_all_loci( paths, k );
@@ -105,6 +106,54 @@ SCENARIO ( "Add starting points when using paths index", "[mapper]" )
         REQUIRE( locus.node_id() == (*truth_itr).first );
         REQUIRE( locus.offset() == (*truth_itr).second );
         ++truth_itr;
+      }
+    }
+  }
+}
+
+SCENARIO( "Load and save starting loci", "[mapper]" )
+{
+  GIVEN ( "A tiny variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/tiny/tiny.xg";
+    std::ifstream gifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    GIVEN( "A mapper on this graph with known starting loci" )
+    {
+      typedef seqan::IndexEsa<> TIndexSpec;
+      typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
+      typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
+
+      int k = 12;
+      int e = 10;
+      Mapper< TTraverser > mapper( &vargraph, k );
+
+      for ( int i = 325; i > 0; i -= 4 ) {
+        mapper.add_start( i, i % 17 );
+      }
+
+      WHEN( "It is saved to the file" )
+      {
+        std::string prefix = get_tmpfile();
+        mapper.save_starts( prefix, k, e );
+        mapper.set_starting_loci( {} );
+
+        THEN( "It should be loaded as it was" )
+        {
+          mapper.open_starts( prefix, k, e );
+          REQUIRE( mapper.get_starting_loci().size() == 82 );
+
+          int i = 325;
+          for ( const auto& l : mapper.get_starting_loci() ) {
+            REQUIRE( l.node_id() == i );
+            REQUIRE( l.offset() == i % 17 );
+            i -= 4;
+          }
+        }
       }
     }
   }
