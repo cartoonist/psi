@@ -207,6 +207,21 @@ namespace grem {
   }
 
 
+    inline std::string
+  get_tmpfile( )
+  {
+    std::string tmpfile_templ = get_tmpdir() + "/grem-XXXXXX";
+    char* tmpl = new char [ tmpfile_templ.size() + 1 ];
+    std::strcpy( tmpl, tmpfile_templ.c_str() );
+    int fd = mkstemp( tmpl );
+    tmpfile_templ = tmpl;
+
+    ::close( fd );
+    delete[] tmpl;
+    return tmpfile_templ;
+  }
+
+
   typedef uint64_t TContainerSize;
 
   /**

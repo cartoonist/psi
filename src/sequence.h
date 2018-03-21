@@ -145,7 +145,7 @@ namespace grem {
           : YaString( data, std::move( _fpath ) ) { }
 
         YaString( const string_type& data )
-          : YaString( data, SEQAN_TEMP_FILENAME() ) { }
+          : YaString( data, get_tmpfile() ) { }
 
         YaString( string_type&& data )
           : YaString( data ) { }
@@ -204,7 +204,7 @@ namespace grem {
         clear( )
         {
           this->close();
-          this->fpath = SEQAN_TEMP_FILENAME();
+          this->fpath = get_tmpfile();
           this->out.open( this->fpath );
           this->len = 0;
         }
