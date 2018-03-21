@@ -30,7 +30,7 @@ using namespace grem;
 
 
 Options opt = {0, 0, 0, 0, 0, IndexType::Esa, "", "", "",
-/*log_path  = */ "", "", "", false, false, false, false,
+/*log_path  = */ "", "", false, false, false,
 /*nologfile = */ true,
 /*nolog     = */ false,
 /*quiet     = */ false,
