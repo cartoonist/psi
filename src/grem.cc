@@ -271,6 +271,7 @@ startup( const Options & options )
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
+  log->info( "- Temporary directory: '{}'", get_tmpdir() );
 
   log->info( "Opening file '{}'...", options.fq_path );
   SeqFileIn reads_infile;
