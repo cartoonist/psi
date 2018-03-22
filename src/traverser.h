@@ -33,6 +33,12 @@ namespace grem {
       public:
         typedef TraverserBFS< TIndex, ExactMatching, TStatSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
+
+  template< typename TIndex, typename TStatSpec >
+    class Traverser< TIndex, DFS, ExactMatching, TStatSpec > {
+      public:
+        typedef TraverserDFS< TIndex, ExactMatching, TStatSpec > Type;
+    };  /* ----------  end of template class Traverser  ---------- */
 }  /* -----  end of namespace grem  ----- */
 
 #endif  // end of TRAVERSER_H__
