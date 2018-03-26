@@ -444,7 +444,7 @@ namespace grem
                 extend_to_k( trav_path, bt_itr, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths, Unordered() ) ) {
+                    !covered_by( current_path, paths ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {

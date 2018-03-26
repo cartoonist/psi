@@ -24,6 +24,7 @@
 
 #include "vargraph.h"
 #include "sequence.h"
+#include "pathset.h"
 #include "index.h"
 #include "utils.h"
 
@@ -54,21 +55,11 @@ namespace grem {
         /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
         context_type context;
         bool lazy_mode;
-        bool sorted;
       public:
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( context_type ct=0, bool l=false )
-          : context( ct ), lazy_mode( l ), sorted( false ) { };
-        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ), sorted( false ) { };
-        /* ====================  ACCESSORS     ======================================= */
-        /**
-         *  @brief  return true if the paths in the set is sorted by their minimum node ID.
-         */
-          inline bool
-        is_sorted() const
-        {
-          return this->sorted;
-        }  /* -----  end of method is_sorted  ----- */
+          : context( ct ), lazy_mode( l ) { };
+        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ) { };
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Get the shift required to add to trimmed position to get original one.
@@ -152,7 +143,6 @@ namespace grem {
         {
           this->paths_set.push_back( std::move( new_path ) );
           initialize( this->paths_set.back() );
-          this->sorted = false;
           if ( !this->lazy_mode ) {
             this->add_path_sequence( std::prev(this->paths_set.end()), this->paths_set.end() );
           }
@@ -265,23 +255,6 @@ namespace grem {
           }
           grem::create_index( this->index );
         }  /* -----  end of method create_index  ----- */
-
-        /**
-         *  @brief  Sort the paths set by the minimum node ID in each path.
-         *
-         *  Sorting the paths in ascending order of minimum node ID in the paths. This
-         *  helps the `covered_by` query to search in the paths local to the query path.
-         */
-          inline void
-        sort()
-        {
-          auto compare = []( TPath& a, TPath& b ) {
-            return *a.get_nodes_set().begin() < *b.get_nodes_set().begin();
-          };
-
-          std::sort( this->paths_set.begin(), this->paths_set.end(), compare );
-          this->sorted = true;
-        }
       private:
         /**
          *  @brief  Add sequence of the paths in the set from `begin` to `end`.
@@ -325,12 +298,9 @@ namespace grem {
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
           size_type path_num = 0;
-          size_type sort_int = 0;
 
           try {
             deserialize( ifs, this->context );
-            deserialize( ifs, sort_int );
-            this->sorted = static_cast< bool >( sort_int );
             deserialize( ifs, path_num );
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
@@ -365,7 +335,6 @@ namespace grem {
 
           try {
             grem::serialize( ofs, this->context );
-            grem::serialize( ofs, static_cast< size_type >( this->sorted ) );
             grem::serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
             for ( const auto& path : this->paths_set ) {
               grem::save( path, ofs );
@@ -464,98 +433,6 @@ namespace grem {
       auto context_shift = set.get_context_shift( real_pos );
       assert( real_pos.i1 < set.paths_set.size() );
       return position_to_id( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
-    }
-
-  /**
-   *  @brief  Check whether a path is covered by a PathSet.
-   *
-   *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as PathSet class instance.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
-   */
-  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TStrategy >
-      inline bool
-    covered_by( const Path< TGraph, TPathSpec >& path,
-        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set, TStrategy )
-    {
-      typedef typename PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >::TPath TPath;
-
-      /* Return `true` if the min node ID of the query path is less than the min node ID
-       * of the element path */
-      auto mn = []( Path< TGraph, TPathSpec > const& query, TPath const& element ) {
-        return *query.get_nodes_set().begin() < *element.get_nodes_set().begin();
-      };
-      /* Return `true` if the max node ID of the element path is less than the max node
-       * ID of the query path */
-      auto mx = []( TPath const& element, Path< TGraph, TPathSpec > const& query ) {
-        return *element.get_nodes_set().rbegin() < *query.get_nodes_set().rbegin();
-      };
-
-      if ( set.is_sorted() ) {
-        /* Find the lower bound and upper bound of the search. */
-        auto lbound = set.paths_set.begin();
-        while ( lbound != set.paths_set.end() && mx( *lbound, path ) ) ++lbound;
-        auto ubound = std::upper_bound( set.paths_set.begin(), set.paths_set.end(), path, mn );
-
-        return lbound < ubound &&
-          covered_by( path.get_nodes().begin(), path.get_nodes().end(), lbound, ubound, TStrategy() );
-      }
-      else {
-        return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-              set.paths_set.begin(), set.paths_set.end(), TStrategy() );
-      }
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a PathSet.
-   *
-   *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as PathSet class instance.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. with no strategy specified it calls with Default strategy.
-   */
-  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection >
-      inline bool
-    covered_by( const Path< TGraph, TPathSpec >& path,
-        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set )
-    {
-      return covered_by( path, set, Default() );
-    }
-
-  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
-      inline void
-    compress( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > const& set, TPathSet& out )
-    {
-      typedef typename TPathSet::value_type TPath;
-
-      auto pre_itr = set.paths_set.begin();
-      auto cur_itr = pre_itr + 1;
-      auto vargraph = (*pre_itr).get_vargraph();
-
-      if ( pre_itr == set.paths_set.end() ) return;
-
-      Path< VarGraph > path( vargraph );
-      path = *pre_itr;
-      while ( cur_itr != set.paths_set.end() ) {
-        if ( *( (*pre_itr).get_nodes().end() - 1 ) > *(*cur_itr).get_nodes().begin() ) {
-          TPath final_path( vargraph );
-          final_path = std::move( path );
-          out.push_back( std::move( final_path ) );
-          clear( path );
-        }
-        path += *cur_itr;
-        pre_itr = cur_itr;
-        ++cur_itr;
-      }
-
-      TPath final_path( vargraph );
-      final_path = std::move( path );
-      out.push_back( std::move( final_path ) );
     }
 
   /* END OF PathSet interface functions  ----------------------------------------- */

@@ -59,19 +59,16 @@ namespace grem{
   template< typename TGraph >
     struct PathTraits< TGraph, Default > {
       typedef std::vector< typename TGraph::nodeid_type > TNodeSequence;
-      typedef std::set< typename TGraph::nodeid_type > TNodeSet;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Dynamic > {
       typedef std::deque< typename TGraph::nodeid_type > TNodeSequence;
-      typedef std::set< typename TGraph::nodeid_type > TNodeSet;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Compact > {
       typedef sdsl::enc_vector< sdsl::coder::elias_delta > TNodeSequence;
-      typedef std::set< typename TGraph::nodeid_type > TNodeSet;
     };
 
   /* Path interface functions forwards  ---------------------------------------- */
@@ -140,16 +137,15 @@ namespace grem{
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef TSpec spec_type;
+        typedef TGraph graph_type;
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
-        typedef typename TTraits::TNodeSet nodes_set_type;
         typedef typename nodes_type::size_type size_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const TGraph* vargraph;
         nodes_type nodes;
-        nodes_set_type nodes_set;
         seqsize_type seqlen;
         /* Loaded on demand. */
         string_type seq;
@@ -178,7 +174,6 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = other.nodes;
-          this->nodes_set = other.nodes_set;
           this->seqlen = other.seqlen;
           this->seq = other.seq;
           this->initialized = other.initialized;
@@ -191,7 +186,6 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = std::move( other.nodes );
-          this->nodes_set = std::move( other.nodes_set );
           this->seqlen = other.seqlen;
           this->seq = std::move( other.seq );
           this->initialized = other.initialized;
@@ -207,7 +201,6 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = other.nodes;
-          this->nodes_set = other.nodes_set;
           this->seqlen = other.seqlen;
           this->seq = other.seq;
           this->initialized = other.initialized;
@@ -221,7 +214,6 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = std::move( other.nodes );
-          this->nodes_set = std::move( other.nodes_set );
           this->seqlen = other.seqlen;
           this->seq = std::move( other.seq );
           this->initialized = other.initialized;
@@ -263,15 +255,6 @@ namespace grem{
         {
           return this->nodes;
         }  /* -----  end of method get_nodes  ----- */
-
-        /**
-         *  @brief  getter function for nodes_set.
-         */
-          inline const nodes_set_type&
-        get_nodes_set( ) const
-        {
-          return this->nodes_set;
-        }  /* -----  end of method get_nodes_set  ----- */
 
         /**
          *  @brief  getter function for seqlen.
@@ -558,7 +541,6 @@ namespace grem{
     {
       assert( path.vargraph != nullptr );
       path.nodes.push_back( node_id );
-      path.nodes_set.insert( node_id );
       path.seqlen += path.vargraph->node_length( node_id );
       if ( path.seq.length() != 0 ) {
         path.seq += path.vargraph->node_sequence( node_id );
@@ -779,7 +761,6 @@ namespace grem{
     clear( Path< TGraph, TSpec >& path )
     {
       clear( path.nodes );
-      path.nodes_set.clear();
       path.seqlen = 0;
       path.seq.clear();
       sdsl::util::clear( path.bv_node_breaks );
@@ -802,7 +783,6 @@ namespace grem{
         typename Path< TGraph, TSpec >::size_type size )
     {
       grem::reserve( path.nodes, size );        /* defined in `utils.h` */
-      grem::reserve( path.nodes_set, size );
     }  /* -----  end of template function reserve  ----- */
 
   /**
@@ -831,11 +811,9 @@ namespace grem{
 
       if ( path.nodes.empty() ) return;
 
-      auto&& last_node = path.nodes.back();
-      auto&& last_node_len = path.vargraph->node_length( last_node );
+      auto&& last_node_len = path.vargraph->node_length( path.nodes.back() );
       assert( path.seqlen >= last_node_len );
       path.seqlen -= last_node_len;
-      path.nodes_set.erase( path.nodes_set.find( last_node ) );
       path.nodes.pop_back();
       path.initialized = false;
 
@@ -855,11 +833,9 @@ namespace grem{
 
       if ( path.nodes.empty() ) return;
 
-      auto&& first_node = path.nodes.front();
-      auto&& first_node_len = path.vargraph->node_length( first_node );
+      auto&& first_node_len = path.vargraph->node_length( path.nodes.front() );
       assert( path.seqlen >= first_node_len );
       path.seqlen -= first_node_len;
-      path.nodes_set.erase( path.nodes_set.find( first_node ) );
       path.nodes.pop_front();
       path.initialized = false;
 
@@ -976,7 +952,6 @@ namespace grem{
         assign( this->nodes, other.nodes );
         clear( other.nodes );
 
-        this->nodes_set = std::move( other.nodes_set );
         this->seqlen = other.seqlen;
         this->seq = std::move( other.seq );
         this->initialized = other.initialized;
@@ -1004,7 +979,6 @@ namespace grem{
 
         this->vargraph = other.vargraph;
         assign( this->nodes, other.nodes );
-        this->nodes_set = other.nodes_set;
         this->seqlen = other.seqlen;
         this->seq = other.seq;
         this->initialized = other.initialized;
@@ -1027,8 +1001,6 @@ namespace grem{
       assert( this->vargraph != nullptr );
 
       this->nodes = std::move( value );
-      std::copy( this->nodes.begin(), this->nodes.end(),
-          std::inserter( this->nodes_set, this->nodes_set.end() ) );
       for ( auto&& n : this->nodes ) this->seqlen += this->vargraph->node_length( n );
     }  /* -----  end of method set_nodes  ----- */
 
@@ -1037,21 +1009,25 @@ namespace grem{
   /* Micro Path interface functions forwards  ---------------------------------- */
 
   template< typename TGraph >
-      inline void
+      void
     save( const Path< TGraph, Micro >& path, std::ostream& out );
   template< typename TGraph >
-      inline void
+      void
     add_node( Path< TGraph, Micro >& path, typename TGraph::nodeid_type const& node_id );
   template< typename TGraph >
-      inline void
+      void
     clear( Path< TGraph, Micro >& path );
   template< typename TGraph >
-      inline void
+      void
     reserve( Path< TGraph, Micro >& path,
         typename Path< TGraph, Micro >::size_type size );
   template< typename TGraph >
-      inline typename Path< TGraph, Micro >::size_type
+      typename Path< TGraph, Micro >::size_type
     length( const Path< TGraph, Micro >& path );
+  template< typename TGraph >
+      bool
+    contains( const Path< TGraph, Micro >& path,
+        typename TGraph::nodeid_type node_id );
 
   /* END OF Micro Path interface functions forwards  --------------------------- */
 
@@ -1067,10 +1043,7 @@ namespace grem{
         /* ====================  TYPEDEFS      ======================================= */
         typedef Micro spec_type;
         typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
-        /* ====================  DATA MEMBERS  ======================================= */
-        nodes_set_type nodes_set;
-        /* ====================  TYPEDEFS      ======================================= */
-        typedef typename decltype( nodes_set )::size_type size_type;
+        typedef typename nodes_set_type::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
         Path( ) = default;
         Path( const std::vector< typename TGraph::nodeid_type >& p )
@@ -1116,6 +1089,9 @@ namespace grem{
           std::copy( value.begin(), value.end(),
               std::inserter( this->nodes_set, this->nodes_set.end() ) );
         }  /* -----  end of method set_nodes  ----- */
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        nodes_set_type nodes_set;
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
         save< TGraph >( const Path< TGraph, Micro >& path, std::ostream& out );
@@ -1129,7 +1105,7 @@ namespace grem{
           friend size_type
         length< TGraph >( const Path< TGraph, Micro >& path );
           friend bool
-        contains< TGraph, Micro >( const Path< TGraph, Micro >& path,
+        contains< TGraph >( const Path< TGraph, Micro >& path,
             typename TGraph::nodeid_type node_id );
     };  /* -----  end of specialized template class Path  ----- */
 
@@ -1259,6 +1235,25 @@ namespace grem{
       inline bool
     contains( const Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id )
     {
+      for ( const auto& nid : path.get_nodes() ) if ( nid == node_id ) return true;
+      return false;
+    }  /* -----  end of template function contains  ----- */
+
+  /**
+   *  @brief  Check whether the given node ID is on the path or not.
+   *
+   *  @param  path The path.
+   *  @param  node_id The ID of the node.
+   *  @return `true` if the node ID is on the path.
+   *
+   *  Check if the given node ID presents in the path.
+   *
+   *  @overload for Micro path.
+   */
+  template< typename TGraph >
+      inline bool
+    contains( const Path< TGraph, Micro >& path, typename TGraph::nodeid_type node_id )
+    {
       return path.nodes_set.find( node_id ) != path.nodes_set.end();
     }  /* -----  end of template function contains  ----- */
 
@@ -1275,11 +1270,11 @@ namespace grem{
    *  It checks if the nodes of the given path is present in the node set. It does not
    *  check the order of the nodes.
    */
-  template< typename TGraph, typename TSpec, typename TIter >
+  template< typename TGraph, typename TIter >
       inline bool
-    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Unordered )
+    contains( const Path< TGraph, Micro >& path, TIter begin, TIter end )
     {
-      auto on_path = [&path]( typename TGraph::nodeid_type const& i ) {
+      auto on_path = [&path]( typename TGraph::nodeid_type i ) {
         return contains( path, i );
       };
 
@@ -1302,13 +1297,11 @@ namespace grem{
    */
   template< typename TGraph, typename TSpec, typename TIter >
       inline bool
-    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Ordered )
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
     {
-      if ( begin != end && contains( path, *begin ) ) {
-        // FIXME: below line is bottleneck: doesn't work for human genome scale;
-        //        e.g. use `map< nodeid, rank >` instead of `set< nodeid >` for Path.
-        auto l = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
-        if ( std::equal( begin, end, l ) ) return true;
+      if ( begin != end ) {
+        auto lc = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
+        if ( std::equal( begin, end, lc ) ) return true;
       }
 
       return false;
@@ -1320,6 +1313,8 @@ namespace grem{
    *  @param  path The path.
    *  @param  begin The begin iterator of node IDs set of the path to be checked.
    *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @param  idx_begin The begin iterator of the index list of candidates.
+   *  @param  idx_end The end iterator of the index list of candidates.
    *  @return `true` if this path is a superset of the given path; otherwise `false`
    *          -- including the case that the given path is empty; i.e.
    *          `end == begin`.
@@ -1327,81 +1322,22 @@ namespace grem{
    *  The input path should be smaller than the path. It checks if the nodes of the
    *  given path is present in the node set. It DOES check the order of the nodes.
    *
-   *  @overload it uses some candidate locations in the path SEQUENCE as hint to find
+   *  @overload it uses some candidate indices in the path node vector as hint to find
    *            the location of the first node in the path nodes list.
    */
   template< typename TGraph, typename TSpec, typename TIter1, typename TIter2 >
       inline bool
     contains( const Path< TGraph, TSpec >& path, TIter1 begin, TIter1 end,
-        TIter2 loc_begin, TIter2 loc_end, Ordered )
+        TIter2 idx_begin, TIter2 idx_end )
     {
-      if ( begin != end && contains( path, *begin ) ) {
-        for ( ; loc_begin != loc_end; ++loc_begin ) {
-          auto l = path.get_nodes().begin() + rank( path, *loc_begin );
-          if ( std::equal( begin, end, l ) ) return true;
+      if ( begin != end ) {
+        for ( ; idx_begin != idx_end; ++idx_begin ) {
+          auto lc = path.get_nodes().begin() + *idx_begin;
+          if ( std::equal( begin, end, lc ) ) return true;
         }
       }
 
       return false;
-    }  /* -----  end of template function contains  ----- */
-
-  /**
-   *  @brief  Check whether this Micro path contains another path.
-   *
-   *  @param  path The Micro path.
-   *  @param  begin The begin iterator of node IDs set of the path to be checked.
-   *  @param  end The end iterator of node IDs set of the path to be checked.
-   *  @return `true` if this path is a superset of the given path; otherwise `false`
-   *          -- including the case that the given path is empty; i.e.
-   *          `end == begin`.
-   *
-   *  The input path should be smaller than the path. It checks if the nodes of the
-   *  given path is present in the node set. It does not check the order of the
-   *  nodes.
-   */
-  template< typename TGraph, typename TIter >
-      inline bool
-    contains( const Path< TGraph, Micro >& path, TIter begin, TIter end, Default )
-    {
-      return contains( path, begin, end, Unordered() );
-    }  /* -----  end of template function contains  ----- */
-
-  /**
-   *  @brief  Check whether this path contains another path.
-   *
-   *  @param  path The path.
-   *  @param  begin The begin iterator of node IDs set of the path to be checked.
-   *  @param  end The end iterator of node IDs set of the path to be checked.
-   *  @return `true` if this path is a superset of the given path; otherwise `false`
-   *          -- including the case that the given path is empty; i.e.
-   *          `end == begin`.
-   *
-   *  Overloaded Defaut behaviour for non-Micro paths.
-   */
-  template< typename TGraph, typename TSpec, typename TIter >
-      inline bool
-    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Default )
-    {
-      return contains( path, begin, end, Ordered() );
-    }
-
-  /**
-   *  @brief  Check whether this path contains another path.
-   *
-   *  @param  path The path.
-   *  @param  begin The begin iterator of node IDs set of the path to be checked.
-   *  @param  end The end iterator of node IDs set of the path to be checked.
-   *  @return `true` if this path is a superset of the given path; otherwise `false`
-   *          -- including the case that the given path is empty; i.e.
-   *          `end == begin`.
-   *
-   *  Overloaded with no strategy specified calling the Default `contains` for each path.
-   */
-  template< typename TGraph, typename TSpec, typename TIter >
-      inline bool
-    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
-    {
-      return contains( path, begin, end, Default() );
     }  /* -----  end of template function contains  ----- */
 
   /**
@@ -1418,15 +1354,12 @@ namespace grem{
    *  path in the given set of paths. The path set should be a container of the Path
    *  class.
    */
-  template< class TIter1, class TIter2, typename TStrategy >
+  template< class TIter1, class TIter2 >
       inline bool
-    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end, TStrategy )
+    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
     {
       for ( ; paths_set_begin != paths_set_end; ++paths_set_begin ) {
-        if ( contains( (*paths_set_begin), begin, end, TStrategy() ) )
-        {
-          return true;
-        }
+        if ( contains( (*paths_set_begin), begin, end ) ) return true;
       }
       return false;
     }  /* -----  end of template function covered_by  ----- */
@@ -1436,54 +1369,17 @@ namespace grem{
    *
    *  @param  begin The begin iterator of the path as set of node IDs.
    *  @param  end The end iterator of the path as set of node IDs.
-   *  @param  path_set_begin The begin iterator of the paths set.
-   *  @param  path_set_end The end iterator of the paths set.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded with no strategy specified calling `Default` strategy.
-   */
-  template< class TIter1, class TIter2 >
-      inline bool
-    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
-    {
-      return covered_by( begin, end, paths_set_begin, paths_set_end, Default() );
-    }
-
-  /**
-   *  @brief  Check whether a path is covered by a set of paths.
-   *
-   *  @param  begin The begin iterator of the path as set of node IDs.
-   *  @param  end The end iterator of the path as set of node IDs.
    *  @param  paths_set A set of paths as a container of `Path`.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
    *          false -- including the case that the path is empty.
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
-   */
-  template< class TIter1, class TIter2, class TContainer, typename TStrategy >
-      inline bool
-    covered_by( TIter1 begin, TIter2 end, const TContainer& paths_set, TStrategy )
-    {
-      return covered_by( begin, end, paths_set.begin(), paths_set.end(), TStrategy() );
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a set of paths.
-   *
-   *  @param  begin The begin iterator of the path as set of node IDs.
-   *  @param  end The end iterator of the path as set of node IDs.
-   *  @param  paths_set A set of paths as a container of `Path`.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. Default behaviour for `covered_by` when strategy is not specified.
    */
   template< class TIter1, class TIter2, class TContainer >
       inline bool
     covered_by( TIter1 begin, TIter2 end, const TContainer& paths_set )
     {
-      return covered_by( begin, end, paths_set, Default() );
+      return covered_by( begin, end, paths_set.begin(), paths_set.end() );
     }  /* -----  end of template function covered_by  ----- */
 
   /**
@@ -1495,31 +1391,14 @@ namespace grem{
    *          false -- including the case that the path is empty.
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
-   */
-  template< typename TNodeID, class TContainer, typename TStrategy >
-      inline bool
-    covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set, TStrategy )
-    {
-      return covered_by( path_nodes.begin(), path_nodes.end(),
-          paths_set.begin(), paths_set.end(), TStrategy() );
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a set of paths.
-   *
-   *  @param  path_nodes The given path to be checked as a vector of node IDs.
-   *  @param  paths_set A set of paths as a container of `Path`.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. Default behaviour for `covered_by` when strategy is not specified.
    */
   template< typename TNodeID, class TContainer >
       inline bool
     covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set )
     {
-      return covered_by( path_nodes, paths_set, Default() );
-    }
+      return covered_by( path_nodes.begin(), path_nodes.end(),
+          paths_set.begin(), paths_set.end() );
+    }  /* -----  end of template function covered_by  ----- */
 
   /**
    *  @brief  Check whether a path is covered by a set of paths.
@@ -1531,30 +1410,13 @@ namespace grem{
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
-  template< typename TGraph, typename TSpec, class TContainer, typename TStrategy >
-      inline bool
-    covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set, TStrategy )
-    {
-      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-          paths_set.begin(), paths_set.end(), TStrategy() );
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a set of paths.
-   *
-   *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as a container of `Path`.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. Default behaviour for `covered_by` when strategy is not specified.
-   */
   template< typename TGraph, typename TSpec, class TContainer >
       inline bool
     covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set )
     {
-      return covered_by( path, paths_set, Default() );
-    }
+      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
+          paths_set.begin(), paths_set.end() );
+    }  /* -----  end of template function covered_by  ----- */
 
   /**
    *  @brief  Check whether a node is covered by a set of paths.

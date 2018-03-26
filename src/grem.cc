@@ -118,13 +118,6 @@ template< typename TPathSet, typename TMapper >
       mapper.pick_paths( paths, path_num, patched );
       log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
       {
-        auto timer = Timer( "sort-paths" );
-        log->info( "Sorting the paths..." );
-        /* Sort the paths. */
-        paths.sort();
-      }
-      log->info( "Sorted paths in {} us.", Timer::get_duration( "sort-paths" ).count() );
-      {
         auto timer = Timer( "index-paths" );
         log->info( "Indexing the paths..." );
         /* Index the paths. */
