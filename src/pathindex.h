@@ -1,8 +1,8 @@
 /**
- *    @file  pathset.h
- *   @brief  PathSet template class definition.
+ *    @file  pathindex.h
+ *   @brief  PathIndex template class definition.
  *
- *  This header files contains PathSet template class definition and its interface
+ *  This header files contains PathIndex template class definition and its interface
  *  functions.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PATHSET_H__
-#define  PATHSET_H__
+#ifndef  PATHINDEX_H__
+#define  PATHINDEX_H__
 
 #include <vector>
 #include <algorithm>
@@ -31,13 +31,13 @@
 
 namespace grem {
   /**
-   *  @brief  Represent a set of paths.
+   *  @brief  Represent a path index.
    *
-   *  This class encapsulate the data structures to represent a set of path, its strings
-   *  set, and its index. It also provides load/save functionalities.
+   *  This class encapsulate the data structures to represent an index of a set of
+   *  paths, its strings set. It also provides load/save functionalities.
    */
   template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection = Forward >
-    class PathSet {
+    class PathIndex {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
@@ -57,9 +57,9 @@ namespace grem {
         bool lazy_mode;
       public:
         /* ====================  LIFECYCLE     ======================================= */
-        PathSet( context_type ct=0, bool l=false )
+        PathIndex( context_type ct=0, bool l=false )
           : context( ct ), lazy_mode( l ) { };
-        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ) { };
+        PathIndex( bool lazy ) : context( 0 ), lazy_mode( lazy ) { };
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Get the shift required to add to trimmed position to get original one.
@@ -87,15 +87,15 @@ namespace grem {
         }  /* -----  end of method get_context_shift  ----- */
 
         /**
-         *  @brief  Load the set of paths and its index from file.
+         *  @brief  Load the path index from file.
          *
-         *  @param[in]   filepath_prefix The file path prefix of the saved set of paths.
+         *  @param[in]   filepath_prefix The file path prefix of the saved path index.
          *  @param[in]   vargraph A pointer to the graph whose paths is loading.
-         *  @return `true` if the set of paths are successfully loaded from file;
-         *          otherwise `false`.
+         *  @return `true` if the path index is successfully loaded from file; otherwise
+         *          `false`.
          *
-         *  It first loads the index from the file. Then, the nodes and string sets will
-         *  be loaded.
+         *  It first loads the index from the file, then the paths set and other
+         *  attributes.
          */
           inline bool
         load( const std::string& filepath_prefix, const TGraph* vargraph )
@@ -112,13 +112,14 @@ namespace grem {
         }  /* -----  end of method load  ----- */
 
         /**
-         *  @brief  Save the set of paths and its index into file.
+         *  @brief  Save the path index into file.
          *
-         *  @param[in]   filepath_prefix The file path prefix to save the set of paths.
-         *  @return `true` if the set of paths are successfully saved into file;
-         *          otherwise `false`.
+         *  @param[in]   filepath_prefix The file path prefix to save the path index.
+         *  @return `true` if the path index is successfully saved into file; otherwise
+         *          `false`.
          *
-         *  It first saves the index into the file. Then, the nodes sets will be written.
+         *  It first saves the index into the file, then the paths set and other
+         *  attributes.
          */
           inline bool
         serialize( const std::string& filepath_prefix )
@@ -227,7 +228,7 @@ namespace grem {
         }  /* -----  end of method size  ----- */
 
         /**
-         *  @brief  Reserve memory for the set of paths.
+         *  @brief  Reserve memory for the set of paths and corresponding string set.
          *
          *  @param  size The target capacity.
          *
@@ -283,11 +284,11 @@ namespace grem {
           }
 
         /**
-         *  @brief  Load nodes sets of paths set from file.
+         *  @brief  Load the set of paths and other attributes from file.
          *
          *  @param[in]   filepath The file path of the saved paths.
          *  @param[in]   vargraph A pointer to the graph whose paths is loading.
-         *  @return `true` if the nodes sets are successfully loaded from file; otherwise
+         *  @return `true` if the paths set is successfully loaded from file; otherwise
          *          `false`.
          *
          *  It deserializes the paths set. The paths are prefixed by the number of paths.
@@ -319,10 +320,10 @@ namespace grem {
         }  /* -----  end of function load_paths_set  ----- */
 
         /**
-         *  @brief  Save nodes sets of paths set into file.
+         *  @brief  Save set of paths and other attributes into file.
          *
          *  @param[in]   filepath The file path of the file to be written.
-         *  @return `true` if the nodes sets are successfully written to file; otherwise
+         *  @return `true` if the paths set is successfully written to file; otherwise
          *          `false`.
          *
          *  It serializes the paths to the files followed by the number of paths.
@@ -346,28 +347,28 @@ namespace grem {
 
           return true;
         }  /* -----  end of function save_paths_set  ----- */
-    };  /* -----  end of template class PathSet  ----- */
+    };  /* -----  end of template class PathIndex  ----- */
 
   /* Typedefs  ----------------------------------------------------------------- */
 
   template< typename TGraph, typename TIndexSpec, typename TSequenceDirection = Forward >
-    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec, TSequenceDirection >;
+    using Dna5QPathIndex = PathIndex< TGraph, seqan::Dna5QString, TIndexSpec, TSequenceDirection >;
 
   /**
-   *  @brief  Meta-function getting direction of paths in a `PathSet`.
+   *  @brief  Meta-function getting direction of paths in a `PathIndex`.
    */
   template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
-    struct Direction< PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > > {
+    struct Direction< PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection > > {
       typedef TSequenceDirection Type;
     };
 
-  /* PathSet interface functions  ------------------------------------------------ */
+  /* PathIndex interface functions  ------------------------------------------------ */
 
   template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename PathSet< TGraph, TText, TIndexSpec >::size_type
-    length( PathSet< TGraph, TText, TIndexSpec >& set )
+      inline typename PathIndex< TGraph, TText, TIndexSpec >::size_type
+    length( PathIndex< TGraph, TText, TIndexSpec >& pindex )
     {
-      return set.size();
+      return pindex.size();
     }
 
   template< typename TIndex >
@@ -375,12 +376,12 @@ namespace grem {
 
   template< typename TGraph, typename TText, typename TIndexSpec >
       inline typename TGraph::offset_type
-    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+    position_to_offset( PathIndex< TGraph, TText, TIndexSpec, Forward > const& pindex,
+        TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
     {
-      auto context_shift = set.get_context_shift( pos );
-      assert( pos.i1 < set.paths_set.size() );
-      return position_to_offset( set.paths_set[ pos.i1 ], context_shift + pos.i2 );
+      auto context_shift = pindex.get_context_shift( pos );
+      assert( pos.i1 < pindex.paths_set.size() );
+      return position_to_offset( pindex.paths_set[ pos.i1 ], context_shift + pos.i2 );
     }
 
   /**
@@ -394,24 +395,24 @@ namespace grem {
    */
   template< typename TGraph, typename TText, typename TIndexSpec >
       inline typename TGraph::offset_type
-    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
+    position_to_offset( PathIndex< TGraph, TText, TIndexSpec, Reversed > const& pindex,
+        TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
-      auto context_shift = set.get_context_shift( real_pos );
-      assert( real_pos.i1 < set.paths_set.size() );
-      return position_to_offset( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
+      real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
+      auto context_shift = pindex.get_context_shift( real_pos );
+      assert( real_pos.i1 < pindex.paths_set.size() );
+      return position_to_offset( pindex.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
     }
 
   template< typename TGraph, typename TText, typename TIndexSpec >
       inline typename TGraph::nodeid_type
-    position_to_id( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+    position_to_id( PathIndex< TGraph, TText, TIndexSpec, Forward > const& pindex,
+        TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
     {
-      auto context_shift = set.get_context_shift( pos );
-      assert( pos.i1 < set.paths_set.size() );
-      return position_to_id( set.paths_set[ pos.i1 ], context_shift + pos.i2 );
+      auto context_shift = pindex.get_context_shift( pos );
+      assert( pos.i1 < pindex.paths_set.size() );
+      return position_to_id( pindex.paths_set[ pos.i1 ], context_shift + pos.i2 );
     }
 
   /**
@@ -425,18 +426,18 @@ namespace grem {
    */
   template< typename TGraph, typename TText, typename TIndexSpec >
       inline typename TGraph::nodeid_type
-    position_to_id( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
+    position_to_id( PathIndex< TGraph, TText, TIndexSpec, Reversed > const& pindex,
+        TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
-      auto context_shift = set.get_context_shift( real_pos );
-      assert( real_pos.i1 < set.paths_set.size() );
-      return position_to_id( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
+      real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
+      auto context_shift = pindex.get_context_shift( real_pos );
+      assert( real_pos.i1 < pindex.paths_set.size() );
+      return position_to_id( pindex.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
     }
 
-  /* END OF PathSet interface functions  ----------------------------------------- */
+  /* END OF PathIndex interface functions  ----------------------------------------- */
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  // end of PATHSET_H__
+#endif  // end of PATHINDEX_H__

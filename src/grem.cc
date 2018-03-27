@@ -29,7 +29,7 @@
 #include "vargraph.h"
 #include "mapper.h"
 #include "traverser.h"
-#include "pathset.h"
+#include "pathindex.h"
 #include "sequence.h"
 #include "seed.h"
 #include "utils.h"
@@ -94,47 +94,47 @@ template< typename TMapper, typename TSet >
     }
   }
 
-template< typename TPathSet, typename TMapper >
+template< typename TPathIndex, typename TMapper >
     void
-  prepare_paths_index( TPathSet& paths, TMapper& mapper, bool paths_index, bool patched,
+  prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index, bool patched,
       const std::string& paths_index_file, unsigned int path_num )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    log->info( "Loading paths index..." );
-    /* Load the genome-wide paths for the variation graph if available. */
-    if ( paths_index && paths.load( paths_index_file, mapper.get_vargraph() ) ) {
-      log->info( "Paths index found. Loaded." );
+    log->info( "Loading path index..." );
+    /* Load the genome-wide path index for the variation graph if available. */
+    if ( paths_index && pindex.load( paths_index_file, mapper.get_vargraph() ) ) {
+      log->info( "Path index found. Loaded." );
       return;
     }
-    /* No genome-wide paths requested. */
+    /* No genome-wide path index requested. */
     if ( path_num == 0 ) {
-      log->info( "Specified number of path is 0. Skipping paths indexing..." );
+      log->info( "Specified number of path is 0. Skipping path indexing..." );
     }
     else {
-      log->info( "No valid paths index found. Picking paths..." );
+      log->info( "No valid path index found. Picking paths..." );
       log->info( "Picking {} different path(s) on the graph...", path_num );
       /* Generate the requested number of genome-wide paths. */
-      mapper.pick_paths( paths, path_num, patched );
+      mapper.pick_paths( pindex, path_num, patched );
       log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
       {
         auto timer = Timer( "index-paths" );
         log->info( "Indexing the paths..." );
         /* Index the paths. */
-        paths.create_index();
+        pindex.create_index();
       }
       log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
       {
         auto timer = Timer( "save-paths" );
-        log->info( "Saving paths index..." );
+        log->info( "Saving path index..." );
         /* Serialize the indexed paths. */
         if ( !paths_index ) {
-          log->warn( "No paths index file is specified. Skipping..." );
-        } else if ( !paths.serialize( paths_index_file ) ) {
-          log->warn( "Specified paths index file is not writable. Skipping..." );
+          log->warn( "No path index file is specified. Skipping..." );
+        } else if ( !pindex.serialize( paths_index_file ) ) {
+          log->warn( "Specified path index file is not writable. Skipping..." );
         }
       }
-      log->info( "Saved paths in {} us.", Timer::get_duration( "save-paths" ).count() );
+      log->info( "Saved path index in {} us.", Timer::get_duration( "save-paths" ).count() );
     }
   }
 
@@ -156,10 +156,10 @@ template< typename TIndexSpec  >
     TMapper mapper( &vargraph, seed_len );
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
-    /* Genome-wide paths set in lazy mode. */
-    PathSet< VarGraph, DiskString, grem::FMIndex<>, Forward > paths( context, true );
+    /* Genome-wide path index in lazy mode. */
+    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Forward > pindex( context, true );
     /* Prepare (load or create) genome-wide paths. */
-    prepare_paths_index( paths, mapper, paths_index, patched, paths_index_file, path_num );
+    prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file, path_num );
 
     log->info( "Loading starting loci..." );
     /* Loading starting loci. */
@@ -169,7 +169,7 @@ template< typename TIndexSpec  >
     else {
       log->info( "Selecting starting loci..." );
       /* Locate starting loci. */
-      mapper.add_all_loci( paths, seed_len, step_size );
+      mapper.add_all_loci( pindex, seed_len, step_size );
       log->info( "Selected starting loci in {} us.",
           Timer::get_duration( "add-starts" ).count() );
       log->info( "Number of starting loci selected (in {} nodes): {}",
@@ -236,7 +236,7 @@ template< typename TIndexSpec  >
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */
         if ( path_num != 0 ){
-          mapper.seeds_on_paths( paths, write_callback );
+          mapper.seeds_on_paths( pindex, write_callback );
           log->info( "Found seed on paths in {} us.",
               Timer::get_duration( "paths-seed-find" ).count() );
           log->info( "Total number of seeds found on paths: {}", found - pre_found );
