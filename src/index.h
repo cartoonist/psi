@@ -25,6 +25,7 @@
 #include "sequence.h"
 #include "fmindex.h"
 
+
 namespace grem {
   /* Typedefs  ------------------------------------------------------------------- */
 

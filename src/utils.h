@@ -29,6 +29,8 @@
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 
+#include "base.h"
+
 
 #define GREM_DEFAULT_TMPDIR "/tmp"
 #define GREM_TMPFILE_TEMPLATE "/grem-XXXXXX"

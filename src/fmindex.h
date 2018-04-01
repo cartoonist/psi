@@ -27,6 +27,7 @@
 #include "sequence.h"
 #include "utils.h"
 
+
 namespace grem {
   template< class TWT = sdsl::wt_huff<>, uint32_t TDens = 32, uint32_t TInvDens = 64 >
     struct FMIndex;

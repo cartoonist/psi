@@ -23,6 +23,8 @@
 
 #include <seqan/basic.h>
 
+#include "base.h"
+
 
 namespace grem {
   struct NoStatStrategy;                        /**< @brief No-stat mode strategy. */
