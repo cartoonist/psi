@@ -421,9 +421,9 @@ namespace grem
             kmer_exact_matches( paths.index, &paths, &(this->reads), this->seed_len, GreedyOverlapping(), callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
-        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
+        template< typename TPath, typename TSpec >
             inline void
-          add_all_loci( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths, unsigned int k,
+          add_all_loci( const PathSet< TPath, TSpec >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );

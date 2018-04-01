@@ -169,7 +169,7 @@ template< typename TIndexSpec  >
     else {
       log->info( "Selecting starting loci..." );
       /* Locate starting loci. */
-      mapper.add_all_loci( pindex, seed_len, step_size );
+      mapper.add_all_loci( pindex.get_paths_set(), seed_len, step_size );
       log->info( "Selected starting loci in {} us.",
           Timer::get_duration( "add-starts" ).count() );
       log->info( "Number of starting loci selected (in {} nodes): {}",
