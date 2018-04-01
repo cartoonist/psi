@@ -785,6 +785,9 @@ namespace grem {
       inline bool
     GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer& path )
     {
+      // :TODO:Sun Apr 01 00:01:\@cartoonist: Unordered check!
+      // ... `PathSet< Path< TGraph, Compact >, InMemory >` should be used for
+      // ... `this->visited`.
       return covered_by( path.begin(), path.end(), this->visited );
     }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator[]  ----- */
 
