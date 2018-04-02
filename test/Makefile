@@ -36,7 +36,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGETS       := ${BINDIR}/tests_path ${BINDIR}/tests_fmindex ${BINDIR}/tests_sequence ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathset ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/tests_path ${BINDIR}/tests_fmindex ${BINDIR}/tests_sequence ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathindex ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -64,7 +64,7 @@ ${BINDIR}/tests_indexiter: tests_indexiter.o tests_main.o
 ${BINDIR}/tests_utils: tests_utils.o tests_main.o
 	${LINK}
 
-${BINDIR}/tests_pathset: tests_pathset.o tests_main.o
+${BINDIR}/tests_pathindex: tests_pathindex.o tests_main.o
 	${LINK}
 
 ${BINDIR}/tests_mapper: tests_mapper.o tests_main.o
