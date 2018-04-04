@@ -159,6 +159,14 @@ namespace seqan {
         value_type fm;
         text_type* text_p;
         bool owner;
+        /* ====================  METHODS              ================================ */
+          inline void
+        set_text_fibre( text_type* ext_p, bool update=true )
+        {
+          if ( update ) this->clear_fibres();
+          this->text_p = ext_p;
+          this->owner = false;
+        }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
         indexRequire< TWT, TDens, TInvDens >( Index& index, FibreSALF );
@@ -170,6 +178,8 @@ namespace seqan {
         friend class Finder< Index >;
         friend class Iter< Index, seqan::TopDown<> >;
         friend class Iter< Index, seqan::TopDown< seqan::ParentLinks<> > >;
+        template< typename TPath, typename TSpec >
+          friend class PathSet;
     };
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >

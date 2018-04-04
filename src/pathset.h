@@ -67,7 +67,16 @@ namespace grem {
         {
           this->set = std::move( other.set );
           this->encids_set = std::move( other.encids_set );
-          this->encids_index = std::move( other.encids_index );
+          if ( other.encids_index.owns_text() ) {
+            this->encids_index = std::move( other.encids_index );
+          }
+          else if ( other.encids_index.empty() ) {
+            this->encids_index = index_type( this->encids_set );
+          }
+          else {
+            this->encids_index = std::move( other.encids_index );
+            this->encids_index.set_text_fibre( &this->encids_set, false );
+          }
           this->bv_ids_set = std::move( other.bv_ids_set );
 
           for ( const auto& bv_id_breaks : this->bv_ids_set ) {
@@ -80,7 +89,16 @@ namespace grem {
         {
           this->set = std::move( other.set );
           this->encids_set = std::move( other.encids_set );
-          this->encids_index = std::move( other.encids_index );
+          if ( other.encids_index.owns_text() ) {
+            this->encids_index = std::move( other.encids_index );
+          }
+          else if ( other.encids_index.empty() ) {
+            this->encids_index = index_type( this->encids_set );
+          }
+          else {
+            this->encids_index = std::move( other.encids_index );
+            this->encids_index.set_text_fibre( &this->encids_set, false );
+          }
           this->bv_ids_set = std::move( other.bv_ids_set );
 
           this->rs_ids_set.clear();
