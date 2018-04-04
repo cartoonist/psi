@@ -423,7 +423,7 @@ namespace grem
 
         template< typename TPath, typename TSpec >
             inline void
-          add_all_loci( const PathSet< TPath, TSpec >& paths, unsigned int k,
+          add_all_loci( PathSet< TPath, TSpec >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );

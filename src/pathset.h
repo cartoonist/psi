@@ -47,6 +47,7 @@ namespace grem {
         typedef uint64_t size_type;     /* The max size type to be (de)serialized now. */
         typedef typename value_type::graph_type graph_type;
         typedef std::vector< value_type > container_type;
+        typedef typename container_type::iterator iterator;
         typedef typename container_type::const_iterator const_iterator;
         typedef seqan::StringSet< YaString< TSpec > > stringset_type;
         /* XXX: `stringset_type::string_type` is underlying internal (in-memory) string
@@ -57,7 +58,7 @@ namespace grem {
         /* ====================  CONST MEMBERS  ====================================== */
         const char ID_SEPARATOR = PATHSET_ID_SEPARATOR_CHAR;
         /* ====================  LIFECYCLE      ====================================== */
-        PathSet( ) { }
+        PathSet( ) = default;
 
         PathSet( PathSet const& ) = delete;
         PathSet& operator=( PathSet const& ) = delete;
@@ -90,9 +91,17 @@ namespace grem {
 
           return *this;
         }
+
+        ~PathSet( ) = default;
         /* ====================  OPERATORS     ======================================= */
           inline const value_type&
         operator[]( size_type idx ) const
+        {
+          return this->set[ idx ];
+        }
+
+          inline value_type&
+        operator[]( size_type idx )
         {
           return this->set[ idx ];
         }
@@ -105,6 +114,18 @@ namespace grem {
 
           inline const_iterator
         end( ) const
+        {
+          return this->set.end();
+        }
+
+          inline iterator
+        begin( )
+        {
+          return this->set.begin();
+        }
+
+          inline iterator
+        end( )
         {
           return this->set.end();
         }
