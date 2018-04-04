@@ -794,6 +794,7 @@ namespace grem {
     {
       if ( begin != end ) {
         auto lc = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
+        if ( lc == path.get_nodes().end() ) return false;
         if ( std::equal( begin, end, lc ) ) return true;
       }
 
