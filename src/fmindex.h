@@ -89,18 +89,30 @@ namespace seqan {
           : Index( &t ) { }
 
         Index( Index const& ) = delete;
-        Index( Index&& other ) = default;
+        Index( Index&& ) = default;
         Index& operator=( Index const& ) = delete;
         Index& operator=( Index&& ) = default;
         ~Index( ) noexcept
         {
           this->clear();
         }
+        /* ====================  ACCESSORS     ======================================= */
+          inline bool
+        owns_text( ) const
+        {
+          return this->owner;
+        }
         /* ====================  METHODS       ======================================= */
           inline savalue_type
         size( ) const
         {
-          return fm.size();
+          return this->fm.size();
+        }
+
+          inline bool
+        empty( ) const
+        {
+          return this->size() == 0;
         }
 
           inline void
