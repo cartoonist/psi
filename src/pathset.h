@@ -326,6 +326,27 @@ namespace grem {
 
   /* PathSet interface functions  -------------------------------------------------- */
 
+  template< typename TPath, typename TSpec >
+      inline bool
+    save( PathSet< TPath, TSpec >& set, const std::string& file_path )
+    {
+      std::ofstream ofs( file_path, std::ofstream::out | std::ofstream::binary );
+      if( !ofs ) return false;
+      save( set, ofs );
+      return true;
+    }
+
+  template< typename TPath, typename TSpec >
+      inline bool
+    open( PathSet< TPath, TSpec >& set, typename TPath::graph_type const* vargraph,
+        const std::string& file_path )
+    {
+      std::ifstream ifs( file_path, std::ifstream::in | std::ifstream::binary );
+      if( !ifs ) return false;
+      set.load( ifs, vargraph );
+      return true;
+    }
+
   /**
    *  @brief  Check whether a path is covered by a PathSet.
    *
