@@ -357,99 +357,163 @@ SCENARIO( "Check file appendability", "[utils]" )
   }
 }
 
-SCENARIO( "Resize a bit-vector with zero-filled bits", "[utils]" )
+SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
 {
-  typedef sdsl::bit_vector::size_type TSize;
-  GIVEN( "A bit vector with a byte-aligned size" )
+  GIVEN( "A bit vector whose size is less than a word length (64-bit)" )
   {
-    TSize old_size = 128;
-    sdsl::bit_vector bv( old_size, 1 );
+    sdsl::bit_vector sbv( 12, 0 );
+    sbv[ 0 ] = 1;
+    sbv[ 5 ] = 1;
+    sbv[ 11 ] = 1;
 
-    WHEN( "It is resized to byte-aligned size -- expansion" )
+    WHEN( "The whole bit vector is copied to another" )
     {
-      TSize new_size = 65536;
-      resize_zf( bv, new_size );
+      sdsl::bit_vector dbv( 30, 1 );
+      bv_icopy( sbv, dbv );
 
-      THEN( "Old bits should remain untouched" )
+      THEN( "All first bits of length of source bit vector should be equal to the source" )
       {
-        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
-      }
-      AND_THEN( "Newly allocated bits should be zero" )
-      {
-        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+        REQUIRE( dbv.get_int( 0 ) == 0xfffffffffffff821 );
       }
     }
 
-    WHEN( "It is resized to a size which is not byte-aligned -- expansion" )
+    WHEN( "The bit vector is partially copied to another" )
     {
-      TSize new_size = 65700;
-      resize_zf( bv, new_size );
+      sdsl::bit_vector dbv( 30, 1 );
+      bv_icopy( sbv, dbv, 6, 1 );
 
-      THEN( "Old bits should remain untouched" )
+      THEN( "That part of destination bit vector should be equal to the source" )
       {
-        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
-      }
-      AND_THEN( "Newly allocated bits should be zero" )
-      {
-        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffbf );
       }
     }
 
-    WHEN( "It is resized to smaller size -- contraction" )
+    WHEN( "A suffix of the bit vector is copied to another" )
     {
-      TSize new_size = 2;
-      resize_zf( bv, new_size );
+      sdsl::bit_vector dbv( 30, 1 );
+      bv_icopy( sbv, dbv, 5 );
 
-      THEN( "Old bits should remain untouched" )
+      THEN( "The suffix part of destination bit vector should be equal to the source" )
       {
-        for ( TSize i = 0; i < new_size; ++i ) REQUIRE( bv[ i ] == 1 );
+        REQUIRE( dbv.get_int( 0 ) == 0xfffffffffffff83f );
       }
     }
   }
 
-  GIVEN( "A bit vector with a size which is not byte-aligned" )
+  GIVEN( "A bit vector whose size is a multiplier of a word length (64-bit)" )
   {
-    TSize old_size = 110;
-    sdsl::bit_vector bv( old_size, 1 );
+    sdsl::bit_vector sbv( 7872, 0 );
+    sbv.set_int( 542, 0x900000000fafabcd );
+    sbv.set_int( 7808, 0xaaaaaaaaaaaaaaaa );
 
-    WHEN( "It is resized to byte-aligned size -- expansion" )
+    WHEN( "The whole bit vector is copied to another" )
     {
-      TSize new_size = 65536;
-      resize_zf( bv, new_size );
+      sdsl::bit_vector dbv( 7872, 1 );
+      bv_icopy( sbv, dbv );
 
-      THEN( "Old bits should remain untouched" )
+      THEN( "All first bits of length of source bit vector should be equal to the source" )
       {
-        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
-      }
-      AND_THEN( "Newly allocated bits should be zero" )
-      {
-        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+        REQUIRE( dbv.get_int( 0 ) == 0x0 );
+        REQUIRE( dbv.get_int( 100 ) == 0x0 );
+        REQUIRE( dbv.get_int( 478 ) == 0x0 );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 893 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7744 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7808 ) == 0xaaaaaaaaaaaaaaaa );
       }
     }
 
-    WHEN( "It is resized to a size which is not byte-aligned -- expansion" )
+    WHEN( "The bit vector is partially copied to another" )
     {
-      TSize new_size = 65700;
-      resize_zf( bv, new_size );
+      sdsl::bit_vector dbv( 7000, 1 );
+      bv_icopy( sbv, dbv, 542, 64 );
 
-      THEN( "Old bits should remain untouched" )
+      THEN( "That part of destination bit vector should be equal to the source" )
       {
-        for ( TSize i = 0; i < old_size; ++i ) REQUIRE( bv[ i ] == 1 );
-      }
-      AND_THEN( "Newly allocated bits should be zero" )
-      {
-        for ( TSize i = old_size; i < new_size; ++i ) REQUIRE( bv[ i ] == 0 );
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
       }
     }
 
-    WHEN( "It is resized to smaller size -- contraction" )
+    WHEN( "A suffix of the bit vector is copied to another" )
     {
-      TSize new_size = 2;
-      resize_zf( bv, new_size );
+      sdsl::bit_vector dbv( 8000, 1 );
+      bv_icopy( sbv, dbv, 7808 );
 
-      THEN( "Old bits should remain untouched" )
+      THEN( "The suffix part of destination bit vector should be equal to the source" )
       {
-        for ( TSize i = 0; i < new_size; ++i ) REQUIRE( bv[ i ] == 1 );
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7744 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7808 ) == 0xaaaaaaaaaaaaaaaa );
+      }
+    }
+  }
+
+  GIVEN( "A bit vector whose size is larger than word length (64-bit)" )
+  {
+    sdsl::bit_vector sbv( 7800, 0 );
+    sbv.set_int( 0, 0xdddddddddddddddd );
+    sbv.set_int( 542, 0x900000000fafabcd );
+    sbv.set_int( 7736, 0xaaaaaaaaaaaaaaaa );
+
+    WHEN( "The whole bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 7872, 1 );
+      bv_icopy( sbv, dbv );
+
+      THEN( "All first bits of length of source bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xdddddddddddddddd );
+        REQUIRE( dbv.get_int( 100 ) == 0x0 );
+        REQUIRE( dbv.get_int( 478 ) == 0x0 );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 893 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7672 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7736 ) == 0xaaaaaaaaaaaaaaaa );
+      }
+    }
+
+    WHEN( "The bit vector is partially copied to another" )
+    {
+      sdsl::bit_vector dbv( 7000, 1 );
+      bv_icopy( sbv, dbv, 542, 74 );
+
+      THEN( "That part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 606 ) == 0xfffffffffffffc00 );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+      }
+    }
+
+    WHEN( "A suffix of the bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 8000, 1 );
+      bv_icopy( sbv, dbv, 7736 );
+
+      THEN( "The suffix part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7672 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7736 ) == 0xaaaaaaaaaaaaaaaa );
       }
     }
   }
