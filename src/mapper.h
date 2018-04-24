@@ -27,7 +27,8 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
-#include "stream/stream.h"
+// :TODO:Wed Apr 25 11:15:\@cartoonist: remove stream from git submodule.
+#include "stream.hpp"
 
 #include "vargraph.h"
 #include "sequence.h"

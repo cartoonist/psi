@@ -29,21 +29,21 @@
 #include <functional>
 #include <random>
 
+#include "path.h"
+#include "graph_iter.h"
+
 #ifdef HAVE_MEMCPY
 #  define MACRO_STACK
 #  pragma push_macro("HAVE_MEMCPY")
 #  undef HAVE_MEMCPY
 #endif
 
-#include <xg/xg.hpp>
+#include <xg.hpp>
 
 #ifdef MACRO_STACK
 #  pragma pop_macro("HAVE_MEMCPY")
 #  undef MACRO_STACK
 #endif
-
-#include "path.h"
-#include "graph_iter.h"
 
 
 namespace grem
@@ -57,21 +57,7 @@ namespace grem
       typedef std::size_t rank_type;                            /**< @brief Node ID type. */
       typedef decltype( vg::Position().offset() ) offset_type;  /**< @brief Node offset type. */
 
-      // Constructors
-      VarGraph( void ) : XG( ) { }
-
-      VarGraph( std::ifstream &ifs, bool fmt_xg = true )
-      {
-        if ( fmt_xg ) {
-          load( ifs );
-        }
-        else {
-          from_stream( ifs );
-        }
-      }
-
-      VarGraph( vg::Graph &vg_graph ) : XG( vg_graph )
-      { }
+      using xg::XG::XG;
 
       // Public methods
         inline bool

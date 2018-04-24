@@ -46,7 +46,8 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
     WHEN( "The format is vg")
     {
       std::ifstream ifs( vgpath + ".vg", std::ifstream::in | std::ifstream::binary );
-      VarGraph vargraph( ifs, false );
+      VarGraph vargraph;
+      vargraph.from_stream( ifs );
 
       THEN( "Should pass the basic test" )
       {
@@ -56,7 +57,8 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
     WHEN( "The format is xg")
     {
       std::ifstream ifs( vgpath + ".xg", std::ifstream::in | std::ifstream::binary );
-      VarGraph vargraph( ifs );
+      VarGraph vargraph;
+      vargraph.load( ifs );
       THEN( "Should pass the basic test" )
       {
         x_basic_test( vargraph );

@@ -25,17 +25,30 @@ MACROS       ?= -DGREM_DEBUG=0
 
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
 CXXFLAGS     ?= -g -O3
+# FIXME: Manage the dependencies in a better way!
+VGDIR        ?= /home/ghaffari/src/vg
 LIBS_CFLAGS  := -I. \
-	        $(shell pkg-config --cflags seqan-2) \
-	        $(shell pkg-config --cflags xg) \
-	        $(shell pkg-config --cflags protobuf)
+                -I${VGDIR}/include \
+                -I${VGDIR}/src \
+                -I${VGDIR} \
+                -I${VGDIR}/deps/sdsl-lite/build/include \
+                $(shell pkg-config --cflags jansson) \
+                $(shell pkg-config --cflags seqan-2) \
+                $(shell pkg-config --cflags protobuf)
 LDFLAG       := -fopenmp \
-	        -lz \
-		-lbz2 \
-	        -lrt \
-		-latomic \
-	        $(shell pkg-config --libs xg) \
-	        $(shell pkg-config --libs protobuf)
+                -lpthread \
+                -lm \
+                -lz \
+                -llzma \
+                -lbz2 \
+                -lrt \
+                -latomic \
+                -L${VGDIR}/lib -lvg \
+                -L${VGDIR}/deps/vcflib/lib -lvcflib \
+                -L${VGDIR}/deps/vcflib/tabixpp/htslib -lhts \
+                -L${VGDIR}/deps/sdsl-lite/build/lib -lsdsl -ldivsufsort -ldivsufsort64 \
+                $(shell pkg-config --libs jansson) \
+                $(shell pkg-config --libs protobuf)
 
 ##  Specifying source files to automatically generate dependencies:
 # Consider all *.cc files in the src directory as 'source' file.

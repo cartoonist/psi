@@ -285,11 +285,13 @@ startup( const Options & options )
     throw std::runtime_error( msg );
   }
 
-  bool xg_format = true;
+  VarGraph vargraph;
   if ( ends_with( options.rf_path, ".vg" ) ) {
-    xg_format = false;
+    vargraph.from_stream( ifs );
   }
-  VarGraph vargraph( ifs, xg_format );
+  else {
+    vargraph.load( ifs );
+  }
 
   seqan::File<> output_file;
   auto mode = seqan::OPEN_CREATE | seqan::OPEN_WRONLY;
