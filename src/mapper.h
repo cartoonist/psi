@@ -27,6 +27,7 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
+#include "stream/stream.h"
 
 #include "vargraph.h"
 #include "sequence.h"
@@ -527,8 +528,11 @@ namespace grem
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
+          std::function< void( vg::Position& ) > push_back =
+            [this]( vg::Position& pos ) { this->starting_loci.push_back( pos ); };
+
           try {
-            deserialize( ifs, this->starting_loci );
+            stream::for_each( ifs, push_back );
           }
           catch ( const std::runtime_error& ) {
             return false;
@@ -546,8 +550,11 @@ namespace grem
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 
+          std::function< vg::Position( uint64_t ) > lambda =
+            [this]( uint64_t i ) { return this->starting_loci.at( i ); };
+
           try {
-            serialize( ofs, this->starting_loci );
+            stream::write( ofs, this->starting_loci.size(), lambda );
           }
           catch ( const std::runtime_error& ) {
             return false;
