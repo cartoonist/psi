@@ -419,7 +419,7 @@ namespace grem
 
             auto timer = stats_type( "paths-seed-find" );
 
-            kmer_exact_matches( paths.index, &paths, &(this->reads), this->seed_len, GreedyOverlapping(), callback );
+            kmer_exact_matches( paths.index, &paths, &(this->reads), this->seed_len, NonOverlapping(), callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
         template< typename TPath, typename TSpec >
