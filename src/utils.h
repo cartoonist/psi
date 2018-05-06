@@ -435,6 +435,57 @@ namespace grem {
 
 
   /**
+   *  @brief  Find the element in the container equal to `value` reversely.
+   *
+   *  @param  container The container to be searched.
+   *  @param  value The value to search.
+   *  @return Iterator to the first element satisfying the condition or the begin
+   *          iterator of the container if no such element is found.
+   *
+   *  This function does the same as `std::find` but it searches the container backward
+   *  from the end.
+   */
+  template< typename TCoder >
+      inline typename sdsl::enc_vector< TCoder >::const_iterator
+    rfind( const sdsl::enc_vector< TCoder >& container,
+        typename sdsl::enc_vector< TCoder >::value_type value )
+    {
+      for ( auto it = container.end(); it != container.begin(); --it ) {
+        if ( *( it - 1 ) == value ) return it;
+      }
+      return container.begin();
+    }
+
+
+  /**
+   *  @brief  Check whether the range (rend1, rbegin1] equal to (rend2, rbegin2].
+   *
+   *  @param  rbegin1 The begin iterator of the first range.
+   *  @param  rend1 The end iterator of the first range.
+   *  @param  rbegin2 The begin iterator of the second range.
+   *  @param  rend2 The end iterator of the second range.
+   *  @return `true` if two ranges are equal or not; otherwise `false`.
+   *
+   *  NOTE: The second iterators set (`rbegin2`, `rend2`) are forward iterators. Since,
+   *        const integer vectors in SDSL does not return reference to the element, the
+   *        reverse_iterator cannot be instantiated for them. `rfind` does the same as
+   *        find with this difference that the second iterator set assumed to be
+   *        forward iterator and it scans that iterator reversely.
+   */
+  template< typename TCoder, typename TIter >
+      inline bool
+    requal( TIter rbegin1, TIter rend1,
+        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rbegin2,
+        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rend2 )
+    {
+      for ( ; rbegin1 != rend1; ++rbegin1 ) {
+        if ( rbegin2 == rend2 || *rbegin1 != *--rbegin2 ) return false;
+      }
+      return true;
+    }
+
+
+  /**
    *  @brief  Assign a container to another one.
    *
    *  @param  a The container to be assigned.

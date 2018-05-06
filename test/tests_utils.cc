@@ -357,6 +357,90 @@ SCENARIO( "Check file appendability", "[utils]" )
   }
 }
 
+SCENARIO( "Find a value in an integer vector by reversal iteration", "[utils]" )
+{
+  GIVEN( "A high-dimensional `enc_vector` storing incremental integers" )
+  {
+    size_t len = 1000000;
+    std::vector< int > v(len);
+    for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
+    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+
+    WHEN( "The last item is searched" )
+    {
+      auto lc = rfind( cv, len - 1);
+
+      THEN( "It should return an iterator pointing to the last item in the vector" )
+      {
+        REQUIRE( lc == cv.end() );
+      }
+    }
+
+    WHEN( "Another item is searched" )
+    {
+      auto lc = rfind( cv, len - 10 );
+
+      THEN( "It should return an iterator pointing to the that item in the vector" )
+      {
+        REQUIRE( lc == cv.end() - 9 );
+      }
+    }
+
+    WHEN( "Non-existing item is searched" )
+    {
+      auto lc = rfind( cv, len );
+
+      THEN( "It should return an iterator pointing to the that item in the vector" )
+      {
+        REQUIRE( lc == cv.begin() );
+      }
+    }
+  }
+}
+
+SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
+{
+  GIVEN( "A `enc_vector` storing incremental integers and an existing query" )
+  {
+    size_t len = 1000000;
+    std::vector< int > v(len);
+    for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
+    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    std::vector< int > query = { 999980, 999981, 999982, 999983, 999984, 999985 };
+    auto lc = rfind( cv, *query.rbegin() );
+
+    WHEN( "Check the equality by using reversed iteration" )
+    {
+      bool equal = requal( query.rbegin(), query.rend(), lc, cv.begin() );
+
+      THEN( "The query should be found" )
+      {
+        REQUIRE( equal );
+      }
+    }
+  }
+
+  GIVEN( "A `enc_vector` storing incremental integers and an non-existing query" )
+  {
+    std::size_t len = 10;
+    std::vector< int > v(len);
+    for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i + 2;
+    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    std::vector< int > query = { 0, 1, 2 };
+    auto lc = rfind( cv, *query.rbegin() );
+
+    WHEN( "Check the equality by using reversed iteration" )
+    {
+      bool equal = requal( query.rbegin(), query.rend(), lc, cv.begin() );
+
+      THEN( "The query should not be found" )
+      {
+        REQUIRE( !equal );
+      }
+    }
+  }
+}
+
 SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
 {
   GIVEN( "A bit vector whose size is less than a word length (64-bit)" )
