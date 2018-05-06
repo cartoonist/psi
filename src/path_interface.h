@@ -728,7 +728,11 @@ namespace grem {
       inline bool
     contains( const Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id )
     {
-      for ( const auto& nid : path.get_nodes() ) if ( nid == node_id ) return true;
+      const auto& nodes = path.get_nodes();
+      if ( std::find( nodes.begin(), nodes.end(), node_id ) != nodes.end() )
+      {
+        return true;
+      }
       return false;
     }  /* -----  end of template function contains  ----- */
 
@@ -776,6 +780,33 @@ namespace grem {
     }
 
   /**
+   *  @brief  Check whether a shorter list of node IDs is a subsequent of bigger one.
+   *
+   *  @param  pn_begin The begin iterator of the node IDs in bigger list.
+   *  @param  pn_end The end iterator of the node IDs in bigger list.
+   *  @param  begin The begin iterator of the node IDs in smaller list.
+   *  @param  end The end iterator of the node IDs in smaller list.
+   *  @return `true` if the smaller list is a subsequence of the bigger one; otherwise
+   *          `false` -- including the case that the lists are empty; i.e.
+   *          `end == begin && pn_begin == pn_end`.
+   *
+   *  It checks if the nodes of the smaller list is present in the bigger one. It DOES
+   *  check the order of the nodes and they should be present without gap.
+   */
+  template< typename TIter1, typename TIter2 >
+      inline bool
+    _contains( TIter1 pn_begin, TIter1 pn_end, TIter2 begin, TIter2 end )
+    {
+      if ( begin != end && pn_begin != pn_end && pn_end - pn_begin >= end - begin ) {
+        auto lc = std::find( pn_begin, pn_end, *begin );
+        if ( lc == pn_end || pn_end - lc < end - begin ) return false;
+        if ( std::equal( begin, end, lc ) ) return true;
+      }
+
+      return false;
+    }  /* -----  end of template function _contains  ----- */
+
+  /**
    *  @brief  Check whether this path contains another path.
    *
    *  @param  path The path.
@@ -792,13 +823,7 @@ namespace grem {
       inline bool
     contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
     {
-      if ( begin != end ) {
-        auto lc = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
-        if ( lc == path.get_nodes().end() ) return false;
-        if ( std::equal( begin, end, lc ) ) return true;
-      }
-
-      return false;
+      return _contains( path.get_nodes().begin(), path.get_nodes().end(), begin, end );
     }  /* -----  end of template function contains  ----- */
 
   /**
