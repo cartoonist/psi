@@ -826,6 +826,35 @@ namespace grem {
       return _contains( path.get_nodes().begin(), path.get_nodes().end(), begin, end );
     }  /* -----  end of template function contains  ----- */
 
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    rcontains( const Path< TGraph, TSpec >& path, TIter rbegin, TIter rend )
+    {
+      return
+        _contains( path.get_nodes().rbegin(), path.get_nodes().rend(), rbegin, rend );
+    }  /* -----  end of template function rcontains  ----- */
+
+  template< typename TGraph, typename TIter >
+      inline bool
+    rcontains( const Path< TGraph, Compact >& path, TIter rbegin, TIter rend )
+    {
+      const auto& nodes = path.get_nodes();
+      if ( rbegin != rend && nodes.size() >= rend - rbegin ) {
+        auto lc = rfind( nodes, *rbegin );
+        if ( lc == nodes.begin() || lc - nodes.begin() < rend - rbegin ) return false;
+        if ( requal( rbegin, rend, lc, nodes.begin() ) ) return true;
+      }
+
+      return false;
+    }  /* -----  end of template function rcontains  ----- */
+
+  template< typename TGraph, typename TIter >
+      inline bool
+    rcontains( const Path< TGraph, Micro >& path, TIter rbegin, TIter rend )
+    {
+      return contains( path, rbegin, rend );
+    }
+
   /**
    *  @brief  Check whether this path contains another path.
    *
