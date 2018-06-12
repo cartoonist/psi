@@ -6,7 +6,6 @@ src/.d/
 test/.d/
 
 # Installed header-only libraries
-src/stream
 src/cxxopts
 src/catch
 src/spdlog

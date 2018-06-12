@@ -1,6 +1,3 @@
-[submodule "ext/stream"]
-	path = ext/stream
-	url = https://github.com/vgteam/stream.git
 [submodule "ext/Catch"]
 	path = ext/Catch
 	url = https://github.com/philsquared/Catch.git

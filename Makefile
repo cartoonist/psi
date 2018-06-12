@@ -17,7 +17,7 @@ SOURCES  += $(wildcard ${TESTDIR}/*.cc)
 SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
 ##  Header-only libraries:
-HEADERONLY_LIBS = stream catch spdlog cxxopts
+HEADERONLY_LIBS = catch spdlog cxxopts
 
 # Specifying phony targets.
 .PHONY: all init release debug test test-debug doc tags install install-debug clean distclean
@@ -50,10 +50,6 @@ all: release
 
 init: $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
 	$(call echotitle,"Copying header-only libraries...")
-
-${SRCDIR}/stream:
-	@mkdir ${SRCDIR}/stream
-	@cp -v ${EXTDIR}/stream/src/stream.hpp ${SRCDIR}/stream/stream.h
 
 ${SRCDIR}/catch:
 	@cp -rv ${EXTDIR}/Catch/single_include ${SRCDIR}/catch
