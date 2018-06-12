@@ -20,7 +20,7 @@ SOURCES  += $(wildcard ${TESTDIR}/*.h)
 HEADERONLY_LIBS = stream catch spdlog cxxopts
 
 # Specifying phony targets.
-.PHONY: all init update-submodules release debug test test-debug doc tags install install-debug clean distclean
+.PHONY: all init release debug test test-debug doc tags install install-debug clean distclean
 
 ## Functions:
 define echotitle
@@ -48,11 +48,8 @@ endef
 
 all: release
 
-update-submodules:
-	$(call echotitle,"Installing header-only libraries...")
-	@git submodule init && git submodule update
-
-init: update-submodules $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+init: $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+	$(call echotitle,"Copying header-only libraries...")
 
 ${SRCDIR}/stream:
 	@mkdir ${SRCDIR}/stream
