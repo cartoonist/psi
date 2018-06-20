@@ -144,7 +144,7 @@ namespace grem{
         typedef typename nodes_type::size_type size_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        const TGraph* vargraph;
+        const graph_type* vargraph;
         nodes_type nodes;
         seqsize_type seqlen;
         /* Loaded on demand. */
@@ -156,17 +156,17 @@ namespace grem{
         sdsl::bit_vector::select_1_type ss_node_breaks;
       public:
         /* ====================  LIFECYCLE     ======================================= */
-        Path( const TGraph* g )
+        Path( const graph_type* g )
           : vargraph( g ), seqlen( 0 ), initialized( false )
         { }
 
-        Path( const TGraph* g, nodes_type&& p )
+        Path( const graph_type* g, nodes_type&& p )
           : Path( g )
         {
           this->set_nodes( std::move( p ) );
         }
 
-        Path( const TGraph* g, const nodes_type& p )
+        Path( const graph_type* g, const nodes_type& p )
           : Path( g, nodes_type( p ) )
         { }
 
@@ -234,14 +234,14 @@ namespace grem{
         ~Path() = default;
         /* ====================  OPERATORS     ======================================= */
         template< typename TSpec2 >
-            inline Path& operator=( Path< TGraph, TSpec2 >&& other );
+            inline Path& operator=( Path< graph_type, TSpec2 >&& other );
         template< typename TSpec2 >
-            inline Path& operator=( const Path< TGraph, TSpec2 >& other );
+            inline Path& operator=( const Path< graph_type, TSpec2 >& other );
         /* ====================  ACCESSORS     ======================================= */
         /**
          *  @brief  getter function for vargraph.
          */
-          inline const TGraph*
+          inline const graph_type*
         get_vargraph( ) const
         {
           return this->vargraph;
@@ -294,7 +294,7 @@ namespace grem{
          *  @brief  setter function for vargraph.
          */
           inline void
-        set_vargraph( const TGraph* value )
+        set_vargraph( const graph_type* value )
         {
           this->vargraph = value;
         }  /* -----  end of method set_vargraph  ----- */
@@ -320,36 +320,36 @@ namespace grem{
             this->set_nodes( std::move( nd ) );
           }
         /* ====================  FRIENDSHIPS   ======================================= */
-        friend class Path< TGraph, Default >;
-        friend class Path< TGraph, Dynamic >;
-        friend class Path< TGraph, Compact >;
+        friend class Path< graph_type, Default >;
+        friend class Path< graph_type, Dynamic >;
+        friend class Path< graph_type, Compact >;
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        init_bv_node_breaks< TGraph, TSpec >( Path< TGraph, TSpec >& path );
+        init_bv_node_breaks< graph_type, TSpec >( Path< graph_type, TSpec >& path );
           friend void
-        initialize< TGraph, TSpec >( Path< TGraph, TSpec >& path );
+        initialize< graph_type, TSpec >( Path< graph_type, TSpec >& path );
           friend void
-        save< TGraph, TSpec >( const Path< TGraph, TSpec >& path, std::ostream& out );
+        save< graph_type, TSpec >( const Path< graph_type, TSpec >& path, std::ostream& out );
           friend void
-        load< TGraph, TSpec >( Path< TGraph, TSpec >& path, std::istream& in );
+        load< graph_type, TSpec >( Path< graph_type, TSpec >& path, std::istream& in );
           friend void
-        add_node< TGraph, TSpec >( Path< TGraph, TSpec >& path,
-            typename TGraph::nodeid_type const& node_id );
+        add_node< graph_type, TSpec >( Path< graph_type, TSpec >& path,
+            typename graph_type::nodeid_type const& node_id );
           friend size_type
-        rank< TGraph, TSpec >( const Path< TGraph, TSpec >& path, seqsize_type i );
+        rank< graph_type, TSpec >( const Path< graph_type, TSpec >& path, seqsize_type i );
           friend seqsize_type
-        select< TGraph, TSpec >( const Path< TGraph, TSpec >& path, size_type rank );
+        select< graph_type, TSpec >( const Path< graph_type, TSpec >& path, size_type rank );
           friend void
-        clear< TGraph, TSpec >( Path< TGraph, TSpec >& path );
+        clear< graph_type, TSpec >( Path< graph_type, TSpec >& path );
           friend void
-        reserve< TGraph, TSpec >( Path< TGraph, TSpec >& path, size_type size );
+        reserve< graph_type, TSpec >( Path< graph_type, TSpec >& path, size_type size );
           friend bool
-        contains< TGraph, TSpec >( const Path< TGraph, TSpec >& path,
-            typename TGraph::nodeid_type node_id );
+        contains< graph_type, TSpec >( const Path< graph_type, TSpec >& path,
+            typename graph_type::nodeid_type node_id );
           friend void
-        pop_back< TGraph, TSpec >( Path< TGraph, TSpec >& path );
+        pop_back< graph_type, TSpec >( Path< graph_type, TSpec >& path );
           friend void
-        pop_front< TGraph >( Path< TGraph, Dynamic >& path );
+        pop_front< graph_type >( Path< graph_type, Dynamic >& path );
     };  /* -----  end of template class Path  ----- */
 
   /* Path member functions  ---------------------------------------------------- */
@@ -462,23 +462,24 @@ namespace grem{
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef Micro spec_type;
+        typedef TGraph graph_type;
         typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
         typedef typename nodes_set_type::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
         Path( ) = default;
-        Path( const std::vector< typename TGraph::nodeid_type >& p )
+        Path( const std::vector< typename graph_type::nodeid_type >& p )
         {
           this->set_nodes( p );
         }
 
         template< typename TSpec >
-          Path( const Path< TGraph, TSpec >& other )
+          Path( const Path< graph_type, TSpec >& other )
           {
             this->set_nodes( other.get_nodes() );
           }
 
         template< typename TSpec >
-          Path& operator=( const Path< TGraph, TSpec >& other )
+          Path& operator=( const Path< graph_type, TSpec >& other )
           {
             this->set_nodes( other.get_nodes() );
           }
@@ -502,7 +503,7 @@ namespace grem{
          *  @brief  Set the nodes in the path (clear the previous state).
          */
           inline void
-        set_nodes( const std::vector< typename TGraph::nodeid_type >& value )
+        set_nodes( const std::vector< typename graph_type::nodeid_type >& value )
         {
           this->nodes_set.clear();
           grem::reserve( this->nodes_set, value.size() );
@@ -514,19 +515,19 @@ namespace grem{
         nodes_set_type nodes_set;
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        save< TGraph >( const Path< TGraph, Micro >& path, std::ostream& out );
+        save< graph_type >( const Path< graph_type, Micro >& path, std::ostream& out );
           friend void
-        add_node< TGraph >( Path< TGraph, Micro >& path,
-            typename TGraph::nodeid_type const& node_id );
+        add_node< graph_type >( Path< graph_type, Micro >& path,
+            typename graph_type::nodeid_type const& node_id );
           friend void
-        clear< TGraph >( Path< TGraph, Micro >& path );
+        clear< graph_type >( Path< graph_type, Micro >& path );
           friend void
-        reserve< TGraph >( Path< TGraph, Micro >& path, size_type size );
+        reserve< graph_type >( Path< graph_type, Micro >& path, size_type size );
           friend size_type
-        length< TGraph >( const Path< TGraph, Micro >& path );
+        length< graph_type >( const Path< graph_type, Micro >& path );
           friend bool
-        contains< TGraph >( const Path< TGraph, Micro >& path,
-            typename TGraph::nodeid_type node_id );
+        contains< graph_type >( const Path< graph_type, Micro >& path,
+            typename graph_type::nodeid_type node_id );
     };  /* -----  end of specialized template class Path  ----- */
 }  /* -----  end of namespace grem  ----- */
 
