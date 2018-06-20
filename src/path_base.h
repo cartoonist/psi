@@ -42,10 +42,12 @@ namespace grem{
   struct DynamicStrategy;
   struct MicroStrategy;
   struct CompactStrategy;
+  struct HaplotypeStrategy;
   typedef seqan::Tag< DefaultStrategy > Default;
   typedef seqan::Tag< DynamicStrategy > Dynamic;
   typedef seqan::Tag< CompactStrategy > Compact;
   typedef seqan::Tag< MicroStrategy > Micro;
+  typedef seqan::Tag< HaplotypeStrategy > Haplotype;
 
   /* Path node existence query strategies */
   struct OrderedStrategy;
@@ -69,6 +71,11 @@ namespace grem{
   template< typename TGraph >
     struct PathTraits< TGraph, Compact > {
       typedef sdsl::enc_vector< sdsl::coder::elias_delta > TNodeSequence;
+    };
+
+  template< typename TGraph >
+    struct PathTraits< TGraph, Haplotype > {
+      typedef sdsl::bit_vector TNodeSequence;
     };
 
   /* Path interface functions forwards  ---------------------------------------- */
@@ -323,6 +330,7 @@ namespace grem{
         friend class Path< graph_type, Default >;
         friend class Path< graph_type, Dynamic >;
         friend class Path< graph_type, Compact >;
+        friend class Path< graph_type, Haplotype >;
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
         init_bv_node_breaks< graph_type, TSpec >( Path< graph_type, TSpec >& path );
@@ -527,6 +535,309 @@ namespace grem{
         length< graph_type >( const Path< graph_type, Micro >& path );
           friend bool
         contains< graph_type >( const Path< graph_type, Micro >& path,
+            typename graph_type::nodeid_type node_id );
+    };  /* -----  end of specialized template class Path  ----- */
+
+  /* Haplotype Path interface functions forwards  ------------------------------ */
+
+  template< typename TGraph >
+      bool
+    contains( const Path< TGraph, Haplotype >& path,
+        typename TGraph::nodeid_type node_id );
+
+  /* END OF Haplotype Path interface functions forwards  ----------------------- */
+
+  /**
+   *  @brief  Path specialized template class for representing a Haplotype in DAG graphs.
+   *
+   *  NOTE: Apart from assuming that the underlying variation graph is DAG, it assumes
+   *        that the node IDs are a topological sort of nodes.
+   */
+  template< typename TGraph >
+    class Path< TGraph, Haplotype > {
+      private:
+        /* ====================  FORWARDS      ======================================= */
+        class NodesWrapper;
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef PathTraits< TGraph, Haplotype > TTraits;
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef Haplotype spec_type;
+        typedef TGraph graph_type;
+        typedef typename TTraits::TNodeSequence nodes_type;
+        typedef typename TGraph::nodeid_type value_type;
+        typedef typename nodes_type::size_type size_type;
+        typedef NodesWrapper nodes_wrapper_type;
+      private:
+        /* ====================  CLASSES       ======================================= */
+        class NodesWrapper {
+          public:
+            typedef Path::value_type value_type;
+            typedef Path::size_type size_type;
+            typedef ptrdiff_t difference_type;
+            typedef sdsl::random_access_const_iterator< NodesWrapper > iterator_type;
+          private:
+            const Path* path_p;
+          public:
+            NodesWrapper( const Path* p ) : path_p( p ) {
+              if ( ! p->is_initialized() )
+                throw std::runtime_error( "Path must be initialized to be operational" );
+            }
+
+              inline typename graph_type::nodeid_type
+            operator[]( size_t idx ) const
+            {
+              return path_p->ss_nodes( idx + 1 ) + 1;
+            }
+
+              inline typename graph_type::nodeid_type
+            at( size_t idx ) const
+            {
+              if ( idx < 0 || idx >= this->size() )
+                throw std::runtime_error( "Index out of range" );
+              return (*this)[ idx ];
+            }
+
+              inline size_type
+            size( ) const {
+              return path_p->rs_nodes( path_p->nodes.size() );
+            }
+
+              inline iterator_type
+            begin( ) const
+            {
+              return iterator_type( this, 0 );
+            }
+
+              inline iterator_type
+            end( ) const
+            {
+              return iterator_type( this, size() );
+            }
+
+              inline value_type
+            front( ) const
+            {
+              return *this->begin();
+            }
+
+              inline value_type
+            back( ) const
+            {
+              return *( this->end() - 1 );
+            }
+        };
+        /* ====================  DATA MEMBERS  ======================================= */
+        const graph_type* vargraph;
+        nodes_type nodes;
+        typename graph_type::nodeid_type last_added_id;
+        bool initialized;
+        typename nodes_type::rank_1_type rs_nodes;
+        typename nodes_type::select_1_type ss_nodes;
+      public:
+        /* ====================  LIFECYCLE     ======================================= */
+        Path( const graph_type* g ) :
+          vargraph( g ),
+          nodes( g->max_node_rank(), 0 ),
+          last_added_id( 0 ),
+          initialized( false )
+        { }
+
+        template< typename TContainer >
+          Path( const graph_type* g, const TContainer& node_ids )
+            : Path( g )
+          {
+            this->set_nodes( node_ids );
+          }
+
+        Path( const Path& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = other.nodes;
+          this->last_added_id = other.last_added_id;
+          this->initialize();
+        }
+
+        Path( Path&& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = std::move( other.nodes );
+          this->last_added_id = other.last_added_id;
+          this->initialize();
+          sdsl::util::clear( other.rs_nodes );
+          sdsl::util::clear( other.ss_nodes );
+        }
+
+          Path&
+        operator=( const Path& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = other.nodes;
+          this->last_added_id = other.last_added_id;
+          this->initialize();
+          return *this;
+        }
+
+          Path&
+        operator=( Path&& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = std::move( other.nodes );
+          this->last_added_id = other.last_added_id;
+          this->initialize();
+          sdsl::util::clear( other.rs_nodes );
+          sdsl::util::clear( other.ss_nodes );
+          return *this;
+        }
+
+        ~Path() = default;
+        /* ====================  OPERATORS     ======================================= */
+        template< typename TSpec2 >
+            inline Path&
+          operator=( const Path< graph_type, TSpec2 >& other )
+          {
+            this->vargraph = other.vargraph;
+            this->set_nodes( other.nodes );
+            this->initialize();
+            return *this;
+          }
+        /* ====================  ACCESSORS     ======================================= */
+        /**
+         *  @brief  getter function for vargraph.
+         */
+          inline const graph_type*
+        get_vargraph( ) const
+        {
+          return this->vargraph;
+        }  /* -----  end of method get_vargraph  ----- */
+
+        /**
+         *  @brief  getter function for nodes.
+         */
+          inline const nodes_wrapper_type
+        get_nodes( ) const
+        {
+          return nodes_wrapper_type( this );
+        }  /* -----  end of method get_nodes  ----- */
+
+        /**
+         *  @brief  Is path initialized?
+         *
+         *  @return `true` if the path is initialized; `false` otherwise.
+         *
+         *  This function initializes nodes rank and select support data structures.
+         */
+          inline bool
+        is_initialized( ) const
+        {
+          return this->initialized;
+        }
+        /* ====================  MUTATORS      ======================================= */
+        /**
+         *  @brief  setter function for vargraph.
+         */
+          inline void
+        set_vargraph( const graph_type* value )
+        {
+          this->vargraph = value;
+        }  /* -----  end of method set_vargraph  ----- */
+
+        template< typename TIter >
+            inline void
+          set_nodes( TIter begin, TIter end )
+          {
+            this->clear();
+            for ( ; begin != end; ++begin ) this->add_node( *begin );
+            this->initialize();
+          }
+
+        template< typename TContainer >
+            inline void
+          set_nodes( const TContainer& node_ids )
+          {
+            this->set_nodes( node_ids.begin(), node_ids.end() );
+          }  /* -----  end of template method set_nodes  ----- */
+        /* ====================  METHODS       ======================================= */
+          inline void
+        add_node( typename graph_type::nodeid_type const& nid )
+        {
+          assert( this->vargraph != nullptr );
+          assert( nid >= 1 );
+          assert( nid <= this->vargraph->max_node_rank() );
+
+          if ( nid <= this->last_added_id )
+            throw std::runtime_error( "Path IDs sequence must be non-decreasing" );
+
+          this->nodes[ nid - 1 ] = 1;
+          this->initialized = false;
+          this->last_added_id = nid;
+        }
+
+        /**
+         *  @brief  Remove the last node from the path.
+         *
+         *  XXX: This method requires re-initialization of the path which is costly.
+         */
+          inline void
+        pop_back( )
+        {
+          if ( length( *this ) == 0 ) return;
+          this->nodes[ this->get_nodes().back() - 1 ] = 0;
+          this->initialize();
+          this->last_added_id = this->get_nodes().back();
+        }
+
+
+        /**
+         *  @brief  Remove the first node from the path.
+         *
+         *  XXX: This method requires re-initialization of the path which is costly.
+         */
+          inline void
+        pop_front( )
+        {
+          if ( length( *this ) == 0 ) return;
+          this->nodes[ this->get_nodes().front() - 1 ] = 0;
+          this->initialize();
+        }
+
+          inline void
+        initialize( )
+        {
+          sdsl::util::init_support( this->rs_nodes, &this->nodes );
+          sdsl::util::init_support( this->ss_nodes, &this->nodes );
+          this->initialized = true;
+        }
+
+          inline void
+        serialize( std::ostream& out ) const
+        {
+          this->nodes.serialize( out );
+        }
+
+          inline void
+        load( std::istream& in )
+        {
+          this->nodes.load( in );
+          this->initialize();
+          this->last_added_id = this->get_nodes().back();
+        }
+
+          inline void
+        clear( )
+        {
+          sdsl::util::assign( this->nodes,
+              sdsl::bit_vector( this->vargraph->max_node_rank(), 0 ) );
+          this->initialize();
+          this->last_added_id = 0;
+        }  /* -----  end of method clear  ----- */
+        /* ====================  FRIENDSHIPS   ======================================= */
+        friend class Path< graph_type, Default >;
+        friend class Path< graph_type, Dynamic >;
+        friend class Path< graph_type, Compact >;
+        /* ====================  INTERFACE FUNCTIONS  ================================ */
+          friend bool
+        contains< graph_type >( const Path< graph_type, Haplotype >& path,
             typename graph_type::nodeid_type node_id );
     };  /* -----  end of specialized template class Path  ----- */
 }  /* -----  end of namespace grem  ----- */

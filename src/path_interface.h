@@ -80,6 +80,22 @@ namespace grem {
     }
 
   /**
+   *  @brief  Initialize data structures for efficient rank and select queries.
+   *
+   *  @param  path The path.
+   *
+   *  It initializes the rank and select supports for nodes bit vector.
+   *
+   *  @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    initialize( Path< TGraph, Haplotype >& path )
+    {
+      path.initialize();
+    }
+
+  /**
    *  @brief  Save the path to an output stream.
    *
    *  @param  path The path.
@@ -112,6 +128,21 @@ namespace grem {
       Path< TGraph, TSpec > const& path_cr = path;
       save( path_cr, out );
     }  /* -----  end of function save  ----- */
+
+  /**
+   *  @brief  Save the path to an output stream.
+   *
+   *  @param  path The path.
+   *  @param  out The output stream.
+   *
+   *  @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    save( const Path< TGraph, Haplotype >& path, std::ostream& out )
+    {
+      path.serialize( out );
+    }
 
   /**
    *  @brief  Save the path to file.
@@ -177,6 +208,21 @@ namespace grem {
     }  /* -----  end of template function load  ----- */
 
   /**
+   *  @brief  Load the path from an input stream.
+   *
+   *  @param  path The path.
+   *  @param  in The input stream.
+   *
+   *  @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    load( Path< TGraph, Haplotype >& path, std::istream& in )
+    {
+      path.load( in );
+    }
+
+  /**
    *  @brief  Load the path from file.
    *
    *  @param  path The path.
@@ -217,6 +263,21 @@ namespace grem {
       }
       path.initialized = false;
     }  /* -----  end of template function add_node  ----- */
+
+  /**
+   *  @brief  Extend the path forward.
+   *
+   *  @param  path The path.
+   *  @param  nid The new node ID.
+   *
+   *  @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    add_node( Path< TGraph, Haplotype >& path, typename TGraph::nodeid_type const& nid )
+    {
+      path.add_node( nid );
+    }
 
   /**
    *  @brief  Extend a path with another one (interface function).
@@ -440,6 +501,20 @@ namespace grem {
     }  /* -----  end of template function clear  ----- */
 
   /**
+   *  @brief  Clear the path.
+   *
+   *  @param  path The path.
+   *
+   *  @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    clear( Path< TGraph, Haplotype >& path )
+    {
+      path.clear();
+    }
+
+  /**
    *  @brief  Reserve memory for the path.
    *
    *  @param  path The path.
@@ -493,6 +568,18 @@ namespace grem {
   /**
    * @brief  pop the last node from the path.
    *
+   * @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    pop_back( Path< TGraph, Haplotype >& path )
+    {
+      path.pop_back();
+    }
+
+  /**
+   * @brief  pop the first node from the path.
+   *
    * NOTE: only implemented for Dynamic Path.
    */
   template< typename TGraph >
@@ -510,6 +597,18 @@ namespace grem {
       path.initialized = false;
 
       if ( path.seq.length() != 0 ) path.seq = path.seq.substr( first_node_len );
+    }
+
+  /**
+   * @brief  pop the first node from the path.
+   *
+   * @overload for Haplotype paths.
+   */
+  template< typename TGraph >
+      inline void
+    pop_front( Path< TGraph, Haplotype >& path )
+    {
+      path.pop_front();
     }
 
   /**
@@ -755,6 +854,23 @@ namespace grem {
     }  /* -----  end of template function contains  ----- */
 
   /**
+   *  @brief  Check whether the given node ID is on the path or not.
+   *
+   *  @param  path The path.
+   *  @param  node_id The ID of the node.
+   *  @return `true` if the node ID is on the path.
+   *
+   *  @overload for Haplotype path.
+   */
+  template< typename TGraph >
+      inline bool
+    contains( const Path< TGraph, Haplotype >& path, typename TGraph::nodeid_type node_id )
+    {
+      if ( node_id < 1 || node_id > path.nodes.size() ) return false;
+      return path.nodes[ node_id - 1 ] == 1;
+    }
+
+  /**
    *  @brief  Check whether this path contains a set of node IDs.
    *
    *  @param  path The path.
@@ -777,6 +893,33 @@ namespace grem {
 
       if ( begin != end && std::all_of( begin, end, on_path ) ) return true;
       return false;
+    }
+
+  /**
+   *  @brief  Check whether this path contains a set of node IDs.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set to be checked.
+   *  @param  end The end iterator of node IDs set to be checked.
+   *  @return `true` if this path contains all node IDs in the range `[begin, end)`;
+   *          otherwise `false` -- including the case that the range `[begin, end)` is
+   *          empty; i.e. `begin == end`.
+   *
+   *  It checks if the nodes of the given path is present in the node set. It DOES check
+   *  the order of the nodes.
+   */
+  template< typename TGraph, typename TIter >
+      inline bool
+    contains( const Path< TGraph, Haplotype >& path, TIter begin, TIter end )
+    {
+      if ( begin == end ) return false;
+
+      typename TGraph::nodeid_type prev = 0;
+      for ( ; begin != end; ++begin ) {
+        if ( *begin <= prev || !contains( path, *begin ) ) return false;
+        prev = *begin;
+      }
+      return true;
     }
 
   /**
@@ -853,6 +996,20 @@ namespace grem {
     rcontains( const Path< TGraph, Micro >& path, TIter rbegin, TIter rend )
     {
       return contains( path, rbegin, rend );
+    }
+
+  template< typename TGraph, typename TIter >
+      inline bool
+    rcontains( const Path< TGraph, Haplotype >& path, TIter rbegin, TIter rend )
+    {
+      if ( rbegin == rend ) return false;
+
+      typename TGraph::nodeid_type prev = path.get_vargraph()->max_node_rank() + 1;
+      for ( ; rbegin != rend; ++rbegin ) {
+        if ( *rbegin >= prev || !contains( path, *rbegin ) ) return false;
+        prev = *rbegin;
+      }
+      return true;
     }
 
   /**
