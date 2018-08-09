@@ -9,6 +9,7 @@ test/.d/
 src/cxxopts
 src/catch
 src/spdlog
+src/kseq++
 
 # Log files
 *.log
