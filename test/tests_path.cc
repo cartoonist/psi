@@ -131,7 +131,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( path.get_sequence_len() == 0 );
         REQUIRE( path.is_initialized() == false );
 
-        load( path, tmp_fpath );
+        open( path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -176,7 +176,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( dyn_path.get_sequence_len() == 0 );
         REQUIRE( dyn_path.is_initialized() == false );
 
-        load( dyn_path, tmp_fpath );
+        open( dyn_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -224,7 +224,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( cmp_path.get_sequence_len() == 0 );
         REQUIRE( cmp_path.is_initialized() == false );
 
-        load( cmp_path, tmp_fpath );
+        open( cmp_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -251,7 +251,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
 
         REQUIRE( length( mcr_path ) == 0 );
 
-        load( mcr_path, tmp_fpath );
+        open( mcr_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -292,7 +292,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( length( hap_path ) == 0 );
         REQUIRE( hap_path.is_initialized() == true );
 
-        load( hap_path, tmp_fpath );
+        open( hap_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {

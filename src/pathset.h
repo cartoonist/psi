@@ -279,7 +279,7 @@ namespace grem {
           this->rs_ids_set.reserve( paths_num );
           for ( size_type i = 0; i < paths_num; ++i ) {
             value_type path( vargraph );
-            grem::load( path, in );
+            grem::open( path, in );
             this->set.push_back( std::move( path ) );
           }
 

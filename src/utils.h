@@ -428,9 +428,33 @@ namespace grem {
 
   template< typename TObject >
       inline void
+    open( TObject& obj, const std::string& file_name )
+    {
+      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
+      if( !ifs ) {
+        throw std::runtime_error( "cannot open file '" + file_name + "'" );
+      }
+      open( obj, ifs );
+    }  /* -----  end of template function load  ----- */
+
+
+  template< typename TObject >
+      inline void
     save( TObject& obj, std::ostream& out )
     {
       obj.serialize( out );
+    }
+
+
+  template< typename TObject >
+      inline void
+    save( TObject& obj, const std::string& file_name )
+    {
+      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
+      if( !ofs ) {
+        throw std::runtime_error( "cannot open file '" + file_name + "'" );
+      }
+      save( obj, ofs );
     }
 
 
