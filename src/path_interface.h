@@ -20,6 +20,8 @@
 
 #include <functional>
 
+#include "cpp/vg.pb.h"
+
 #include "path_base.h"
 
 
@@ -707,6 +709,87 @@ namespace grem {
       }
       return coverage;
     }  /* -----  end of template function get_path_coverage  ----- */
+
+  /**
+   *  @brief  Convert a grem::Path to vg::Path.
+   *
+   *  @param  path The native path.
+   *  @param  vgpath The pointer to an allocated vg path object.
+   *
+   *  A vg path is a protobuf message which represents a path aligned to the graph
+   *  containing a set of Mappings ordered by their ranks. A Mapping is defined for a
+   *  loci in the graph (here a first location of each node) defining a set of edits to
+   *  transform the node label to the path sequence aligned with that node which is a
+   *  full-match here.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath )
+    {
+      TGraph const* vargraph = path.get_vargraph();
+      typename TGraph::rank_type rank = 1;
+      for ( const auto& node_id : path.get_nodes() ) {
+        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
+        vg::Mapping* mapping = vgpath->add_mapping();
+        mapping->mutable_position()->set_node_id( node_id );
+        mapping->mutable_position()->set_offset( 0 );
+        vg::Edit* edit = mapping->add_edit();
+        edit->set_from_length( label_len );
+        edit->set_to_length( label_len );
+        mapping->set_rank( rank++ );
+      }
+    }
+
+  template< typename TGraph, typename TSpec >
+      inline void
+    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath,
+        std::vector< vg::Position > const& loci )
+    {
+      TGraph const* vargraph = path.get_vargraph();
+      typename TGraph::rank_type rank = 1;
+
+      auto comp =
+        [vargraph]( const auto& elem, const auto& value ) {
+          return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value );
+        };
+
+      for ( const auto& node_id : path.get_nodes() ) {
+        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
+        vg::Mapping* mapping = vgpath->add_mapping();
+        mapping->mutable_position()->set_node_id( node_id );
+        mapping->mutable_position()->set_offset( 0 );
+
+        auto nextedit = std::lower_bound( loci.begin(), loci.end(), node_id, comp );
+        auto lastedit = std::upper_bound( loci.begin(), loci.end(), node_id, comp );
+        typename TGraph::offset_type coffset = 0;
+        typename TGraph::offset_type toffset =
+              nextedit != lastedit ?
+              (*nextedit).offset() :
+              label_len;
+        do {
+          vg::Edit* edit = mapping->add_edit();
+          if ( coffset > toffset ) {
+            ++nextedit;
+            toffset =
+              nextedit != lastedit ?
+              (*nextedit).offset() :
+              label_len;
+          }
+          if ( coffset == toffset ) {
+            edit->set_from_length( 1 );
+            edit->set_to_length( 1 );
+            edit->set_sequence( "S" );
+            ++coffset;
+          }
+          else {
+            edit->set_from_length( toffset - coffset );
+            edit->set_to_length( toffset - coffset );
+            coffset = toffset;
+          }
+        } while ( coffset < label_len );
+        mapping->set_rank( rank++ );
+      }
+    }
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 

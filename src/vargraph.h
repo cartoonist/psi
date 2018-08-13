@@ -60,6 +60,14 @@ namespace grem
       using xg::XG::XG;
 
       // Public methods
+      using xg::XG::id_to_rank;
+
+        inline rank_type
+      id_to_rank( vg::Position pos ) const
+      {
+        return this->id_to_rank( pos.node_id() );
+      }
+
         inline bool
       is_branch ( nodeid_type node_id ) const
       {
