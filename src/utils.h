@@ -23,6 +23,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <set>
 #include <memory>
 
@@ -135,6 +136,24 @@ namespace grem {
     }
     return false;
   }  /* -----  end of function starts_with  ----- */
+
+
+    inline std::string
+  complement( const std::string& str )
+  {
+    std::unordered_map< char, char > cmap = {
+      { 'A', 'T' },
+      { 'T', 'A' },
+      { 'C', 'G' },
+      { 'G', 'C' },
+      { 'N', 'N' },
+    };
+    std::string result;
+    result.resize( str.length() );
+    unsigned int cursor = 0;
+    for ( const auto& c : str ) result[ cursor++ ] = cmap[ c ];
+    return result;
+  }
 
 
   /**
