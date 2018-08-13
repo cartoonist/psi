@@ -22,14 +22,14 @@
 
 #include "sequence.h"
 #include "index.h"
+#include "index_iter.h"
+#include "seed.h"
 #include "utils.h"
 #include "options.h"
 #include "stat.h"
 #include "logger.h"
 #include "release.h"
 
-#define SEEDHITS_REPORT_BUF 1000
-#define TRAVERSE_CHECKPOINT_LOCI_NO 1000000
 
 using namespace std;
 using namespace seqan;
@@ -37,14 +37,13 @@ using namespace grem;
 
 // TODO: Localize Options (it is written for the main program).
 
-
 typedef struct
 {
   typedef seqan::Index< Dna5QStringSet<>, IndexWotd<> > TIndex;
-  typedef typename Iterator < TIndex, TopDown<> >::Type TIndexIter;
+  typedef typename Iterator < TIndex, TopDownFine<> >::Type TIndexIter;
+  typedef seqan::SAValue< TIndex >::Type TSAValue;
 
   TIndexIter index_iter;
-  unsigned int   boffset;
   unsigned int   ref_len;
 } IterState;
 
@@ -128,117 +127,101 @@ parse_args(Options & options, int argc, char *argv[])
 }
 
 
-bool go_down(IterState &its, seqan::Value< Dna5QString >::Type c)
-{
-  if ( c == 'N' ) return false;
-
-  if (its.boffset == 0) {
-    if (!seqan::goDown(its.index_iter, c)) return false;
-
-    its.boffset = parentEdgeLength(its.index_iter) - 1;
-  } else if (c == parentEdgeLabel(its.index_iter)[ parentEdgeLength(its.index_iter) - its.boffset ]) {
-    --its.boffset;
-  } else {
-    return false;
-  }
-
-  ++its.ref_len;
-
-  return true;
-}
-
-
 int main(int argc, char *argv[])
 {
   // Parse the command line.
   Options options;
-  auto res = parse_args(options, argc, argv);
+  auto res = parse_args( options, argc, argv );
   // If parsing was not successful then exit with code 1 if there were errors.
   // Otherwise, exit with code 0 (e.g. help was printed).
-  if (res != seqan::ArgumentParser::PARSE_OK)
+  if ( res != seqan::ArgumentParser::PARSE_OK )
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
   options.nolog = false;
   options.nologfile = true;
-  config_logger(options);
-  auto log = get_logger("main");
+  config_logger( options );
+  auto log = get_logger( "main" );
 
   SeqFileIn refInFile;
-  if (!open(refInFile, options.rf_path.c_str()))
+  if ( !open( refInFile, options.rf_path.c_str() ) )
   {
     std::string msg = "could not open the file '" + options.rf_path + "'.";
-    log->error(msg);
-    throw std::runtime_error(msg);
+    log->error( msg );
+    throw std::runtime_error( msg );
   }
 
   CharString ref_id;
-  Dna5QString     ref_seq;
+  Dna5QString ref_seq;
 
   {
-    auto timer = Timer("load-ref");
-    readRecord(ref_id, ref_seq, refInFile);
+    auto timer = Timer( "load-ref" );
+    readRecord( ref_id, ref_seq, refInFile );
   }
-  log->info("Reference loaded in {} us.", Timer::get_duration("load-ref").count());
-  log->info("Reference sequence length: {}.", length(ref_seq));
+  log->info( "Reference loaded in {} us.", Timer::get_duration( "load-ref" ).count() );
+  log->info( "Reference sequence length: {}.", length( ref_seq ) );
 
   SeqFileIn readsInFile;
-  if (!open(readsInFile, options.fq_path.c_str()))
+  if ( !open( readsInFile, options.fq_path.c_str() ) )
   {
     std::string msg = "could not open the file '" + options.fq_path + "'.";
-    log->error(msg);
-    throw std::runtime_error(msg);
+    log->error( msg );
+    throw std::runtime_error( msg );
   }
 
   Records< Dna5QStringSet<> > reads;
-  bool found;
-  unsigned int nof_found = 0;
+  bool found = false;
+  std::vector< Seed<> > seeds;
+  uint64_t nof_godowns = 0;
   log->info("Seed finding...");
   {
-    auto timer = Timer("seed-finding");
-    while (true)
+    auto timer = Timer( "seed-finding" );
+    while ( true )  // chunks
     {
       {
-        auto timer = Timer("load-reads");
-        readRecords(reads, readsInFile, options.chunk_size);
+        auto timer = Timer( "load-reads" );
+        readRecords( reads, readsInFile, options.chunk_size );
       }
-      log->info("Reads loaded in {} us.", Timer::get_duration("load-reads").count());
-      if (length(reads.name) == 0)
+      if ( length( reads.name ) == 0 )
       {
-        log->info("All reads are processed.");
+        log->info( "All reads are processed." );
         break;
       }
-      log->info( "Reading {} reads...", options.chunk_size );
-
+      log->info( "Loaded {} reads in {} us.", length( reads.str ), Timer::get_duration("load-reads").count() );
       {
-        auto timer = Timer("traverse");
+        auto timer = Timer( "traverse" );
 
         unsigned int i;
         IterState::TIndex reads_index( reads.str );
-        for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
+        for ( unsigned int pos = 0; pos < length( ref_seq ); ++pos )
         {
-          IterState iter_state = {IterState::TIndexIter(reads_index), 0, 0};
-          // Explicit is better than implicit.
-          if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
+          IterState iter_state = { IterState::TIndexIter( reads_index ), 0 };
+          if ( pos > length( ref_seq ) - options.seed_len /*+ allowed_diffs*/ ) break;
 
           found = true;
-          for (i = pos; iter_state.ref_len < options.seed_len; ++i)
+          for ( i = pos; iter_state.ref_len < options.seed_len; ++i )
           {
-            if(!go_down(iter_state, ref_seq[i]))
+            ++nof_godowns;
+            if( !go_down( iter_state.index_iter, ref_seq[i] ) )
             {
               found = false;
               break;
             }
+            ++iter_state.ref_len;
           }
-          if (found)
+          if ( found )
           {
-            ++nof_found;
-            if (nof_found % SEEDHITS_REPORT_BUF == 0)
-              log->info("{} seed hits so far.", nof_found);
-          }
-
-          if (pos % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
-          {
-            log->info("Traversing lap: {} us.", Timer::get_lap("traverse").count());
+            assert( iter_state.ref_len == options.seed_len );
+            seqan::String< IterState::TSAValue > saPositions = getOccurrences( iter_state.index_iter.get_iter_() );
+            typename seqan::Size< decltype( saPositions ) >::Type i;
+            for ( i = 0; i < length( saPositions ); ++i )
+            {
+              Seed<> hit;
+              hit.node_id = 0;
+              hit.node_offset = pos;
+              hit.read_id = saPositions[i].i1;                // Read ID.
+              hit.read_offset = saPositions[i].i2;  // Position in the read.
+              seeds.push_back( std::move( hit ) );
+            }
           }
         }
       }
@@ -248,6 +231,8 @@ int main(int argc, char *argv[])
     }
   }
   log->info("Seed finding was done in {} us.", Timer::get_duration("seed-finding").count());
+  log->info("Total number of godown operations: {}", nof_godowns);
+  log->info("Total number of seed hits: {}", seeds.size());
 
   return EXIT_SUCCESS;
 }
