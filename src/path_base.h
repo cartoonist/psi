@@ -733,20 +733,11 @@ namespace grem{
         nodes_set_type nodes_set;
     };  /* -----  end of specialized template class Path  ----- */
 
-  /* Haplotype Path interface functions forwards  ------------------------------ */
-
-  template< typename TGraph >
-      bool
-    contains( const Path< TGraph, Haplotype >& path,
-        typename TGraph::nodeid_type node_id );
-
-  /* END OF Haplotype Path interface functions forwards  ----------------------- */
-
   /**
    *  @brief  Path specialized template class for representing a Haplotype in DAG graphs.
    *
    *  NOTE: Apart from assuming that the underlying variation graph is DAG, it assumes
-   *        that the node IDs are a topological sort of nodes.
+   *        that the node ranks are a topological sort of nodes.
    */
   template< typename TGraph >
     class Path< TGraph, Haplotype > {
@@ -766,7 +757,7 @@ namespace grem{
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* vargraph;
         nodes_type nodes;
-        typename graph_type::nodeid_type last_added_id;
+        typename graph_type::rank_type last_node_rank;
         bool initialized;
         typename nodes_type::rank_1_type rs_nodes;
         typename nodes_type::select_1_type ss_nodes;
@@ -775,7 +766,7 @@ namespace grem{
         Path( const graph_type* g ) :
           vargraph( g ),
           nodes( g->max_node_rank(), 0 ),
-          last_added_id( 0 ),
+          last_node_rank( 0 ),
           initialized( false )
         { }
 
@@ -790,7 +781,7 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = other.nodes;
-          this->last_added_id = other.last_added_id;
+          this->last_node_rank = other.last_node_rank;
           this->initialize();
         }
 
@@ -798,7 +789,7 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = std::move( other.nodes );
-          this->last_added_id = other.last_added_id;
+          this->last_node_rank = other.last_node_rank;
           this->initialize();
           sdsl::util::clear( other.rs_nodes );
           sdsl::util::clear( other.ss_nodes );
@@ -809,7 +800,7 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = other.nodes;
-          this->last_added_id = other.last_added_id;
+          this->last_node_rank = other.last_node_rank;
           this->initialize();
           return *this;
         }
@@ -819,7 +810,7 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = std::move( other.nodes );
-          this->last_added_id = other.last_added_id;
+          this->last_node_rank = other.last_node_rank;
           this->initialize();
           sdsl::util::clear( other.rs_nodes );
           sdsl::util::clear( other.ss_nodes );
@@ -834,7 +825,6 @@ namespace grem{
           {
             this->vargraph = other.vargraph;
             this->set_nodes( other.nodes );
-            this->initialize();
             return *this;
           }
         /* ====================  ACCESSORS     ======================================= */
@@ -873,7 +863,7 @@ namespace grem{
         operator[]( size_t idx ) const
         {
           assert( this->is_initialized() );
-          return this->ss_nodes( idx + 1 ) + 1;
+          return this->vargraph->rank_to_id( this->ss_nodes( idx + 1 ) + 1 );
         }
 
           inline value_type
@@ -952,15 +942,14 @@ namespace grem{
         push_back( value_type const& nid )
         {
           assert( this->vargraph != nullptr );
-          assert( nid >= 1 );
-          assert( nid <= this->vargraph->max_node_rank() );
 
-          if ( nid <= this->last_added_id )
+          auto nrank = this->vargraph->id_to_rank( nid );
+          if ( nrank <= this->last_node_rank )
             throw std::runtime_error( "Path IDs sequence must be non-decreasing" );
 
-          this->nodes[ nid - 1 ] = 1;
+          this->nodes[ nrank - 1 ] = 1;
           this->initialized = false;
-          this->last_added_id = nid;
+          this->last_node_rank = nrank;
         }
 
         /**
@@ -971,10 +960,11 @@ namespace grem{
           inline void
         pop_back( )
         {
-          if ( length( *this ) == 0 ) return;
-          this->nodes[ this->get_nodes().back() - 1 ] = 0;
+          if ( this->empty() ) return;
+          if ( this->size() == 1 ) this->last_node_rank = 0;
+          else this->last_node_rank = this->ss_nodes( this->size() - 1 ) + 1;
+          this->nodes[ this->ss_nodes( this->size() ) ] = 0;
           this->initialize();
-          this->last_added_id = this->get_nodes().back();
         }
 
 
@@ -986,8 +976,9 @@ namespace grem{
           inline void
         pop_front( )
         {
-          if ( length( *this ) == 0 ) return;
-          this->nodes[ this->get_nodes().front() - 1 ] = 0;
+          if ( this->empty() ) return;
+          if ( this->size() == 1 ) this->last_node_rank = 0;
+          this->nodes[ this->ss_nodes( 1 ) ] = 0;
           this->initialize();
         }
 
@@ -1019,7 +1010,7 @@ namespace grem{
         {
           this->nodes.load( in );
           this->initialize();
-          this->last_added_id = this->get_nodes().back();
+          this->last_node_rank = this->ss_nodes( this->get_nodes().size() ) + 1;
         }
 
           inline void
@@ -1028,12 +1019,65 @@ namespace grem{
           sdsl::util::assign( this->nodes,
               sdsl::bit_vector( this->vargraph->max_node_rank(), 0 ) );
           this->initialize();
-          this->last_added_id = 0;
+          this->last_node_rank = 0;
         }  /* -----  end of method clear  ----- */
-        /* ====================  INTERFACE FUNCTIONS  ================================ */
-          friend bool
-        contains< graph_type >( const Path< graph_type, Haplotype >& path,
-            typename graph_type::nodeid_type node_id );
+
+          inline bool
+        contains( value_type nid ) const
+        {
+          if ( ! this->vargraph->has_node( nid ) ) return false;
+
+          auto nrank = this->vargraph->id_to_rank( nid );
+          return this->nodes[ nrank - 1 ] == 1;
+        }
+
+        template< typename TIter >
+            inline bool
+          contains( TIter begin, TIter end ) const
+          {
+            if ( begin == end ) return false;
+
+            auto brank = this->vargraph->id_to_rank( *begin );
+            auto erank = this->vargraph->id_to_rank( *( end - 1 ) );
+            if ( erank < brank || brank == 0 || erank == 0 ) return false;
+
+            long int plen = this->rs_nodes( erank ) - this->rs_nodes( brank - 1 );
+            long int qlen = end - begin;
+            if ( plen != qlen || plen < 0 ) return false;
+
+            typename graph_type::rank_type prev = 0;
+            for ( ; begin != end; ++begin ) {
+              auto curr = this->vargraph->id_to_rank( *begin );
+              if ( curr <= prev || !this->contains( *begin ) ) return false;
+              prev = curr;
+            }
+
+            return true;
+          }
+
+        template< typename TIter >
+            inline bool
+          rcontains( TIter rbegin, TIter rend ) const
+          {
+            if ( rbegin == rend ) return false;
+
+            auto rbrank = this->vargraph->id_to_rank( *rbegin );
+            auto rerank = this->vargraph->id_to_rank( *( rend - 1 ) );
+            if ( rbrank < rerank || rbrank == 0 || rerank == 0 ) return false;
+
+            long int plen = this->rs_nodes( rbrank ) - this->rs_nodes( rerank - 1 );
+            long int qlen = rend - rbegin;
+            if ( plen != qlen || plen < 0 ) return false;
+
+            auto prev = this->vargraph->id_to_rank( *rbegin ) + 1;
+            for ( ; rbegin != rend; ++rbegin ) {
+              auto curr = this->vargraph->id_to_rank( *rbegin );
+              if ( curr >= prev || !this->contains( *rbegin ) ) return false;
+              prev = curr;
+            }
+
+            return true;
+          }
     };  /* -----  end of specialized template class Path  ----- */
 }  /* -----  end of namespace grem  ----- */
 

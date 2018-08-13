@@ -402,23 +402,6 @@ namespace grem {
     }  /* -----  end of template function contains  ----- */
 
   /**
-   *  @brief  Check whether the given node ID is on the path or not.
-   *
-   *  @param  path The path.
-   *  @param  node_id The ID of the node.
-   *  @return `true` if the node ID is on the path.
-   *
-   *  @overload for Haplotype path.
-   */
-  template< typename TGraph >
-      inline bool
-    contains( const Path< TGraph, Haplotype >& path, typename TGraph::nodeid_type node_id )
-    {
-      if ( node_id < 1 || node_id > path.nodes.size() ) return false;
-      return path.nodes[ node_id - 1 ] == 1;
-    }
-
-  /**
    *  @brief  Check whether this path contains a set of node IDs.
    *
    *  @param  path The path.
@@ -460,14 +443,7 @@ namespace grem {
       inline bool
     contains( const Path< TGraph, Haplotype >& path, TIter begin, TIter end )
     {
-      if ( begin == end ) return false;
-
-      typename TGraph::nodeid_type prev = 0;
-      for ( ; begin != end; ++begin ) {
-        if ( *begin <= prev || !contains( path, *begin ) ) return false;
-        prev = *begin;
-      }
-      return true;
+      return path.contains( begin, end );
     }
 
   /**
@@ -551,14 +527,7 @@ namespace grem {
       inline bool
     rcontains( const Path< TGraph, Haplotype >& path, TIter rbegin, TIter rend )
     {
-      if ( rbegin == rend ) return false;
-
-      typename TGraph::nodeid_type prev = path.get_vargraph()->max_node_rank() + 1;
-      for ( ; rbegin != rend; ++rbegin ) {
-        if ( *rbegin >= prev || !contains( path, *rbegin ) ) return false;
-        prev = *rbegin;
-      }
-      return true;
+      return path.rcontains( rbegin, rend );
     }
 
   /**
