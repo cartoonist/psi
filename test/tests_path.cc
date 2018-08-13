@@ -41,6 +41,17 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
   std::vector< VarGraph::nodeid_type > empty;
   std::string nodes_str = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTATTTGA"
     "AGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
+
+  auto non_micro_tests =
+    [&nodes]
+    ( const auto& path ) {
+      for ( std::size_t i = 0; i < nodes.size(); ++i ) {
+        REQUIRE( path[ i ] == nodes[ i ] );
+      }
+      REQUIRE( path.back() == nodes.back() );
+      REQUIRE( path.front() == nodes.front() );
+    };
+
   auto common_path_basic_test =
     [&nodes, &other_nodes, &invld_nodes, &empty, &nodes_shuff]
     ( const auto& path ) {
@@ -53,6 +64,12 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( !contains( path, on ) );
       }
       REQUIRE( contains( path, nodes.begin(), nodes.end() ) );
+      REQUIRE( path.size() == nodes.size() );
+      REQUIRE( !path.empty() );
+      std::size_t i = 0;
+      for ( const auto& nid : path ) {
+        REQUIRE( nid == nodes[ i++ ] );
+      }
       REQUIRE( !contains( path, other_nodes.begin(), other_nodes.end() ) );
       REQUIRE( !contains( path, empty.begin(), empty.end() ) );
       REQUIRE( !contains( path, invld_nodes.begin(), invld_nodes.end() ) );
@@ -69,9 +86,10 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
     };
 
   auto path_basic_test =
-    [&common_path_basic_test, &nodes_str]
+    [&common_path_basic_test, &non_micro_tests, &nodes_str]
     ( const auto& path ) {
       common_path_basic_test( path );
+      non_micro_tests( path );
       REQUIRE( sequence( path ) == nodes_str );
       REQUIRE( path.get_sequence_len() == 119 );
       REQUIRE( position_to_id( path, 0 ) == 20 );
@@ -281,6 +299,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
 
       WHEN( "It is saved to file and loaded again" )
@@ -297,6 +316,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         THEN( "It should pass basic tests" )
         {
           common_path_basic_test( hap_path );
+          non_micro_tests( hap_path );
         }
       }
     }
@@ -312,6 +332,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -338,6 +359,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -562,6 +584,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -579,6 +602,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -597,6 +621,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -744,6 +769,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path2 );
+        non_micro_tests( hap_path2 );
       }
     }
 
@@ -785,6 +811,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path1 );
+        non_micro_tests( hap_path1 );
       }
     }
 
@@ -805,6 +832,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -825,6 +853,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -850,6 +879,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
