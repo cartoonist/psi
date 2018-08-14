@@ -684,6 +684,29 @@ namespace grem {
       }
       return coverage;
     }  /* -----  end of template function get_path_coverage  ----- */
+
+  /**
+   *  @brief  Return the path coverage of a given path.
+   *
+   *  @param  begin The begin iterator of the nodes list whose coverage should be computed.
+   *  @param  end The end iterator of the nodes list whose coverage should be computed.
+   *  @param  paths_set A set of paths as a container of `Path` instances.
+   *  @return the number of paths that cover the given path.
+   *
+   *  This function get a path and return the number of paths that cover the path.
+   */
+  template< typename TIter, typename TContainer >
+      inline std::size_t
+    get_path_coverage( TIter begin, TIter end, TContainer const& paths_set )
+    {
+      std::size_t coverage = 0;
+      for ( const auto& path : paths_set ) {
+        if ( contains( path, begin, end ) ) {
+          ++coverage;
+        }
+      }
+      return coverage;
+    }  /* -----  end of template function get_path_coverage  ----- */
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 
