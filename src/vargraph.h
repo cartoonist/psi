@@ -115,7 +115,8 @@ namespace grem
    *  uniform distribution in [0, out-degree(v)].
    */
     inline VarGraph::nodeid_type
-  get_random_adjacent ( const VarGraph &vargraph, VarGraph::nodeid_type node_id )
+  get_random_adjacent( const VarGraph &vargraph, VarGraph::nodeid_type node_id,
+     unsigned int seed=0 )
   {
     if ( !vargraph.has_edges_from( node_id ) ) {
       return 0;
@@ -124,7 +125,8 @@ namespace grem
     auto fwd_edges = vargraph.edges_from(node_id);
 
     std::random_device rd;  // Will be used to obtain a seed for the random no. engine
-    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    if ( seed == 0 ) seed = rd(); // use random_device to generate a seed if seed is not provided
+    std::mt19937 gen( seed );  // Standard mersenne_twister_engine seeded with seed
     std::uniform_int_distribution<> dis(0, fwd_edges.size() - 1);
 
     return fwd_edges[ dis(gen) ].to();
@@ -249,8 +251,8 @@ namespace grem
    *
    *  Specialization of generic graph iterator tag Haplotyper for VarGraph.
    */
-  template< >
-    struct GraphIterTraits< VarGraph, Haplotyper > {
+  template< typename TSpec >
+    struct GraphIterTraits< VarGraph, Haplotyper< TSpec > > {
       typedef VarGraph::nodeid_type Value;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
@@ -265,6 +267,26 @@ namespace grem
       typedef unsigned int TParameter;
       static const TParameter param_default = 0;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
+
+  /**
+   *  @brief  Haplotyper graph iterator tag.
+   *
+   *  Specialization of generic graph iterator tag Haplotyper< Random > for VarGraph.
+   */
+  template< >
+    struct GraphIterTraits< VarGraph, Haplotyper< Random > > {
+      typedef VarGraph::nodeid_type Value;
+      typedef Value Level;
+      typedef void* TContainer;
+      typedef void* TSet;
+      typedef struct {
+        Value start;                            /**< @brief Start node ID. */
+        Level level;                            /**< @brief Level. */
+        bool end;                               /**< @brief End flag. */
+      } TState;
+      typedef unsigned int TParameter;
+      constexpr static const TParameter param_default = 0;
+    };
 
   /* END OF tags template specialization  -------------------------------------- */
 
@@ -562,16 +584,16 @@ namespace grem {
   /* Interface functions specialization. */
   template< >
       inline bool
-    at_end( GraphIter< VarGraph, Haplotyper >& it )
+    at_end( GraphIter< VarGraph, Haplotyper<> >& it )
     {
       return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template< >
       inline void
-    begin( GraphIter< VarGraph, Haplotyper >& it, const VarGraph* g,
-        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start,
-        typename GraphIter< VarGraph, Haplotyper >::parameter_type )
+    begin( GraphIter< VarGraph, Haplotyper<> >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper<> > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper<> >::parameter_type )
     {
       if ( start == 0 ) start = g->rank_to_id( 1 );
 
@@ -585,9 +607,9 @@ namespace grem {
 
   template< >
       inline void
-    go_begin( GraphIter< VarGraph, Haplotyper >& it,
-        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start,
-        typename GraphIter< VarGraph, Haplotyper >::parameter_type )
+    go_begin( GraphIter< VarGraph, Haplotyper<> >& it,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper<> > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper<> >::parameter_type )
     {
       if ( start == 0 ) start = it.state.start;  // Re-use start node.
 
@@ -602,8 +624,8 @@ namespace grem {
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
-      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper > >::Type
-    level( GraphIter< VarGraph, Haplotyper >& it )
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper<> > >::Type
+    level( GraphIter< VarGraph, Haplotyper<> >& it )
     {
       return it.visited.size();
     }
@@ -612,12 +634,12 @@ namespace grem {
 
   template< >
       inline void
-    GraphIter< VarGraph, Haplotyper >::set_setback( )
+    GraphIter< VarGraph, Haplotyper<> >::set_setback( )
     {
       this->state.setback = (( this->visited.size() == 0 /* first path */||
                                this->visited.size() % 2 /* odd */) ?
                              this->visited.size() : this->visited.size() + 1 );
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::set_setback  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::set_setback  ----- */
 
   /**
    *  A setback path is a sequence of last 's' nodes of currently generating haplotype.
@@ -628,10 +650,10 @@ namespace grem {
    *  more diverse haplotypes.
    */
   template< >
-      inline GraphIter< VarGraph, Haplotyper >&
-    GraphIter< VarGraph, Haplotyper >::operator++( )
+      inline GraphIter< VarGraph, Haplotyper<> >&
+    GraphIter< VarGraph, Haplotyper<> >::operator++( )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper<> > >::Type TValue;
 
       if ( at_end( *this ) && this->raise_on_end ) {
         throw std::range_error( "The iterator has reached the end." );
@@ -682,11 +704,11 @@ namespace grem {
       add_node( this->state.current_path, this->itr_value );
 
       return *this;
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator++  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator++  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Haplotyper >&
-    GraphIter< VarGraph, Haplotyper >::operator--( int )
+      inline GraphIter< VarGraph, Haplotyper<> >&
+    GraphIter< VarGraph, Haplotyper<> >::operator--( int )
     {
       this->itr_value = this->state.start;    // Reset the iterator to the start node.
       this->visiting_buffer.clear();
@@ -697,17 +719,17 @@ namespace grem {
       clear( this->state.current_path );
       add_node( this->state.current_path, this->itr_value );
       return *this;
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator--  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator--  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Haplotyper >&
-    GraphIter< VarGraph, Haplotyper >::operator--( )
+      inline GraphIter< VarGraph, Haplotyper<> >&
+    GraphIter< VarGraph, Haplotyper<> >::operator--( )
     {
       this->visited.push_back( this->state.current_path );
       this->set_setback();
       (*this)--;
       return *this;
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator--  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator--  ----- */
 
   /**
    *  @brief  Check if the given path is present in paths generated so far.
@@ -720,13 +742,91 @@ namespace grem {
   template< >
   template< typename TContainer >
       inline bool
-    GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer& path )
+    GraphIter< VarGraph, Haplotyper<> >::operator[]( const TContainer& path )
     {
       // :TODO:Sun Apr 01 00:01:\@cartoonist: Unordered check!
       // ... `PathSet< Path< TGraph, Compact >, InMemory >` should be used for
       // ... `this->visited`.
       return covered_by( path.begin(), path.end(), this->visited );
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator[]  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator[]  ----- */
+
+  /* Interface functions specialization. */
+  template< >
+      inline bool
+    at_end( GraphIter< VarGraph, Haplotyper< Random > >& it )
+    {
+      return it.state.end;
+    }  /* -----  end of template function at_end  ----- */
+
+  template< >
+      inline void
+    begin( GraphIter< VarGraph, Haplotyper< Random > >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Random > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Random > >::parameter_type p )
+    {
+      if ( start == 0 ) start = g->rank_to_id( 1 );
+
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.state.start = start;
+      it.state.level = 1;
+      it.state.end = false;
+      it.param = p;
+    }  /* -----  end of template function begin  ----- */
+
+  template< >
+      inline void
+    go_begin( GraphIter< VarGraph, Haplotyper< Random > >& it,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Random > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Random > >::parameter_type p )
+    {
+      if ( start == 0 ) start = it.state.start;  // Re-use start node.
+
+      it.itr_value = start;
+      it.state.start = start;
+      it.state.level = 1;
+      it.state.end = false;  // Re-set at-end flag.
+      it.param = p;
+    }  /* -----  end of template function go_begin  ----- */
+
+  template< >
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper< Random > > >::Type
+    level( GraphIter< VarGraph, Haplotyper< Random > >& it )
+    {
+      return it.state.level;
+    }
+
+  /* Member functions specialization. */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Random > >&
+    GraphIter< VarGraph, Haplotyper< Random > >::operator++( )
+    {
+      if ( at_end( *this ) && this->raise_on_end ) {
+        throw std::range_error( "The iterator has reached the end." );
+      }
+
+      if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
+        this->state.end = true;
+        return *this;
+      }
+
+      this->itr_value =
+        get_random_adjacent( *this->vargraph_ptr,  this->itr_value, this->param );
+      ++this->state.level;
+
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Random > >::operator++  ----- */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Random > >&
+    GraphIter< VarGraph, Haplotyper< Random > >::operator--( )
+    {
+      this->itr_value = this->state.start;
+      this->state.level = 1;
+      this->state.end = false;
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator--  ----- */
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
 
@@ -779,26 +879,27 @@ namespace grem {
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
-    inline void
-  get_uniq_full_haplotype( Path< VarGraph >& haplotype,
-      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
-      int tries=0 )
-  {
-    do {
-      while ( !at_end( iter ) ) {
-        add_node( haplotype, *iter );
-        ++iter;
-      }
-      if ( tries-- && iter[ haplotype.get_nodes() ] ) {
-        iter--;  // discard the traversed path and reset the Haplotyper iterator.
-      }
-      else {
-        --iter;  // save the traversed path and reset the Haplotyper iterator.
-        break;
-      }
-      /* trying again */
-    } while ( true );
-  }
+  template< typename TSpec >
+      inline void
+    get_uniq_full_haplotype( Path< VarGraph >& haplotype,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        int tries=0 )
+    {
+      do {
+        while ( !at_end( iter ) ) {
+          add_node( haplotype, *iter );
+          ++iter;
+        }
+        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
+          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        }
+        else {
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          break;
+        }
+        /* trying again */
+      } while ( true );
+    }
 
   /**
    *  @brief  Add a simulated haplotype to the given pathset.
@@ -809,10 +910,10 @@ namespace grem {
    *
    *  @overload for `PathSet`.
    */
-  template< typename TPathSet >
+  template< typename TPathSet, typename TSpec >
       inline void
     get_uniq_full_haplotype( TPathSet& paths,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         int tries=0 )
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
@@ -822,10 +923,10 @@ namespace grem {
       }
     }
 
-  template< typename TPathSet >
+  template< typename TPathSet, typename TSpec >
       inline void
     get_uniq_patches( TPathSet& paths,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         unsigned int k )
     { // :TODO:Fri Dec 01 21:26:\@cartoonist: the length of pre-context sequence won't be k all the time.
       iter.raise_on_end = true;
@@ -883,10 +984,10 @@ namespace grem {
       iter.raise_on_end = false;
     }
 
-  template< typename TPathSet >
+  template< typename TPathSet, typename TSpec >
       inline bool
     get_uniq_patched_haplotype( TPathSet& paths,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         unsigned int context_len )
     {
       if ( level( iter ) == 0 ) {
@@ -897,6 +998,18 @@ namespace grem {
       get_uniq_patches( paths, iter, context_len );
       if ( paths_no == paths.size() ) return false;
       return true;
+    }
+
+  template< typename TPath >
+      inline void
+    get_rnd_full_haplotype( TPath& haplotype,
+        GraphIter< VarGraph, Haplotyper< Random > >& iter )
+    {
+      while ( !at_end( iter ) ) {
+        haplotype.push_back( *iter );
+        ++iter;
+      }
+      --iter;
     }
 
   /* END OF Haplotyper iterator interface functions  ----------------------------- */

@@ -35,13 +35,18 @@ namespace grem {
   struct BFSStrategy;
   struct DFSStrategy;
   struct BacktrackerStrategy;
-  struct HaplotyperStrategy;
+
+  struct Random;
+  struct Global;
+  template< typename TSpec >
+    struct HaplotyperStrategy;
 
   /* GraphIter specialization tags. */
   typedef seqan::Tag< BFSStrategy > BFS;
   typedef seqan::Tag< DFSStrategy > DFS;
   typedef seqan::Tag< BacktrackerStrategy > Backtracker;
-  typedef seqan::Tag< HaplotyperStrategy > Haplotyper;
+  template< typename TSpec = Global >
+    using Haplotyper = seqan::Tag< HaplotyperStrategy< TSpec > >;
 
   /* Graph iterator traits. */
   template< typename TGraph, typename TSpec >

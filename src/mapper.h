@@ -392,7 +392,7 @@ namespace grem
             for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
-              seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
+              seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph, s );
               for ( int i = 0; i < n; ++i ) {
                 if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
                 else get_uniq_full_haplotype( paths, hap_itr );
