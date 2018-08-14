@@ -1181,12 +1181,14 @@ namespace grem {
             marked = 0;
             extend_to_k( frontier, iter, k );
           }
-          // Search for a patch of length k that is not covered by visited paths of `iter`.
-          while ( iter[ frontier.get_nodes() ] )
-          {
-            add_node( frontier, *iter );
-            trim_front_by_len( frontier, k );
-            ++iter;
+          if ( length( patch ) == 0 ) {
+            // Search for a patch of length k that is not covered by visited paths of `iter`.
+            while ( iter[ frontier.get_nodes() ] )
+            {
+              add_node( frontier, *iter );
+              trim_front_by_len( frontier, k );
+              ++iter;
+            }
           }
           // Extend the patch.
           patch += frontier;
