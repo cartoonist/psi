@@ -34,14 +34,14 @@ namespace grem {
   /* GraphIter strategies. */
   struct BFSStrategy;
   struct DFSStrategy;
-  struct BacktrackStrategy;
-  struct HaplotypeStrategy;
+  struct BacktrackerStrategy;
+  struct HaplotyperStrategy;
 
   /* GraphIter specialization tags. */
   typedef seqan::Tag< BFSStrategy > BFS;
   typedef seqan::Tag< DFSStrategy > DFS;
-  typedef seqan::Tag< BacktrackStrategy > Backtracker;
-  typedef seqan::Tag< HaplotypeStrategy > Haplotyper;
+  typedef seqan::Tag< BacktrackerStrategy > Backtracker;
+  typedef seqan::Tag< HaplotyperStrategy > Haplotyper;
 
   /* Graph iterator traits. */
   template< typename TGraph, typename TSpec >
@@ -52,12 +52,15 @@ namespace grem {
       bool
     at_end( GraphIter<TGraph, TSpec>& it );
   template< typename TGraph, typename TSpec >                      // begin
-      GraphIter< TGraph, TSpec >
-    begin( const TGraph& g, typename GraphIter< TGraph, TSpec >::value_type start=0 );
+      void
+    begin( GraphIter< TGraph, TSpec >& it, const TGraph* g,
+        typename GraphIter< TGraph, TSpec >::value_type start=0,
+        typename GraphIter< TGraph, TSpec >::parameter_type p=GraphIter< TGraph, TSpec >::TTraits::param_default );
   template< typename TGraph, typename TSpec >
       void
     go_begin( GraphIter<TGraph, TSpec>& it,
-        typename GraphIter< TGraph, TSpec >::value_type start=0 );
+        typename GraphIter< TGraph, TSpec >::value_type start=0,
+        typename GraphIter< TGraph, TSpec >::parameter_type p=GraphIter< TGraph, TSpec >::TTraits::param_default );
   template< typename TGraph, typename TSpec >    // level
       typename GraphIter< TGraph, TSpec >::level_type
     level( GraphIter< TGraph, TSpec >& it );
@@ -86,6 +89,7 @@ namespace grem {
         typedef typename TTraits::TContainer container_type;
         typedef typename TTraits::TSet set_type;
         typedef typename TTraits::TState state_type;
+        typedef typename TTraits::TParameter parameter_type;
         /* ====================  DATA MEMBERS  ======================================= */
         bool raise_on_end;          /**< @brief Throw an exception if it hits the end. */
         /* ====================  ACCESSORS     ======================================= */
@@ -98,26 +102,27 @@ namespace grem {
         /* Common interface functions. */
         friend bool
           at_end< TGraph, TSpec >( GraphIter< TGraph, TSpec >& it );
-        friend GraphIter<TGraph, TSpec>
-          begin< TGraph, TSpec >( const TGraph& g, value_type start );
         friend void
-          go_begin< TGraph, TSpec >
-          ( GraphIter<TGraph, TSpec>& it, value_type start );
+          begin< TGraph, TSpec >( GraphIter< TGraph, TSpec >& it, const TGraph* g, value_type start,
+              parameter_type p );
+        friend void
+          go_begin< TGraph, TSpec >( GraphIter<TGraph, TSpec>& it, value_type start,
+              parameter_type p );
         /* Interface functions specific for BFS graph iterator and Haplotyper. */
         friend level_type
           level< TGraph, TSpec >( GraphIter< TGraph, TSpec >& it );
         /* ====================  LIFECYCLE     ======================================= */
-        GraphIter( const TGraph* graph, value_type start=0 )  // constructor
+        GraphIter( const TGraph* graph, value_type start=0, parameter_type p=TTraits::param_default )
+          : GraphIter( )
         {
-          // Use [implicit] move assignment operator for initializing the iterator.
-          *this = begin<TGraph, TSpec>(*graph, start);
+          grem::begin<TGraph, TSpec>( *this, graph, start, std::move( p ) );
         }
 
         /**
          *  @overload
          */
-        GraphIter( const TGraph& vargraph, value_type start=0 ) :
-          GraphIter( &vargraph, start ) { }
+        GraphIter( const TGraph& vargraph, value_type start=0, parameter_type p=TTraits::param_default ) :
+          GraphIter( &vargraph, start, std::move( p ) ) { }
         /* ====================  OPERATORS     ======================================= */
         inline value_type operator*( )
         {
@@ -144,6 +149,7 @@ namespace grem {
         container_type visiting_buffer;  /**< @brief Visiting buffer. */
         set_type visited;                /**< @brief Visited set. */
         state_type state;                /**< @brief Special-purpose vars. */
+        parameter_type param;            /**< @brief Input parameter. */
     };  /* ----------  end of template class GraphIter  ---------- */
 
 }  /* -----  end of namespace grem  ----- */

@@ -220,12 +220,14 @@ namespace grem
       typedef struct {
         std::size_t lb_visited_rank;  /**< @brief lower-bound for rank of visited nodes. */
       } TState;
+      typedef void* TParameter;
+      constexpr static const TParameter param_default = nullptr;
     };
 
   /**
    *  @brief  Backtracker graph iterator tag.
    *
-   *  Specialization of generic graph iterator tag BacktrackerIter for VarGraph.
+   *  Specialization of generic graph iterator tag Backtracker for VarGraph.
    */
   template< >
     struct GraphIterTraits< VarGraph, Backtracker > {
@@ -238,12 +240,14 @@ namespace grem
         Value buffer;                           /**< @brief Buffer node ID. 0=nothing */
         bool end;                               /**< @brief End flag. */
       } TState;
+      typedef void* TParameter;
+      constexpr static const TParameter param_default = nullptr;
     };  /* ----------  end of struct Backtracker  ---------- */
 
   /**
    *  @brief  Haplotyper graph iterator tag.
    *
-   *  Specialization of generic graph iterator tag HaplotyperIter for VarGraph.
+   *  Specialization of generic graph iterator tag Haplotyper for VarGraph.
    */
   template< >
     struct GraphIterTraits< VarGraph, Haplotyper > {
@@ -258,6 +262,8 @@ namespace grem
         Path< VarGraph, Micro > current_path;
         unsigned int setback;
       } TState;
+      typedef unsigned int TParameter;
+      static const TParameter param_default = 0;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
 
   /* END OF tags template specialization  -------------------------------------- */
@@ -336,59 +342,41 @@ namespace grem {
     }
 
   template< >
-      inline GraphIter< VarGraph, BFS >
-    begin( const VarGraph& g,
-        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
+      inline void
+    begin( GraphIter< VarGraph, BFS >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start,
+        typename GraphIter< VarGraph, BFS >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
+      if ( start == 0 ) start = g->rank_to_id( 1 );
 
-      GraphIter< VarGraph, BFS > begin_itr;
-
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = g.rank_to_id( 1 );
+      it.state.lb_visited_rank = 1;
+      if ( g->id_to_rank( start ) == 1 ) {
+        ++it.state.lb_visited_rank;
       }
 
-      begin_itr.state.lb_visited_rank = 1;
-      if ( g.id_to_rank( start_node_id ) == 1 ) {
-        ++begin_itr.state.lb_visited_rank;
-      }
-
-      begin_itr.vargraph_ptr = &g;
-      begin_itr.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
-      begin_itr.visited.insert( std::make_pair( start_node_id, 0 ) );
-      begin_itr.itr_value = begin_itr.visiting_buffer.front().first;
-
-      return begin_itr;
+      it.vargraph_ptr = g;
+      it.visiting_buffer.push_back( std::make_pair( start, 0 ) );
+      it.visited.insert( std::make_pair( start, 0 ) );
+      it.itr_value = it.visiting_buffer.front().first;
     }
 
   template< >
       inline void
     go_begin( GraphIter< VarGraph, BFS >& it,
-        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
+        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start,
+        typename GraphIter< VarGraph, BFS >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
-
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = it.vargraph_ptr->rank_to_id( 1 );
-      }
+      if ( start == 0 ) start = it.vargraph_ptr->rank_to_id( 1 );
 
       it.state.lb_visited_rank = 1;
-      if ( it.vargraph_ptr->id_to_rank( start_node_id ) == 1 ) {
+      if ( it.vargraph_ptr->id_to_rank( start ) == 1 ) {
         ++it.state.lb_visited_rank;
       }
 
       it.visiting_buffer.clear();
-      it.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
+      it.visiting_buffer.push_back( std::make_pair( start, 0 ) );
       it.visited.clear();
-      it.visited.insert( std::make_pair( start_node_id, 0 ) );
+      it.visited.insert( std::make_pair( start, 0 ) );
       it.itr_value = it.visiting_buffer.front().first;
     }  /* -----  end of template function go_begin  ----- */
 
@@ -478,48 +466,29 @@ namespace grem {
     }  /* -----  end of template function at_end  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Backtracker >
-    begin( const VarGraph& g,
-        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
+      inline void
+    begin( GraphIter< VarGraph, Backtracker >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start,
+        typename GraphIter< VarGraph, Backtracker >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
+      if ( start == 0 ) start = g->rank_to_id( 1 );
 
-      GraphIter< VarGraph, Backtracker > begin_itr;
-      TValue start_node_id;
-
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = g.rank_to_id( 1 );
-      }
-
-      begin_itr.vargraph_ptr = &g;
-      begin_itr.itr_value = start_node_id;
-      begin_itr.state.buffer = 0;
-      begin_itr.state.end = false;
-      begin_itr.state.start = start_node_id;
-
-      return begin_itr;
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.state.buffer = 0;
+      it.state.end = false;
+      it.state.start = start;
     }  /* -----  end of template function begin  ----- */
 
   template< >
       inline void
     go_begin( GraphIter< VarGraph, Backtracker >& it,
-        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
+        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start,
+        typename GraphIter< VarGraph, Backtracker >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
+      if ( start == 0 ) start = it.state.start;  // Re-use stored start node.
 
-      TValue start_node_id;
-
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = it.state.start;  // Re-use stored start node.
-      }
-
-      it.itr_value = start_node_id;
+      it.itr_value = start;
       it.state.buffer = 0;  // Re-set buffer.
       it.state.end = false;  // Re-set at-end flag.
       it.visiting_buffer.clear();
@@ -599,49 +568,31 @@ namespace grem {
     }  /* -----  end of template function at_end  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Haplotyper >
-    begin( const VarGraph& g,
-        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
+      inline void
+    begin( GraphIter< VarGraph, Haplotyper >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+      if ( start == 0 ) start = g->rank_to_id( 1 );
 
-      GraphIter< VarGraph, Haplotyper > begin_itr;
-
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = g.rank_to_id( 1 );
-      }
-
-      begin_itr.vargraph_ptr = &g;
-      begin_itr.itr_value = start_node_id;
-      begin_itr.state.start = start_node_id;
-      begin_itr.state.end = false;
-      add_node( begin_itr.state.current_path, begin_itr.itr_value );
-      begin_itr.state.setback = 0;
-
-      return begin_itr;
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.state.start = start;
+      it.state.end = false;
+      add_node( it.state.current_path, it.itr_value );
+      it.state.setback = 0;
     }  /* -----  end of template function begin  ----- */
 
   template< >
       inline void
     go_begin( GraphIter< VarGraph, Haplotyper >& it,
-        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+      if ( start == 0 ) start = it.state.start;  // Re-use start node.
 
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = it.state.start;  // Re-use start node.
-      }
-
-      it.itr_value = start_node_id;
-      it.state.start = start_node_id;
+      it.itr_value = start;
+      it.state.start = start;
       it.visiting_buffer.clear();
       it.state.end = false;  // Re-set at-end flag.
       it.visited.clear();
