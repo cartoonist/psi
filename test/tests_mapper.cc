@@ -83,28 +83,62 @@ SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
 
     unsigned char k = 12;
     unsigned char nof_paths = 4;
-    std::vector< std::pair< VarGraph::nodeid_type, VarGraph::offset_type > > truth;
-    truth.push_back( std::make_pair( 1, 2 ) );
-    truth.push_back( std::make_pair( 1, 3 ) );
-    truth.push_back( std::make_pair( 1, 4 ) );
-    truth.push_back( std::make_pair( 1, 5 ) );
-    truth.push_back( std::make_pair( 1, 6 ) );
-    truth.push_back( std::make_pair( 1, 7 ) );
-    truth.push_back( std::make_pair( 2, 0 ) );
-    truth.push_back( std::make_pair( 3, 0 ) );
-    auto truth_itr = truth.begin();
-
-    Mapper< TTraverser > mapper( &vargraph, k );
-    Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
-
-    WHEN( "Find starting loci using " + std::to_string( nof_paths ) + " paths" )
+    WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
+      std::vector< std::pair< VarGraph::nodeid_type, VarGraph::offset_type > > truth;
+      truth.push_back( std::make_pair( 1, 2 ) );
+      truth.push_back( std::make_pair( 1, 3 ) );
+      truth.push_back( std::make_pair( 1, 4 ) );
+      truth.push_back( std::make_pair( 1, 5 ) );
+      truth.push_back( std::make_pair( 1, 6 ) );
+      truth.push_back( std::make_pair( 1, 7 ) );
+      truth.push_back( std::make_pair( 2, 0 ) );
+      truth.push_back( std::make_pair( 3, 0 ) );
+      auto truth_itr = truth.begin();
+
+      Mapper< TTraverser > mapper( &vargraph, k );
+      Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
       mapper.pick_paths( pindex, nof_paths );
-      mapper.add_all_loci( pindex.get_paths_set(), k );
-      for ( const auto& locus : mapper.get_starting_loci() ) {
-        REQUIRE( locus.node_id() == (*truth_itr).first );
-        REQUIRE( locus.offset() == (*truth_itr).second );
-        ++truth_itr;
+
+      THEN( "Starting loci must have at least one uncovered " + std::to_string( k ) + "-path" )
+      {
+        mapper.add_all_loci( pindex.get_paths_set(), k );
+        for ( const auto& locus : mapper.get_starting_loci() ) {
+          REQUIRE( locus.node_id() == (*truth_itr).first );
+          REQUIRE( locus.offset() == (*truth_itr).second );
+          ++truth_itr;
+        }
+      }
+    }
+
+    nof_paths = 8;
+    WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
+    {
+      Mapper< TTraverser > mapper( &vargraph, k );
+      Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
+      mapper.pick_paths( pindex, nof_paths );
+
+      THEN( "All loci should be covered by path index" )
+      {
+        mapper.add_all_loci( pindex.get_paths_set(), k );
+        size_t nof_loci = mapper.get_starting_loci().size();
+        REQUIRE( nof_loci == 0 );
+      }
+    }
+
+    k = 45;
+    nof_paths = 32;
+    WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
+    {
+      Mapper< TTraverser > mapper( &vargraph, k );
+      Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
+      mapper.pick_paths( pindex, nof_paths, false );
+
+      THEN( "All loci should be covered by path index" )
+      {
+        mapper.add_all_loci( pindex.get_paths_set(), k );
+        size_t nof_loci = mapper.get_starting_loci().size();
+        REQUIRE( nof_loci == 0 );
       }
     }
   }
