@@ -804,6 +804,183 @@ namespace grem {
     }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator[]  ----- */
 
   /* Interface functions specialization. */
+
+  template< >
+      inline bool
+    at_end( GraphIter< VarGraph, Haplotyper< Local > >& it )
+    {
+      return it.state.end;
+    }  /* -----  end of template function at_end  ----- */
+
+  template< >
+      inline void
+    begin( GraphIter< VarGraph, Haplotyper< Local > >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Local > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
+    {
+      if ( start == 0 ) start = g->rank_to_id( 1 );
+
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.visiting_buffer = std::make_unique< Path< VarGraph, Dynamic > >( g );
+      it.state.start = start;
+      it.state.end = false;
+      it.state.current_path = std::make_unique< Path< VarGraph, Haplotype > >( g );
+      it.state.current_path->push_back( it.itr_value );
+      it.state.setback = 0;
+      it.param = p;
+    }  /* -----  end of template function begin  ----- */
+
+  template< >
+      inline void
+    go_begin( GraphIter< VarGraph, Haplotyper< Local > >& it,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Local > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
+    {
+      if ( start == 0 ) start = it.state.start;  // Re-use start node.
+
+      it.itr_value = start;
+      it.state.start = start;
+      it.visiting_buffer->clear();
+      it.state.end = false;  // Re-set at-end flag.
+      it.visited.clear();
+      it.state.current_path->clear();
+      it.state.current_path->push_back( it.itr_value );
+      it.state.setback = 0;
+      it.param = 0;
+    }  /* -----  end of template function go_begin  ----- */
+
+  template< >
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper< Local > > >::Type
+    level( GraphIter< VarGraph, Haplotyper< Local > >& it )
+    {
+      return it.visited.size();
+    }
+
+  /* Member functions specialization. */
+
+  template< >
+      inline void
+    GraphIter< VarGraph, Haplotyper< Local > >::set_setback( )
+    {
+      if ( this->visited.size() == 0 ) {
+        this->state.setback = 0;
+      }
+      else {
+        this->state.setback = 2 * ceil( log2( this->visited.size() + 1 ) ) - 1;
+      }
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::set_setback  ----- */
+
+  /**
+   *  A setback path is a sequence of last 's' nodes of currently generating haplotype
+   *  encompassing last k basepair. An unvisited setback path is a path that does
+   *  not occur as a subset of any previously generated haplotypes. This function search
+   *  in adjacent nodes set for a node that together with 's-1' previously selected nodes
+   *  forms an unvisited setback in order to cover more k-mers from all paths in the graph;
+   *  i.e. generating more diverse haplotypes.
+   */
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Local > >&
+    GraphIter< VarGraph, Haplotyper< Local > >::operator++( )
+    {
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper< Local > > >::Type TValue;
+
+      if ( at_end( *this ) && this->raise_on_end ) {
+        throw std::range_error( "The iterator has reached the end." );
+      }
+
+      if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
+        this->state.end = true;
+        return *this;
+      }
+
+      if ( this->state.setback != 0 ) {
+        trim_front_by_len( *this->visiting_buffer, this->param - 1 );
+      }
+
+      TValue next_candidate = 0;
+      auto fwd_edges = this->vargraph_ptr->edges_from( this->itr_value );
+      if ( this->state.setback == 0 || fwd_edges.size() == 1 ) {
+        next_candidate = fwd_edges[0].to();
+      }
+      else {
+        // Search for a forward node such that the setback path is not in previous paths.
+        for ( auto e : fwd_edges ) {
+          this->visiting_buffer->push_back( e.to() );
+          if ( (*this)[ *this->visiting_buffer ] ) {  // Visited?
+            this->visiting_buffer->pop_back();
+            continue;                             // Next edge.
+          }
+          this->visiting_buffer->pop_back();      // No change to the iterator state.
+          next_candidate = e.to();                // Found!
+          break;
+        }
+      }
+      // If no unvisited setback path found, use a node with least path coverage.
+      if ( next_candidate == 0 ) {
+        next_candidate = least_covered_adjacent( *this->vargraph_ptr,
+            *this->visiting_buffer, this->visited );
+      }
+      // If all forward edges are visited, pick one randomly with uniform distribution.
+      if ( next_candidate == 0 ) {
+        next_candidate =
+          get_random_adjacent( ( *this->vargraph_ptr ),  this->itr_value );
+      }
+
+      this->itr_value = next_candidate;
+      if ( this->state.setback != 0 ) {
+        this->visiting_buffer->push_back( this->itr_value );
+      }
+      this->state.current_path->push_back( this->itr_value );
+
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator++  ----- */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Local > >&
+    GraphIter< VarGraph, Haplotyper< Local > >::operator--( int )
+    {
+      this->itr_value = this->state.start;    // Reset the iterator to the start node.
+      this->visiting_buffer->clear();
+      if ( this->state.setback != 0 ) {
+        this->visiting_buffer->push_back( this->itr_value );
+      }
+      this->state.end = false;                // Reset at-end flag.
+      this->state.current_path->clear();
+      this->state.current_path->push_back( this->itr_value );
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator--  ----- */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Local > >&
+    GraphIter< VarGraph, Haplotyper< Local > >::operator--( )
+    {
+      this->visited.push_back( std::move( *this->state.current_path ) );
+      this->set_setback();
+      (*this)--;
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator--  ----- */
+
+  /**
+   *  @brief  Check if the given path is present in paths generated so far.
+   *
+   *  @param  path A container of node IDs indicating nodes in a path.
+   *  @return `true` if the path is present; `false` otherwise.
+   *
+   *  Check whether the given path is generated before or not.
+   */
+  template< >
+  template< typename TContainer >
+      inline bool
+    GraphIter< VarGraph, Haplotyper< Local > >::operator[]( const TContainer& path )
+    {
+      // :TODO:Sun Apr 01 00:01:\@cartoonist: Unordered check!
+      // ... `PathSet< Path< TGraph, Compact >, InMemory >` should be used for
+      // ... `this->visited`.
+      return covered_by( path.begin(), path.end(), this->visited );
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator[]  ----- */
+
+  /* Interface functions specialization. */
   template< >
       inline bool
     at_end( GraphIter< VarGraph, Haplotyper< Random > >& it )

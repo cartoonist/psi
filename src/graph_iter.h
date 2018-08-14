@@ -38,6 +38,7 @@ namespace grem {
 
   struct Random;
   struct Global;
+  struct Local;
   template< typename TSpec >
     struct HaplotyperStrategy;
 
