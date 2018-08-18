@@ -805,24 +805,7 @@ namespace seqan {
 }  /* -----  end of namespace seqan  ----- */
 
 namespace grem {
-  /**
-   *  @brief  String set with an ID associated with each string.
-   *
-   *  It is a wrapper class on StringSet associating an ID to each string.
-   */
-  template< typename TStringSet >
-    class NamedStringSet {
-      public:
-        /* ====================  DATA MEMBERS  ======================================= */
-        TStringSet str;
-        CharStringSet<> name;
-    };  /* ----------  end of template class NamedStringSet  ---------- */
-
-  /* Forwards */
-  template< typename TStringSet >
-    class Records;
-
-  /* Records interface functions */
+  /* StringSets interface functions */
   template< typename TText >
       inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
     position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
@@ -853,6 +836,11 @@ namespace grem {
       return pos.i2;
     }
 
+  /* Forwards */
+  template< typename TStringSet >
+    class Records;
+
+  /* Records interface functions */
   template< typename TText >
       inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
     position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
@@ -900,8 +888,10 @@ namespace grem {
       inline void
     clear( Records< seqan::StringSet< TText, seqan::Owner<> > >&records )
     {
-      clear( records.str );
       clear( records.name );
+      //clear( records.comment );
+      clear( records.str );
+      //clear( records.qual );
     }
 
   template< typename TText >
@@ -971,8 +961,7 @@ namespace grem {
     }
 
   template< typename TText >
-    class Records< seqan::StringSet< TText, seqan::Owner<> > >
-    : public NamedStringSet< seqan::StringSet< TText, seqan::Owner<> > > {
+    class Records< seqan::StringSet< TText, seqan::Owner<> > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
@@ -981,6 +970,11 @@ namespace grem {
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
+        /* ====================  DATA MEMBERS  ======================================= */
+        CharStringSet<> name;
+        //TStringSet2 comment;
+        TStringSet str;
+        //TStringSet2 qual;
         /* ====================  METHODS       ======================================= */
           inline typename seqan::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
