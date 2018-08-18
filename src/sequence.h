@@ -290,28 +290,6 @@ namespace grem {
       dstr.reserve( size );
     }
 
-  template< typename TSpec >
-      inline void
-    open( YaString< TSpec >& ystr, const std::string& file_name )
-    {
-      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-      if( !ifs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      open( ystr, ifs );
-    }
-
-  template< typename TSpec >
-      inline void
-    save( YaString< TSpec >& ystr, const std::string& file_name )
-    {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( ystr, ofs );
-    }
-
   template< typename TString >
     class YaInfix
     : public std::pair< typename TString::size_type, typename TString::size_type > { };
@@ -823,30 +801,6 @@ namespace seqan {
         TSize const size )
     {
       dstr.reserve( size );
-    }
-
-  template< typename TSpec >
-      inline void
-    open( StringSet< grem::YaString< TSpec >, Owner<> >& ystrset,
-        const std::string& file_name )
-    {
-      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-      if( !ifs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      open( ystrset, ifs );
-    }
-
-  template< typename TSpec >
-      inline void
-    save( StringSet< grem::YaString< TSpec >, Owner<> >& ystrset,
-        const std::string& file_name )
-    {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( ystrset, ofs );
     }
 }  /* -----  end of namespace seqan  ----- */
 
