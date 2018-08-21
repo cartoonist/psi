@@ -38,6 +38,7 @@
 #include "logger.h"
 #include "release.h"
 
+using namespace klibpp;
 using namespace seqan;
 using namespace grem;
 
@@ -141,7 +142,7 @@ template< typename TPathIndex, typename TMapper >
 
 template< typename TIndexSpec  >
     void
-  find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, seqan::File<>& output_file,
+  find_seeds( VarGraph& vargraph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
       unsigned int path_num, unsigned int context, bool paths_index, bool patched,
       const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
@@ -149,7 +150,7 @@ template< typename TIndexSpec  >
     /* Get the main logger. */
     auto log = get_logger( "main" );
     /* Method typedefs. */
-    typedef seqan::Index< Dna5QStringSet< grem::Dependent >, TIndexSpec > TIndex;
+    typedef seqan::Index< Dna5QStringSet< >, TIndexSpec > TIndex;
     typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
     typedef Mapper< TTraverser > TMapper;
     /* The mapper for input variation graph. */
@@ -186,22 +187,6 @@ template< typename TIndexSpec  >
       return;
     }
 
-    /* All DNA reads to be mapped. */
-    Records< Dna5QStringSet<> > reads;
-    log->info( "Reading all reads from file..." );
-    {
-      auto timer = Timer( "read-reads" );
-      /* Load all reads from file. */
-      readRecords( reads, reads_infile );
-    }
-    log->info( "Read {} reads in {} us.", length( reads ),
-        Timer::get_duration( "read-reads" ).count() );
-
-    /* If chunksize is zero (unspecified), set it to the no of reads; i.e. one chunk. */
-    if ( chunk_size == 0 ) {
-      chunk_size = length( reads );
-    }
-
     unsigned long long int found = 0;
     std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write_callback =
@@ -216,7 +201,7 @@ template< typename TIndexSpec  >
     };
 
     /* Reads are mapped in chunks. */
-    Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
+    Records< Dna5QStringSet< > > reads_chunk;
     log->info( "Finding seeds..." );
     {
       auto timer = Timer( "seed-finding" );
@@ -226,9 +211,10 @@ template< typename TIndexSpec  >
         {
           auto timer = Timer( "load-chunk" );
           /* Load a chunk from reads set. */
-          if ( ! load_chunk( reads_chunk, reads, chunk_size ) ) break;
+          readRecords( reads_chunk, reads_iss, chunk_size );
+          if ( length( reads_chunk ) == 0 ) break;
         }
-        log->info( "Loaded reads chunk in {} us.",
+        log->info( "Fetched {} reads in {} us.", length( reads_chunk ),
             Timer::get_duration( "load-chunk" ).count() );
         /* Give the current chunk to the mapper. */
         mapper.set_reads( std::move( reads_chunk ) );
@@ -268,8 +254,8 @@ startup( const Options & options )
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
 
   log->info( "Opening file '{}'...", options.fq_path );
-  SeqFileIn reads_infile;
-  if ( !open( reads_infile, options.fq_path.c_str() ) )
+  SeqStreamIn reads_iss( options.fq_path.c_str() );
+  if ( !reads_iss )
   {
     std::string msg = "could not open file '" + options.fq_path + "'!";
     log->error( msg );
@@ -303,7 +289,7 @@ startup( const Options & options )
 
   switch ( options.index ) {
     case IndexType::Wotd: find_seeds ( vargraph,
-                              reads_infile,
+                              reads_iss,
                               output_file,
                               options.seed_len,
                               options.chunk_size,
@@ -317,7 +303,7 @@ startup( const Options & options )
                               UsingIndexWotd() );
                           break;
     case IndexType::Esa: find_seeds ( vargraph,
-                             reads_infile,
+                             reads_iss,
                              output_file,
                              options.seed_len,
                              options.chunk_size,
