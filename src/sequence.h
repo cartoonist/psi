@@ -935,10 +935,7 @@ namespace grem {
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition start_pos )
     {
-      if ( start_pos >= length( ref.str ) || start_pos < 0 )
-      {
-        return false;
-      }
+      if ( start_pos >= length( ref.str ) || start_pos < 0 ) return false;
 
       clear( records.str );
       records.offset = start_pos;
@@ -948,18 +945,6 @@ namespace grem {
         appendValue( records.str, ref.str[ i ] );
       }
       return true;
-    }
-
-  template< typename TText >
-      inline bool
-    load_chunk( Records< seqan::StringSet< TText, grem::Dependent > >& records,
-        const Records< seqan::StringSet< TText, seqan::Owner<> > >& ref,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n )
-    {
-      if ( length( records.str ) == 0 ) {
-        return load_chunk( records, ref, n, 0 );
-      }
-      return load_chunk( records, ref, n, records.offset + n );
     }
 
   template< typename TText >
@@ -1033,11 +1018,6 @@ namespace grem {
             const Records< TRefStringSet >& ref,
             typename Records< TRefStringSet >::TPosition n,
             typename Records< TRefStringSet >::TPosition start_pos );
-
-          friend bool
-        load_chunk< TText >( Records& records,
-            const Records< TRefStringSet >& ref,
-            typename Records< TRefStringSet >::TPosition n );
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         std::size_t offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
