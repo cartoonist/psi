@@ -24,6 +24,7 @@
 #include <stdexcept>
 
 #include <seqan/seq_io.h>
+#include <kseq++/seqio.h>
 #include <seqan/sequence.h>
 #include <sdsl/bit_vectors.hpp>
 
@@ -1290,6 +1291,23 @@ namespace grem {
       assignQualities( records.str, quals );
       return;
     }  /* -----  end of template function readRecords  ----- */
+
+  template< typename TText >
+      inline void
+    readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+        klibpp::SeqStreamIn& iss,
+        unsigned int num_record=0 )
+    {
+      klibpp::KSeq rec;
+      clear( records );
+      records.set_offset( iss.counts() );
+      unsigned int i = 0;
+      while ( iss >> rec ) {
+        appendValue( records.name, rec.name );
+        appendValue( records.str, rec.seq );
+        if ( ++i == num_record ) break;
+      }
+    }
 
   /**
    *  @brief  Get next lexicographical k-mer in a specific position in the string.
