@@ -72,7 +72,7 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
           REQUIRE( length( reads_chunk ) == subset_len );
           for ( unsigned int i = 0; i < subset_len; ++i ) {
             auto read_id = position_to_id( reads_chunk, i );
-            REQUIRE( reads_chunk.str[ i ] == reads.str[ read_id ] );
+            REQUIRE( reads_chunk[ i ] == reads[ read_id ] );
           }
         }
       }
@@ -101,6 +101,45 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
               auto read_id = position_to_id( reads_chunk, i );
               REQUIRE( reads_chunk.str[ i ] == reads.str[ read_id ] );
             }
+          }
+        }
+      }
+    }
+  }
+}
+
+SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
+{
+  unsigned int reads_num = 10;
+  GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
+  {
+    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    klibpp::SeqStreamIn iss( fqpath.c_str() );
+    Records< seqan::StringSet< MemString > > records;
+    unsigned int subset_len = 4;
+    unsigned int offset = 2;
+    readRecords( records, iss, offset );
+    WHEN( std::to_string( subset_len ) + " reads are parsed from file" )
+    {
+      readRecords( records, iss, subset_len );
+
+      THEN( "Each read's ID in the chunk should be its position in the original set" )
+      {
+        REQUIRE( length( records ) == subset_len );
+        for ( unsigned int i = 0; i < subset_len; ++i ) {
+          REQUIRE( position_to_id( records, i ) == offset + i );
+        }
+      }
+
+      WHEN( "Next " + std::to_string( subset_len ) + " reads are parsed" )
+      {
+        readRecords( records, iss, subset_len );
+
+        THEN( "Each read's ID in the chunk should be its position in the original set" )
+        {
+          REQUIRE( length( records.str ) == subset_len );
+          for ( unsigned int i = 0; i < subset_len; ++i ) {
+            REQUIRE( position_to_id( records, i ) == offset + subset_len + i );
           }
         }
       }
