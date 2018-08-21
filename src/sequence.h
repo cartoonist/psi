@@ -849,7 +849,7 @@ namespace grem {
       if ( pos >= length( records.str ) || pos < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
-      return pos;          /**< @brief In Owner records ID and position are identical. */
+      return records.offset + pos;
     }
 
   template< typename TText >
@@ -892,6 +892,7 @@ namespace grem {
       //clear( records.comment );
       clear( records.str );
       //clear( records.qual );
+      records.set_offset( 0 );
     }
 
   template< typename TText >
@@ -975,11 +976,29 @@ namespace grem {
         //TStringSet2 comment;
         TStringSet str;
         //TStringSet2 qual;
-        /* ====================  METHODS       ======================================= */
+        /* ====================  LIFECYCLE     ======================================= */
+        Records( ) : offset( 0 ) { }
+        /* ====================  OPERATORS     ======================================= */
           inline typename seqan::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
           inline typename seqan::Reference< TStringSet >::Type
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
+        /* ====================  MUTATORS      ======================================= */
+          inline void
+        set_offset( std::size_t value ) {
+          this->offset = value;
+        }
+
+          inline void
+        add_offset( std::size_t value ) {
+          this->offset += value;
+        }
+      protected:
+        /* ====================  DATA MEMBERS  ======================================= */
+        std::size_t offset;
+        /* ====================  INTERFACE FUNCTIONS  ================================ */
+          friend TId
+        position_to_id< TText >( const Records& records, TPosition pos );
     };
 
   template< typename TText >
