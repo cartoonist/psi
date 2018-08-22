@@ -51,56 +51,28 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
     readRecords( reads, infile );
     Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
     unsigned int subset_len = 4;
+    unsigned int offset = 2;
 
     WHEN( "A " + std::to_string( subset_len ) + "-reads subset is selected" )
     {
-      load_chunk( reads_chunk, reads, subset_len, 2 );
+      load_chunk( reads_chunk, reads, subset_len, offset );
       THEN( "Each read's ID in the chunk should be its position in the original set" )
       {
         REQUIRE( length( reads_chunk ) == subset_len );
         for ( unsigned int i = 0; i < subset_len; ++i ) {
-          auto read_id = position_to_id( reads_chunk, i );
-          REQUIRE( reads_chunk.str[ i ] == reads.str[ read_id ] );
+          REQUIRE( position_to_id( reads_chunk, i ) == offset + i );
         }
       }
 
       WHEN( "Next " + std::to_string( subset_len ) + "-reads subset is selected" )
       {
-        load_chunk( reads_chunk, reads, subset_len );
+        auto last_id = position_to_id( reads_chunk, length( reads_chunk ) - 1 );
+        load_chunk( reads_chunk, reads, subset_len, last_id + 1 );
         THEN( "Each read's ID in the chunk should be its position in the original set" )
         {
           REQUIRE( length( reads_chunk ) == subset_len );
           for ( unsigned int i = 0; i < subset_len; ++i ) {
-            auto read_id = position_to_id( reads_chunk, i );
-            REQUIRE( reads_chunk[ i ] == reads[ read_id ] );
-          }
-        }
-      }
-
-      subset_len = 8;
-      WHEN( std::to_string( subset_len ) + "-reads subset is selected after clear call" )
-      {
-        clear( reads_chunk );
-        load_chunk( reads_chunk, reads, subset_len );
-        THEN( "Each read's ID in the chunk should be its position in the original set" )
-        {
-          REQUIRE( length( reads_chunk ) == subset_len );
-          for ( unsigned int i = 0; i < subset_len; ++i ) {
-            auto read_id = position_to_id( reads_chunk, i );
-            REQUIRE( reads_chunk.str[ i ] == reads.str[ read_id ] );
-          }
-        }
-
-        WHEN( "Next " + std::to_string( subset_len ) + "-reads subset is selected" )
-        {
-          load_chunk( reads_chunk, reads, subset_len );
-          THEN( "Each read's ID in the chunk should be its position in the original set" )
-          {
-            REQUIRE( length( reads_chunk ) == reads_num - subset_len );
-            for ( unsigned int i = 0; i < reads_num - subset_len; ++i ) {
-              auto read_id = position_to_id( reads_chunk, i );
-              REQUIRE( reads_chunk.str[ i ] == reads.str[ read_id ] );
-            }
+            REQUIRE( position_to_id( reads_chunk, i ) == offset + subset_len + i );
           }
         }
       }
@@ -119,6 +91,7 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
     unsigned int subset_len = 4;
     unsigned int offset = 2;
     readRecords( records, iss, offset );
+
     WHEN( std::to_string( subset_len ) + " reads are parsed from file" )
     {
       readRecords( records, iss, subset_len );
