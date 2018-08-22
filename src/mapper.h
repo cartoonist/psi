@@ -389,10 +389,11 @@ namespace grem
             auto timer = stats_type( "pick-paths" );
 
             paths.reserve( n * this->vargraph->path_count );
+            seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph );
             for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
-              seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph, s );
+              go_begin( hap_itr, s );
               for ( int i = 0; i < n; ++i ) {
                 if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
                 else get_uniq_full_haplotype( paths, hap_itr );
