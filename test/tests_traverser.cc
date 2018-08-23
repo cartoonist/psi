@@ -38,7 +38,6 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
   {
     typedef seqan::IndexWotd<> TIndexSpec;
     typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
-    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
 
     std::string vgpath = _testdir + "/data/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
@@ -58,8 +57,10 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
 
     unsigned int seed_len = 10;
 
-    WHEN ( "Run a traverser on all loci with seed length " + std::to_string( seed_len ) )
+    WHEN ( "Run a DFS traverser on all loci with seed length " + std::to_string( seed_len ) )
     {
+      typedef typename Traverser< TIndex, DFS, ExactMatching >::Type TTraverser;
+
       TTraverser traverser( &vargraph, &reads, &reads_index, seed_len );
 
       unsigned int counter = 0;
@@ -85,7 +86,43 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
           const auto& node_id = vargraph.rank_to_id( r );
           VarGraph::offset_type seqlen = vargraph.node_length( node_id );
           for ( VarGraph::offset_type f = 0; f < seqlen; ++f ) {
-            traverser.set_start_locus( node_id, f );
+            traverser.add_locus( node_id, f );
+            traverser.run( count_hits );
+          }
+        }
+      }
+    }
+
+    WHEN ( "Run a BFS traverser on all loci with seed length " + std::to_string( seed_len ) )
+    {
+      typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
+
+      TTraverser traverser( &vargraph, &reads, &reads_index, seed_len );
+
+      unsigned int counter = 0;
+      std::size_t truth[10][2] = { {1, 0}, {1, 1}, {9, 4}, {9, 17}, {16, 0}, {17, 0},
+        {20, 0}, {20, 31}, {20, 38}, {20, 38} };
+
+      std::function< void( typename TTraverser::output_type const& ) > count_hits =
+        [&counter, &truth]( typename TTraverser::output_type const& hit ) {
+          if ( counter < 10 ) {
+            REQUIRE( hit.node_id == truth[ counter ][0] );
+            REQUIRE( hit.node_offset == truth[ counter ][1] );
+            REQUIRE( hit.read_id == counter );
+            REQUIRE( hit.read_offset == 0 );
+          }
+          else {
+            assert( false );  // shouldn't be reached.
+          }
+          ++counter;
+      };
+      THEN ( "It should find all reads in the graph" )
+      {
+        for ( std::size_t r = 1; r <= vargraph.max_node_rank(); ++r ) {
+          const auto& node_id = vargraph.rank_to_id( r );
+          VarGraph::offset_type seqlen = vargraph.node_length( node_id );
+          for ( VarGraph::offset_type f = 0; f < seqlen; ++f ) {
+            traverser.add_locus( node_id, f );
             traverser.run( count_hits );
           }
         }
