@@ -52,7 +52,7 @@ namespace grem {
         /* ====================  LIFECYCLE     ======================================= */
         TraverserDFS( const VarGraph* graph, const records_type* r, TIndex* index,
             unsigned int len )
-          : TBase( graph, r, index, len ), cstate( index, 0, 0, 0 )
+          : TBase( graph, r, index, len ), cstate( index, 0, 0, 0, 0 )
         { }
         /* ====================  METHODS       ======================================= */
           inline void
@@ -69,7 +69,7 @@ namespace grem {
           inline void
         filter( std::function< void( output_type const& ) >& callback )
         {
-          if ( cstate.mismatches != 0 && rep_length( cstate.iter ) == this->seed_len ) {
+          if ( cstate.mismatches != 0 && cstate.depth == this->seed_len ) {
             // Cross out the cstate.
             cstate.mismatches = 0;
             // Process the seed hit.
@@ -93,20 +93,21 @@ namespace grem {
           if ( cstate.mismatches == 0 ) return false;
 
           const auto& sequence = this->vargraph->node_sequence( cstate.cpos.node_id() );
-          const auto& itr_replen = rep_length( cstate.iter );
-          assert( itr_replen < this->seed_len );
+          assert( cstate.depth < this->seed_len );
           std::make_unsigned_t< VarGraph::offset_type > end_idx =
-            cstate.cpos.offset() + this->seed_len - itr_replen;
+            cstate.cpos.offset() + this->seed_len - cstate.depth;
           std::make_unsigned_t< VarGraph::offset_type > i;
           for ( i = cstate.cpos.offset(); i < end_idx && i < sequence.size(); ++i ) {
             if ( sequence[i] == 'N' || !go_down( cstate.iter, sequence[i] ) ) {
               cstate.mismatches--;
               break;
             }
+            ++cstate.depth;
             stats_type::inc_total_nof_godowns();
           }
 
           cstate.cpos.set_offset( i );
+          if ( i == sequence.size() ) cstate.end = true;
           return true;
         }
 
@@ -120,9 +121,7 @@ namespace grem {
             return;
           }
 
-          VarGraph::offset_type seqlen =
-            this->vargraph->node_length( cstate.cpos.node_id() );
-          if ( cstate.mismatches == 0 || cstate.cpos.offset() != seqlen ) return;
+          if ( cstate.mismatches == 0 || !cstate.end ) return;
 
           const auto& edges = this->vargraph->edges_from( this->cstate.cpos.node_id() );
           auto it = edges.begin();
@@ -132,6 +131,7 @@ namespace grem {
           }
           cstate.cpos.set_node_id( (*it).to() );
           cstate.cpos.set_offset( 0 );
+          cstate.end = false;
           ++it;
 
           for ( ; it != edges.end(); ++it )

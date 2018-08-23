@@ -58,11 +58,13 @@ namespace grem
         unsigned char mismatches;
         vg::Position spos;
         vg::Position cpos;
+        size_t depth;
+        bool end;
 
         State( TIndex* index, unsigned char mm,
             VarGraph::nodeid_type sid, VarGraph::offset_type soffset,
-            VarGraph::nodeid_type cid, VarGraph::offset_type coffset )
-          : iter( *index ), mismatches( mm )
+            VarGraph::nodeid_type cid, VarGraph::offset_type coffset, size_t d )
+          : iter( *index ), mismatches( mm ), depth( d ), end( false )
         {
           spos.set_node_id( sid );
           spos.set_offset( soffset );
@@ -71,17 +73,17 @@ namespace grem
         }
 
         State( TIndex* index, unsigned char mm,
-            VarGraph::nodeid_type sid, VarGraph::offset_type soffset )
-          : State( index, mm, sid, soffset, sid, soffset )
+            VarGraph::nodeid_type sid, VarGraph::offset_type soffset, size_t d )
+          : State( index, mm, sid, soffset, sid, soffset, d )
         { }
 
         State( TIndex* index, unsigned char mm,
-            vg::Position sp, vg::Position cp )
-          : State( index, mm, sp.node_id(), sp.offset(), cp.node_id(), cp.offset() )
+            vg::Position sp, vg::Position cp, size_t d )
+          : State( index, mm, sp.node_id(), sp.offset(), cp.node_id(), cp.offset(), d )
         { }
 
-        State( TIndex* index, unsigned char mm, vg::Position sp )
-          : State( index, mm, sp.node_id(), sp.offset(), sp.node_id(), sp.offset() )
+        State( TIndex* index, unsigned char mm, vg::Position sp, size_t d )
+          : State( index, mm, sp.node_id(), sp.offset(), sp.node_id(), sp.offset(), d )
         { }
       } TState;
     };
@@ -332,7 +334,8 @@ namespace grem
           this->states.emplace_back(
               this->reads_index,
               max_mismatches + 1,
-              std::move( p ) );
+              std::move( p ),
+              0 );
         }
 
           inline void
@@ -342,7 +345,8 @@ namespace grem
               this->reads_index,
               max_mismatches + 1,
               id,
-              offset );
+              offset,
+              0 );
         }
 
           inline void

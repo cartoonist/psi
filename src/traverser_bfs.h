@@ -77,7 +77,7 @@ namespace grem {
         filter( typename traits_type::TState& state,
             std::function< void( output_type const& ) >& callback )
         {
-          if ( state.mismatches != 0 && rep_length( state.iter ) == this->seed_len ) {
+          if ( state.mismatches != 0 && state.depth == this->seed_len ) {
             // Cross out the state.
             state.mismatches = 0;
             // Process the seed hit.
@@ -101,29 +101,28 @@ namespace grem {
           if ( state.mismatches == 0 ) return false;
 
           const auto& sequence = this->vargraph->node_sequence( state.cpos.node_id() );
-          const auto& itr_replen = rep_length( state.iter );
-          assert( itr_replen < this->seed_len );
+          assert( state.depth < this->seed_len );
           std::make_unsigned_t< VarGraph::offset_type > end_idx =
-            state.cpos.offset() + this->seed_len - itr_replen;
+            state.cpos.offset() + this->seed_len - state.depth;
           std::make_unsigned_t< VarGraph::offset_type > i;
           for ( i = state.cpos.offset(); i < end_idx && i < sequence.size(); ++i ) {
             if ( sequence[i] == 'N' || !go_down( state.iter, sequence[i] ) ) {
               state.mismatches--;
               break;
             }
+            ++state.depth;
             stats_type::inc_total_nof_godowns();
           }
 
           state.cpos.set_offset( i );
+          if ( i == sequence.size() ) state.end = true;
           return true;
         }
 
           inline void
         advance( typename traits_type::TState& state )
         {
-          VarGraph::offset_type seqlen =
-            this->vargraph->node_length( state.cpos.node_id() );
-          if ( state.mismatches == 0 || state.cpos.offset() != seqlen ) return;
+          if ( state.mismatches == 0 || !state.end ) return;
           const auto& edges = this->vargraph->edges_from( state.cpos.node_id() );
           auto it = edges.begin();
           if ( it == edges.end() ) {
@@ -132,6 +131,7 @@ namespace grem {
           }
           state.cpos.set_node_id( (*it).to() );
           state.cpos.set_offset( 0 );
+          state.end = false;
           ++it;
 
           for ( ; it != edges.end(); ++it )
