@@ -131,6 +131,7 @@ namespace grem {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename seqan::Iterator< TIndex, seqan::TopDown< TSpec > >::Type base_type;
+        typedef typename seqan::Container< base_type >::Type container_type;
         /* ====================  LIFECYCLE     ======================================= */
         IndexIter ( TIndex &index ) :                             /* constructor */
           iter_(index), boffset(0) { }
@@ -159,7 +160,7 @@ namespace grem {
         /* ====================  DATA MEMBERS  ======================================= */
 
         /** @brief Internal regular `TopDown< TSpec >` iterator. */
-        typename seqan::Iterator < TIndex, seqan::TopDown< TSpec > >::Type iter_;
+        base_type iter_;
         /**
          *  @brief  Backward offset.
          *
@@ -414,6 +415,13 @@ namespace seqan {
         /* ====================  TYPEDEFS      ======================================= */
         typedef grem::IndexIter < TIndex, grem::TopDownFine < TSpec > > Type;
     };  /* ----------  end of template class Iterator  ---------- */
+
+  template< typename TIndex, typename TSpec >
+    class Container< grem::IndexIter< TIndex, TSpec > > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename grem::IndexIter< TIndex, TSpec >::container_type Type;
+    };  /* ----------  end of template class Container  ---------- */
 
 }  /* -----  end of namespace seqan  ----- */
 

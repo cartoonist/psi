@@ -583,11 +583,10 @@ namespace grem
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
             const auto& locus = this->starting_loci[ idx ];
+            traverser.add_locus( locus );
+
             stats_type::set_lastproc_locus( locus );
-
-            traverser.set_start_locus( locus );
             traverser.run( callback );
-
             stats_type::set_lastdone_locus_idx( idx );
           }
         }

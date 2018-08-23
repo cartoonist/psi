@@ -51,31 +51,14 @@ namespace grem {
         typedef typename TBase::stats_type stats_type;
         /* ====================  LIFECYCLE     ======================================= */
         TraverserDFS( const VarGraph* graph, const records_type* r, TIndex* index,
-            unsigned int len, vg::Position s )
-          : TBase( graph, r, index, len, s ), cstate( {
-              iterator_type( *( index ) ),
-              0,
-              this->start_locus } ) /**< @brief Should be initialised in `run`. */
-        { }
-
-        TraverserDFS( const VarGraph* graph, const records_type* r, TIndex* index,
             unsigned int len )
-          : TBase( graph, r, index, len ), cstate( {
-              iterator_type( *( index ) ),
-              0,
-              this->start_locus } ) /**< @brief Should be initialised in `run`. */
+          : TBase( graph, r, index, len ), cstate( index, 0, 0, 0 )
         { }
         /* ====================  METHODS       ======================================= */
           inline void
         run( std::function< void( output_type const& ) >& callback )
         {
-          /* `cstate` should be updated in each `run` call with new `start_locus` value */
-          this->frontier_states.push_back( {
-              iterator_type( *( this->reads_index ) ),
-              1,                     /**< @brief One more than allowed mismatches. */
-              this->start_locus } );
-
-          while( ! this->frontier_states.empty() )
+          while( ! this->states.empty() )
           {
             filter( callback );
             advance( );
@@ -95,10 +78,9 @@ namespace grem {
             for ( i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;
-              hit.node_id = this->start_locus.node_id();
-              hit.node_offset = this->start_locus.offset();
-              auto id = position_to_id( *(this->reads), saPositions[i].i1 );
-              hit.read_id = id;                // Read ID.
+              hit.node_id = cstate.spos.node_id();
+              hit.node_offset = cstate.spos.offset();
+              hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
               hit.read_offset = saPositions[i].i2;  // Position in the read.
               callback( hit );
             }
@@ -110,13 +92,13 @@ namespace grem {
         {
           if ( cstate.mismatches == 0 ) return false;
 
-          const auto& sequence = this->vargraph->node_sequence( cstate.pos.node_id() );
+          const auto& sequence = this->vargraph->node_sequence( cstate.cpos.node_id() );
           const auto& itr_replen = rep_length( cstate.iter );
           assert( itr_replen < this->seed_len );
-          VarGraph::offset_type end_idx =
-            std::min( cstate.pos.offset() + this->seed_len - itr_replen, sequence.size() );
-          VarGraph::offset_type i;
-          for ( i = cstate.pos.offset(); i < end_idx; ++i ) {
+          std::make_unsigned_t< VarGraph::offset_type > end_idx =
+            cstate.cpos.offset() + this->seed_len - itr_replen;
+          std::make_unsigned_t< VarGraph::offset_type > i;
+          for ( i = cstate.cpos.offset(); i < end_idx && i < sequence.size(); ++i ) {
             if ( sequence[i] == 'N' || !go_down( cstate.iter, sequence[i] ) ) {
               cstate.mismatches--;
               break;
@@ -124,40 +106,39 @@ namespace grem {
             stats_type::inc_total_nof_godowns();
           }
 
-          cstate.pos.set_offset( i );
+          cstate.cpos.set_offset( i );
           return true;
         }
 
           inline void
         advance( )
         {
-          if ( cstate.mismatches == 0 && ( !this->frontier_states.empty() ) )
+          if ( cstate.mismatches == 0 && ( !this->states.empty() ) )
           {
-            this->cstate = this->frontier_states.back();
-            this->frontier_states.pop_back();
+            this->cstate = this->states.back();
+            this->states.pop_back();
             return;
           }
 
           VarGraph::offset_type seqlen =
-            this->vargraph->node_length( cstate.pos.node_id() );
-          if ( cstate.mismatches == 0 || cstate.pos.offset() != seqlen ) return;
+            this->vargraph->node_length( cstate.cpos.node_id() );
+          if ( cstate.mismatches == 0 || cstate.cpos.offset() != seqlen ) return;
 
-          auto edges = this->vargraph->edges_from( this->cstate.pos.node_id() );
+          const auto& edges = this->vargraph->edges_from( this->cstate.cpos.node_id() );
           auto it = edges.begin();
           if ( it == edges.end() ) {
             cstate.mismatches = 0;
             return;
           }
-          cstate.pos.set_node_id( (*it).to() );
-          cstate.pos.set_offset( 0 );
+          cstate.cpos.set_node_id( (*it).to() );
+          cstate.cpos.set_offset( 0 );
           ++it;
 
           for ( ; it != edges.end(); ++it )
           {
-            typename traits_type::TState new_state = cstate;
-            new_state.pos.set_node_id( (*it).to() );
-            new_state.pos.set_offset( 0 );
-            this->frontier_states.push_back( std::move( new_state ) );
+            this->states.emplace_back( cstate );
+            this->states.back().cpos.set_node_id( (*it).to() );
+            this->states.back().cpos.set_offset( 0 );
           }
         }
       private:
