@@ -216,7 +216,7 @@ namespace grem
             unsigned int len,
             unsigned char mismatches = 0 )
           : vargraph( graph ), reads( std::move( r ) ), seed_len( len ),
-          seed_mismatches( mismatches )
+          seed_mismatches( mismatches ), traverser( vargraph, seed_len )
         {
           if ( length( this->reads.str ) != 0 ) {
             this->index_reads();
@@ -579,16 +579,16 @@ namespace grem
           auto timer = stats_type( "traverse" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
 
-          TTraverser traverser( this->vargraph, &(this->reads), &(this->reads_index), this->seed_len );
-          traverser.states_reserve( this->seed_len );
+          this->traverser.set_reads( &(this->reads) );
+          this->traverser.set_reads_index( &(this->reads_index) );
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
             const auto& locus = this->starting_loci[ idx ];
-            traverser.add_locus( locus );
+            this->traverser.add_locus( locus );
             if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
 
             stats_type::set_lastproc_locus( locus );
-            traverser.run( callback );
+            this->traverser.run( callback );
             stats_type::set_lastdone_locus_idx( idx );
           }
         }
@@ -600,6 +600,7 @@ namespace grem
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         readsindex_type reads_index;
+        TTraverser traverser;
         /* ====================  METHODS       ======================================= */
           inline void
         index_reads( )

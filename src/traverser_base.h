@@ -255,6 +255,10 @@ namespace grem
             unsigned int len )
           : vargraph( graph ), reads( r ), reads_index( index ), seed_len( len )
         { }
+
+        TraverserBase( const VarGraph* graph, unsigned int len )
+          : TraverserBase( graph, nullptr, nullptr, len )
+        { }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for vargraph.

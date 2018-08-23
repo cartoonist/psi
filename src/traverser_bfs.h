@@ -54,6 +54,10 @@ namespace grem {
             unsigned int len )
           : TBase( graph, r, index, len )
         { }
+
+        TraverserBFS( const VarGraph* graph, unsigned int len )
+          : TBase( graph, len )
+        { }
         /* ====================  METHODS       ======================================= */
           inline void
         run( std::function< void( output_type const& ) >& callback )
