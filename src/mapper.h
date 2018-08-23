@@ -580,10 +580,12 @@ namespace grem
           stats_type::set_total_nof_loci( this->starting_loci.size() );
 
           TTraverser traverser( this->vargraph, &(this->reads), &(this->reads_index), this->seed_len );
+          traverser.states_reserve( this->seed_len );
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
             const auto& locus = this->starting_loci[ idx ];
             traverser.add_locus( locus );
+            if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
 
             stats_type::set_lastproc_locus( locus );
             traverser.run( callback );
