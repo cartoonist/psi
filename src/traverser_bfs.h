@@ -60,7 +60,7 @@ namespace grem {
         { }
         /* ====================  METHODS       ======================================= */
           inline void
-        run( std::function< void( output_type const& ) >& callback )
+        run( std::function< void( output_type const& ) > callback )
         {
           bool tie;
           do {
@@ -79,7 +79,7 @@ namespace grem {
 
           inline void
         filter( typename traits_type::TState& state,
-            std::function< void( output_type const& ) >& callback )
+            std::function< void( output_type const& ) > callback )
         {
           if ( state.mismatches != 0 && state.depth == this->seed_len ) {
             // Cross out the state.

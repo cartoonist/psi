@@ -60,7 +60,7 @@ namespace grem {
         { }
         /* ====================  METHODS       ======================================= */
           inline void
-        run( std::function< void( output_type const& ) >& callback )
+        run( std::function< void( output_type const& ) > callback )
         {
           while( ! this->states.empty() )
           {
@@ -71,7 +71,7 @@ namespace grem {
         }
 
           inline void
-        filter( std::function< void( output_type const& ) >& callback )
+        filter( std::function< void( output_type const& ) > callback )
         {
           if ( cstate.mismatches != 0 && cstate.depth == this->seed_len ) {
             // Cross out the cstate.

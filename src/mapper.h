@@ -415,7 +415,7 @@ namespace grem
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
           seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
-              std::function< void(typename TTraverser::output_type const &) >& callback )
+              std::function< void(typename TTraverser::output_type const &) > callback )
           {
             if ( length( indexText( paths.index ) ) == 0 ) return;
 
@@ -574,7 +574,7 @@ namespace grem
         }
 
           inline void
-        traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
+        traverse( std::function< void( typename TTraverser::output_type const& ) > callback )
         {
           auto timer = stats_type( "traverse" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
