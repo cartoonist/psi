@@ -116,7 +116,10 @@ template< typename TPathIndex, typename TMapper >
       log->info( "No valid path index found. Picking paths..." );
       log->info( "Picking {} different path(s) on the graph...", path_num );
       /* Generate the requested number of genome-wide paths. */
-      mapper.pick_paths( pindex, path_num, patched );
+      auto progress = [&log]( std::string const& name, int i ) {
+        log->info( "Selecting path {} of region {}...", i, name );
+      };
+      mapper.pick_paths( pindex, path_num, patched, progress );
       log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
       {
         auto timer = Timer( "index-paths" );

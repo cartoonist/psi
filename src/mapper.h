@@ -383,7 +383,8 @@ namespace grem
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             void
           pick_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
-              int n, bool patched=true )
+              int n, bool patched=true,
+              std::function< void( std::string const&, int ) > callback=nullptr )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -395,6 +396,7 @@ namespace grem
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
               go_begin( hap_itr, s );
               for ( int i = 0; i < n; ++i ) {
+                if ( callback ) callback( path_name, i + 1 );
                 if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
                 else get_uniq_full_haplotype( paths, hap_itr );
               }
