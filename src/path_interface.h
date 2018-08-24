@@ -610,37 +610,18 @@ namespace grem {
   /**
    *  @brief  Check whether a path is covered by a set of paths.
    *
-   *  @param  path_nodes The given path to be checked as a vector of node IDs.
+   *  @param  path The given path to be checked as a set of node IDs.
    *  @param  paths_set A set of paths as a container of `Path`.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
    *          false -- including the case that the path is empty.
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
-  template< typename TNodeID, class TContainer >
+  template< typename TPath, class TContainer >
       inline bool
-    covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set )
+    covered_by( const TPath& path, const TContainer& paths_set )
     {
-      return covered_by( path_nodes.begin(), path_nodes.end(),
-          paths_set.begin(), paths_set.end() );
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a set of paths.
-   *
-   *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as a container of `Path`.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
-   */
-  template< typename TGraph, typename TSpec, class TContainer >
-      inline bool
-    covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set )
-    {
-      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-          paths_set.begin(), paths_set.end() );
+      return covered_by( path.begin(), path.end(), paths_set.begin(), paths_set.end() );
     }  /* -----  end of template function covered_by  ----- */
 
   /**
@@ -654,7 +635,7 @@ namespace grem {
    *  This function simply checks if a node is on any of the path in the given set of
    *  paths.
    */
-  template< typename TNodeID, typename TContainer >
+  template< typename TNodeID, typename TContainer, typename = std::enable_if_t< std::is_scalar< TNodeID >::value, void > >
       inline bool
     covered_by( TNodeID node_id, const TContainer& paths_set )
     {
