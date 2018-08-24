@@ -1179,7 +1179,7 @@ namespace grem {
           extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
-            paths.push_back( patch );
+            paths.push_back( std::move( patch ) );
             clear( patch );
             trim_front_by_len( frontier, k );
           }
@@ -1217,7 +1217,7 @@ namespace grem {
             if ( marked != 0 ) trim_front( frontier, marked );
             patch += frontier;
           }
-          paths.push_back( patch );
+          paths.push_back( std::move( patch ) );
         }
         --iter;  // save the traversed path and reset the Haplotyper iterator.
       }
