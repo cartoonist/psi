@@ -150,6 +150,61 @@ SCENARIO( "Two strings can be checked for prefix match", "[utils]" )
   }
 }
 
+SCENARIO( "Rounding up to the next closest power of 2", "[utils]" )
+{
+  GIVEN( "A 32-bit number" )
+  {
+    WHEN( "Rounding up a number which is NOT a power of 2" )
+    {
+      std::vector< uint32_t > numbers = { 0, 3, 15, 243, 65336, 65539, 2147483543, 2147483651, 4294967295 };
+      std::vector< uint32_t > truth = { 1, 4, 16, 256, 65536, 131072, 2147483648, 0, 0 };
+      THEN( "It should yield the next closest power of 2" )
+      {
+        for ( unsigned int i = 0; i < numbers.size(); ++i ) {
+          REQUIRE( roundup32( numbers[ i ] ) == truth[ i ] );
+        }
+      }
+    }
+
+    WHEN( "Rounding up a number which is a power of 2" )
+    {
+      std::vector< uint32_t > numbers = { 1, 2, 4, 16, 256, 65536, 131072, 2147483648 };
+      THEN( "The next closest power of 2 is itself" )
+      {
+        for ( unsigned int i = 0; i < numbers.size(); ++i ) {
+          REQUIRE( roundup32( numbers[ i ] ) == numbers[ i ] );
+        }
+      }
+    }
+  }
+
+  GIVEN( "A 64-bit number" )
+  {
+    WHEN( "Rounding up a number which is NOT a power of 2" )
+    {
+      std::vector< uint64_t > numbers = { 0, 3, 15, 243, 65336, 65539, 2147483543, 2147483651, 4611686018427387915u, 9223372036854775809u, 18446744073709551614u };
+      std::vector< uint64_t > truth = { 1, 4, 16, 256, 65536, 131072, 2147483648, 4294967296, 9223372036854775808u, 0, 0 };
+      THEN( "It should yield the next closest power of 2" )
+      {
+        for ( unsigned int i = 0; i < numbers.size(); ++i ) {
+          REQUIRE( roundup64( numbers[ i ] ) == truth[ i ] );
+        }
+      }
+    }
+
+    WHEN( "Rounding up a number which is a power of 2" )
+    {
+      std::vector< uint64_t > numbers = { 1, 2, 4, 16, 256, 65536, 131072, 2147483648, 4611686018427387904u, 9223372036854775808u, 9223372036854775808u };
+      THEN( "The next closest power of 2 is itself" )
+      {
+        for ( unsigned int i = 0; i < numbers.size(); ++i ) {
+          REQUIRE( roundup64( numbers[ i ] ) == numbers[ i ] );
+        }
+      }
+    }
+  }
+}
+
 SCENARIO( "Serialize and deserialize a vector", "[utils]" )
 {
   std::string file_name_prefix = _testdir + "/test_";
