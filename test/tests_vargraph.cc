@@ -67,6 +67,29 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
   }
 }
 
+SCENARIO( "Counting forward and backward edges", "[graph]" )
+{
+  GIVEN( "A small graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
+    VarGraph vargraph;
+    vargraph.load( ifs );
+
+    WHEN( "Get the number of edges" )
+    {
+      THEN( "It should be the same as the size of edges vector" )
+      {
+        for ( VarGraph::rank_type r = 1; r <= vargraph.max_node_rank(); ++r ) {
+          auto id = vargraph.rank_to_id( r );
+          REQUIRE( vargraph.edges_from_count( id ) == vargraph.edges_from( id ).size() );
+          REQUIRE( vargraph.edges_to_count( id ) == vargraph.edges_to( id ).size() );
+        }
+      }
+    }
+  }
+}
+
 // VarGraph graph iterators test scenarios.
 SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
 {

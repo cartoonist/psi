@@ -71,7 +71,7 @@ namespace grem
         inline bool
       is_branch ( nodeid_type node_id ) const
       {
-        if ( this->edges_from( node_id ).size() > 1 ) {
+        if ( this->edges_from_count( node_id ) > 1 ) {
           return true;
         }
         return false;
@@ -80,7 +80,7 @@ namespace grem
         inline bool
       is_merge ( nodeid_type node_id ) const
       {
-        if ( this->edges_to( node_id ).size() > 1 ) {
+        if ( this->edges_to_count( node_id ) > 1 ) {
           return true;
         }
         return false;
@@ -89,13 +89,37 @@ namespace grem
         inline bool
       has_edges_from( nodeid_type node_id ) const
       {
-        return this->edges_from( node_id ).size() != 0;
+        return this->edges_from_count( node_id ) != 0;
       }
 
         inline bool
       has_edges_to( nodeid_type node_id ) const
       {
-        return this->edges_to( node_id ).size() != 0;
+        return this->edges_to_count( node_id ) != 0;
+      }
+
+        inline int
+      edges_count_by_id( nodeid_type id, bool is_reverse=false, bool go_left=false ) const
+      {
+        int counter = 0;
+        auto handle = this->get_handle( id, is_reverse );
+        this->follow_edges( handle, go_left, [&counter]( vg::handle_t const& h ) {
+            ++counter;
+            return true;
+          });
+        return counter;
+      }
+
+        inline int
+      edges_from_count( nodeid_type id, bool is_reverse=false ) const
+      {
+        return edges_count_by_id( id, is_reverse, false );
+      }
+
+        inline int
+      edges_to_count( nodeid_type id, bool is_reverse=false ) const
+      {
+        return edges_count_by_id( id, is_reverse, true );
       }
 
         inline std::make_unsigned_t< offset_type >
@@ -715,7 +739,7 @@ namespace grem {
       if ( this->state.setback > 1 ) {
         while ( this->visiting_buffer->size() != 0 &&
             ( this->state.entropy > this->state.setback ) ) {
-          this->state.entropy /= this->vargraph_ptr->edges_from( this->visiting_buffer->front() ).size();
+          this->state.entropy /= this->vargraph_ptr->edges_from_count( this->visiting_buffer->front() );
           this->visiting_buffer->pop_front();
         }
       }
@@ -758,7 +782,7 @@ namespace grem {
       this->itr_value = next_candidate;
       if ( this->state.setback > 1 ) {
         this->visiting_buffer->push_back( this->itr_value );
-        this->state.entropy *= this->vargraph_ptr->edges_from( this->itr_value ).size();
+        this->state.entropy *= this->vargraph_ptr->edges_from_count( this->itr_value );
       }
       this->state.current_path->push_back( this->itr_value );
 
@@ -774,7 +798,7 @@ namespace grem {
       this->state.entropy = 1;
       if ( this->state.setback > 1 ) {
         this->visiting_buffer->push_back( this->itr_value );
-        this->state.entropy *= this->vargraph_ptr->edges_from( this->itr_value ).size();
+        this->state.entropy *= this->vargraph_ptr->edges_from_count( this->itr_value );
       }
       this->state.end = false;                // Reset at-end flag.
       this->state.current_path->clear();
