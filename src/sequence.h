@@ -123,6 +123,12 @@ namespace grem {
         {
           return p;
         }
+
+          inline size_type
+        raw_length( ) const
+        {
+          return std::string::size();  /* call base class size function */
+        }
     };
 
   template< >
@@ -193,6 +199,13 @@ namespace grem {
         length( ) const
         {
           return this->len;
+        }
+
+          inline size_type
+        raw_length( ) const
+        {
+          /* to avoid ambiguity of calling `length()` which will be overriden by StringSet class. */
+          return YaString::length();
         }
 
           inline pos_type
@@ -414,6 +427,7 @@ namespace seqan {
           inline void
         initialize( )
         {
+          this->shrink_bv_str_breaks();
           sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
           sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
           this->initialized = true;
@@ -448,6 +462,7 @@ namespace seqan {
           inline void
         serialize( std::ostream& out )
         {
+          this->shrink_bv_str_breaks();
           grem::DiskString::serialize( out );
           grem::serialize( out, this->count );
           grem::serialize( out, static_cast< size_type >( this->initialized ) );
@@ -490,6 +505,12 @@ namespace seqan {
           if ( r == 0 ) return 0;
           return this->ss_str_breaks( r ) + 1;
         }
+
+          inline void
+        shrink_bv_str_breaks( )
+        {
+          this->bv_str_breaks.resize( this->raw_length() + 1 );  // shrink
+        }
     };
 
     inline void
@@ -499,11 +520,13 @@ namespace seqan {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     ++this->count;
     *this += str;
-    stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
-    sdsl::bit_vector new_bv( new_size, 0 );
-    grem::bv_icopy( this->bv_str_breaks, new_bv );
-    sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
-    this->bv_str_breaks[ new_size - 1 ] = 1;
+    stringsize_type breakpoint = this->raw_length();
+    if ( breakpoint >= this->bv_str_breaks.size() ) {
+      sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
+      grem::bv_icopy( this->bv_str_breaks, new_bv, 0, breakpoint - str.size() );
+      sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
+    }
+    this->bv_str_breaks[ breakpoint ] = 1;
     this->initialized = false;
   }
 
@@ -663,6 +686,7 @@ namespace seqan {
           inline void
         initialize( )
         {
+          this->shrink_bv_str_breaks( );
           sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
           sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
           this->initialized = true;
@@ -697,6 +721,7 @@ namespace seqan {
           inline void
         serialize( std::ostream& out )
         {
+          this->shrink_bv_str_breaks( );
           grem::MemString::serialize( out );
           grem::serialize( out, this->count );
           grem::serialize( out, static_cast< size_type >( this->initialized ) );
@@ -739,6 +764,12 @@ namespace seqan {
           if ( r == 0 ) return 0;
           return this->ss_str_breaks( r ) + 1;
         }
+
+          inline void
+        shrink_bv_str_breaks( )
+        {
+          this->bv_str_breaks.resize( this->raw_length() + 1 );  // shrink
+        }
     };
 
     inline void
@@ -748,11 +779,13 @@ namespace seqan {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     ++this->count;
     *this += str;
-    stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
-    sdsl::bit_vector new_bv( new_size, 0 );
-    grem::bv_icopy( this->bv_str_breaks, new_bv );
-    sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
-    this->bv_str_breaks[ new_size - 1 ] = 1;
+    stringsize_type breakpoint = this->raw_length();
+    if ( breakpoint >= this->bv_str_breaks.size() ) {
+      sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
+      grem::bv_icopy( this->bv_str_breaks, new_bv, 0, breakpoint - str.size() );
+      sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
+    }
+    this->bv_str_breaks[ breakpoint ] = 1;
     this->initialized = false;
   }
 
