@@ -1028,7 +1028,7 @@ namespace grem{
           if ( ! this->vargraph->has_node( nid ) ) return false;
 
           auto nrank = this->vargraph->id_to_rank( nid );
-          return this->nodes[ nrank - 1 ] == 1;
+          return this->contains_by_rank( nrank );
         }
 
         template< typename TIter >
@@ -1048,7 +1048,7 @@ namespace grem{
             typename graph_type::rank_type prev = 0;
             for ( ; begin != end; ++begin ) {
               auto curr = this->vargraph->id_to_rank( *begin );
-              if ( curr <= prev || !this->contains( *begin ) ) return false;
+              if ( curr <= prev || !this->contains_by_rank( curr ) ) return false;
               prev = curr;
             }
 
@@ -1072,12 +1072,19 @@ namespace grem{
             auto prev = this->vargraph->id_to_rank( *rbegin ) + 1;
             for ( ; rbegin != rend; ++rbegin ) {
               auto curr = this->vargraph->id_to_rank( *rbegin );
-              if ( curr >= prev || !this->contains( *rbegin ) ) return false;
+              if ( curr >= prev || !this->contains_by_rank( curr ) ) return false;
               prev = curr;
             }
 
             return true;
           }
+      private:
+          inline bool
+        contains_by_rank( typename graph_type::rank_type rank ) const
+        {
+          if ( rank == 0 ) return false;
+          return this->nodes[ rank - 1 ] == 1;
+        }
     };  /* -----  end of specialized template class Path  ----- */
 }  /* -----  end of namespace grem  ----- */
 
