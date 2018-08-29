@@ -261,10 +261,13 @@ simulate_all_reads( std::vector< klibpp::KSeq > const& haps, unsigned int seed,
   klibpp::KSeq candidate;
   std::size_t count = 0;
   bool dir = true;
+  double genome_size = 0;
+  for ( const auto& h : haps ) genome_size += h.seq.length();
   for ( const auto& h : haps ) {
     std::size_t ubound = ( h.seq.size() > readlen ? h.seq.size() - readlen : 0 );
     std::uniform_int_distribution<> dis( 0, ubound );
-    for ( unsigned int i = 0; i < ceil( numreads / haps.size() ); ++i ) {
+    unsigned long int reads_per_hap = ceil( numreads * h.seq.length() / genome_size );
+    for ( unsigned int i = 0; i < reads_per_hap; ++i ) {
       int tries = MAX_TRIES;
       std::size_t pos;
       do {
@@ -286,7 +289,12 @@ simulate_all_reads( std::vector< klibpp::KSeq > const& haps, unsigned int seed,
       dir = !dir;
     }
   }
-  seqs.resize( numreads );
+  assert( seqs.size() >= numreads );
+  auto extra = seqs.size() - numreads;
+  for ( unsigned long int i = 0; i < extra; ++i ) {
+    std::uniform_int_distribution<> dis( 0, seqs.size() - 1 );
+    seqs.erase( seqs.begin() + dis( gen ) );
+  }
 }
 
   inline void
@@ -310,13 +318,14 @@ template< typename TType >
   write_output( std::string const& output,
       std::vector< klibpp::KSeq > const& seqs, TType )
   {
-    int fd;
-    if ( output == "-" ) fd = STDOUT_FILENO;
-    else fd = open( output.c_str(), O_CREAT | O_WRONLY, 0666 );
-    auto ks = klibpp::make_okstream( fd, write );
-    for ( const auto& rec : seqs ) ks << rec;
-    ks << klibpp::kend;
-    close( fd );
+    std::unique_ptr< klibpp::SeqStreamOut > oss_p;
+    if ( output == "-" ) {
+      oss_p = std::make_unique< klibpp::SeqStreamOut >( fileno( stdout ) );
+    }
+    else {
+      oss_p = std::make_unique< klibpp::SeqStreamOut >( output.c_str() );
+    }
+    for ( const auto& rec : seqs ) (*oss_p) << rec;
   }
 
   inline void
