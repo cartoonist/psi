@@ -851,6 +851,9 @@ namespace grem {
         typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
     {
       if ( start == 0 ) start = g->rank_to_id( 1 );
+      if ( p == 0 ) {
+        throw std::runtime_error( "Parameter value of Local Haplotyper cannot be zero" );
+      }
 
       it.vargraph_ptr = g;
       it.itr_value = start;
@@ -870,6 +873,7 @@ namespace grem {
         typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
     {
       if ( start == 0 ) start = it.state.start;  // Re-use start node.
+      if ( p == 0 ) p = it.param;  // Re-use parameter value.
 
       it.itr_value = start;
       it.state.start = start;
@@ -879,7 +883,7 @@ namespace grem {
       it.state.current_path->clear();
       it.state.current_path->push_back( it.itr_value );
       it.state.setback = 0;
-      it.param = 0;
+      it.param = p;
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
