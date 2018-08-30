@@ -21,7 +21,7 @@
 
 namespace grem
 {
-  const char * const VERSION = "0.0.1.dev";            /**< @brief Version number. */
+  const char * const VERSION = "0.0.2";                /**< @brief Version number. */
   const char * const PACKAGE = "grem";                 /**< @brief Package name. */
   const char * const SHORT_DESC = "Graph REad Mapper"; /**< @brief Short description. */
   /** @brief Long description. */
