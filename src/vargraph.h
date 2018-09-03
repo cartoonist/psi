@@ -1219,8 +1219,7 @@ namespace grem {
           }
           if ( length( patch ) == 0 ) {
             // Search for a patch of length k that is not covered by visited paths of `iter`.
-            while ( iter[ frontier.get_nodes() ] )
-            {
+            while ( iter[ frontier.get_nodes() ] ) {
               add_node( frontier, *iter );
               trim_front_by_len( frontier, k );
               ++iter;
@@ -1258,6 +1257,7 @@ namespace grem {
         GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         unsigned int context_len )
     {
+      assert( context_len != 0 );
       if ( level( iter ) == 0 ) {
         get_uniq_full_haplotype( paths, iter );
         return true;

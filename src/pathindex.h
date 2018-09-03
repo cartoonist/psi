@@ -72,6 +72,12 @@ namespace grem {
         {
           return this->paths_set;
         }
+
+          inline context_type
+        get_context( ) const
+        {
+          return this->context;
+        }
         /* ====================  METHODS       ======================================= */
           inline void
         clear( )

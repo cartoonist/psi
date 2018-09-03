@@ -160,6 +160,11 @@ template< typename TIndexSpec  >
     TMapper mapper( &vargraph, seed_len );
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
+    /* Check context value. */
+    if ( path_num != 0 && patched && context == 0 ) {
+      log->warn( "Node sequences will not be trimmed, since context is set to zero (or not provided)." );
+      log->warn( "Context cannot be zero for patching. Assuming seed length as context length for this purpose..." );
+    }
     /* Genome-wide path index in lazy mode. */
     PathIndex< VarGraph, DiskString, grem::FMIndex<>, Forward > pindex( context, true );
     /* Prepare (load or create) genome-wide paths. */
