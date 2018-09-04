@@ -35,7 +35,7 @@ namespace grem {
    *  The `TSpec` can `seqan::Preorder` or `seqan::ParentLinks<>`. It specifies internal
    *  SeqAn iterator of IndexIter class.
    */
-  template < typename TSpec = seqan::Preorder >
+  template< typename TSpec = seqan::Preorder >
     struct TopDownFine;
 
   /**
@@ -44,39 +44,39 @@ namespace grem {
    *  @tparam  TIndex The index type.
    *  @tparam  TSpec The type for further specialization of the `IndexIter` type.
    */
-  template < typename TIndex, typename TSpec >
+  template< typename TIndex, typename TSpec >
     class IndexIter;
 
   /* Forwards  ------------------------------------------------------------------- */
-  template < typename TIndex, typename TSpec >
-    bool go_down (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator,
-        typename seqan::Value < TIndex >::Type c);
+  template< typename TIndex, typename TSpec >
+      bool
+    go_down( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
+        typename seqan::Value< TIndex >::Type c);
 
-  template < typename TIndex, typename TSpec >
-    bool go_down_on_edge (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator,
-        typename seqan::Value < TIndex >::Type c);
+  template< typename TIndex, typename TSpec >
+      bool
+    go_down_on_edge( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
+        typename seqan::Value< TIndex >::Type c );
 
-  template < typename TIndex, typename TSpec >
-    bool is_root (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+  template< typename TIndex, typename TSpec >
+      bool
+    is_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
-  template < typename TIndex, typename TSpec >
-    bool go_down (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+  template< typename TIndex, typename TSpec >
+      bool
+    go_down( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
-  template < typename TIndex >
-    bool go_up (
-        IndexIter < TIndex, TopDownFine < seqan::ParentLinks<> > > &iterator);
+  template< typename TIndex >
+      bool
+    go_up( IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
 
-  template < typename TIndex, typename TSpec >
-    bool go_right (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+  template< typename TIndex, typename TSpec >
+      bool
+    go_right( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
-  template < typename TIndex, typename TSpec >
-    typename seqan::Value < TIndex >::Type parent_edge_label (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+  template< typename TIndex, typename TSpec >
+      typename seqan::Value< TIndex >::Type
+    parent_edge_label( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
   template< typename TIndex, typename TSpec >
       typename seqan::Size< TIndex >::Type
@@ -86,43 +86,39 @@ namespace grem {
   /**
    *  @brief  IndexIter specialization for `TopDownFine` iterator tag.
    *
-   *  This specialization is a wrapper class for `Iterator < TopDown < TSpec > >::Type`
+   *  This specialization is a wrapper class for `Iterator< TopDown< TSpec > >::Type`
    *  allowing to traverse the virtual suffix tree finer; i.e. one character at a time
    *  which cannot be done by regular `TopDown` iterator.
    */
-  template < typename TIndex, typename TSpec >
-    class IndexIter < TIndex, TopDownFine < TSpec > >
+  template< typename TIndex, typename TSpec >
+    class IndexIter< TIndex, TopDownFine< TSpec > >
     {
       /* ====================  FRIENDSHIP    ======================================= */
       friend bool
-        go_down < TIndex, TSpec > (
-            IndexIter < TIndex, TopDownFine < TSpec > > &iterator,
-            typename seqan::Value < TIndex >::Type c);
+        go_down< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
+            typename seqan::Value< TIndex >::Type c );
 
       friend bool
-        go_down_on_edge < TIndex, TSpec > (
-            IndexIter < TIndex, TopDownFine < TSpec > > &iterator,
-            typename seqan::Value < TIndex >::Type c);
+        go_down_on_edge< TIndex, TSpec >(
+            IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
+            typename seqan::Value< TIndex >::Type c );
 
       friend bool
-        is_root < TIndex, TSpec > (
-            IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+        is_root< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
       friend bool
-        go_down < TIndex, TSpec > (
-            IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+        go_down< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
       friend bool
-        go_up < TIndex > (
-            IndexIter < TIndex, TopDownFine < seqan::ParentLinks<> > > &iterator);
+        go_up< TIndex >(
+            IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
 
       friend bool
-        go_right < TIndex, TSpec > (
-            IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+        go_right< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
-      friend typename seqan::Value < TIndex >::Type
-        parent_edge_label < TIndex, TSpec > (
-            IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+      friend typename seqan::Value< TIndex >::Type
+        parent_edge_label< TIndex, TSpec >(
+            IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
       friend typename seqan::Size< TIndex >::Type
         rep_length< TIndex, TSpec >(
@@ -133,7 +129,7 @@ namespace grem {
         typedef typename seqan::Iterator< TIndex, seqan::TopDown< TSpec > >::Type base_type;
         typedef typename seqan::Container< base_type >::Type container_type;
         /* ====================  LIFECYCLE     ======================================= */
-        IndexIter ( TIndex &index ) :                             /* constructor */
+        IndexIter( TIndex &index ) :                             /* constructor */
           iter_(index), boffset(0) { }
 
         /* ====================  ACCESSORS     ======================================= */
@@ -141,8 +137,8 @@ namespace grem {
         /**
          *  @brief  getter function for iter_.
          */
-        inline const typename seqan::Iterator < TIndex, seqan::TopDown< TSpec > >::Type &
-          get_iter_ (  ) const
+        inline const typename seqan::Iterator< TIndex, seqan::TopDown< TSpec > >::Type &
+          get_iter_(  ) const
           {
             return iter_;
           }  /* -----  end of method IndexIter::get_iter_  ----- */
@@ -151,7 +147,7 @@ namespace grem {
          *  @brief  getter function for boffset.
          */
         inline unsigned int
-          get_boffset (  ) const
+          get_boffset(  ) const
           {
             return boffset;
           }  /* -----  end of method IndexIter::get_boffset  ----- */
@@ -187,25 +183,25 @@ namespace grem {
    *  the new representative string of iterator after going down might be extended
    *  by more than one character.
    */
-  template < typename TIndex, typename TSpec >
-    bool go_down (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator,
-        typename seqan::Value < TIndex >::Type c)
-  {
-    // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
-    if (iterator.boffset == 0) {          // iterator points a node.
-      // Go down using `seqan::goDown` function updating the internal iterator.
-      if (seqan::goDown(iterator.iter_, c)) {
-        // Set `boffset` such that it points to the first char of the parent edge.
-        iterator.boffset = parentEdgeLength(iterator.iter_) - 1;
-        return true;
-      } else {                            // iterator cannot go down further.
-        return false;
+  template< typename TIndex, typename TSpec >
+      bool
+    go_down( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
+        typename seqan::Value< TIndex >::Type c )
+    {
+      // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
+      if ( iterator.boffset == 0 ) {          // iterator points a node.
+        // Go down using `seqan::goDown` function updating the internal iterator.
+        if ( seqan::goDown( iterator.iter_, c ) ) {
+          // Set `boffset` such that it points to the first char of the parent edge.
+          iterator.boffset = parentEdgeLength( iterator.iter_ ) - 1;
+          return true;
+        } else {                            // iterator cannot go down further.
+          return false;
+        }
+      } else {                              // iterator points a char on an edge.
+        return go_down_on_edge( iterator, c );
       }
-    } else {                              // iterator points a char on an edge.
-      return go_down_on_edge(iterator, c);
-    }
-  }  /* -----  end of template function go_down  ----- */
+    }  /* -----  end of template function go_down  ----- */
 
   /**
    *  @brief  Go down when iterator points to the given character on an edge.
@@ -218,21 +214,21 @@ namespace grem {
    *  the next char on the edge is `c`. Internal iterator does not change in this
    *  function.
    */
-  template < typename TIndex, typename TSpec >
-    bool go_down_on_edge (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator,
-        typename seqan::Value < TIndex >::Type c)
-  {
-    auto const &parent_edge_str = parentEdgeLabel(iterator.iter_);
-    auto const &parent_edge_len = parentEdgeLength(iterator.iter_);
-    auto const &next_char = parent_edge_str [ parent_edge_len - iterator.boffset ];
-    if (c == next_char) {
-      --iterator.boffset;
-      return true;
-    } else {
-      return false;
-    }
-  }  /* -----  end of function go_down_on_edge  ----- */
+  template< typename TIndex, typename TSpec >
+      bool
+    go_down_on_edge( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
+        typename seqan::Value< TIndex >::Type c )
+    {
+      auto const &parent_edge_str = parentEdgeLabel( iterator.iter_ );
+      auto const &parent_edge_len = parentEdgeLength( iterator.iter_ );
+      auto const &next_char = parent_edge_str[ parent_edge_len - iterator.boffset ];
+      if ( c == next_char ) {
+        --iterator.boffset;
+        return true;
+      } else {
+        return false;
+      }
+    }  /* -----  end of function go_down_on_edge  ----- */
 
   /**
    *  @brief  Check whether the index iterator points to the root node.
@@ -243,9 +239,9 @@ namespace grem {
    *  This function is just a wrapper for `seqan::isRoot` function which is called on
    *  internal index iterator.
    */
-  template < typename TIndex, typename TSpec >
-    bool is_root (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator)
+  template< typename TIndex, typename TSpec >
+      bool
+    is_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
     {
       if ( iterator.boffset != 0 ) {      // iterator points an edge.
         return false;
@@ -263,25 +259,25 @@ namespace grem {
    *
    *  Such as `go_down(iterator, c)` but go down the virtual suffix tree in preorder.
    */
-  template < typename TIndex, typename TSpec >
-    bool go_down (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator)
-  {
-    // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
-    if (iterator.boffset == 0) {          // iterator points a node.
-      // Go down using `seqan::goDown` function updating the internal iterator.
-      if (seqan::goDown(iterator.iter_)) {
-        // Set `boffset` such that it points to the first char of the parent edge.
-        iterator.boffset = parentEdgeLength(iterator.iter_) - 1;
+  template< typename TIndex, typename TSpec >
+      bool
+    go_down( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
+    {
+      // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
+      if ( iterator.boffset == 0 ) {          // iterator points a node.
+        // Go down using `seqan::goDown` function updating the internal iterator.
+        if ( seqan::goDown(iterator.iter_) ) {
+          // Set `boffset` such that it points to the first char of the parent edge.
+          iterator.boffset = parentEdgeLength( iterator.iter_ ) - 1;
+          return true;
+        } else {                            // iterator cannot go down further.
+          return false;
+        }
+      } else {                              // iterator points a char on an edge.
+        --iterator.boffset;
         return true;
-      } else {                            // iterator cannot go down further.
-        return false;
       }
-    } else {                              // iterator points a char on an edge.
-      --iterator.boffset;
-      return true;
-    }
-  }  /* -----  end of template function go_down  ----- */
+    }  /* -----  end of template function go_down  ----- */
 
   /**
    *  @brief  Go up in virtual suffix tree by one character.
@@ -291,11 +287,11 @@ namespace grem {
    *
    *  A wrapper function for `seqan::goUp` allowing to go up the virtual suffix tree
    *  finer; i.e. one character at a time. This function is only specialized for
-   *  `TopDownFine < ParentLinks<> >` iterator with history.
+   *  `TopDownFine< ParentLinks<> >` iterator with history.
    */
-  template < typename TIndex >
-    bool go_up (
-        IndexIter < TIndex, TopDownFine < seqan::ParentLinks<> > > &iterator)
+  template< typename TIndex >
+      bool
+    go_up ( IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator )
     {
       if ( is_root (iterator) ) {
         return false;
@@ -329,11 +325,11 @@ namespace grem {
    *
    *  This function is a wrapper for `seqan::goRight`.
    */
-  template < typename TIndex, typename TSpec >
-    bool go_right (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator)
+  template< typename TIndex, typename TSpec >
+      bool
+    go_right( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
     {
-      if ( iterator.boffset == parentEdgeLength(iterator.iter_) - 1 ) {  // iterator points a node?
+      if ( iterator.boffset == parentEdgeLength( iterator.iter_ ) - 1 ) {  // iterator points a node?
         // Go right using `seqan::goRight` function updating the internal iterator.
         if ( seqan::goRight ( iterator.iter_ ) ) {
           // Set `boffset` such that it points to the first char of the parent edge.
@@ -358,9 +354,9 @@ namespace grem {
    *
    *  This function is a wrapper for `seqan::parentEdgeLabel` method.
    */
-  template < typename TIndex, typename TSpec >
-    typename seqan::Value < TIndex >::Type parent_edge_label (
-        IndexIter < TIndex, TopDownFine < TSpec > > &iterator)
+  template< typename TIndex, typename TSpec >
+      typename seqan::Value< TIndex >::Type
+    parent_edge_label( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
     {
       auto const &parent_edge_str = parentEdgeLabel ( iterator.iter_ );
       auto const &parent_edge_len = parentEdgeLength ( iterator.iter_ );
@@ -389,13 +385,13 @@ namespace grem {
   template< typename TIndex, typename TSpec >
     using TIndexIter = typename seqan::Iterator< TIndex, TSpec >::Type;
 
-  template < typename TIter >
+  template< typename TIter >
     using TIterIndex = typename seqan::Container< TIter >::Type;
 
-  template < typename TIter >
+  template< typename TIter >
     using TIterText = typename seqan::Fibre< TIterIndex< TIter >, seqan::FibreText >::Type;
 
-  template < typename TIter >
+  template< typename TIter >
     using TIterRawText = typename seqan::Value< TIterText< TIter > >::Type;
 
   /* END OF Typedefs  ------------------------------------------------------------ */
@@ -408,12 +404,12 @@ namespace seqan {
    *
    *  This class extends existing Iterator class in seqan namespace.
    */
-  template < typename TIndex, typename TSpec >
-    class Iterator < TIndex, grem::TopDownFine < TSpec > >
+  template< typename TIndex, typename TSpec >
+    class Iterator< TIndex, grem::TopDownFine< TSpec > >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef grem::IndexIter < TIndex, grem::TopDownFine < TSpec > > Type;
+        typedef grem::IndexIter< TIndex, grem::TopDownFine< TSpec > > Type;
     };  /* ----------  end of template class Iterator  ---------- */
 
   template< typename TIndex, typename TSpec >
@@ -428,9 +424,9 @@ namespace seqan {
 namespace grem {
 
   /* Typedefs  ------------------------------------------------------------------- */
-  template < typename TIndex, typename TSpec = seqan::Preorder >
+  template< typename TIndex, typename TSpec = seqan::Preorder >
     using TFineIndexIter =
-      typename seqan::Iterator < TIndex, TopDownFine < TSpec > >::Type;
+      typename seqan::Iterator< TIndex, TopDownFine< TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   /* Index interator interface functions  ---------------------------------------- */
