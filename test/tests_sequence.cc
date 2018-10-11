@@ -974,6 +974,106 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
   }
 }
 
+SCENARIO( "Constructing a mutable YaPair", "[sequence]" )
+{
+  GIVEN( "A YaPair object" )
+  {
+    YaPair< int, int > a( 3, 4 );
+
+    WHEN( "The `first` and `second` member are modified" )
+    {
+      a.first = 2;
+      a.second = 5;
+
+      THEN( "The `i1` and `i2` should get the updated value" )
+      {
+        REQUIRE( a.i1 == 2 );
+        REQUIRE( a.i2 == 5 );
+        REQUIRE( a.first == a.i1 );
+        REQUIRE( a.second == a.i2 );
+      }
+    }
+
+    WHEN( "The `i1` and `i2` member are modified" )
+    {
+      a.i1 = 2;
+      a.i2 = 5;
+
+      THEN( "The `i1` and `i2` should get the updated value" )
+      {
+        REQUIRE( a.first == 2 );
+        REQUIRE( a.second == 5 );
+        REQUIRE( a.first == a.i1 );
+        REQUIRE( a.second == a.i2 );
+      }
+    }
+
+    WHEN( "It is assigned to another YaPair object" )
+    {
+      YaPair< int, int > b;
+      REQUIRE( b.first == 0 );
+      REQUIRE( b.second == 0 );
+      REQUIRE( b.i1 == 0 );
+      REQUIRE( b.i2 == 0 );
+
+      b = a;
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+
+    WHEN( "It is assigned to another moved YaPair object" )
+    {
+      YaPair< int, int > b;
+      REQUIRE( b.first == 0 );
+      REQUIRE( b.second == 0 );
+      REQUIRE( b.i1 == 0 );
+      REQUIRE( b.i2 == 0 );
+
+      b = std::move( a );
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+
+    WHEN( "A YaPair object constructed by another YaPair object" )
+    {
+      YaPair< int, int > b( a );
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+
+    WHEN( "A YaPair object constructed by another moved YaPair object" )
+    {
+      YaPair< int, int > b( std::move( a ) );
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+  }
+}
+
 SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" )
 {
   GIVEN( "A records containing four sequences with different lengths" )

@@ -323,11 +323,69 @@ namespace grem {
         typedef std::pair< T1, T2 > base_type;
         /* ====================  LIFECYCLE     ======================================= */
         YaPair( T1 t1, T2 t2 )
-          : base_type( t1, t2 ), i1( t1 ), i2( t2 )
+          : base_type( t1, t2 ), i1( this->first ), i2( this->second )
         { }
+
+        YaPair( )
+          : base_type( ), i1( this->first ), i2( this->second )
+        { }
+
+        YaPair( YaPair const& other )
+          : base_type( other ), i1( this->first ), i2( this->second )
+        { }
+
+        YaPair( YaPair&& other )
+          : base_type( std::move( other ) ), i1( this->first ), i2( this->second )
+        { }
+
+        template< typename TSpec >
+          YaPair( seqan::Pair< T1, T2, TSpec > const& other )
+            : base_type( other.i1, other.i2 ), i1( this->first ), i2( this->second )
+          { }
+
+        template< typename TSpec >
+          YaPair( seqan::Pair< T1, T2, TSpec >&& other )
+            : base_type( other.i1, other.i2 ), i1( this->first ), i2( this->second )
+          { }
+
+        ~YaPair( ) = default;
+
+          inline YaPair&
+        operator=( YaPair const& other )
+        {
+          this->first = other.first;
+          this->second = other.second;
+          return *this;
+        }
+
+          inline YaPair&
+        operator=( YaPair&& other )
+        {
+          this->first = other.first;
+          this->second = other.second;
+          return *this;
+        }
+
+        template< typename TSpec >
+            inline YaPair&
+          operator=( seqan::Pair< T1, T2, TSpec > const& other )
+          {
+            this->first = other.i1;
+            this->second = other.i2;
+            return *this;
+          }
+
+        template< typename TSpec >
+            inline YaPair&
+          operator=( seqan::Pair< T1, T2, TSpec >&& other )
+          {
+            this->first = other.i1;
+            this->second = other.i2;
+            return *this;
+          }
         /* ====================  DATA MEMBERS  ======================================= */
-        const T1 i1;
-        const T2 i2;
+        T1& i1;
+        T2& i2;
     };
 }  /* -----  end of namespace grem  ----- */
 
