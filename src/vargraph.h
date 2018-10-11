@@ -931,7 +931,7 @@ namespace grem {
       }
 
       if ( this->state.setback != 0 ) {
-        trim_front_by_len( *this->visiting_buffer, this->param - 1 );
+        rtrim_front_by_len( *this->visiting_buffer, this->param - 1 );
       }
 
       TValue next_candidate = 0;
@@ -1209,7 +1209,7 @@ namespace grem {
           if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
             paths.push_back( std::move( patch ) );
             clear( patch );
-            trim_front_by_len( frontier, k );
+            rtrim_front_by_len( frontier, k );
           }
           else if ( length( patch ) > 0 ) {
             // Nodes from first to the `marked` are already added.
@@ -1221,17 +1221,17 @@ namespace grem {
             // Search for a patch of length k that is not covered by visited paths of `iter`.
             while ( iter[ frontier.get_nodes() ] ) {
               add_node( frontier, *iter );
-              trim_front_by_len( frontier, k );
+              ltrim_front_by_len( frontier, k );
               ++iter;
             }
           }
           // Extend the patch.
           patch += frontier;
-          trim_front_by_len( frontier, k );
+          rtrim_front_by_len( frontier, k );
           while ( !iter[ frontier.get_nodes() ] ) {
             add_node( frontier, *iter );
             add_node( patch, *iter );
-            trim_front_by_len( frontier, k );
+            rtrim_front_by_len( frontier, k );
             ++iter;
           }
         }
