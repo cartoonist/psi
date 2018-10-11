@@ -326,17 +326,46 @@ namespace grem {
    *
    *  The nodes from back will be dropped from the path until to the point that further
    *  trimming leads its length to be less than k.
+   *
+   *  We have called it "ltrim" because this trimming preserve inclusion of the left-most
+   *  k-mer in the resulting path.
    */
   template< typename TGraph, typename TSpec >
       inline void
-    trim_back_by_len( Path< TGraph, TSpec >& path,
+    ltrim_back_by_len( Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type k )
     {
-      while ( length( path ) != 0 && path.get_sequence_len() -
-          path.get_vargraph()->node_length( path.get_nodes().back() ) >= k ) {
+      const TGraph* g = path.get_vargraph();
+      while ( length( path ) != 0 &&
+          path.get_sequence_len() - g->node_length( path.back() ) >= k ) {
         pop_back( path );
       }
-    }  /* -----  end of template function trim_back_by_len  ----- */
+    }  /* -----  end of template function ltrim_back_by_len  ----- */
+
+  /**
+   *  @brief  Trim the path from the back until further trimming would lead length of
+   *          less than `k + <length of first node> - 1`.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  k The value of k.
+   *
+   *  The nodes from back will be dropped from the path until to the point that further
+   *  trimming leads its length to be less than `k + <length of first node> - 1`.
+   *
+   *  We have called it "rtrim" because this trimming preserve inclusion of the right-most
+   *  k-mer of the first node in the resulting path.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    rtrim_back_by_len( Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type k )
+    {
+      const TGraph* g = path.get_vargraph();
+      while ( length( path ) != 0 && path.get_sequence_len() -
+          g->node_length( path.front() ) - g->node_length( path.back() ) >= k - 1 ) {
+        pop_back( path );
+      }
+    }  /* -----  end of template function rtrim_back_by_len  ----- */
 
   /**
    *  @brief  Trim the path from the node whose ID matches the given ID from front.
@@ -371,17 +400,45 @@ namespace grem {
    *
    *  The nodes from front will be dropped from the path until to the point that further
    *  trimming leads its length to be less than k.
+   *
+   *  We have called it "ltrim" because this trimming preserve inclusion of the left-most
+   *  k-mer of the last node in the resulting path.
    */
   template< typename TGraph >
       inline void
-    trim_front_by_len( Path< TGraph, Dynamic >& path,
+    ltrim_front_by_len( Path< TGraph, Dynamic >& path,
         typename Path< TGraph, Dynamic >::seqsize_type k )
     {
+      const TGraph* g = path.get_vargraph();
       while ( length( path ) != 0 && path.get_sequence_len() -
-          path.get_vargraph()->node_length( path.get_nodes().front() ) >= k ) {
+          g->node_length( path.front() ) - g->node_length( path.back() ) >= k - 1 ) {
         pop_front( path );
       }
-    }  /* -----  end of template function trim_front_by_len  ----- */
+    }  /* -----  end of template function ltrim_front_by_len  ----- */
+
+  /**
+   *  @brief  Trim the path from the front until further trimming would lead length of < k.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  k The length of k.
+   *
+   *  The nodes from front will be dropped from the path until to the point that further
+   *  trimming leads its length to be less than k.
+   *
+   *  We have called it "rtrim" because this trimming preserve inclusion of the right-most
+   *  k-mer in the resulting path.
+   */
+  template< typename TGraph >
+      inline void
+    rtrim_front_by_len( Path< TGraph, Dynamic >& path,
+        typename Path< TGraph, Dynamic >::seqsize_type k )
+    {
+      const TGraph* g = path.get_vargraph();
+      while ( length( path ) != 0 &&
+          path.get_sequence_len() - g->node_length( path.front() ) >= k ) {
+        pop_front( path );
+      }
+    }  /* -----  end of template function rtrim_front_by_len  ----- */
 
   /* END OF Default Path interface functions  ---------------------------------- */
 

@@ -1253,40 +1253,165 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
 
 SCENARIO( "Trim a path to the length of k", "[graph][path]" )
 {
-  GIVEN ( "A small variation graph and two paths: one Default and one Dynamic" )
+  GIVEN( "A small variation graph" )
   {
     std::string vgpath = _testdir + "/data/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
-    Path< VarGraph > path( &vargraph );
-    Path< VarGraph, Dynamic > dyn_path( &vargraph );
-    path.set_nodes( { 2, 5, 6, 7, 9, 11, 12 } );
-    dyn_path = path;
-    unsigned int k = 5;
 
-    WHEN( "Trim-back a path to the length of " + std::to_string( k ) )
+    GIVEN( "Two paths: one Default and one Dynamic" )
     {
-      trim_back_by_len( path, k );
-      initialize( path );
+      Path< VarGraph > path( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      path.set_nodes( { 2, 5, 6, 7, 9, 11, 12 } );
+      dyn_path = path;
+      unsigned int k = 5;
 
-      THEN( "It should be trimmed to the length of " + std::to_string( k ) )
+      WHEN( "Left trim-back a path to the length of " + std::to_string( k ) )
       {
-        REQUIRE( path.get_sequence_len() == 5 );
-        REQUIRE( position_to_id( path, 0 ) == 2 );
-        REQUIRE( position_to_offset( path, 0 ) == 0 );
+        ltrim_back_by_len( path, k );
+        initialize( path );
+
+        THEN( "It should be trimmed to the length of " + std::to_string( k ) )
+        {
+          REQUIRE( path.get_sequence_len() == 5 );
+          REQUIRE( path.size() == 3 );
+          REQUIRE( position_to_id( path, 0 ) == 2 );
+          REQUIRE( position_to_offset( path, 0 ) == 0 );
+          REQUIRE( position_to_id( path, 1 ) == 5 );
+          REQUIRE( position_to_offset( path, 1 ) == 0 );
+          REQUIRE( position_to_id( path, 2 ) == 6 );
+          REQUIRE( position_to_offset( path, 2 ) == 0 );
+        }
+      }
+
+      WHEN( "Right trim-back a path to the length of " + std::to_string( k ) )
+      {
+        rtrim_back_by_len( path, k );
+        initialize( path );
+
+        THEN( "It should be trimmed to the length of " + std::to_string( k ) )
+        {
+          REQUIRE( path.get_sequence_len() == 5 );
+          REQUIRE( path.size() == 3 );
+          REQUIRE( position_to_id( path, 0 ) == 2 );
+          REQUIRE( position_to_offset( path, 0 ) == 0 );
+          REQUIRE( position_to_id( path, 1 ) == 5 );
+          REQUIRE( position_to_offset( path, 1 ) == 0 );
+          REQUIRE( position_to_id( path, 2 ) == 6 );
+          REQUIRE( position_to_offset( path, 2 ) == 0 );
+        }
+      }
+
+      WHEN( "Right trim-front a path to the length of " + std::to_string( k ) )
+      {
+        rtrim_front_by_len( dyn_path, k );
+        initialize( dyn_path );
+
+        THEN( "It should be moved one node forward preserving the length of at least " + std::to_string( k ) )
+        {
+          REQUIRE( dyn_path.get_sequence_len() == 5 );
+          REQUIRE( dyn_path.size() == 2 );
+          REQUIRE( position_to_id( dyn_path, 0 ) == 11 );
+          REQUIRE( position_to_offset( dyn_path, 0 ) == 0 );
+          REQUIRE( position_to_id( dyn_path, 4 ) == 12 );
+          REQUIRE( position_to_offset( dyn_path, 4 ) == 3 );
+        }
+      }
+
+      WHEN( "Left trim-front a path to the length of " + std::to_string( k ) )
+      {
+        ltrim_front_by_len( dyn_path, k );
+        initialize( dyn_path );
+
+        THEN( "It should be moved one node forward preserving the length of at least " + std::to_string( k ) )
+        {
+          REQUIRE( dyn_path.get_sequence_len() == 24 );
+          REQUIRE( dyn_path.size() == 3 );
+          REQUIRE( position_to_id( dyn_path, 0 ) == 9 );
+          REQUIRE( position_to_offset( dyn_path, 0 ) == 0 );
+          REQUIRE( position_to_id( dyn_path, 19 ) == 11 );
+          REQUIRE( position_to_offset( dyn_path, 19 ) == 0 );
+          REQUIRE( position_to_id( dyn_path, 23 ) == 12 );
+          REQUIRE( position_to_offset( dyn_path, 23 ) == 3 );
+        }
       }
     }
 
-    WHEN( "Trim-front a path to the length of " + std::to_string( k ) )
+    GIVEN( "Another two paths: one Default and one Dynamic" )
     {
-      trim_front_by_len( dyn_path, k );
-      initialize( dyn_path );
+      Path< VarGraph > path( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      path.set_nodes( { 20, 21, 23, 25, 26 } );
+      dyn_path = path;
+      unsigned int k = 5;
 
-      THEN( "It should be moved one node forward preserving the length of at least " + std::to_string( k ) )
+      WHEN( "Left trim-back a path to the length of " + std::to_string( k ) )
       {
-        REQUIRE( dyn_path.get_sequence_len() == 5 );
-        REQUIRE( position_to_id( dyn_path, 4 ) == 12 );
-        REQUIRE( position_to_offset( dyn_path, 4 ) == 3 );
+        ltrim_back_by_len( path, k );
+        initialize( path );
+
+        THEN( "It should be trimmed to the length of " + std::to_string( k ) )
+        {
+          REQUIRE( path.get_sequence_len() == 41 );
+          REQUIRE( path.size() == 1 );
+          REQUIRE( position_to_id( path, 0 ) == 20 );
+          REQUIRE( position_to_offset( path, 0 ) == 0 );
+        }
+      }
+
+      WHEN( "Right trim-back a path to the length of " + std::to_string( k ) )
+      {
+        rtrim_back_by_len( path, k );
+        initialize( path );
+
+        THEN( "It should be trimmed to the length of " + std::to_string( k ) )
+        {
+          REQUIRE( path.get_sequence_len() == 45 );
+          REQUIRE( path.size() == 4 );
+          REQUIRE( position_to_id( path, 0 ) == 20 );
+          REQUIRE( position_to_offset( path, 0 ) == 0 );
+          REQUIRE( position_to_id( path, 41 ) == 21 );
+          REQUIRE( position_to_offset( path, 41 ) == 0 );
+          REQUIRE( position_to_id( path, 42 ) == 23 );
+          REQUIRE( position_to_offset( path, 42 ) == 0 );
+          REQUIRE( position_to_id( path, 44 ) == 25 );
+          REQUIRE( position_to_offset( path, 44 ) == 0 );
+        }
+      }
+
+      WHEN( "Right trim-front a path to the length of " + std::to_string( k ) )
+      {
+        rtrim_front_by_len( dyn_path, k );
+        initialize( dyn_path );
+
+        THEN( "It should be moved one node forward preserving the length of at least " + std::to_string( k ) )
+        {
+          REQUIRE( dyn_path.get_sequence_len() == 18 );
+          REQUIRE( dyn_path.size() == 1 );
+          REQUIRE( position_to_id( dyn_path, 0 ) == 26 );
+          REQUIRE( position_to_offset( dyn_path, 0 ) == 0 );
+        }
+      }
+
+      WHEN( "Left trim-front a path to the length of " + std::to_string( k ) )
+      {
+        ltrim_front_by_len( dyn_path, k );
+        initialize( dyn_path );
+
+        THEN( "It should be moved one node forward preserving the length of at least " + std::to_string( k ) )
+        {
+          REQUIRE( dyn_path.get_sequence_len() == 22 );
+          REQUIRE( dyn_path.size() == 4 );
+          REQUIRE( position_to_id( dyn_path, 0 ) == 21 );
+          REQUIRE( position_to_offset( dyn_path, 0 ) == 0 );
+          REQUIRE( position_to_id( dyn_path, 1 ) == 23 );
+          REQUIRE( position_to_offset( dyn_path, 1 ) == 0 );
+          REQUIRE( position_to_id( dyn_path, 3 ) == 25 );
+          REQUIRE( position_to_offset( dyn_path, 3 ) == 0 );
+          REQUIRE( position_to_id( dyn_path, 4 ) == 26 );
+          REQUIRE( position_to_offset( dyn_path, 4 ) == 0 );
+        }
       }
     }
   }
