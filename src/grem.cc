@@ -468,9 +468,8 @@ parse_args( Options& options, int argc, char* argv[] )
 
   // Embedding program's meta data and build information.
   setShortDescription( parser, SHORT_DESC );
-  setVersion( parser, VERSION );
-  // :TODO:Thu Apr 06 02:06:\@cartoonist: date should be specified by autoconf.
-  setDate( parser, __DATE__ );
+  setVersion( parser, GIT_VERSION );
+  setDate( parser, UPDATE_DATE );
   addDescription( parser, LONG_DESC );
 
   std::ostringstream hold_buf_stdout;

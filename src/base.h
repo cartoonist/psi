@@ -27,4 +27,18 @@
 #define GREM_DEBUG_ENABLED
 #endif
 
+#undef GIT_VERSION
+#ifdef GREM_GIT_VERSION
+#define GIT_VERSION GREM_GIT_VERSION
+#else
+#define GIT_VERSION VERSION
+#endif
+
+#undef UPDATE_DATE
+#ifdef GREM_UPDATE_DATE
+#define UPDATE_DATE GREM_UPDATE_DATE
+#else
+#define UPDATE_DATE __DATE__
+#endif
+
 #endif  // BASE_H__
