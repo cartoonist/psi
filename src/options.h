@@ -43,29 +43,29 @@ namespace grem
 
     inline IndexType
   index_from_str(std::string str)
-    {
-      if (str == "SA") return IndexType::Sa;
-      if (str == "ESA") return IndexType::Esa;
-      if (str == "WOTD") return IndexType::Wotd;
-      if (str == "DFI") return IndexType::Dfi;
-      if (str == "QGRAM") return IndexType::QGram;
-      if (str == "FM") return IndexType::FM;
+  {
+    if (str == "SA") return IndexType::Sa;
+    if (str == "ESA") return IndexType::Esa;
+    if (str == "WOTD") return IndexType::Wotd;
+    if (str == "DFI") return IndexType::Dfi;
+    if (str == "QGRAM") return IndexType::QGram;
+    if (str == "FM") return IndexType::FM;
 
-      throw std::runtime_error("Undefined index type.");
-    }
+    throw std::runtime_error("Undefined index type.");
+  }
 
     inline std::string
   index_to_str(IndexType index)
-    {
-      if (index == IndexType::Sa) return std::string("SA");
-      if (index == IndexType::Esa) return std::string("ESA");
-      if (index == IndexType::Wotd) return std::string("WOTD");
-      if (index == IndexType::Dfi) return std::string("DFI");
-      if (index == IndexType::QGram) return std::string("QGRAM");
-      if (index == IndexType::FM) return std::string("FM");
+  {
+    if (index == IndexType::Sa) return std::string("SA");
+    if (index == IndexType::Esa) return std::string("ESA");
+    if (index == IndexType::Wotd) return std::string("WOTD");
+    if (index == IndexType::Dfi) return std::string("DFI");
+    if (index == IndexType::QGram) return std::string("QGRAM");
+    if (index == IndexType::FM) return std::string("FM");
 
-      throw std::runtime_error("Undefined index type.");
-    }
+    throw std::runtime_error("Undefined index type.");
+  }
 
   typedef struct
   {

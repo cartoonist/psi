@@ -760,7 +760,7 @@ namespace grem {
    */
   template< typename TObject, typename TSize >
       inline void
-    reserve( std::deque< TObject >& container, const TSize size )
+    reserve( std::deque< TObject >&, const TSize )
     {
       /* NOOP */
     }
@@ -776,7 +776,7 @@ namespace grem {
    */
   template< typename TObject, typename TSize >
       inline void
-    reserve( std::set< TObject >& container, const TSize size )
+    reserve( std::set< TObject >&, const TSize )
     {
       /* NOOP */
     }
@@ -792,7 +792,7 @@ namespace grem {
    */
   template< typename TCoder, typename TSize >
       inline void
-    reserve( sdsl::enc_vector< TCoder >& container, const TSize size )
+    reserve( sdsl::enc_vector< TCoder >&, const TSize )
     {
       /* NOOP */
     }

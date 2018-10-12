@@ -81,6 +81,7 @@ template< typename TMapper, typename TSet >
     void
   report( TMapper& mapper, TSet& covered_reads, unsigned long long int found )
   {
+    /* Get the main logger. */
     auto log = get_logger( "main" );
     log->info( "Total number of starting loci: {}", mapper.get_starting_loci().size() );
     log->info( "Total number of seeds found: {}", found );
@@ -143,7 +144,7 @@ template< typename TPathIndex, typename TMapper >
   }
 
 
-template< typename TIndexSpec  >
+template< typename TIndexSpec >
     void
   find_seeds( VarGraph& vargraph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
@@ -199,7 +200,7 @@ template< typename TIndexSpec  >
     std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
-      (typename TTraverser::output_type const & seed_hit){
+      (typename TTraverser::output_type const & seed_hit) {
       ++found;
       write( output_file, &seed_hit.node_id, 1 );
       write( output_file, &seed_hit.node_offset, 1 );
@@ -213,8 +214,7 @@ template< typename TIndexSpec  >
     log->info( "Finding seeds..." );
     {
       auto timer = Timer( "seed-finding" );
-      while (true)
-      {
+      while (true) {
         log->info( "Loading the next reads chunk..." );
         {
           auto timer = Timer( "load-chunk" );
@@ -229,7 +229,7 @@ template< typename TIndexSpec  >
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */
-        if ( path_num != 0 ){
+        if ( path_num != 0 ) {
           mapper.seeds_on_paths( pindex, write_callback );
           log->info( "Found seed on paths in {} us.",
               Timer::get_duration( "paths-seed-find" ).count() );
@@ -237,7 +237,7 @@ template< typename TIndexSpec  >
         }
         log->info( "Traversing..." );
         /* Find seeds on variation graph by traversing starting loci. */
-        mapper.traverse ( write_callback );
+        mapper.traverse( write_callback );
         log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
       }
     }
@@ -263,8 +263,7 @@ startup( const Options & options )
 
   log->info( "Opening file '{}'...", options.fq_path );
   SeqStreamIn reads_iss( options.fq_path.c_str() );
-  if ( !reads_iss )
-  {
+  if ( !reads_iss ) {
     std::string msg = "could not open file '" + options.fq_path + "'!";
     log->error( msg );
     throw std::runtime_error( msg );
@@ -272,8 +271,7 @@ startup( const Options & options )
 
   log->info( "Loading the graph from file '{}'...", options.rf_path );
   std::ifstream ifs( options.rf_path, std::ifstream::in | std::ifstream::binary );
-  if( !ifs )
-  {
+  if( !ifs ) {
     std::string msg = "could not open file '" + options.rf_path + "'!";
     log->error( msg );
     throw std::runtime_error( msg );
@@ -296,7 +294,7 @@ startup( const Options & options )
   }
 
   switch ( options.index ) {
-    case IndexType::Wotd: find_seeds ( vargraph,
+    case IndexType::Wotd: find_seeds( vargraph,
                               reads_iss,
                               output_file,
                               options.seed_len,
@@ -310,7 +308,7 @@ startup( const Options & options )
                               options.nomapping,
                               UsingIndexWotd() );
                           break;
-    case IndexType::Esa: find_seeds ( vargraph,
+    case IndexType::Esa: find_seeds( vargraph,
                              reads_iss,
                              output_file,
                              options.seed_len,
@@ -335,103 +333,111 @@ setup_argparser( seqan::ArgumentParser& parser )
 {
   // positional arguments.
   std::string POSARG1 = "VG_FILE";
-
   // add usage line.
-  addUsageLine(parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"");
+  addUsageLine( parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"" );
 
   // graph file -- positional argument.
-  seqan::ArgParseArgument vgfile_arg(seqan::ArgParseArgument::INPUT_FILE, POSARG1);
-  setValidValues(vgfile_arg, "vg xg");
-  addArgument(parser, vgfile_arg);
+  seqan::ArgParseArgument vgfile_arg( seqan::ArgParseArgument::INPUT_FILE, POSARG1 );
+  setValidValues( vgfile_arg, "vg xg" );
+  addArgument( parser, vgfile_arg );
 
+  // Options
   // reads in FASTQ format -- **required** option.
-  seqan::ArgParseOption fqfile_arg("f", "fastq", "Reads in FASTQ format.",
-                                   seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE");
-  setValidValues(fqfile_arg, "fq fastq");
-  addOption(parser, fqfile_arg);
-  setRequired(parser, "f");
-
+  addOption( parser,
+      seqan::ArgParseOption( "f", "fastq",
+        "Reads in FASTQ format.",
+        seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE" ) );
+  setValidValues( parser, "f", "fq fastq" );
+  setRequired( parser, "f" );
   // output file
   // :TODO:Sat Oct 21 00:06:\@cartoonist: output should be alignment in the GAM format.
-  seqan::ArgParseOption outfile_arg( "o", "output", "Output file.",
-      seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" );
-  addOption( parser, outfile_arg );
+  addOption( parser,
+      seqan::ArgParseOption( "o", "output",
+        "Output file.",
+        seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" ) );
   setDefaultValue( parser, "o", "out.gam" );
-
   // paths index file
-  seqan::ArgParseOption paths_index_arg ( "I", "paths-index", "Paths index file.",
-      seqan::ArgParseArgument::STRING, "PATHS_INDEX_FILE" );
-  addOption ( parser, paths_index_arg );
-
+  addOption( parser,
+      seqan::ArgParseOption( "I", "paths-index",
+        "Paths index file.",
+        seqan::ArgParseArgument::STRING, "PATHS_INDEX_FILE" ) );
   // seed length -- **required** option.
-  addOption(parser, seqan::ArgParseOption("l", "seed-length", "Seed length.",
-                                          seqan::ArgParseArgument::INTEGER, "INT"));
-  setRequired(parser, "l");
-
+  addOption( parser,
+      seqan::ArgParseOption( "l", "seed-length",
+        "Seed length.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setRequired( parser, "l" );
   // chunk size -- **required** option.
-  addOption(parser, seqan::ArgParseOption("c", "chunk-size",
-        "Reads chunk size. Set it to zero to consider all reads as one chunk (default).",
-        seqan::ArgParseArgument::INTEGER, "INT"));
-  setDefaultValue(parser, "c", 0);
-
+  addOption( parser,
+      seqan::ArgParseOption( "c", "chunk-size",
+        "Reads chunk size. Set it to 0 to consider all reads as one chunk (default).",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "c", 0 );
   // starting loci interval
-  addOption(parser, seqan::ArgParseOption("e", "step-size", "Start from every given "
-                                          "number of loci in all nodes. If it is set to"
-                                          " 1, it means start from all positions in a "
-                                          "node.", seqan::ArgParseArgument::INTEGER,
-                                          "INT"));
-  setDefaultValue(parser, "e", 1);
-
+  addOption( parser,
+      seqan::ArgParseOption( "e", "step-size",
+        "Start from every given number of loci in all nodes. If it is set to 1, "
+        "it means start from all positions in a node.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "e", 1 );
   // number of paths
-  addOption( parser, seqan::ArgParseOption( "n", "path-num", "Number of paths from "
-        "the variation graph in hybrid approach.", seqan::ArgParseArgument::INTEGER,
-        "INT" ) );
-  setDefaultValue(parser, "n", 0);
-
+  addOption( parser,
+      seqan::ArgParseOption( "n", "path-num",
+        "Number of paths from the variation graph in hybrid approach.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "n", 0 );
   // whether use patched paths or full genome-wide paths
-  addOption(parser, seqan::ArgParseOption("P", "no-patched", "Use full genome-wide paths."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "P", "no-patched",
+        "Use full genome-wide paths." ) );
   // context in patching the paths
-  addOption( parser, seqan::ArgParseOption( "t", "context", "Context length in patching.",
+  addOption( parser,
+      seqan::ArgParseOption( "t", "context",
+        "Context length in patching.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "t", 0 );
-
   // index
-  addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
-                                          seqan::ArgParseArgument::STRING, "INDEX"));
-  setValidValues(parser, "i", "SA ESA WOTD DFI QGRAM FM");
-  setDefaultValue(parser, "i", "WOTD");
-
+  addOption( parser,
+      seqan::ArgParseOption( "i", "index",
+        "Index type for indexing reads.",
+        seqan::ArgParseArgument::STRING, "INDEX" ) );
+  setValidValues( parser, "i", "SA ESA WOTD DFI QGRAM FM" );
+  setDefaultValue( parser, "i", "WOTD" );
   // no map -- just do the paths indexing phase
-  addOption(parser, seqan::ArgParseOption("x", "only-index", "Only build paths index and skip mapping."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "x", "only-index",
+        "Only build paths index and skip mapping." ) );
   // log file
-  seqan::ArgParseOption logfile_arg("L", "log-file",
-                                    "Sets default log file for existing and future loggers.",
-                                    seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE");
-  addOption(parser, logfile_arg);
-  setDefaultValue(parser, "L", "grem.log");
-
+  addOption( parser,
+      seqan::ArgParseOption( "L", "log-file",
+        "Sets default log file for existing and future loggers.",
+        seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE" ) );
+  setDefaultValue( parser, "L", "grem.log" );
   // no log to file
-  addOption(parser, seqan::ArgParseOption("Q", "no-log-file", "Disable writing logs to file (overrides \\fB-L\\fP)."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "Q", "no-log-file",
+        "Disable writing logs to file (overrides \\fB-L\\fP)." ) );
   // quiet -- no output to console
-  addOption(parser, seqan::ArgParseOption("q", "quiet", "Quiet mode. No output will be printed to console."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "q", "quiet",
+        "Quiet mode. No output will be printed to console." ) );
   // no colored output
-  addOption(parser, seqan::ArgParseOption("C", "no-color", "Do not use a colored output."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "C", "no-color",
+        "Do not use a colored output." ) );
   // disable logging
-  addOption(parser, seqan::ArgParseOption("D", "disable-log", "Disable logging completely."));
-
-  // verbosity options
-  addOption(parser, seqan::ArgParseOption("v", "verbose",
-                                          "Activates maximum verbosity."));
+  addOption( parser,
+      seqan::ArgParseOption( "D", "disable-log",
+        "Disable logging completely." ) );
+  // verbosity option
+  addOption( parser,
+      seqan::ArgParseOption( "v", "verbose",
+        "Activates maximum verbosity." ) );
 }
 
 
   inline void
-get_option_values ( Options & options, seqan::ArgumentParser & parser )
+get_option_values( Options & options, seqan::ArgumentParser & parser )
 {
   std::string indexname;
 
@@ -478,8 +484,7 @@ parse_args( Options& options, int argc, char* argv[] )
   auto res = seqan::parse( parser, argc, argv, hold_buf_stdout, hold_buf_stderr );
   // print the banner in help or version messages.
   if ( res == seqan::ArgumentParser::PARSE_HELP ||
-      res == seqan::ArgumentParser::PARSE_VERSION )
-  {
+      res == seqan::ArgumentParser::PARSE_VERSION ) {
     std::cout << BANNER << std::endl;
   }
   // print the buffer.
@@ -489,7 +494,7 @@ parse_args( Options& options, int argc, char* argv[] )
   // only extract options if the program will continue after parse_args()
   if ( res != seqan::ArgumentParser::PARSE_OK ) return res;
 
-  get_option_values ( options, parser );
+  get_option_values( options, parser );
 
   return seqan::ArgumentParser::PARSE_OK;
 }
@@ -504,8 +509,9 @@ main( int argc, char *argv[] )
   /* If parsing was not successful then exit with code 1 if there were errors.
    * Otherwise, exit with code 0 (e.g. help was printed).
    */
-  if ( res != seqan::ArgumentParser::PARSE_OK )
+  if ( res != seqan::ArgumentParser::PARSE_OK ) {
     return res == seqan::ArgumentParser::PARSE_ERROR;
+  }
 
   /* Verify that the version of the library that we linked against is
    * compatible with the version of the headers we compiled against.
