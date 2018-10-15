@@ -144,19 +144,21 @@ template< typename TPathIndex, typename TMapper >
   }
 
 
-template< typename TIndexSpec >
+template< typename TReadsIndexSpec >
     void
   find_seeds( VarGraph& vargraph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
       unsigned int path_num, unsigned int context, bool paths_index, bool patched,
-      const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
+      const std::string& paths_index_file, bool nomapping, TReadsIndexSpec const )
   {
+    /* typedefs */
+    typedef Dna5QStringSet<> TReadsStringSet;
+    typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
+    typedef typename Traverser< TReadsIndex, BFS, ExactMatching >::Type TTraverser;
+    typedef Mapper< TTraverser > TMapper;
+
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    /* Method typedefs. */
-    typedef seqan::Index< Dna5QStringSet< >, TIndexSpec > TIndex;
-    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
-    typedef Mapper< TTraverser > TMapper;
     /* The mapper for input variation graph. */
     TMapper mapper( &vargraph, seed_len );
     /* Install mapper singal handler for getting progress report. */
@@ -197,7 +199,7 @@ template< typename TIndexSpec >
     }
 
     unsigned long long int found = 0;
-    std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
+    std::unordered_set< Records< TReadsStringSet >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
       (typename TTraverser::output_type const & seed_hit) {
@@ -210,7 +212,7 @@ template< typename TIndexSpec >
     };
 
     /* Reads are mapped in chunks. */
-    Records< Dna5QStringSet< > > reads_chunk;
+    Records< TReadsStringSet > reads_chunk;
     log->info( "Finding seeds..." );
     {
       auto timer = Timer( "seed-finding" );
