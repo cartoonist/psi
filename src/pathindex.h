@@ -22,10 +22,9 @@
 #include <vector>
 #include <algorithm>
 
-#include "vargraph.h"
 #include "sequence.h"
-#include "pathset.h"
 #include "index.h"
+#include "pathset.h"
 #include "utils.h"
 
 
@@ -85,8 +84,6 @@ namespace grem {
           seqan::clear( this->index );
           this->paths_set.clear();
           seqan::clear( this->string_set );
-          this->context = 0;
-          this->lazy_mode = false;
         }
         /**
          *  @brief  Get the shift required to add to trimmed position to get original one.
@@ -303,7 +300,14 @@ namespace grem {
           if ( !ifs ) return false;
 
           try {
-            deserialize( ifs, this->context );
+            context_type c;
+            size_type dir;
+            deserialize( ifs, c );
+            deserialize( ifs, dir );
+            if ( dir != std::is_same< TSequenceDirection, Forward >::value ||
+                c != this->context ) {
+              return false;
+            }
             this->paths_set.load( ifs, vargraph );
           }
           catch ( const std::runtime_error& ) {
@@ -330,6 +334,8 @@ namespace grem {
 
           try {
             grem::serialize( ofs, this->context );
+            size_type dir = std::is_same< TSequenceDirection, Forward >::value;
+            grem::serialize( ofs, dir );
             this->paths_set.serialize( ofs );
           }
           catch ( const std::runtime_error& ) {
@@ -357,7 +363,7 @@ namespace grem {
 
   template< typename TGraph, typename TText, typename TIndexSpec >
       inline typename PathIndex< TGraph, TText, TIndexSpec >::size_type
-    length( PathIndex< TGraph, TText, TIndexSpec >& pindex )
+    length( PathIndex< TGraph, TText, TIndexSpec > const& pindex )
     {
       return pindex.size();
     }
