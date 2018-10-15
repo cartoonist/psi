@@ -260,6 +260,7 @@ startup( const Options & options )
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
+  log->info( "- Output file: '{}'", options.output_path );
 
   log->info( "Opening file '{}'...", options.fq_path );
   SeqStreamIn reads_iss( options.fq_path.c_str() );
@@ -373,11 +374,10 @@ setup_argparser( seqan::ArgumentParser& parser )
         "Reads chunk size. Set it to 0 to consider all reads as one chunk (default).",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "c", 0 );
-  // starting loci interval
+  // step size
   addOption( parser,
       seqan::ArgParseOption( "e", "step-size",
-        "Start from every given number of loci in all nodes. If it is set to 1, "
-        "it means start from all positions in a node.",
+        "Minimum approximate distance allowed between two consecutive loci.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "e", 1 );
   // number of paths
