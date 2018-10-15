@@ -1202,6 +1202,12 @@ namespace grem {
         _RecordsIterBase& operator=( const _RecordsIterBase& ) = default;
         _RecordsIterBase& operator=( _RecordsIterBase&& ) = default;
         ~_RecordsIterBase() = default;
+        /* ====================  ACCESSORS     ======================================= */
+          inline const TRecords*
+        get_records_ptr( ) const
+        {
+          return this->records;
+        }
         /* ====================  OPERATORS     ======================================= */
           inline TInfix
         operator*() const {

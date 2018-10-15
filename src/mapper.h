@@ -421,11 +421,14 @@ namespace grem
           seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) > callback )
           {
+            typedef typename seqan::Iterator< readsrecord_type, NonOverlapping >::Type TSeedsIter;
+
             if ( length( indexText( paths.index ) ) == 0 ) return;
 
             auto timer = stats_type( "paths-seed-find" );
 
-            kmer_exact_matches( paths.index, &paths, &(this->reads), this->seed_len, NonOverlapping(), callback );
+            TSeedsIter seeds_itr( &(this->reads), this->seed_len );
+            kmer_exact_matches( paths.index, &paths, seeds_itr, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
         template< typename TPath, typename TSpec >

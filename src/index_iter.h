@@ -566,41 +566,35 @@ namespace grem {
     }
 
   template< typename TOccurrence >
-      inline void
-    _map_occurrences( TOccurrence& oc, unsigned int k, Forward )
+      inline TOccurrence
+    _map_occurrences( TOccurrence const& oc, unsigned int k, Forward )
     {
-      /* NOOP */
+      return TOccurrence( oc );
     }
 
   template< typename TOccurrence >
-      inline void
-    _map_occurrences( TOccurrence& oc, unsigned int k, Reversed )
+      inline TOccurrence
+    _map_occurrences( TOccurrence const& oc, unsigned int k, Reversed )
     {
-      oc.i2 += k - 1;    /**< @brief End position of the occurrence. */
+      return TOccurrence( oc.i1, oc.i2 + k - 1 );  /**< @brief End position of the occurrence. */
     }
 
   template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords1* rec1,
-        const TRecords2* rec2, unsigned int k, TCallback callback, bool swapped = false )
+        const TRecords2* rec2, unsigned int k, TCallback callback )
     {
       typedef typename Direction< TRecords1 >::Type TPathDir;
 
-      auto&& occurrences1 = get_occurrences_stree( itr1 );
-      auto&& occurrences2 = get_occurrences_stree( itr2 );
-      auto&& occur_size1 = length( occurrences1 );
-      auto&& occur_size2 = length( occurrences2 );
+      using seqan::length;
 
-      for ( unsigned int i = 0; i < occur_size1; ++i ) {
-        for ( unsigned int j = 0; j < occur_size2; ++j ) {
-          if ( !swapped ) {
-            _map_occurrences( occurrences1[i], k, TPathDir() );
-            _add_seed( occurrences1[i], occurrences2[j], rec1, rec2, callback );
-          }
-          else {
-            _map_occurrences( occurrences2[j], k, TPathDir() );
-            _add_seed( occurrences2[j], occurrences1[i], rec1, rec2, callback );
-          }
+      const auto& occurrences1 = get_occurrences_stree( itr1 );
+      const auto& occurrences2 = get_occurrences_stree( itr2 );
+
+      for ( unsigned int i = 0; i < length( occurrences1 ); ++i ) {
+        for ( unsigned int j = 0; j < length( occurrences2 ); ++j ) {
+          auto oc = _map_occurrences( occurrences1[i], k, TPathDir() );
+          _add_seed( oc, occurrences2[j], rec1, rec2, callback );
         }
       }
     }
@@ -615,15 +609,16 @@ namespace grem {
         auto&& s = upto_prefix( snd_itr, cp_len );
 
         if ( go_down_stree( snd_itr, infix( representative( fst_itr ), s, k ) ) ) {
-          _add_occurrences( fst_itr, snd_itr, rec1, rec2, k, callback, swapped );
+          if ( !swapped ) _add_occurrences( fst_itr, snd_itr, rec1, rec2, k, callback );
+          else _add_occurrences( snd_itr, fst_itr, rec1, rec2, k, callback );
         }
       }
     }
 
-  template< typename TText, typename TIndexSpec1, typename TIndexSpec2, typename TRecords1, typename TRecords2, typename TCallback >
+  template< typename TText1, typename TText2, typename TIndexSpec1, typename TIndexSpec2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
-    kmer_exact_matches( seqan::Index< TText, TIndexSpec1 >& fst,
-        seqan::Index< TText, TIndexSpec2 >& snd,
+    kmer_exact_matches( seqan::Index< TText1, TIndexSpec1 >& fst,
+        seqan::Index< TText2, TIndexSpec2 >& snd,
         const TRecords1* rec1,
         const TRecords2* rec2,
         unsigned int k,
@@ -640,8 +635,8 @@ namespace grem {
       auto fst_len = length( indexRawText( fst ) );
       auto snd_len = length( indexRawText( snd ) );
 
-      typedef seqan::Index< TText, TIndexSpec1 > TIndex1;
-      typedef seqan::Index< TText, TIndexSpec2 > TIndex2;
+      typedef seqan::Index< TText1, TIndexSpec1 > TIndex1;
+      typedef seqan::Index< TText2, TIndexSpec2 > TIndex2;
       typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
       TIndexIter< TIndex1, TIterSpec > fst_itr( fst );
       TIndexIter< TIndex2, TIterSpec > snd_itr( snd );
@@ -703,23 +698,19 @@ namespace grem {
       } while ( s >= 0 );
     }
 
-  template< typename TIndex, typename TRecords1, typename TRecords2, typename TSeedingStrategy, typename TCallback >
+  template< typename TIndex, typename TRecords1, typename TRecordsIter, typename TCallback >
       inline void
     kmer_exact_matches( TIndex& paths_index, const TRecords1* pathset,
-        const TRecords2* reads, unsigned int k, TSeedingStrategy, TCallback callback )
+        TRecordsIter& seeds_itr, TCallback callback )
     {
-      typedef typename seqan::Iterator< TRecords2, TSeedingStrategy >::Type TSeedsIterator;
-
       static_assert( std::is_same< typename Direction< TRecords1 >::Type, Forward >::value,
           "The paths should be forward sequences." );
 
-      if ( k == 0 ) return;
-
       seqan::Finder< TIndex > paths_finder( paths_index );
-      TSeedsIterator seeds_itr( reads, k );
       while ( !at_end( seeds_itr ) ) {
         while ( find( paths_finder, *seeds_itr ) ) {
-          _add_seed( beginPosition( paths_finder ), get_position( seeds_itr ), pathset, reads, callback );
+          _add_seed( beginPosition( paths_finder ), get_position( seeds_itr ), pathset,
+              seeds_itr.get_records_ptr(), callback );
         }
         ++seeds_itr;
         clear( paths_finder );
