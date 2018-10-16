@@ -78,7 +78,7 @@ namespace seqan {
         typedef typename value_type::string_type string_type;  /**< @brief output string type */
         typedef typename value_type::size_type savalue_type;
         typedef typename value_type::index_category index_category;
-        typedef typename value_type::char_type char_type;
+        typedef char char_type;
         typedef typename value_type::comp_char_type comp_char_type;
         /* ====================  LIFECYCLE     ======================================= */
         Index ( )
@@ -294,6 +294,11 @@ namespace seqan {
     {
       index.clear();
     }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
+    struct Value< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > > {
+      typedef typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::char_type Type;
+    };
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
     struct Fibre< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, FibreText > {
