@@ -31,6 +31,14 @@
 namespace grem {
   template< class TWT = sdsl::wt_huff<>, uint32_t TDens = 32, uint32_t TInvDens = 64 >
     struct FMIndex;
+
+  template< typename TSpec >
+    class is_fmindex : public std::false_type {
+    };
+
+  template< class TWT, uint32_t TDens, uint32_t TInvDens >
+    class is_fmindex< FMIndex< TWT, TDens, TInvDens > > : public std::true_type {
+    };
 }  /* -----  end of namespace grem  ----- */
 
 namespace seqan {

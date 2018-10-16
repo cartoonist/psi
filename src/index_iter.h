@@ -624,9 +624,9 @@ namespace grem {
         unsigned int k,
         TCallback callback )
     {
-      static_assert( ( std::is_same< TIndexSpec1, grem::CFMIndex >::value &&
+      static_assert( ( is_fmindex< TIndexSpec1 >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
-          ( !std::is_same< TIndexSpec1, grem::CFMIndex >::value &&
+          ( !is_fmindex< TIndexSpec1 >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
           "The paths direction and the path index used are not compatible." );
 
@@ -667,9 +667,9 @@ namespace grem {
         unsigned int k,
         TCallback callback )
     {
-      static_assert( ( std::is_same< typename seqan::Spec< TIndex1 >::Type, grem::CFMIndex >::value &&
+      static_assert( ( is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
-          ( !std::is_same< typename seqan::Spec< TIndex1 >::Type, grem::CFMIndex >::value &&
+          ( !is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
           "The paths direction and the path index used are not compatible." );
 
