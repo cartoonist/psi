@@ -649,6 +649,21 @@ namespace seqan {
           return this->history_size();
         }
 
+          inline savalue_type
+        parent_edge_length( ) const
+        {
+          if ( this->is_root() ) return 0;
+          return 1;
+        }
+
+          inline string_type
+        parent_edge_label( ) const
+        {
+          if ( this->is_root() ) return string_type("");
+          auto a_loc = this->get_raw_position( 0 );
+          return extract( this->index_p->fm, a_loc, a_loc );
+        }
+
           inline string_type
         representative( ) const
         {
@@ -719,6 +734,20 @@ namespace seqan {
       if ( iter.go_down_gt( c ) != 0 ) return true;
       goDown( iter, c );  /**< @brief cannot go right, undo goUp. */
       return false;
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    parentEdgeLength( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+    {
+      return iter.parent_edge_length();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::string_type
+    parentEdgeLabel( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+    {
+      return iter.parent_edge_label();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
