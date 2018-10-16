@@ -466,13 +466,14 @@ namespace seqan {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef TText text_type;                               /**< @brief input text type */
+        typedef typename text_type::pos_type pos_type;
         typedef Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > index_type;
         typedef typename index_type::string_type string_type;  /**< @brief output string type */
         typedef typename index_type::savalue_type savalue_type;
         typedef typename index_type::index_category index_category;
         typedef typename index_type::char_type char_type;
         typedef typename index_type::comp_char_type comp_char_type;
-        typedef typename sdsl::int_vector< 64 > occs_type;
+        typedef typename std::vector< pos_type > occs_type;
         typedef typename std::pair< savalue_type, savalue_type > range_type;
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
@@ -510,7 +511,7 @@ namespace seqan {
         }
 
           inline savalue_type
-        get_position( savalue_type i ) const
+        get_raw_position( savalue_type i ) const
         {
           ASSERT( this->is_initialized() );
           assert( this->occ_cur + i <= this->occ_end );
@@ -518,6 +519,21 @@ namespace seqan {
         }
 
           inline savalue_type
+        get_raw_position( savalue_type i )
+        {
+          if ( !this->is_initialized() ) this->init();
+          const Iter* _this = this;
+          return _this->get_raw_position( i );
+        }
+
+          inline pos_type
+        get_position( savalue_type i ) const
+        {
+          ASSERT( this->is_initialized() );
+          return this->index_p->text_p->get_position( this->get_raw_position( i ) );
+        }
+
+          inline pos_type
         get_position( savalue_type i )
         {
           if ( !this->is_initialized() ) this->init();
@@ -636,7 +652,7 @@ namespace seqan {
           inline string_type
         representative( ) const
         {
-          auto a_loc = this->get_position( 0 );
+          auto a_loc = this->get_raw_position( 0 );
           return extract( this->index_p->fm, a_loc, a_loc + this->rep_length() - 1 );
         }
       private:
