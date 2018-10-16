@@ -30,11 +30,16 @@ using namespace grem;
 
 SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]" )
 {
-  GIVEN( "A sample small path" )
+  GIVEN( "A sample small path and ESA index" )
   {
-    seqan::Dna5QString str = "GATAGACTAGCCA";
-    seqan::Index< seqan::Dna5QString, seqan::IndexEsa<> > index(str);
-    TFineIndexIter< seqan::Index< seqan::Dna5QString, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr(index);
+    typedef seqan::Dna5QString TString;
+    typedef seqan::IndexEsa<> TIndexSpec;
+    typedef seqan::Index< TString, TIndexSpec > TIndex;
+    typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
+
+    TString str = "GATAGACTAGCCA";
+    TIndex index( str );
+    TIter itr( index );
 
     REQUIRE( go_down( itr, 'A' ) );
     REQUIRE( go_down( itr, 'G' ) );
@@ -50,6 +55,33 @@ SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterato
     REQUIRE( go_up( itr ) );
     REQUIRE( go_right( itr ) );
     REQUIRE( representative( itr.get_iter_() ) == "AG" );
+  }
+
+  GIVEN( "A sample small path and FM-index" )
+  {
+    typedef grem::MemString TString;
+    typedef grem::FMIndex<> TIndexSpec;
+    typedef seqan::Index< TString, TIndexSpec > TIndex;
+    typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
+
+    TString str = "ACCGATCAGATAG";
+    TIndex index( str );
+    TIter itr( index );
+
+    REQUIRE( go_down( itr, 'A' ) );
+    REQUIRE( go_down( itr, 'G' ) );
+    REQUIRE( representative( itr.get_iter_() ) == "GA" );
+    REQUIRE( go_right( itr ) );
+    REQUIRE( representative( itr.get_iter_() ) == "TA" );
+    REQUIRE( go_down( itr, 'A' ) );
+    REQUIRE( go_up( itr ) );
+    REQUIRE( go_up( itr ) );
+    REQUIRE( go_down( itr, 'C' ) );
+    REQUIRE( go_down( itr, 'T' ) );
+    REQUIRE( !go_right( itr ) );
+    REQUIRE( go_up( itr ) );
+    REQUIRE( go_right( itr ) );
+    REQUIRE( representative( itr.get_iter_() ) == "GA" );
   }
 }
 
