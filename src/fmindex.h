@@ -478,21 +478,21 @@ namespace seqan {
           : Iter( &i ) { }
         /* ====================  METHODS       ======================================= */
           inline bool
-        is_initialized( )
+        is_initialized( ) const
         {
           return this->initialized;
         }
 
           inline bool
-        at_end( )
+        at_end( ) const
         {
-          return ( ! this->is_initialized() ) || ( this->occ_cur > this->occ_end );
+          return ( !this->is_initialized() ) || ( this->occ_cur > this->occ_end );
         }
 
           inline bool
-        is_root( )
+        is_root( ) const
         {
-          return ( ! this->is_initialized() ) || ( this->count() == this->index_size() );
+          return ( !this->is_initialized() ) || ( this->count() == this->index_size() );
         }
 
           inline void
@@ -505,15 +505,23 @@ namespace seqan {
         }
 
           inline savalue_type
-        get_position( savalue_type i )
+        get_position( savalue_type i ) const
         {
-          if ( ! this->is_initialized() ) this->init();
+          ASSERT( this->is_initialized() );
           assert( this->occ_cur + i <= this->occ_end );
           return this->index_p->fm[ this->occ_cur + i ];
         }
 
+          inline savalue_type
+        get_position( savalue_type i )
+        {
+          if ( !this->is_initialized() ) this->init();
+          const Iter* _this = this;
+          return _this->get_position( i );
+        }
+
           inline occs_type
-        get_occurrences( )
+        get_occurrences( ) const
         {
           savalue_type occs_no;
           if ( this->is_root() ) occs_no = 0;
@@ -533,7 +541,7 @@ namespace seqan {
         }
 
           inline savalue_type
-        history_size( )
+        history_size( ) const
         {
           return this->history.size();
         }
@@ -559,11 +567,19 @@ namespace seqan {
         }
 
           inline savalue_type
-        count( )
+        count( ) const
         {
-          if ( ! this->is_initialized() ) this->init();
+          ASSERT( this->is_initialized() );
           if ( this->at_end() ) return 0;
           return this->occ_end + 1 - this->occ_cur;
+        }
+
+          inline savalue_type
+        count( )
+        {
+          if ( !this->is_initialized() ) this->init();
+          const Iter* _this = this;
+          return _this->count();
         }
 
           inline void
@@ -585,7 +601,7 @@ namespace seqan {
           inline savalue_type
         go_down( char_type c )
         {
-          if ( ! this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->init();
           this->history_push();
           savalue_type no = sdsl::backward_search( this->index_p->fm,
               this->occ_cur, this->occ_end, (char)c,
@@ -607,13 +623,13 @@ namespace seqan {
         }
 
           inline savalue_type
-        rep_length( )
+        rep_length( ) const
         {
           return this->history_size();
         }
 
           inline string_type
-        representative( )
+        representative( ) const
         {
           auto a_loc = this->get_position( 0 );
           return extract( this->index_p->fm, a_loc, a_loc + this->rep_length() - 1 );
@@ -684,21 +700,21 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
-    repLength( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    repLength( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.rep_length();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::string_type
-    representative( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    representative( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.representative();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::occs_type
-    getOccurrences( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    getOccurrences( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.get_occurrences();
     }

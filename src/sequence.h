@@ -442,13 +442,21 @@ namespace seqan {
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
           inline grem::YaInfix< StringSet >
-        operator[]( size_type idx )
+        operator[]( size_type idx ) const
         {
+          ASSERT( this->is_initialized() );
           grem::YaInfix< StringSet > retval;
-          if ( !this->is_initialized() ) this->initialize();
           retval.first = this->select( idx );
           retval.second = this->select( idx + 1 ) - 1;
           return retval;
+        }
+
+          inline grem::YaInfix< StringSet >
+        operator[]( size_type idx )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          const StringSet* _this = this;
+          return _this->operator[]( idx );
         }
         /* ====================  METHODS       ======================================= */
         void push_back( const string_type& str );
@@ -549,7 +557,7 @@ namespace seqan {
         sdsl::bit_vector::select_1_type ss_str_breaks;
         /* ====================  METHODS       ======================================= */
           inline size_type
-        rank( stringsize_type strpos )
+        rank( stringsize_type strpos ) const
         {
           assert( this->is_initialized() );
           assert( this->bv_str_breaks[ strpos ] != 1 );
@@ -557,7 +565,7 @@ namespace seqan {
         }
 
           inline stringsize_type
-        select( size_type r )
+        select( size_type r ) const
         {
           assert( this->is_initialized() );
           if ( r == 0 ) return 0;
@@ -701,13 +709,21 @@ namespace seqan {
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
           inline grem::YaInfix< StringSet >
-        operator[]( size_type idx )
+        operator[]( size_type idx ) const
         {
+          ASSERT( this->is_initialized() );
           grem::YaInfix< StringSet > retval;
-          if ( !this->is_initialized() ) this->initialize();
           retval.first = this->select( idx );
           retval.second = this->select( idx + 1 ) - 1;
           return retval;
+        }
+
+          inline grem::YaInfix< StringSet >
+        operator[]( size_type idx )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          const StringSet* _this = this;
+          return _this->operator[]( idx );
         }
         /* ====================  METHODS       ======================================= */
         void push_back( const string_type& str );
@@ -808,7 +824,7 @@ namespace seqan {
         sdsl::bit_vector::select_1_type ss_str_breaks;
         /* ====================  METHODS       ======================================= */
           inline size_type
-        rank( stringsize_type strpos )
+        rank( stringsize_type strpos ) const
         {
           assert( this->is_initialized() );
           assert( this->bv_str_breaks[ strpos ] != 1 );
@@ -816,7 +832,7 @@ namespace seqan {
         }
 
           inline stringsize_type
-        select( size_type r )
+        select( size_type r ) const
         {
           assert( this->is_initialized() );
           if ( r == 0 ) return 0;
