@@ -417,21 +417,21 @@ namespace seqan {
           : grem::DiskString( std::move( other ) )
         {
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
+          sdsl::util::clear( other.rs_str_breaks );
+          sdsl::util::clear( other.ss_str_breaks );
         }
 
         StringSet& operator=( StringSet&& other )
         {
           grem::DiskString::operator=( std::move( other ) );
           this->count = other.count;
-          this->initialized = other.initialized;
           sdsl::util::clear( this->bv_str_breaks );
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          sdsl::util::clear( this->rs_str_breaks );
+          sdsl::util::clear( this->ss_str_breaks );
+          this->initialize();
           sdsl::util::clear( other.rs_str_breaks );
           sdsl::util::clear( other.ss_str_breaks );
           return *this;
@@ -531,22 +531,17 @@ namespace seqan {
           this->shrink_bv_str_breaks();
           grem::DiskString::serialize( out );
           grem::serialize( out, this->count );
-          grem::serialize( out, static_cast< size_type >( this->initialized ) );
           this->bv_str_breaks.serialize( out );
         }
 
           inline void
         load( std::istream& in )
         {
-          size_type i;
           this->clear();
           grem::DiskString::load( in );
           grem::deserialize( in, this->count );
-          grem::deserialize( in, i );
-          this->initialized = bool( i );
           this->bv_str_breaks.load( in );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
@@ -663,30 +658,26 @@ namespace seqan {
           : grem::MemString( other )
         {
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks = other.bv_str_breaks;
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
         }
 
         StringSet( StringSet&& other )
           : grem::MemString( std::move( other ) )
         {
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
+          sdsl::util::clear( other.rs_str_breaks );
+          sdsl::util::clear( other.ss_str_breaks );
         }
 
         StringSet& operator=( const StringSet& other )
         {
           grem::MemString::operator=( other );
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks = other.bv_str_breaks;
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
           return *this;
         }
 
@@ -694,11 +685,11 @@ namespace seqan {
         {
           grem::MemString::operator=( std::move( other ) );
           this->count = other.count;
-          this->initialized = other.initialized;
           sdsl::util::clear( this->bv_str_breaks );
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          sdsl::util::clear( this->rs_str_breaks );
+          sdsl::util::clear( this->ss_str_breaks );
+          this->initialize();
           sdsl::util::clear( other.rs_str_breaks );
           sdsl::util::clear( other.ss_str_breaks );
           return *this;
@@ -798,22 +789,17 @@ namespace seqan {
           this->shrink_bv_str_breaks( );
           grem::MemString::serialize( out );
           grem::serialize( out, this->count );
-          grem::serialize( out, static_cast< size_type >( this->initialized ) );
           this->bv_str_breaks.serialize( out );
         }
 
           inline void
         load( std::istream& in )
         {
-          size_type i;
           this->clear();
           grem::MemString::load( in );
           grem::deserialize( in, this->count );
-          grem::deserialize( in, i );
-          this->initialized = bool( i );
           this->bv_str_breaks.load( in );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
