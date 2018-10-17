@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <set>
 #include <memory>
+#include <cassert>
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
@@ -35,6 +36,33 @@
 
 #define GREM_DEFAULT_TMPDIR "/tmp"
 #define GREM_TMPFILE_TEMPLATE "/grem-XXXXXX"
+
+#define BINARY_NAME "grem"
+#define ASSERT(expr)							\
+  ((expr)								\
+   ? __ASSERT_VOID_CAST (0)						\
+   : assert_fail (#expr, BINARY_NAME, __FILE__, __LINE__, __PRETTY_FUNCTION__))
+
+/**
+ *  @brief  Assert fail function
+ *
+ *  @param  expr The assert expression.
+ *  @param  outfile The name of output file.
+ *  @param  file The source file that assertion failed.
+ *  @param  line The line number where assertion failed.
+ *  @param  func The function signiture where assertion failed.
+ *
+ *  Print the message and exit with error code 134.
+ */
+  inline void
+assert_fail( std::string const& expr, std::string const& outfile,
+    std::string const& file, int line, std::string const& func )
+{
+  std::cout << outfile << ": " << file << ":" << line << ": " << func
+    << ": Assertion `" << expr << "' failed." << "\n"
+    << "Aborted." << std::endl;
+  std::exit( 134 );
+}
 
 namespace grem {
   /**
