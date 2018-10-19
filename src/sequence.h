@@ -78,6 +78,21 @@ namespace grem {
         typedef seqan::StringSet< TText, grem::Dependent > Type;
     };
 
+  template< typename TContainer >
+    class Ownership;
+
+  template< typename TText, typename TSpec >
+    class Ownership< seqan::StringSet< TText, TSpec > > {
+      public:
+        typedef grem::Dependent Type;
+    };
+
+  template< typename TText >
+    class Ownership< seqan::StringSet< TText, seqan::Owner<> > > {
+      public:
+        typedef seqan::Owner<> Type;
+    };
+
   /* END OF Meta-functions  ------------------------------------------------------ */
 
   /* Data structures  ------------------------------------------------------------ */
@@ -935,6 +950,18 @@ namespace grem {
   template< typename TStringSet >
     class Records;
 
+  template< typename TText, typename TSpec >
+    class Ownership< Records< seqan::StringSet< TText, TSpec > > > {
+      public:
+        typedef grem::Dependent Type;
+    };
+
+  template< typename TText >
+    class Ownership< Records< seqan::StringSet< TText, seqan::Owner<> > > > {
+      public:
+        typedef seqan::Owner<> Type;
+    };
+
   /* Records interface functions */
   template< typename TText >
       inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
@@ -1529,10 +1556,11 @@ namespace grem {
    */
   template< typename TText, typename TStringSetSpec >
       inline void
-    _seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
+    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
         const seqan::StringSet< TText, TStringSetSpec >& string_set,
         unsigned int k,
-        unsigned int step )
+        unsigned int step,
+        sdsl::bit_vector* bv_ptr=nullptr )
     {
       typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
       typedef typename seqan::Position< TText >::Type pos_type;
@@ -1545,13 +1573,42 @@ namespace grem {
       auto nofreads = length( string_set );
       auto est_nofseeds = static_cast<int>( ( lensum - nofreads*k ) / step ) + nofreads;
       reserve( seeds, est_nofseeds );
+      if ( bv_ptr ) sdsl::util::assign( *bv_ptr, sdsl::bit_vector( est_nofseeds, 0 ) );
 
       for ( size_type idx = 0; idx < length( string_set ); ++idx ) {
         for ( pos_type i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
           appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
         }
+        if ( bv_ptr ) ( *bv_ptr )[ length( seeds ) - 1 ] = 1;
       }
-    }  /* -----  end of template function _seeding  ----- */
+      if ( bv_ptr ) ( *bv_ptr ).resize( length( seeds ) );
+    }  /* -----  end of template function seeding  ----- */
+
+  /**
+   *  @brief  Add any k-mers from the given records with `step` distance to seeds record.
+   *
+   *  @param  seeds The seeds record.
+   *  @param  reads The string set from which seeds are extracted.
+   *  @param  k The length of the seeds.
+   *  @param  step The step size.
+   *
+   *  For each string in reads record, it add all substring of length `k` starting from
+   *  0 to end of string with `step` distance with each other. If `step` is equal to
+   *  `k`, it gets non-overlapping substrings of length k.
+   */
+  template< typename TRecords1, typename TRecords2,
+    typename = std::enable_if_t< std::is_same< typename TRecords1::TSpec, seqan::Owner<> >::value, void > >
+      inline void
+    seeding( TRecords1& seeds,
+        TRecords2 const& reads,
+        unsigned int k,
+        unsigned int step )
+    {
+      clear( seeds );
+      sdsl::bit_vector bv;
+      seeding( seeds.str, reads.str, k, step, &bv );
+      seeds.set_seedmap( std::move( bv ), step );
+    }
 
   /**
    *  @brief  Seeding a set of sequence by reporting overlapping k-mers.
@@ -1563,14 +1620,12 @@ namespace grem {
    *
    *  Extract a set of overlapping seeds of length k.
    */
-  template< typename TText, typename TStringSetSpec >
+  template< typename T1, typename T2,
+    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan::Owner<> >::value, void > >
       inline void
-    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
-        const seqan::StringSet< TText, TStringSetSpec >& string_set,
-        unsigned int k,
-        GreedyOverlapping )
+    seeding( T1& seeds, const T2& string_set, unsigned int k, GreedyOverlapping )
     {
-      _seeding( seeds, string_set, k, 1 );
+      seeding( seeds, string_set, k, 1 );
     }  /* -----  end of template function seeding  ----- */
 
   /**
@@ -1583,14 +1638,12 @@ namespace grem {
    *
    *  Extract a set of non-overlapping seeds of length k.
    */
-  template< typename TText, typename TStringSetSpec >
+  template< typename T1, typename T2,
+    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan::Owner<> >::value, void > >
       inline void
-    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
-        const seqan::StringSet< TText, TStringSetSpec >& string_set,
-        unsigned int k,
-        NonOverlapping )
+    seeding( T1& seeds, const T2& string_set, unsigned int k, NonOverlapping )
     {
-      _seeding( seeds, string_set, k, k );
+      seeding( seeds, string_set, k, k );
     }  /* -----  end of function seeding  ----- */
 
   /**
