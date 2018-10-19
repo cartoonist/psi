@@ -1151,6 +1151,52 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
       }
     }
   }
+
+  unsigned int reads_num = 10;
+  GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
+  {
+    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    klibpp::SeqStreamIn iss( fqpath.c_str() );
+    if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
+
+    typedef seqan::StringSet< seqan::DnaQString > TStringSet;
+    typedef Records< TStringSet > TRecords;
+
+    TRecords reads;
+    readRecords( reads, iss );
+    unsigned int k = 4;
+
+    unsigned int step = 2;
+    WHEN( "Seeding by non-greedy overlapping strategy with length "
+        + std::to_string( k ) + " and step size " + std::to_string( step ) )
+    {
+      typedef typename seqan::Iterator< TRecords, Overlapping >::Type TIter;
+      TIter reads_itr( &reads, k, step );
+
+      THEN( "Seed should be correct" )
+      {
+        std::string truth[70] =
+        { "CAAA", "AATA", "TAAG", "AGAT",
+          "AAAT", "ATAA", "AAGA", "GACT",
+          "TTTC", "TCTG", "TGGA", "GAGT",
+          "ATAA", "AATA", "TATT", "TTCC",
+          "TTCC", "CCTG", "TGGT", "GTTG",
+          "GTCC", "CCTG", "TGGT", "GTTG",
+          "TGCT", "CTAT", "ATGT", "GTGT",
+          "TGTT", "TTGG", "GGGC", "GCTT",
+          "CTTT", "TTTT", "TTTC", "TCTT",
+          "CTTC", "TCTT", "TTCC", "CCTT" };
+        unsigned int i = 0;
+        while ( !at_end( reads_itr ) ) {
+          REQUIRE( *reads_itr == truth[i] );
+          REQUIRE( get_position( reads_itr ).i1 == i/4 );
+          REQUIRE( get_position( reads_itr ).i2 == i%4*step );
+          ++i;
+          ++reads_itr;
+        }
+      }
+    }
+  }
 }
 
 SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )

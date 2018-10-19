@@ -1263,11 +1263,13 @@ namespace grem {
     };
 
   /* Seeding strategies */
+  struct OverlapStrategy;
   struct GreedyOverlapStrategy;
   struct NonOverlapStrategy;
   struct GreedyNonOverlapStrategy;
 
   /* Seeding strategy tags */
+  typedef seqan::Tag< OverlapStrategy > Overlapping;
   typedef seqan::Tag< GreedyOverlapStrategy > GreedyOverlapping;
   typedef seqan::Tag< NonOverlapStrategy > NonOverlapping;
   typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
@@ -1375,14 +1377,14 @@ namespace grem {
     }
 
   template< typename TRecords, typename TSpec >
-    class RecordsIter : public _RecordsIterBase< TRecords, TSpec > {};
+    class RecordsIter;
 
   template< typename TRecords >
-    class RecordsIter< TRecords, NonOverlapping >
-    : public _RecordsIterBase< TRecords, NonOverlapping > {
+    class RecordsIter< TRecords, Overlapping >
+    : public _RecordsIterBase< TRecords, Overlapping > {
       private:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef _RecordsIterBase< TRecords, NonOverlapping > TBase;
+        typedef _RecordsIterBase< TRecords, Overlapping > TBase;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename TRecords::TStringSet TStringSet;
@@ -1391,8 +1393,13 @@ namespace grem {
         typedef typename TBase::TId TId;
         typedef typename TBase::TTextPosition TTextPosition;
         typedef typename TBase::TInfix TInfix;
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        TTextPosition step;
+      public:
         /* ====================  LIFECYCLE     ======================================= */
-        RecordsIter( const TRecords* recs, TTextPosition len ) : TBase( recs, len ) { }
+        RecordsIter( const TRecords* recs, TTextPosition len, TTextPosition stp )
+          : TBase( recs, len ), step( stp ) { }
         /* ====================  OPERATORS     ======================================= */
           inline RecordsIter&
         operator++()
@@ -1403,8 +1410,8 @@ namespace grem {
           }
 #endif  /* ----- #ifndef NDEBUG  ----- */
           const auto& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
-          if ( this->current_pos.i2 + 2 * this->infix_len <= current_strlen ) {
-            this->current_pos.i2 += this->infix_len;
+          if ( this->current_pos.i2 + this->infix_len + this->step <= current_strlen ) {
+            this->current_pos.i2 += this->step;
           }
           else {
             this->current_pos.i2 = 0;
@@ -1414,12 +1421,17 @@ namespace grem {
         }
     };
 
+  /**
+   *  @brief  NonOverlapping Records iterator.
+   *
+   *  It is defined as "Overlapping" with step size equals to infix length.
+   */
   template< typename TRecords >
-    class RecordsIter< TRecords, GreedyOverlapping >
-    : public _RecordsIterBase< TRecords, GreedyOverlapping > {
+    class RecordsIter< TRecords, NonOverlapping >
+    : public RecordsIter< TRecords, Overlapping > {
       private:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef _RecordsIterBase< TRecords, GreedyOverlapping > TBase;
+        typedef RecordsIter< TRecords, Overlapping > TBase;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename TRecords::TStringSet TStringSet;
@@ -1429,26 +1441,32 @@ namespace grem {
         typedef typename TBase::TTextPosition TTextPosition;
         typedef typename TBase::TInfix TInfix;
         /* ====================  LIFECYCLE     ======================================= */
-        RecordsIter( const TRecords* recs, TTextPosition len ) : TBase( recs, len ) { }
-        /* ====================  OPERATORS     ======================================= */
-          inline RecordsIter&
-        operator++()
-        {
-#ifndef NDEBUG
-          if ( at_end( *this ) ) {
-            throw std::range_error( "Iterator has already reached at the end." );
-          }
-#endif  /* ----- #ifndef NDEBUG  ----- */
-          const auto& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
-          if ( this->current_pos.i2 + this->infix_len < current_strlen ) {
-            ++this->current_pos.i2;
-          }
-          else {
-            this->current_pos.i2 = 0;
-            ++this->current_pos.i1;
-          }
-          return *this;
-        }
+        RecordsIter( const TRecords* recs, TTextPosition len )
+          : TBase( recs, len, len ) { }
+    };
+
+  /**
+   *  @brief  GreedyOverlapping Records iterator.
+   *
+   *  It is defined as "Overlapping" with step size equals to 1.
+   */
+  template< typename TRecords >
+    class RecordsIter< TRecords, GreedyOverlapping >
+    : public RecordsIter< TRecords, Overlapping > {
+      private:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef RecordsIter< TRecords, Overlapping > TBase;
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename TRecords::TStringSet TStringSet;
+        typedef typename TBase::TStringSetPosition TStringSetPosition;
+        typedef typename TBase::TText TText;
+        typedef typename TBase::TId TId;
+        typedef typename TBase::TTextPosition TTextPosition;
+        typedef typename TBase::TInfix TInfix;
+        /* ====================  LIFECYCLE     ======================================= */
+        RecordsIter( const TRecords* recs, TTextPosition len )
+          : TBase( recs, len, 1 ) { }
     };
 
   /**
