@@ -1537,6 +1537,15 @@ namespace grem {
       typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
       typedef typename seqan::Position< TText >::Type pos_type;
 
+      clear( seeds );
+      // The total number of seeds is always less than: (len(R) - |R|k)/s + |R|;
+      // where len(R) is the total sequence length of reads set R, and |R| is the number
+      // of reads in R, k is seed length, and s is step size.
+      auto lensum = lengthSum( string_set );
+      auto nofreads = length( string_set );
+      auto est_nofseeds = static_cast<int>( ( lensum - nofreads*k ) / step ) + nofreads;
+      reserve( seeds, est_nofseeds );
+
       for ( size_type idx = 0; idx < length( string_set ); ++idx ) {
         for ( pos_type i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
           appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
@@ -1561,9 +1570,6 @@ namespace grem {
         unsigned int k,
         GreedyOverlapping )
     {
-      clear( seeds );
-      unsigned int avg_read_len = lengthSum( string_set ) / length( string_set );
-      reserve( seeds, static_cast<int>( length( string_set ) * ( avg_read_len - k ) ) );
       _seeding( seeds, string_set, k, 1 );
     }  /* -----  end of template function seeding  ----- */
 
@@ -1584,8 +1590,6 @@ namespace grem {
         unsigned int k,
         NonOverlapping )
     {
-      clear( seeds );
-      reserve( seeds, static_cast<int>( lengthSum( string_set ) / k ) );
       _seeding( seeds, string_set, k, k );
     }  /* -----  end of function seeding  ----- */
 
