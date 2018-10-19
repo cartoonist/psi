@@ -22,6 +22,7 @@
 
 #include <fstream>
 #include <stdexcept>
+#include <memory>
 
 #include <seqan/seq_io.h>
 #include <kseq++/seqio.h>
@@ -943,7 +944,7 @@ namespace grem {
       if ( rec_id >= length( records.str ) || rec_id < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
-      return records.rec_offset + rec_id;
+      return records.position_to_id( rec_id );
     }
 
   template< typename TText >
@@ -966,10 +967,10 @@ namespace grem {
       return position_to_id( records, pos.i1 );
     }
 
-  template< typename TText, typename TSpec >
-      inline typename Records< seqan::StringSet< TText, TSpec > >::TPosition
-    position_to_offset( const Records< seqan::StringSet< TText, TSpec > >& records,
-        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+  template< typename TText >
+      inline typename Records< seqan::StringSet< TText, grem::Dependent > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
+        typename Records< seqan::StringSet< TText, grem::Dependent > >::TStringSetPosition const& pos )
     {
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
@@ -977,16 +978,22 @@ namespace grem {
       return pos.i2;
     }
 
+  template< typename TText >
+      inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TStringSetPosition const& pos )
+    {
+      if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return records.position_to_offset( pos );
+    }
 
   template< typename TText >
       inline void
     clear( Records< seqan::StringSet< TText, seqan::Owner<> > >& records )
     {
-      clear( records.name );
-      //clear( records.comment );
-      clear( records.str );
-      //clear( records.qual );
-      records.set_record_offset( 0 );
+      records.clear();
     }
 
   template< typename TText >
@@ -1051,6 +1058,51 @@ namespace grem {
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
+        /* ====================  CLASSES       ======================================= */
+        /**
+         *  @brief  Map seeds to their location in the reads set.
+         *
+         *  This class contains some data structure to map a position in the seeds set
+         *  to its original position in the reads set.
+         */
+        class SeedMap {
+          public:
+            /* ====================  TYPEDEFS      =================================== */
+            using bv_type = sdsl::bit_vector;
+            using rank_type = bv_type::rank_1_type;
+            using select_type = bv_type::select_1_type;
+            using id_type = Records::TId;
+            using offset_type = Records::TPosition;
+            using pos_type = Records::TStringSetPosition;
+            /* ====================  LIFECYCLE     =================================== */
+            SeedMap( bv_type _bv, unsigned int st )
+              : step( st )
+            {
+              this->bv.swap( _bv );
+              sdsl::util::init_support( this->rs, &this->bv );
+              sdsl::util::init_support( this->ss, &this->bv );
+            }
+            /* ====================  METHODS       =================================== */
+              inline id_type
+            get_reads_id( id_type seeds_id ) const
+            {
+              return this->rs( seeds_id );
+            }
+
+              inline offset_type
+            get_reads_offset( pos_type seeds_pos ) const
+            {
+              id_type rid = this->get_reads_id( seeds_pos.i1 );
+              id_type first_seed_id = rid ? this->ss( rid )+1 : 0;
+              return ( seeds_pos.i1 - first_seed_id ) * this->step + seeds_pos.i2;
+            }
+          private:
+            /* ====================  DATA MEMBERS  =================================== */
+            bv_type bv;
+            rank_type rs;
+            select_type ss;
+            unsigned int step;
+        };
         /* ====================  DATA MEMBERS  ======================================= */
         CharStringSet<> name;
         //TStringSet2 comment;
@@ -1063,6 +1115,12 @@ namespace grem {
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
           inline typename seqan::Reference< TStringSet >::Type
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
+        /* ====================  ACCESSORS     ======================================= */
+          inline bool
+        has_seedmap( ) const
+        {
+          return this->sm_ptr != nullptr;
+        }
         /* ====================  MUTATORS      ======================================= */
           inline void
         set_record_offset( TId value )
@@ -1075,12 +1133,43 @@ namespace grem {
         {
           this->rec_offset += value;
         }
+
+          inline void
+        set_seedmap( typename SeedMap::bv_type bv, unsigned int step )
+        {
+          this->sm_ptr = std::make_unique< SeedMap >( std::move( bv ), step );
+        }
+        /* ====================  METHODS       ======================================= */
+          inline void
+        clear( )
+        {
+          using seqan::clear;
+          using grem::clear;
+          clear( this->name );
+          //clear( records.comment );
+          clear( this->str );
+          //clear( records.qual );
+          this->set_record_offset( 0 );
+          this->sm_ptr.reset( nullptr );
+        }
+
+          inline TId
+        position_to_id( TId rec_id ) const
+        {
+          if ( this->has_seedmap( ) ) rec_id = this->sm_ptr->get_reads_id( rec_id );
+          return this->rec_offset + rec_id;
+        }
+
+          inline TPosition
+        position_to_offset( TStringSetPosition pos ) const
+        {
+          if ( this->has_seedmap( ) ) pos.i2 = this->sm_ptr->get_reads_offset( pos );
+          return pos.i2;
+        }
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         TId rec_offset;
-        /* ====================  INTERFACE FUNCTIONS  ================================ */
-          friend TId
-        position_to_id< TText >( const Records& records, TId rec_id );
+        std::unique_ptr< SeedMap > sm_ptr;
     };
 
   template< typename TText >
