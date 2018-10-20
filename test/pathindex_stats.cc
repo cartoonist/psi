@@ -131,7 +131,9 @@ main( int argc, char* argv[] )
       throw cxxopts::OptionException( "Index file seems corrupted" );
 
     auto nofpaths = pindex.get_paths_set().size();
+    auto totseqlen = getFibre( pindex.index, seqan::FibreText() ).raw_length();
     cout << "Number of paths: " << nofpaths << endl;
+    cout << "Total sequence length: " << totseqlen << endl;
     cout << endl;
 
     vector< vg::Alignment > paths;
