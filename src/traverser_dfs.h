@@ -85,7 +85,7 @@ namespace grem {
               hit.node_id = cstate.spos.node_id();
               hit.node_offset = cstate.spos.offset();
               hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
-              hit.read_offset = saPositions[i].i2;  // Position in the read.
+              hit.read_offset = position_to_offset( *(this->reads), saPositions[i] );  // Position in the read.
               callback( hit );
             }
           }

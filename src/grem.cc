@@ -213,6 +213,7 @@ template< typename TReadsIndexSpec >
 
     /* Reads are mapped in chunks. */
     Records< TReadsStringSet > reads_chunk;
+    Records< TReadsStringSet > seeds_chunk;
     log->info( "Finding seeds..." );
     {
       auto timer = Timer( "seed-finding" );
@@ -226,8 +227,14 @@ template< typename TReadsIndexSpec >
         }
         log->info( "Fetched {} reads in {} us.", length( reads_chunk ),
             Timer::get_duration( "load-chunk" ).count() );
+        /* Seed current chunk. */
+        {
+          auto timer = Timer( "seeding" );
+          seeding( seeds_chunk, reads_chunk, seed_len, NonOverlapping() );
+        }
+        log->info( "Seeding done in {} us.", Timer::get_duration( "seeding" ).count() );
         /* Give the current chunk to the mapper. */
-        mapper.set_reads( std::move( reads_chunk ) );
+        mapper.set_reads( std::move( seeds_chunk ) );
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */

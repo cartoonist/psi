@@ -560,7 +560,7 @@ namespace grem {
       hit.node_id = position_to_id( *rec1, oc1 );
       hit.node_offset = position_to_offset( *rec1, oc1 );
       hit.read_id = position_to_id( *rec2, oc2.i1 );
-      hit.read_offset = oc2.i2;
+      hit.read_offset = position_to_offset( *rec2, oc2 );
 
       callback( hit );
     }
@@ -713,6 +713,26 @@ namespace grem {
               seeds_itr.get_records_ptr(), callback );
         }
         ++seeds_itr;
+        clear( paths_finder );
+      }
+    }
+
+  template< typename TIndex, typename TRecords1, typename TRecords2, typename TCallback >
+      inline void
+    all_exact_matches( TIndex& paths_index, const TRecords1* pathset,
+        const TRecords2* reads, TCallback callback )
+    {
+      typedef typename TRecords2::TSize size_type;
+      typedef typename TRecords2::TStringSetPosition pos_type;
+
+      static_assert( std::is_same< typename Direction< TRecords1 >::Type, Forward >::value,
+          "The paths should be forward sequences." );
+
+      seqan::Finder< TIndex > paths_finder( paths_index );
+      for ( size_type i = 0; i < length( *reads ); ++i ) {
+        while ( find( paths_finder, reads->str[i] ) ) {
+          _add_seed( beginPosition( paths_finder ), pos_type( { i, 0 } ), pathset, reads, callback );
+        }
         clear( paths_finder );
       }
     }
