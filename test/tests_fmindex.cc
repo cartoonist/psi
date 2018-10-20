@@ -689,6 +689,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             THEN( "It cannot go right" )
             {
               REQUIRE( !goRight( it ) );
+              REQUIRE( representative( it ) == "ssi" );
             }
           }
 
@@ -853,6 +854,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             THEN( "It cannot go right" )
             {
               REQUIRE( !goRight( it ) );
+              REQUIRE( representative( it ) == "ssi" );
             }
           }
 
@@ -1031,6 +1033,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               THEN( "It cannot go right" )
               {
                 REQUIRE( !goRight( it ) );
+                REQUIRE( representative( it ) == "nan" );
               }
             }
 
@@ -1207,6 +1210,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               THEN( "It cannot go right" )
               {
                 REQUIRE( !goRight( it ) );
+                REQUIRE( representative( it ) == "nan" );
               }
             }
 

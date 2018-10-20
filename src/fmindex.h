@@ -716,7 +716,9 @@ namespace seqan {
       if ( isRoot( iter ) ) return false;
       auto c = iter.last_char();
       goUp( iter );
-      return iter.go_down_gt( c ) != 0;
+      if ( iter.go_down_gt( c ) != 0 ) return true;
+      goDown( iter, c );  /**< @brief cannot go right, undo goUp. */
+      return false;
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
