@@ -169,7 +169,7 @@ template< typename TReadsIndexSpec >
       log->warn( "Context cannot be zero for patching. Assuming seed length as context length for this purpose..." );
     }
     /* Genome-wide path index in lazy mode. */
-    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Forward > pindex( context, true );
+    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Reversed > pindex( context, true );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file, path_num );
 

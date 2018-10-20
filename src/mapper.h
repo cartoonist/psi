@@ -421,11 +421,18 @@ namespace grem
           seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) > callback )
           {
+            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
+            typedef typename PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >::index_type TPIndex;
+            typedef typename seqan::Iterator< TPIndex, TIterSpec >::Type TPIterator;
+            typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
+
             if ( length( indexText( paths.index ) ) == 0 ) return;
 
             auto timer = stats_type( "paths-seed-find" );
 
-            all_exact_matches( paths.index, &paths, &this->reads, callback );
+            TPIterator piter( paths.index );
+            TRIterator riter( this->reads_index );
+            kmer_exact_matches( piter, riter, &paths, &(this->reads), this->seed_len, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
         template< typename TPath, typename TSpec >
