@@ -940,6 +940,7 @@ namespace grem {
     position_to_offset( const seqan::StringSet< TText, seqan::Owner<> >& strset,
         typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
     {
+      using seqan::length;
       if ( pos.i2 >= length( strset[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -999,6 +1000,7 @@ namespace grem {
     position_to_offset( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
         typename Records< seqan::StringSet< TText, grem::Dependent > >::TStringSetPosition const& pos )
     {
+      using seqan::length;
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -1010,6 +1012,7 @@ namespace grem {
     position_to_offset( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TStringSetPosition const& pos )
     {
+      using seqan::length;
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -1565,6 +1568,7 @@ namespace grem {
       typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
       typedef typename seqan::Position< TText >::Type pos_type;
 
+      using seqan::length;
       clear( seeds );
       // The total number of seeds is always less than: (len(R) - |R|k)/s + |R|;
       // where len(R) is the total sequence length of reads set R, and |R| is the number
@@ -1577,7 +1581,7 @@ namespace grem {
 
       for ( size_type idx = 0; idx < length( string_set ); ++idx ) {
         for ( pos_type i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
-          appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
+          appendValue( seeds, seqan::infixWithLength( string_set[idx], i, k ) );
         }
         if ( bv_ptr ) ( *bv_ptr )[ length( seeds ) - 1 ] = 1;
       }
