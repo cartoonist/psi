@@ -1307,4 +1307,73 @@ SCENARIO( "Seeding", "[seeding][sequence]" )
       }
     }
   }
+
+  GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
+  {
+    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    klibpp::SeqStreamIn iss( fqpath.c_str() );
+    if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
+
+    typedef seqan::StringSet< std::string > TStringSet;
+
+    Records< TStringSet > reads;
+    readRecords( reads, iss );
+    unsigned int k = 4;
+
+    WHEN( "Seeding by non-overlapping strategy with length " + std::to_string( k ) )
+    {
+      Records< TStringSet > seeds;
+      seeding( seeds, reads, k, NonOverlapping() );
+
+      THEN( "Seed should be correct" )
+      {
+        std::string truth[20] =
+        { "CAAA", "TAAG",
+          "AAAT", "AAGA",
+          "TTTC", "TGGA",
+          "ATAA", "TATT",
+          "TTCC", "TGGT",
+          "GTCC", "TGGT",
+          "TGCT", "ATGT",
+          "TGTT", "GGGC",
+          "CTTT", "TTTC",
+          "CTTC", "TTCC" };
+        for ( unsigned int i = 0; i < length( seeds ); ++i ) {
+          REQUIRE( seeds.str[i] == truth[i] );
+          for ( unsigned int j = 0; j < k; ++j ) {
+            REQUIRE( position_to_id( seeds, { i, j } ) == i/2 );
+            REQUIRE( position_to_offset( seeds, { i, j } ) == (i%2)*k+j );
+          }
+        }
+      }
+    }
+
+    WHEN( "Seeding by overlapping strategy with length " + std::to_string( k ) )
+    {
+      Records< TStringSet > seeds;
+      seeding( seeds, reads, k, GreedyOverlapping() );
+
+      THEN( "Seed should be correct" )
+      {
+        std::string truth[70] =
+        { "CAAA", "AAAT", "AATA", "ATAA", "TAAG", "AAGA", "AGAT",
+          "AAAT", "AATA", "ATAA", "TAAG", "AAGA", "AGAC", "GACT",
+          "TTTC", "TTCT", "TCTG", "CTGG", "TGGA", "GGAG", "GAGT",
+          "ATAA", "TAAT", "AATA", "ATAT", "TATT", "ATTC", "TTCC",
+          "TTCC", "TCCT", "CCTG", "CTGG", "TGGT", "GGTT", "GTTG",
+          "GTCC", "TCCT", "CCTG", "CTGG", "TGGT", "GGTT", "GTTG",
+          "TGCT", "GCTA", "CTAT", "TATG", "ATGT", "TGTG", "GTGT",
+          "TGTT", "GTTG", "TTGG", "TGGG", "GGGC", "GGCT", "GCTT",
+          "CTTT", "TTTT", "TTTT", "TTTT", "TTTC", "TTCT", "TCTT",
+          "CTTC", "TTCT", "TCTT", "CTTC", "TTCC", "TCCT", "CCTT" };
+        for ( unsigned int i = 0; i < length( seeds ); ++i ) {
+          REQUIRE( seeds.str[i] == truth[i] );
+          for ( unsigned int j = 0; j < k; ++j ) {
+            REQUIRE( position_to_id( seeds, { i, j } ) == i/7 );
+            REQUIRE( position_to_offset( seeds, { i, j } ) == (i%7)+j );
+          }
+        }
+      }
+    }
+  }
 }
