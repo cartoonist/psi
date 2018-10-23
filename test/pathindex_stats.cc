@@ -45,7 +45,9 @@ config_parser( cxxopts::Options& options )
   options.add_options()
     ( "l, seed-length", "Seed length", cxxopts::value< unsigned int >() )
     ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
+    ( "c, context", "Context size", cxxopts::value< unsigned int >() )
     ( "L, no-loci", "Do not include starting loci as SNP", cxxopts::value<bool>()->default_value( "false" ) )
+    ( "F, forward", "Set if the path index is NOT from reversed sequence", cxxopts::value<bool>()->default_value( "false" ) )
     ( "o, output", "Output GAM file", cxxopts::value< string >()->default_value( "pathindex.gam" ) )
     ( "g, graph", "Corresponding graph (vg or xg)", cxxopts::value< string >() )
     ( "h, help", "Print this message and exit" )
@@ -67,68 +69,51 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     throw EXIT_SUCCESS;
   }
 
-  if ( ! result.count( "prefix" ) ) {
+  if ( !result.count( "prefix" ) ) {
     throw cxxopts::OptionParseException( "Index prefix must be specified" );
   }
-  if ( ! readable( result[ "prefix" ].as< string >() ) ) {
+  if ( !readable( result[ "prefix" ].as< string >() ) ) {
     throw cxxopts::OptionParseException( "Index file not found" );
   }
 
-  if ( ! result.count( "graph" ) ) {
+  if ( !result.count( "graph" ) ) {
     throw cxxopts::OptionParseException( "Graph must be specified" );
   }
-  if ( ! readable( result[ "graph" ].as< string >() ) ) {
+  if ( !readable( result[ "graph" ].as< string >() ) ) {
     throw cxxopts::OptionParseException( "Graph file not found" );
   }
 
-  if ( ! result.count( "seed-length" ) ) {
-    throw cxxopts::OptionParseException( "Seed length must be specified" );
+  if ( !result[ "no-loci" ].as< bool >() ) {
+    if ( !result.count( "seed-length" ) ) {
+      throw cxxopts::OptionParseException( "Seed length must be specified" );
+    }
+
+    if ( !result.count( "step-size" ) ) {
+      throw cxxopts::OptionParseException( "Step size must be specified" );
+    }
   }
 
-  if ( ! result.count( "step-size" ) ) {
-    throw cxxopts::OptionParseException( "Step size must be specified" );
+  if ( !result.count( "context" ) ) {
+    throw cxxopts::OptionParseException( "Context size must be specified" );
   }
 
   return result;
 }
 
-  int
-main( int argc, char* argv[] )
-{
-  cxxopts::Options options( argv[0], LONG_DESC );
-  config_parser( options );
-
-  try {
-    auto res = parse_opts( options, argc, argv );
-
-    typedef seqan::Index< Dna5QStringSet< grem::Dependent >, seqan::IndexWotd<> > TIndex;
-    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
-    typedef Mapper< TTraverser > TMapper;
-
-    string graph_path = res[ "graph" ].as< string >();
-    string pindex_prefix = res[ "prefix" ].as< string >();
-    string output = res[ "output" ].as< string >();
-    unsigned int seedlen = res["seed-length"].as< unsigned int >();
-    unsigned int stepsize = res["step-size"].as< unsigned int >();
-    bool noloci = res["no-loci"].as< bool >();
-
-    VarGraph vargraph;
-    ifstream ifs( graph_path, ifstream::in | ifstream::binary );
-    if ( ends_with( graph_path, ".vg" ) ) {
-      vargraph.from_stream( ifs );
-    }
-    else {
-      vargraph.load( ifs );
-    }
-
-    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Forward > pindex;
-    if ( ! pindex.load( pindex_prefix, &vargraph ) ) {
+template< typename TSequenceDirection, typename TGraph, typename TMapper >
+    vector< vg::Alignment >
+  inspect_pathindex( const TGraph* vargraph, TMapper& mapper,
+      const string& pindex_prefix, unsigned int ctx, unsigned int seedlen,
+      unsigned int stepsize, bool noloci )
+  {
+    PathIndex< TGraph, DiskString, grem::FMIndex<>, TSequenceDirection > pindex( ctx, false );
+    if ( !pindex.load( pindex_prefix, vargraph ) ) {
       throw cxxopts::OptionException( "Index file seems corrupted" );
     }
 
-    TMapper mapper( &vargraph, seedlen );
-    if ( ! mapper.open_starts( res["prefix"].as< string >(), seedlen, stepsize ) )
-      throw cxxopts::OptionException( "Index file seems corrupted" );
+    if ( !noloci && !mapper.open_starts( pindex_prefix, seedlen, stepsize ) ) {
+      throw cxxopts::OptionException( "Starting loci file seems corrupted" );
+    }
 
     auto nofpaths = pindex.get_paths_set().size();
     auto totseqlen = getFibre( pindex.index, seqan::FibreText() ).raw_length();
@@ -154,6 +139,52 @@ main( int argc, char* argv[] )
       p.mutable_path()->set_name( pathname );
       paths.push_back( move( p ) );
       p.Clear();
+    }
+
+    return paths;
+  }
+
+  int
+main( int argc, char* argv[] )
+{
+  cxxopts::Options options( argv[0], LONG_DESC );
+  config_parser( options );
+
+  try {
+    auto res = parse_opts( options, argc, argv );
+
+    typedef seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> > TIndex;
+    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
+    typedef Mapper< TTraverser > TMapper;
+
+    string graph_path = res[ "graph" ].as< string >();
+    string pindex_prefix = res[ "prefix" ].as< string >();
+    string output = res[ "output" ].as< string >();
+    unsigned int context = res["context"].as< unsigned int >();
+    bool noloci = res["no-loci"].as< bool >();
+    bool forward = res["forward"].as< bool >();
+    unsigned int seedlen = noloci ? 0 : res["seed-length"].as< unsigned int >();
+    unsigned int stepsize = noloci ? 0 : res["step-size"].as< unsigned int >();
+
+    VarGraph vargraph;
+    ifstream ifs( graph_path, ifstream::in | ifstream::binary );
+    if ( ends_with( graph_path, ".vg" ) ) {
+      vargraph.from_stream( ifs );
+    }
+    else {
+      vargraph.load( ifs );
+    }
+
+    TMapper mapper( &vargraph, seedlen );
+    vector< vg::Alignment > paths;
+
+    if ( forward ) {
+      paths = inspect_pathindex< Forward >( &vargraph, mapper, pindex_prefix, context,
+          seedlen, stepsize, noloci );
+    }
+    else {
+      paths = inspect_pathindex< Reversed >( &vargraph, mapper, pindex_prefix, context,
+          seedlen, stepsize, noloci );
     }
 
     ofstream ofs( output, ofstream::out | ofstream::binary );
