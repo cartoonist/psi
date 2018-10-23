@@ -1109,10 +1109,45 @@ namespace grem {
               : step( st )
             {
               this->bv.swap( _bv );
+              this->initialize();
+            }
+
+            SeedMap( const SeedMap& other )
+              : bv( other.bv ), step( other.step )
+            {
+              this->initialize();
+            }
+
+            SeedMap( SeedMap&& other ) noexcept
+              : step( other.step )
+            {
+              this->bv.swap( other.bv );
+              this->initialize();
+            }
+
+            SeedMap& operator=( const SeedMap& other )
+            {
+              this->bv = other.bv;
+              this->step = other.step;
+              this->initialize();
+            }
+
+            SeedMap& operator=( SeedMap&& other ) noexcept
+            {
+              this->bv.swap( other.bv );
+              this->step = other.step;
+              this->initialize();
+            }
+
+            ~SeedMap( ) = default;
+            /* ====================  METHODS       =================================== */
+              inline void
+            initialize( )
+            {
               sdsl::util::init_support( this->rs, &this->bv );
               sdsl::util::init_support( this->ss, &this->bv );
             }
-            /* ====================  METHODS       =================================== */
+
               inline id_type
             get_reads_id( id_type seeds_id ) const
             {
