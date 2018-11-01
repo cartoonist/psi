@@ -140,7 +140,7 @@ namespace grem {
 
           for ( ; it != edges.end(); ++it )
           {
-            this->states.emplace_back( state );
+            this->states.push_back( state );
             this->states.back().cpos.set_node_id( (*it).to() );
             this->states.back().cpos.set_offset( 0 );
           }
