@@ -61,8 +61,7 @@ signal_handler( int signal )
   std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
             << "---------------------------" << std::endl;
   std::cout << "Elapsed time in traversal phase: "
-            << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
-            << std::endl;
+            << Stat< TMapper >::Type::get_lap_str( "traverse" ) << std::endl;
   auto pos = Stat< TMapper >::Type::get_lastproc_locus().load();
   std::cout << "Current node: (" << pos.node_id << ", " << pos.offset << ")"
             << std::endl;
@@ -91,8 +90,8 @@ template< typename TMapper, typename TSet >
 
     log->info( "All Timers" );
     log->info( "----------" );
-    for ( const auto& timer : Timer::get_timers() ) {
-      log->info( "{}: {} us", timer.first, Timer::get_duration( timer.first ).count() );
+    for ( const auto& timer : Timer<>::get_timers() ) {
+      log->info( "{}: {}", timer.first, Timer<>::get_duration_str( timer.first ) );
     }
   }
 
@@ -121,16 +120,16 @@ template< typename TPathIndex, typename TMapper >
         log->info( "Selecting path {} of region {}...", i, name );
       };
       mapper.pick_paths( pindex, path_num, patched, progress );
-      log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
+      log->info( "Picked paths in {}.", Timer<>::get_duration_str( "pick-paths" ) );
       {
-        auto timer = Timer( "index-paths" );
+        auto timer = Timer<>( "index-paths" );
         log->info( "Indexing the paths..." );
         /* Index the paths. */
         pindex.create_index();
       }
-      log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
+      log->info( "Indexed paths in {}.", Timer<>::get_duration_str( "index-paths" ) );
       {
-        auto timer = Timer( "save-paths" );
+        auto timer = Timer<>( "save-paths" );
         log->info( "Saving path index..." );
         /* Serialize the indexed paths. */
         if ( !paths_index ) {
@@ -139,7 +138,7 @@ template< typename TPathIndex, typename TMapper >
           log->warn( "Specified path index file is not writable. Skipping..." );
         }
       }
-      log->info( "Saved path index in {} us.", Timer::get_duration( "save-paths" ).count() );
+      log->info( "Saved path index in {}.", Timer<>::get_duration_str( "save-paths" ) );
     }
   }
 
@@ -182,8 +181,8 @@ template< typename TReadsIndexSpec >
       log->info( "Selecting starting loci..." );
       /* Locate starting loci. */
       mapper.add_all_loci( pindex.get_paths_set(), seed_len, step_size );
-      log->info( "Selected starting loci in {} us.",
-          Timer::get_duration( "add-starts" ).count() );
+      log->info( "Selected starting loci in {}.",
+          Timer<>::get_duration_str( "add-starts" ) );
       log->info( "Saving starting loci..." );
       /* Saving starting loci. */
       if ( ! mapper.save_starts( paths_index_file, seed_len, step_size ) ) {
@@ -216,23 +215,23 @@ template< typename TReadsIndexSpec >
     Records< TReadsStringSet > seeds_chunk;
     log->info( "Finding seeds..." );
     {
-      auto timer = Timer( "seed-finding" );
+      auto timer = Timer<>( "seed-finding" );
       while (true) {
         log->info( "Loading the next reads chunk..." );
         {
-          auto timer = Timer( "load-chunk" );
+          auto timer = Timer<>( "load-chunk" );
           /* Load a chunk from reads set. */
           readRecords( reads_chunk, reads_iss, chunk_size );
           if ( length( reads_chunk ) == 0 ) break;
         }
-        log->info( "Fetched {} reads in {} us.", length( reads_chunk ),
-            Timer::get_duration( "load-chunk" ).count() );
+        log->info( "Fetched {} reads in {}.", length( reads_chunk ),
+            Timer<>::get_duration_str( "load-chunk" ) );
         /* Seed current chunk. */
         {
-          auto timer = Timer( "seeding" );
+          auto timer = Timer<>( "seeding" );
           seeding( seeds_chunk, reads_chunk, seed_len, NonOverlapping() );
         }
-        log->info( "Seeding done in {} us.", Timer::get_duration( "seeding" ).count() );
+        log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         /* Give the current chunk to the mapper. */
         mapper.set_reads( std::move( seeds_chunk ) );
         log->info( "Finding seeds on paths..." );
@@ -240,17 +239,17 @@ template< typename TReadsIndexSpec >
         /* Find seeds on genome-wide paths. */
         if ( path_num != 0 ) {
           mapper.seeds_on_paths( pindex, write_callback );
-          log->info( "Found seed on paths in {} us.",
-              Timer::get_duration( "paths-seed-find" ).count() );
+          log->info( "Found seed on paths in {}.",
+              Timer<>::get_duration_str( "paths-seed-find" ) );
           log->info( "Total number of seeds found on paths: {}", found - pre_found );
         }
         log->info( "Traversing..." );
         /* Find seeds on variation graph by traversing starting loci. */
         mapper.traverse( write_callback );
-        log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
+        log->info( "Traversed in {}.", Timer<>::get_duration_str( "traverse" ) );
       }
     }
-    log->info( "Found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );
+    log->info( "Found seed in {}.", Timer<>::get_duration_str( "seed-finding" ) );
     report( mapper, covered_reads, found );
   }
 

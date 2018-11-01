@@ -48,7 +48,7 @@ namespace grem
    *  Collect statistics from a `Mapper` class instance(s) in running time.
    */
   template< typename TSpec = void >
-    class MapperStat : public Timer
+    class MapperStat : public Timer<>
     {
       public:
         /* ====================  MEMBER TYPES  ======================================= */
@@ -158,6 +158,7 @@ namespace grem
     {
       public:
         /* ====================  MEMBER TYPES  ======================================= */
+        typedef Timer<> timer_type;
         struct Coordinates {
           VarGraph::nodeid_type node_id;
           VarGraph::offset_type offset;
@@ -166,15 +167,29 @@ namespace grem
         MapperStat( const std::string& ) { }
         ~MapperStat() { }
         /* ====================  METHODS       ======================================= */
-        static inline std::chrono::microseconds get_duration( const std::string& )
+        constexpr static inline timer_type::duration_type get_duration( const std::string& )
         {
-          return std::chrono::duration_cast< std::chrono::microseconds >(
-              Timer::clock_type::duration::zero() );
+          return timer_type::zero_duration;
         }
-        static inline std::chrono::microseconds get_lap( const std::string& )
+        constexpr static inline timer_type::rep_type get_duration_rep( const std::string& )
         {
-          return std::chrono::duration_cast< std::chrono::microseconds >(
-              Timer::clock_type::duration::zero() );
+          return timer_type::zero_duration_rep;
+        }
+        constexpr static inline const char* get_duration_str( const std::string& )
+        {
+          return "0";
+        }
+        constexpr static inline timer_type::duration_type get_lap( const std::string& )
+        {
+          return timer_type::zero_duration;
+        }
+        constexpr static inline timer_type::rep_type get_lap_rep( const std::string& )
+        {
+          return timer_type::zero_duration_rep;
+        }
+        constexpr static inline const char* get_lap_str( const std::string& )
+        {
+          return "0";
         }
         /* ====================  ACCESSORS     ======================================= */
           static inline std::atomic< Coordinates >&
