@@ -97,6 +97,7 @@ namespace grem{
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
         typedef typename graph_type::nodeid_type value_type;
+        typedef typename graph_type::offset_type offset_type;
         typedef typename nodes_type::size_type size_type;
         typedef ptrdiff_t difference_type;
         typedef typename nodes_type::const_iterator const_iterator;
@@ -104,6 +105,8 @@ namespace grem{
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* vargraph;
         nodes_type nodes;
+        offset_type left;   /**< @brief The length of the first node sequence */
+        offset_type right;  /**< @brief The length of the last node sequence */
         seqsize_type seqlen;
         /* Loaded on demand. */
         string_type seq;
@@ -115,23 +118,28 @@ namespace grem{
       public:
         /* ====================  LIFECYCLE     ======================================= */
         Path( const graph_type* g )
-          : vargraph( g ), seqlen( 0 ), initialized( false )
+          : vargraph( g ), left( 0 ), right( 0 ), seqlen( 0 ), initialized( false )
         { }
 
-        Path( const graph_type* g, nodes_type&& p )
+        /**
+         *  XXX NOTE: Be careful of assigning `left` and `right` offset. The zero value
+         *            means all sequence of first node or last one is included in the
+         *            path. Any value < len(node) indicates the lenght of the suffix or
+         *            the prefix of the sequence of first or last node respectively.
+         *            They are NOT sequence offsets of the first or last node.
+         */
+        Path( const graph_type* g, nodes_type p, offset_type l=0, offset_type r=0 )
           : Path( g )
         {
-          this->set_nodes( std::move( p ) );
+          this->set_nodes( std::move( p ), l, r );
         }
-
-        Path( const graph_type* g, const nodes_type& p )
-          : Path( g, nodes_type( p ) )
-        { }
 
         Path( const Path& other )
         {
           this->vargraph = other.vargraph;
           this->nodes = other.nodes;
+          this->left = other.left;
+          this->right = other.right;
           this->seqlen = other.seqlen;
           this->seq = other.seq;
           this->initialized = other.initialized;
@@ -144,6 +152,8 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = std::move( other.nodes );
+          this->left = other.left;
+          this->right = other.right;
           this->seqlen = other.seqlen;
           this->seq = std::move( other.seq );
           this->initialized = other.initialized;
@@ -151,6 +161,7 @@ namespace grem{
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
           sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
           // Free up memory first of `other`.
+          // :TODO:Sun Oct 21 23:33:\@cartoonist: Clear does not free up memory!
           sdsl::util::clear( other.rs_node_breaks );
           sdsl::util::clear( other.ss_node_breaks );
         }
@@ -159,6 +170,8 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = other.nodes;
+          this->left = other.left;
+          this->right = other.right;
           this->seqlen = other.seqlen;
           this->seq = other.seq;
           this->initialized = other.initialized;
@@ -172,6 +185,8 @@ namespace grem{
         {
           this->vargraph = other.vargraph;
           this->nodes = std::move( other.nodes );
+          this->left = other.left;
+          this->right = other.right;
           this->seqlen = other.seqlen;
           this->seq = std::move( other.seq );
           this->initialized = other.initialized;
@@ -215,6 +230,17 @@ namespace grem{
         }  /* -----  end of method get_nodes  ----- */
 
         /**
+         *  @brief  get the node offset of the head node (front node).
+         */
+          inline offset_type
+        get_head_offset( ) const
+        {
+          if ( this->left == 0 ) return 0;
+          assert( !this->empty() );  /* Left offset of an empty path should be always 0 */
+          return this->vargraph->node_length( this->front() ) - this->left;
+        }
+
+        /**
          *  @brief  getter function for seqlen.
          */
           inline seqsize_type
@@ -224,6 +250,48 @@ namespace grem{
         }  /* -----  end of method get_sequence_len  ----- */
 
         /**
+         *  @brief  get left offset value.
+         */
+          inline offset_type
+        get_left_len( ) const
+        {
+          assert( !this->empty() );
+          return this->left ? this->left : this->vargraph->node_length( this->front() );
+        }
+
+        /**
+         *  @brief  get right offset value.
+         */
+          inline offset_type
+        get_right_len( ) const
+        {
+          assert( !this->empty() );
+          return this->right ? this->right : this->vargraph->node_length( this->back() );
+        }
+
+        /**
+         *  @brief  get the sequence length of the head node (front node).
+         */
+          inline seqsize_type
+        get_seqlen_head( ) const
+        {
+          if ( this->empty() ) return 0;
+          if ( this->size() == 1 ) return this->seqlen;
+          return this->get_left_len();
+        }
+
+        /**
+         *  @brief  get the sequence length of the tail node (back node).
+         */
+          inline seqsize_type
+        get_seqlen_tail( ) const
+        {
+          if ( this->empty() ) return 0;
+          if ( this->size() == 1 ) return this->seqlen;
+          return this->get_right_len();
+        }
+
+        /**
          *  @brief  getter function for seq.
          *
          *  @note The sequence is constructed on demand by calling this function.
@@ -231,7 +299,7 @@ namespace grem{
           inline const string_type&
         get_sequence( )
         {
-          if ( this->seq.length() == 0 ) this->seq = sequence( *this );
+          if ( this->seq.empty() ) this->seq = sequence( *this );
           return this->seq;
         }  /* -----  end of method get_sequence  ----- */
 
@@ -306,24 +374,73 @@ namespace grem{
         }  /* -----  end of method set_vargraph  ----- */
 
           inline void
-        set_nodes( nodes_type&& value );
-
-        /**
-         *  @brief  setter function for nodes.
-         */
-          inline void
-        set_nodes( const nodes_type& value )
+        set_left_by_len( offset_type value )
         {
-          this->set_nodes( nodes_type( value ) );
-        }  /* -----  end of method set_nodes  ----- */
+          if ( value < 0 ) throw std::runtime_error( "Invalid left offset value" );
+          if ( this->empty() ) {
+            throw std::runtime_error( "Cannot set offset for an empty path" );
+          }
+
+          offset_type front_len = this->vargraph->node_length( this->front() );
+          if ( value > front_len || value == 0 ) value = front_len;
+          if ( this->size() == 1 && front_len - value >= this->get_right_len() ) {
+            throw std::runtime_error( "left exceeds right on the one-node path" );
+          }
+          std::ptrdiff_t diff = value - this->get_left_len();
+          if ( diff == 0 ) return;
+          this->seqlen += diff;
+          if ( !this->seq.empty() ) {
+            if ( diff < 0 ) {
+              this->seq.erase( 0, -diff );
+            }
+            else {
+              auto nstr = this->vargraph->node_sequence( this->front() );
+              this->seq.insert( 0, nstr.substr( front_len - value, diff ) );
+            }
+          }
+          this->left = ( value == front_len ) ? 0 : value;
+          this->initialized = false;
+        }
+
+          inline void
+        set_right_by_len( offset_type value )
+        {
+          if ( value < 0 ) throw std::runtime_error( "Invalid right offset value" );
+          if ( this->empty() ) {
+            throw std::runtime_error( "Cannot set offset for an empty path" );
+          }
+
+          offset_type back_len = this->vargraph->node_length( this->back() );
+          if ( value > back_len || value == 0 ) value = back_len;
+          if ( this->size() == 1 && value <= this->get_head_offset() ) {
+            throw std::runtime_error( "right exceeds left on the one-node path" );
+          }
+          std::ptrdiff_t diff = value - this->get_right_len();
+          if ( diff == 0 ) return;
+          this->seqlen += diff;
+          if ( !this->seq.empty() ) {
+            if ( diff < 0 ) {
+              this->seq.resize( this->seqlen );
+            }
+            else {
+              auto nstr = this->vargraph->node_sequence( this->back() );
+              this->seq += nstr.substr( this->right, diff );  /**< @brief `right` is always non-zero here */
+            }
+          }
+          this->right = ( value == back_len ) ? 0 : value;
+          this->initialized = false;
+        }
+
+          inline void
+        set_nodes( nodes_type value, offset_type l=0, offset_type r=0 );
 
         template< typename TIter >
             inline void
-          set_nodes( TIter begin, TIter end )
+          set_nodes( TIter begin, TIter end, offset_type l=0, offset_type r=0 )
           {
             nodes_type nd( end - begin );
             std::copy( begin, end, nd.begin() );
-            this->set_nodes( std::move( nd ) );
+            this->set_nodes( std::move( nd ), l, r );
           }
         /* ====================  METHODS       ======================================= */
         /**
@@ -350,12 +467,53 @@ namespace grem{
         push_back( value_type const& nid )
         {
           assert( this->vargraph != nullptr );
+          if ( this->right != 0 ) this->set_right_by_len( 0 );
           this->nodes.push_back( nid );
           this->seqlen += this->vargraph->node_length( nid );
-          if ( this->seq.length() != 0 ) {
+          if ( !this->seq.empty() ) {
             this->seq += this->vargraph->node_sequence( nid );
           }
           this->initialized = false;
+        }
+
+        /**
+         *  @brief  Append a new node to the back of the path.
+         *
+         *  @param  nid Node ID.
+         *  @param  noff Node offset.
+         *
+         *  XXX NOTE: When appending the first node `noff` indicates the first locus
+         *  should be included in the path. So, `noff == 0` will append all the node
+         *  sequence to the path (i.e. `left == 0`). However, for further appending
+         *  `noff` points to "one locus after" the locus need to be appended. In this
+         *  case, `noff == 0` or `noff == len` will also append the whole node to the
+         *  path (i.e. `right == 0`); where `len` is the sequence length of node `nid`.
+         */
+          inline void
+        push_back( value_type const& nid, offset_type noff )
+        {
+          assert( this->vargraph != nullptr );
+          bool first = this->empty();
+          offset_type nlen = this->vargraph->node_length( nid );
+          if ( noff < 0 ) noff = 0;
+          this->initialized = false;
+          if ( first ) {
+            if ( noff >= nlen ) noff = nlen - 1;
+            this->nodes.push_back( nid );
+            this->seqlen += nlen - noff;
+            this->left = noff ? seqlen : 0;
+            assert( this->seq.empty() );
+          }
+          else {
+            if ( this->right != 0 ) this->set_right_by_len( 0 );
+            if ( noff > nlen || noff == 0 ) noff = nlen;
+            this->nodes.push_back( nid );
+            this->seqlen += noff;
+            this->right = ( noff == nlen ) ? 0 : noff;
+            if ( !this->seq.empty() ) {
+              this->seq += this->vargraph->node_sequence( nid ).substr( 0, noff );
+            }
+          }
         }
 
           inline void
@@ -368,6 +526,8 @@ namespace grem{
         clear( )
         {
           grem::clear( this->nodes );
+          this->left = 0;
+          this->right = 0;
           this->seqlen = 0;
           this->seq.clear();
           sdsl::util::clear( this->bv_node_breaks );
@@ -385,9 +545,10 @@ namespace grem{
           inline void
         serialize( std::ostream& out ) const
         {
-          if ( ! this->is_initialized() )
-            throw std::runtime_error( "Path must be initialized to be serialized" );
+          ASSERT( this->is_initialized() );  // Path must be initialized to be serialized
           grem::serialize( out, this->nodes );
+          grem::serialize( out, static_cast< uint64_t >( this->left ) );
+          grem::serialize( out, static_cast< uint64_t >( this->right ) );
           this->bv_node_breaks.serialize( out );
         }
 
@@ -403,8 +564,14 @@ namespace grem{
         load( std::istream& in )
         {
           nodes_type tmp;
+          offset_type l, r;
+          uint64_t offset;
           deserialize( in, tmp );
-          this->set_nodes( std::move( tmp ) );
+          deserialize( in, offset );
+          l = offset;
+          deserialize( in, offset );
+          r = offset;
+          this->set_nodes( std::move( tmp ), l, r );
           this->bv_node_breaks.load( in );
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
           sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
@@ -490,9 +657,14 @@ namespace grem{
         {
           assert( this->size() != 0 );
           sdsl::util::assign( this->bv_node_breaks, sdsl::bit_vector( this->seqlen, 0 ) );
-          seqsize_type cursor = 0;
-          for ( auto it = this->begin(); it != this->end(); ++it ) {
-            cursor += this->vargraph->node_length( *it );
+          seqsize_type cursor = this->get_seqlen_head();
+          this->bv_node_breaks[ cursor - 1 ] = 1;
+          if ( this->size() > 1 ) {
+            for ( auto it = this->begin()+1; it != this->end()-1; ++it ) {
+                cursor += this->vargraph->node_length( *it );
+                this->bv_node_breaks[ cursor - 1 ] = 1;
+              }
+            cursor += this->get_seqlen_tail();
             this->bv_node_breaks[ cursor - 1 ] = 1;
           }
         }
@@ -518,6 +690,8 @@ namespace grem{
         assign( this->nodes, other.nodes );
         grem::clear( other.nodes );
 
+        this->left = other.left;
+        this->right = other.right;
         this->seqlen = other.seqlen;
         this->seq = std::move( other.seq );
         this->initialized = other.initialized;
@@ -545,6 +719,8 @@ namespace grem{
 
         this->vargraph = other.vargraph;
         assign( this->nodes, other.nodes );
+        this->left = other.left;
+        this->right = other.right;
         this->seqlen = other.seqlen;
         this->seq = other.seq;
         this->initialized = other.initialized;
@@ -559,7 +735,7 @@ namespace grem{
    */
   template< typename TGraph, typename TSpec >
       inline void
-    Path< TGraph, TSpec >::set_nodes( nodes_type&& value )
+    Path< TGraph, TSpec >::set_nodes( nodes_type value, offset_type l, offset_type r )
     {
       this->clear();
       if ( value.empty() ) return;
@@ -567,7 +743,9 @@ namespace grem{
       assert( this->vargraph != nullptr );
 
       this->nodes = std::move( value );
-      for ( auto&& n : this->nodes ) this->seqlen += this->vargraph->node_length( n );
+      for ( auto n : this->nodes ) this->seqlen += this->vargraph->node_length( n );
+      this->set_left_by_len( l );
+      this->set_right_by_len( r );
     }  /* -----  end of method set_nodes  ----- */
 
   template< typename TGraph, typename TSpec >
@@ -576,15 +754,14 @@ namespace grem{
     {
       assert( this->vargraph != nullptr );
 
-      if ( this->nodes.empty() ) return;
+      if ( this->empty() ) return;
 
-      auto&& last_node_len = this->vargraph->node_length( this->nodes.back() );
-      assert( this->seqlen >= last_node_len );
-      this->seqlen -= last_node_len;
+      this->seqlen -= this->get_seqlen_tail();
       this->nodes.pop_back();
       this->initialized = false;
-
-      if ( this->seq.length() != 0 ) this->seq.resize( this->seqlen );
+      if ( !this->seq.empty() ) this->seq.resize( this->seqlen );
+      this->right = 0;
+      if ( this->empty() ) this->left = 0;
     }
 
   template< typename TGraph, typename TSpec >
@@ -595,14 +772,17 @@ namespace grem{
 
       if ( this->nodes.empty() ) return;
 
-      auto&& first_node_len = this->vargraph->node_length( this->nodes.front() );
-      assert( this->seqlen >= first_node_len );
-      this->seqlen -= first_node_len;
+      offset_type diff = this->get_seqlen_head();
+      this->seqlen -= diff;
       this->nodes.pop_front();
       this->initialized = false;
-
-      if ( this->seq.length() != 0 ) this->seq = this->seq.substr( first_node_len );
+      if ( !this->seq.empty() ) this->seq = this->seq.substr( diff );
+      this->left = 0;
+      if ( this->empty() ) this->right = 0;
     }
+
+  template< typename TPathSpec >
+    class is_generic_path : public std::true_type {};
 
   /* END OF Path member functions  --------------------------------------------- */
 
@@ -732,6 +912,9 @@ namespace grem{
         /* ====================  DATA MEMBERS  ======================================= */
         nodes_set_type nodes_set;
     };  /* -----  end of specialized template class Path  ----- */
+
+  template< >
+    class is_generic_path< Micro > : public std::false_type {};
 
   /**
    *  @brief  Path specialized template class for representing a Haplotype in DAG graphs.
@@ -1010,7 +1193,7 @@ namespace grem{
         {
           this->nodes.load( in );
           this->initialize();
-          this->last_node_rank = this->ss_nodes( this->get_nodes().size() ) + 1;
+          this->last_node_rank = this->ss_nodes( this->size() ) + 1;
         }
 
           inline void
@@ -1086,6 +1269,9 @@ namespace grem{
           return this->nodes[ rank - 1 ] == 1;
         }
     };  /* -----  end of specialized template class Path  ----- */
+
+  template< >
+    class is_generic_path< Haplotype > : public std::false_type {};
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef PATH_BASE_H__  ----- */
