@@ -282,10 +282,13 @@ namespace grem {
           try {
             context_type c;
             size_type dir;
+            /* Context */
             deserialize( ifs, c );
+            if ( this->context == 0 ) this->context = c;
+            else if ( this->context != c ) return false;
+            /* Direction */
             deserialize( ifs, dir );
-            if ( dir != std::is_same< TSequenceDirection, Forward >::value ||
-                c != this->context ) {
+            if ( dir != std::is_same< TSequenceDirection, Forward >::value ) {
               return false;
             }
             this->paths_set.load( ifs, vargraph );

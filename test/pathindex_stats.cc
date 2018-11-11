@@ -45,7 +45,7 @@ config_parser( cxxopts::Options& options )
   options.add_options()
     ( "l, seed-length", "Seed length", cxxopts::value< unsigned int >() )
     ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
-    ( "c, context", "Context size", cxxopts::value< unsigned int >() )
+    ( "t, context", "Context size", cxxopts::value< unsigned int >()->default_value( "0" ) )
     ( "L, no-loci", "Do not include starting loci as SNP", cxxopts::value<bool>()->default_value( "false" ) )
     ( "F, forward", "Set if the path index is NOT from reversed sequence", cxxopts::value<bool>()->default_value( "false" ) )
     ( "o, output", "Output GAM file", cxxopts::value< string >()->default_value( "pathindex.gam" ) )
@@ -93,10 +93,6 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     }
   }
 
-  if ( !result.count( "context" ) ) {
-    throw cxxopts::OptionParseException( "Context size must be specified" );
-  }
-
   return result;
 }
 
@@ -119,6 +115,7 @@ template< typename TSequenceDirection, typename TGraph, typename TMapper >
     auto totseqlen = getFibre( pindex.index, seqan::FibreText() ).raw_length();
     cout << "Number of paths: " << nofpaths << endl;
     cout << "Total sequence length: " << totseqlen << endl;
+    cout << "Context size: " << pindex.get_context() << endl;
     cout << endl;
 
     vector< vg::Alignment > paths;
