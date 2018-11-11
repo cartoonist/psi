@@ -1202,26 +1202,27 @@ namespace grem {
       try {
         while ( true ) {
           marked = 0;
-          if ( 0 < length( frontier ) ) marked = frontier.get_nodes().back();
+          if ( !frontier.empty() ) marked = frontier.get_nodes().back();
           // Bootstrap.
           extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
           // Check the next patch distance to merge with previous patch if is less than k.
-          if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
+          if ( !patch.empty() && iter[ frontier.get_nodes() ] ) {
+            patch.set_right_by_len( k - 1 );
             paths.push_back( std::move( patch ) );
             clear( patch );
-            rtrim_front_by_len( frontier, k );
+            rtrim_front_by_len( frontier, k, true );
           }
-          else if ( length( patch ) > 0 ) {
+          else if ( !patch.empty() ) {
             // Nodes from first to the `marked` are already added.
             trim_front( frontier, marked );
             marked = 0;
             extend_to_k( frontier, iter, k );
           }
-          if ( length( patch ) == 0 ) {
+          if ( patch.empty() ) {
             // Search for a patch of length k that is not covered by visited paths of `iter`.
             while ( iter[ frontier.get_nodes() ] ) {
               add_node( frontier, *iter );
-              ltrim_front_by_len( frontier, k );
+              ltrim_front_by_len( frontier, k, true );
               ++iter;
             }
           }
