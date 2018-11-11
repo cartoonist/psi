@@ -1204,7 +1204,9 @@ namespace grem {
           marked = 0;
           if ( !frontier.empty() ) marked = frontier.get_nodes().back();
           // Bootstrap.
-          extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
+          if ( !marked ) extend_to_k( frontier, iter, k );
+          else extend_to_k( frontier, iter,
+              2*k + frontier.get_sequence_len() - frontier.get_seqlen_tail() );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( !patch.empty() && iter[ frontier.get_nodes() ] ) {
             patch.set_right_by_len( k - 1 );
