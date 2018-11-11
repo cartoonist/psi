@@ -846,11 +846,18 @@ namespace grem {
     {
       TGraph const* vargraph = path.get_vargraph();
       typename TGraph::rank_type rank = 1;
-      for ( const auto& node_id : path.get_nodes() ) {
-        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        typename TGraph::offset_type label_len;
+        typename TGraph::offset_type noff = 0;
+        if ( it == path.begin() ) {
+          label_len = path.get_seqlen_head();
+          noff = path.get_head_offset();
+        }
+        else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
+        else label_len = vargraph->node_length( *it );
         vg::Mapping* mapping = vgpath->add_mapping();
-        mapping->mutable_position()->set_node_id( node_id );
-        mapping->mutable_position()->set_offset( 0 );
+        mapping->mutable_position()->set_node_id( *it );
+        mapping->mutable_position()->set_offset( noff );
         vg::Edit* edit = mapping->add_edit();
         edit->set_from_length( label_len );
         edit->set_to_length( label_len );
@@ -866,20 +873,39 @@ namespace grem {
       TGraph const* vargraph = path.get_vargraph();
       typename TGraph::rank_type rank = 1;
 
-      auto comp =
-        [vargraph]( const auto& elem, const auto& value ) {
+      auto comp_id =
+        [vargraph]( vg::Position const& elem, vg::Position const& value ) {
           return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value );
         };
 
-      for ( const auto& node_id : path.get_nodes() ) {
-        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
-        vg::Mapping* mapping = vgpath->add_mapping();
-        mapping->mutable_position()->set_node_id( node_id );
-        mapping->mutable_position()->set_offset( 0 );
+      auto comp_both =
+        [vargraph]( vg::Position const& elem, vg::Position const& value ) {
+          return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value ) ||
+            ( vargraph->id_to_rank( elem ) == vargraph->id_to_rank( value ) &&
+              elem.offset() < value.offset() );
+        };
 
-        auto nextedit = std::lower_bound( loci.begin(), loci.end(), node_id, comp );
-        auto lastedit = std::upper_bound( loci.begin(), loci.end(), node_id, comp );
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        typename TGraph::offset_type label_len = vargraph->node_length( *it );
         typename TGraph::offset_type coffset = 0;
+        if ( it == path.begin() ) coffset = path.get_head_offset();
+        else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
+        vg::Mapping* mapping = vgpath->add_mapping();
+        mapping->mutable_position()->set_node_id( *it );
+        mapping->mutable_position()->set_offset( coffset );
+
+        vg::Position cpos;
+        cpos.set_node_id( *it );
+        cpos.set_offset( coffset );
+        std::vector< vg::Position>::const_iterator nextedit, lastedit;
+        if ( it == path.end()-1 ) {
+          nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_id );
+          lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_both );
+        }
+        else {
+          nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_both );
+          lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_id );
+        }
         typename TGraph::offset_type toffset =
               nextedit != lastedit ?
               (*nextedit).offset() :
