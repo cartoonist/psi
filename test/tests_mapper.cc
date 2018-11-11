@@ -48,7 +48,7 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
     Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a Mapper" )
     {
-      mapper.pick_paths( pindex, nof_paths );
+      mapper.pick_paths( pindex, nof_paths, false );
       REQUIRE( length( indexText( pindex.index ) ) == nof_paths );
       THEN( "The paths should be unique" )
       {
@@ -97,7 +97,7 @@ SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
       auto truth_itr = truth.begin();
 
       Mapper< TTraverser > mapper( &vargraph, k );
-      Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
+      Dna5QPathIndex< VarGraph, TIndexSpec > pindex( k, false );
       mapper.pick_paths( pindex, nof_paths );
 
       THEN( "Starting loci must have at least one uncovered " + std::to_string( k ) + "-path" )
@@ -115,7 +115,7 @@ SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
       Mapper< TTraverser > mapper( &vargraph, k );
-      Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
+      Dna5QPathIndex< VarGraph, TIndexSpec > pindex( k, false );
       mapper.pick_paths( pindex, nof_paths );
 
       THEN( "All loci should be covered by path index" )

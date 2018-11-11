@@ -407,7 +407,6 @@ namespace grem
             paths.reserve( n * this->vargraph->path_count );
             seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph );
             auto context = paths.get_context();
-            if ( context == 0 ) context = this->seed_len;
             for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );

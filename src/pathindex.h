@@ -76,6 +76,12 @@ namespace grem {
         {
           return this->context;
         }
+        /* ====================  MUTATORS      ======================================= */
+          inline void
+        set_context( context_type value )
+        {
+          this->context = value;
+        }
         /* ====================  METHODS       ======================================= */
           inline void
         clear( )
