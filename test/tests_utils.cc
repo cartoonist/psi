@@ -417,7 +417,7 @@ SCENARIO( "Find a value in an integer vector by reversal iteration", "[utils]" )
   GIVEN( "A high-dimensional `enc_vector` storing incremental integers" )
   {
     size_t len = 1000000;
-    std::vector< int > v(len);
+    std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
     sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
 
@@ -458,10 +458,10 @@ SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
   GIVEN( "A `enc_vector` storing incremental integers and an existing query" )
   {
     size_t len = 1000000;
-    std::vector< int > v(len);
+    std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
     sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
-    std::vector< int > query = { 999980, 999981, 999982, 999983, 999984, 999985 };
+    std::vector< unsigned int > query = { 999980, 999981, 999982, 999983, 999984, 999985 };
     auto lc = rfind( cv, *query.rbegin() );
 
     WHEN( "Check the equality by using reversed iteration" )
@@ -478,10 +478,10 @@ SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
   GIVEN( "A `enc_vector` storing incremental integers and an non-existing query" )
   {
     std::size_t len = 10;
-    std::vector< int > v(len);
+    std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i + 2;
     sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
-    std::vector< int > query = { 0, 1, 2 };
+    std::vector< unsigned int > query = { 0, 1, 2 };
     auto lc = rfind( cv, *query.rbegin() );
 
     WHEN( "Check the equality by using reversed iteration" )

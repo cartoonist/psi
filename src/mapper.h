@@ -55,6 +55,8 @@ namespace grem
         struct Coordinates {
           VarGraph::nodeid_type node_id;
           VarGraph::offset_type offset;
+          Coordinates( VarGraph::nodeid_type nid, VarGraph::offset_type noff )
+            : node_id( nid ), offset( noff ) { }
         };
         /* ====================  LIFECYCLE     ======================================= */
         /**
@@ -119,7 +121,7 @@ namespace grem
           static inline void
         set_lastproc_locus( const vg::Position& value )
         {
-          get_lastproc_locus().store( { value.node_id(), value.offset() } );
+          get_lastproc_locus().store( Coordinates( value.node_id(), value.offset() ) );
         }  /* -----  end of method set_lastproc_locus  ----- */
 
         /**

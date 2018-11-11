@@ -52,10 +52,10 @@ namespace grem
   {
     public:
       // typedefs
-      typedef vg::Node node_type;                               /**< @brief Node type. */
-      typedef decltype( vg::Node().id() ) nodeid_type;          /**< @brief Node ID type. */
-      typedef std::size_t rank_type;                            /**< @brief Node ID type. */
-      typedef decltype( vg::Position().offset() ) offset_type;  /**< @brief Node offset type. */
+      typedef vg::Node node_type;                                               /**< @brief Node type. */
+      typedef std::make_unsigned_t< decltype( vg::Node().id() ) > nodeid_type;  /**< @brief Node ID type. */
+      typedef std::size_t rank_type;                                            /**< @brief Node ID type. */
+      typedef decltype( vg::Position().offset() ) offset_type;                  /**< @brief Node offset type. */
 
       using xg::XG::XG;
 
