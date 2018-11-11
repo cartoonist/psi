@@ -51,7 +51,6 @@ namespace grem {
         /* ====================  DATA MEMBERS  ======================================= */
         container_type paths_set;
         stringset_type string_set;
-        /* The extreme nodes' sequence will be trimmed to the length of `context-1`. */
         context_type context;
         bool lazy_mode;
       public:
@@ -85,30 +84,6 @@ namespace grem {
           this->paths_set.clear();
           seqan::clear( this->string_set );
         }
-        /**
-         *  @brief  Get the shift required to add to trimmed position to get original one.
-         *
-         *  @param  pos Position in the path set.
-         *  @return the shift required to add to the position in the trimmed path in
-         *          order to get the position in the original path.
-         *
-         *  The parameter `pos` indicates one path in the path set. If `context` is
-         *  non-zero the path sequence in the string set is left-trimmed by the length
-         *  of `length( sequence( path.nodes[0] ) ) - context + 1`. So position found in
-         *  the trimmed path sequence needs to be converted to the original position in
-         *  the path by adding this amount.
-         */
-          inline unsigned int
-        get_context_shift( typename seqan::SAValue< index_type >::Type const& pos ) const
-        {
-          assert( pos.i1 < this->paths_set.size() );
-          auto&& the_path = this->paths_set[ pos.i1 ];
-          auto flen = the_path.get_vargraph()->node_length( the_path.get_nodes()[0] );
-          if ( this->context != 0 && flen + 1 > this->context ) {
-            return flen - this->context + 1;
-          }
-          return 0;
-        }  /* -----  end of method get_context_shift  ----- */
 
         /**
          *  @brief  Load the path index from file.
@@ -273,12 +248,11 @@ namespace grem {
           add_path_sequence( TIter begin, TIter end )
           {
             for ( ; begin != end; ++begin ) {
-              //TText path_str( sequence( *begin, TSequenceDirection(), this->context ) );
+              //TText path_str( sequence( *begin, TSequenceDirection() ) );
               // :TODO:Mon Mar 06 13:00:\@cartoonist: quality score?
               //char fake_qual = 'I';
               //assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
-              appendValue( this->string_set,
-                  sequence( *begin, TSequenceDirection(), this->context ) );
+              appendValue( this->string_set, sequence( *begin, TSequenceDirection() ) );
             }
             this->index = index_type( this->string_set );
           }
@@ -376,9 +350,8 @@ namespace grem {
     position_to_offset( PathIndex< TGraph, TText, TIndexSpec, Forward > const& pindex,
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Forward >::index_type > const& pos )
     {
-      auto context_shift = pindex.get_context_shift( pos );
       assert( pos.i1 < pindex.get_paths_set().size() );
-      return position_to_offset( pindex.get_paths_set()[ pos.i1 ], context_shift + pos.i2 );
+      return position_to_offset( pindex.get_paths_set()[ pos.i1 ], pos.i2 );
     }
 
   /**
@@ -397,9 +370,8 @@ namespace grem {
     {
       auto real_pos = pos;
       real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
-      auto context_shift = pindex.get_context_shift( real_pos );
       assert( real_pos.i1 < pindex.get_paths_set().size() );
-      return position_to_offset( pindex.get_paths_set()[ real_pos.i1 ], context_shift + real_pos.i2 );
+      return position_to_offset( pindex.get_paths_set()[ real_pos.i1 ], real_pos.i2 );
     }
 
   template< typename TGraph, typename TText, typename TIndexSpec >
@@ -407,9 +379,8 @@ namespace grem {
     position_to_id( PathIndex< TGraph, TText, TIndexSpec, Forward > const& pindex,
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Forward >::index_type > const& pos )
     {
-      auto context_shift = pindex.get_context_shift( pos );
       assert( pos.i1 < pindex.get_paths_set().size() );
-      return position_to_id( pindex.get_paths_set()[ pos.i1 ], context_shift + pos.i2 );
+      return position_to_id( pindex.get_paths_set()[ pos.i1 ], pos.i2 );
     }
 
   /**
@@ -428,9 +399,8 @@ namespace grem {
     {
       auto real_pos = pos;
       real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
-      auto context_shift = pindex.get_context_shift( real_pos );
       assert( real_pos.i1 < pindex.get_paths_set().size() );
-      return position_to_id( pindex.get_paths_set()[ real_pos.i1 ], context_shift + real_pos.i2 );
+      return position_to_id( pindex.get_paths_set()[ real_pos.i1 ], real_pos.i2 );
     }
 
   /**
