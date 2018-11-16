@@ -29,6 +29,7 @@
 #include "vargraph.h"
 #include "mapper.h"
 #include "traverser.h"
+#include "pathset.h"
 #include "sequence.h"
 #include "utils.h"
 #include "options.h"
@@ -53,11 +54,6 @@ using namespace grem;
 // Forwards
   void
 startup ( const Options & options );
-
-template < typename TIndex, typename TCoverage >
-  bool
-load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_nodes,
-    const std::string &index_file, unsigned int path_num );
 
 template < typename TIndexSpec >
   void
@@ -170,34 +166,6 @@ startup ( const Options & options )
 }
 
 
-template < typename TIndex, typename TCoverage >
-  bool
-load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_nodes,
-    const std::string &index_file, unsigned int path_num )
-{
-  if ( !open ( paths_index, index_file.c_str() ) ||
-     !load_paths_coverage ( paths_covered_nodes, index_file + "_path_", path_num ))
-  {
-    LOG(INFO) << "No valid paths index found. Creating one...";
-    return false;
-  }
-
-  LOG(INFO) << "Paths index found. Loaded.";
-
-  LOG(INFO) << "Verifying loaded paths index...";
-  auto nof_paths = length ( getFibre ( paths_index, FibreText() ) );
-  if ( nof_paths != path_num ) {
-    LOG(WARNING) << "The number of paths in the index file (" << nof_paths << ")"
-      " and the given parameter (" << path_num << ") are mismatched.";
-    LOG(INFO) << "Updating paths index...";
-
-    return false;
-  }
-
-  return true;
-}
-
-
 template<typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
@@ -207,27 +175,27 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
   Mapper< TTraverser > mapper( &vargraph, seed_len );
 
-  Dna5QStringSet paths;
-  std::vector < VarGraph::NodeCoverage > paths_covered_nodes;
-  Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index;
-  // :TODO:Fri Aug 25 00:15:\@cartoonist: Move paths index part to Mapper class.
-  // :TODO:Thu Apr 13 03:18:\@cartoonist: Load paths_covered_nodes.
+  // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
+  PathSet< seqan::IndexEsa<> > paths;
   if ( path_num == 0 ) {
     LOG(INFO) << "Specified number of path is 0. Skipping paths indexing...";
   }
-  else if ( !load_paths_index
-      ( paths_index, paths_covered_nodes, paths_index_file, path_num ) ) {
-    mapper.pick_paths ( paths, paths_covered_nodes, path_num );
-    paths_index = Dna5QStringSetIndex< seqan::IndexEsa<> > (paths);
-
+  else if ( !paths.load( paths_index_file, &vargraph, path_num ) ) {
+    LOG(INFO) << "No valid paths index found. Picking paths...";
+    mapper.pick_paths( paths, path_num );
     TIMED_BLOCK(pathIndexingTimer, "path-indexing")
     {
       LOG(INFO) << "Indexing the paths...";
-      create_index ( paths_index );
+      paths.create_index();
       LOG(INFO) << "Saving paths index...";
-      save ( paths_index, paths_index_file.c_str() );
-      save_paths_coverage ( paths_covered_nodes, paths_index_file + "_path_" );
+      if ( !paths.save( paths_index_file.c_str() ) ) {
+        LOG(WARNING) << "Paths index file is not specified or is not writable.";
+        LOG(INFO) << "Skipping...";
+      }
     }
+  }
+  else {
+    LOG(INFO) << "Paths index found. Loaded.";
   }
 
   if ( nomapping ) {
@@ -235,7 +203,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     return;
   }
 
-  mapper.add_all_loci ( paths_covered_nodes, seed_len, start_every );
+  mapper.add_all_loci( paths, seed_len, start_every );
 
    // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;
@@ -260,7 +228,7 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
       if (length(reads_chunk.id) == 0) break;
 
       mapper.set_reads( std::move( reads_chunk ) );
-      mapper.seeds_on_paths ( paths_index, write );
+      mapper.seeds_on_paths( paths, write );
       LOG(INFO) << "Total number of seeds found on paths: " << found;
       mapper.traverse ( write );
     }
