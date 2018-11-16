@@ -628,8 +628,8 @@ namespace grem {
     void
     kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, unsigned int k, TCallback callback )
     {
-      auto fst_len = length ( getFibre ( fst, seqan::FibreRawText() ) );
-      auto snd_len = length ( getFibre ( snd, seqan::FibreRawText() ) );
+      auto fst_len = length ( indexRawText ( fst ) );
+      auto snd_len = length ( indexRawText ( snd ) );
 
       if ( fst_len <= snd_len ) {
         _kmer_exact_match_impl ( fst, snd, k, false, callback );

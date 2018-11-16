@@ -47,6 +47,7 @@ namespace grem {
       return;
     }  /* -----  end of function readRecords  ----- */
 
+
   /**
    *  @brief  Check whether a string ends with another string.
    *
@@ -56,7 +57,7 @@ namespace grem {
    *
    *  It checks the first string whether the second one is one of its suffixes or not.
    */
-    bool
+    inline bool
   ends_with ( std::string str, std::string suf )
   {
     if ( suf.length() <= str.length() ) {

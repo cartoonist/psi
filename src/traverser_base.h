@@ -47,7 +47,7 @@ namespace grem
   template< typename TIndexSpec,
     typename TStrategy,
     template<typename> class TMatchingTraits,
-    typename TStatTag >
+    typename TStatSpec >
     class TraverserBase;
 
   template< typename TIter, std::size_t MaxMismatches >
@@ -189,7 +189,7 @@ namespace grem
     };  /* ----------  end of template class TraverserStat  ---------- */
 
   /**
-   *  @brief  Stat template class specialization for TraverserBase.
+   *  @brief  Stat template class specialization for `TraverserBase`.
    */
   template< typename TIndexSpec,
     typename TStrategy,
@@ -204,7 +204,7 @@ namespace grem
   template< typename TIndexSpec,
     typename TStrategy,
     template<typename> class TMatchingTraits,
-    typename TStatTag >
+    typename TStatSpec >
     class TraverserBase
     {
       public:

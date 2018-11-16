@@ -28,16 +28,16 @@ namespace grem {
    */
   template< typename TIndexSpec,
     template<typename> class TMatchingTraits,
-    typename TStatTag >
+    typename TStatSpec >
     class TraverserBFS;
 
-  template< typename TIndexSpec, typename TStatTag >
-    class TraverserBFS< TIndexSpec, ExactMatching, TStatTag >
-    : public TraverserBase< TIndexSpec, BFS, ExactMatching, TStatTag >
+  template< typename TIndexSpec, typename TStatSpec >
+    class TraverserBFS< TIndexSpec, ExactMatching, TStatSpec >
+    : public TraverserBase< TIndexSpec, BFS, ExactMatching, TStatSpec >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef TraverserBase< TIndexSpec, BFS, ExactMatching, TStatTag > TBase;
+        typedef TraverserBase< TIndexSpec, BFS, ExactMatching, TStatSpec > TBase;
         typedef typename TBase::output_type output_type;
         typedef typename TBase::indexspec_type indexspec_type;
         typedef typename TBase::iterspec_type iterspec_type;
@@ -142,7 +142,7 @@ namespace grem {
         {
           auto& state = this->frontier_states.at( state_idx );
           VarGraph::offset_type seqlen =
-            this->vargraph->node_sequence( state.pos.node_id() ).length();
+            this->vargraph->node_length( state.pos.node_id() );
           if ( state.mismatches == 0 || state.pos.offset() != seqlen )
           {
             return;

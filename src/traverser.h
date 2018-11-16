@@ -25,13 +25,13 @@ namespace grem {
   template< typename TIndexSpec,
     typename TStrategy,
     template<typename> class TMatchingTraits,
-    typename TStatTag = void >
+    typename TStatSpec = void >
     class Traverser;
 
-  template< typename IndexSpec, typename TStatTag >
-    class Traverser< IndexSpec, BFS, ExactMatching, TStatTag > {
+  template< typename IndexSpec, typename TStatSpec >
+    class Traverser< IndexSpec, BFS, ExactMatching, TStatSpec > {
       public:
-        typedef TraverserBFS< IndexSpec, ExactMatching, TStatTag > Type;
+        typedef TraverserBFS< IndexSpec, ExactMatching, TStatSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
 }  /* -----  end of namespace grem  ----- */
 

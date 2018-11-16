@@ -62,21 +62,6 @@ namespace grem
             unsigned char mismatches = 0 )
           : Mapper( graph , Dna5QRecords( ), len, mismatches )
         { }
-        /* ====================  METHODS        ====================================== */
-          inline void
-        add_start( const vg::Position &locus )
-        {
-          this->starting_loci.push_back( locus );
-        }
-
-          inline void
-        add_start( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
-        {
-          vg::Position locus;
-          locus.set_node_id( node_id );
-          locus.set_offset( offset );
-          this->add_start ( locus );
-        }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for vargraph.
@@ -195,6 +180,21 @@ namespace grem
           this->set_reads( Dna5QRecords( value ) );
         }  /* -----  end of method set_reads  ----- */
 
+          inline void
+        add_start( const vg::Position &locus )
+        {
+          this->starting_loci.push_back( locus );
+        }
+
+          inline void
+        add_start( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
+        {
+          vg::Position locus;
+          locus.set_node_id( node_id );
+          locus.set_offset( offset );
+          this->add_start ( locus );
+        }
+        /* ====================  METHODS        ====================================== */
         /**
          *  @brief  Pick n paths from the variation graph.
          *
