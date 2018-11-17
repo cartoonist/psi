@@ -29,14 +29,6 @@
 using namespace grem;
 
 
-Options opt = {0, 0, 0, 0, 0, IndexType::Esa, "", "", "",
-/*log_path  = */ "", "", false, false, false,
-/*nologfile = */ true,
-/*nolog     = */ false,
-/*quiet     = */ false,
-/*nocolor   = */ false,
-/*verbose   = */ true };
-
 SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
 {
   unsigned int reads_num = 10;
@@ -122,6 +114,13 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
 
 SCENARIO( "Constructing a DiskString", "[sequence]" )
 {
+  Options opt;
+  opt.log_path = "";
+  opt.nologfile = true;
+  opt.nolog = false;
+  opt.quiet = false;
+  opt.nocolor = false;
+  opt.verbose = true;
   if ( get_logger( "main" ) == nullptr ) config_logger( opt );
 
   auto check_content =
