@@ -72,6 +72,7 @@ namespace grem
     unsigned int seed_len;
     unsigned int chunk_size;
     unsigned int step_size;
+    unsigned int distance;
     unsigned int path_num;
     unsigned int context;
     IndexType index;

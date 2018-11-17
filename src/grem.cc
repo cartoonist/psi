@@ -97,8 +97,9 @@ template< typename TMapper, typename TSet >
 
 template< typename TPathIndex, typename TMapper >
     void
-  prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index, bool patched,
-      const std::string& paths_index_file, unsigned int path_num, unsigned int seed_len )
+  prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index,
+      bool patched, const std::string& paths_index_file, unsigned int path_num,
+      unsigned int seed_len )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
@@ -158,8 +159,9 @@ template< typename TReadsIndexSpec >
     void
   find_seeds( VarGraph& vargraph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
-      unsigned int path_num, unsigned int context, bool paths_index, bool patched,
-      const std::string& paths_index_file, bool nomapping, TReadsIndexSpec const )
+      unsigned int distance, unsigned int path_num, unsigned int context,
+      bool paths_index, bool patched, const std::string& paths_index_file,
+      bool nomapping, TReadsIndexSpec const )
   {
     /* typedefs */
     typedef Dna5QStringSet<> TReadsStringSet;
@@ -193,11 +195,13 @@ template< typename TReadsIndexSpec >
       log->info( "Saving starting loci..." );
       /* Saving starting loci. */
       if ( ! mapper.save_starts( paths_index_file, seed_len, step_size ) ) {
-        log->warn( "The specified path for saving starting loci is not writable. Skipping..." );
+        log->warn( "The specified path for saving starting loci is not writable. "
+            "Skipping..." );
       }
     }
     log->info( "Number of starting loci selected (in {} nodes of total {}): {}",
-        mapper.get_nof_uniq_nodes(), mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
+        mapper.get_nof_uniq_nodes(), mapper.get_vargraph()->node_count,
+        mapper.get_starting_loci().size() );
 
     if ( nomapping ) {
       log->info( "Skipping mapping as requested..." );
@@ -236,7 +240,7 @@ template< typename TReadsIndexSpec >
         /* Seed current chunk. */
         {
           auto timer = Timer<>( "seeding" );
-          seeding( seeds_chunk, reads_chunk, seed_len, NonOverlapping() );
+          seeding( seeds_chunk, reads_chunk, seed_len, distance );
         }
         log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         /* Give the current chunk to the mapper. */
@@ -267,6 +271,7 @@ startup( const Options & options )
   auto log = get_logger( "main" );
   log->info( "Parameters:" );
   log->info( "- Seed length: {}", options.seed_len );
+  log->info( "- Seed distance: {}", options.distance );
   log->info( "- Number of paths: {}", options.path_num );
   log->info( "- Context length (used in patching): {}", options.context );
   log->info( "- Patched: {}", ( options.patched ? "yes" : "no" ) );
@@ -316,6 +321,7 @@ startup( const Options & options )
                               options.seed_len,
                               options.chunk_size,
                               options.step_size,
+                              options.distance,
                               options.path_num,
                               options.context,
                               options.paths_index,
@@ -330,6 +336,7 @@ startup( const Options & options )
                              options.seed_len,
                              options.chunk_size,
                              options.step_size,
+                              options.distance,
                              options.path_num,
                              options.context,
                              options.paths_index,
@@ -395,6 +402,12 @@ setup_argparser( seqan::ArgumentParser& parser )
         "Minimum approximate distance allowed between two consecutive loci.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "e", 1 );
+  // seed distance
+  addOption( parser,
+      seqan::ArgParseOption( "d", "distance",
+        "Distance between seeds",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "d", 0 );  /* Default value is seed length. */
   // number of paths
   addOption( parser,
       seqan::ArgParseOption( "n", "path-num",
@@ -461,6 +474,7 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.seed_len, parser, "seed-length" );
   getOptionValue( options.chunk_size, parser, "chunk-size" );
   getOptionValue( options.step_size, parser, "step-size" );
+  getOptionValue( options.distance, parser, "distance" );
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   options.paths_index = isSet( parser, "paths-index" );
@@ -477,6 +491,7 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getArgumentValue( options.rf_path, parser, 0 );
 
   options.index = index_from_str( indexname );
+  if ( options.distance == 0 ) options.distance = options.seed_len;
 }
 
 
