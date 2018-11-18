@@ -209,17 +209,38 @@ simulate_haplotype( VarGraph const& vargraph, unsigned int ploidy,
 }
 
   inline void
-impose_errors( klibpp::KSeq& haps,
-    double subrate, double indelrate )
+impose_errors( klibpp::KSeq& hap, unsigned int seed,
+    double errorrate, double indelrate )
 {
+  std::random_device rd;         // Will be used to obtain a seed for the random no. engine
+  if ( seed == 0 ) seed = rd();  // use random_device to generate a seed if seed is not provided
+  std::mt19937 gen( seed );      // Standard mersenne_twister_engine seeded with seed
+  std::uniform_real_distribution<> dis( 0.0, 1.0 );
+  char bases[4] = { 'A', 'C', 'G', 'T' };
+
+  for ( std::size_t i = 0; i < hap.seq.length(); ++i ) {
+    if ( dis(gen) < errorrate ) {
+      if ( dis(gen) < indelrate ) {  // indel
+        hap.seq[ i ] = CHAR_BP_DELETED;
+      }
+      else {  // substitution
+        int alt = static_cast< int >( dis(gen) * 4 );
+        if ( bases[ alt ] == hap.seq[ i ] ) alt = ( alt + 1 ) % 4;
+        hap.seq[ i ] = bases[ alt ];
+      }
+    }
+  }
+  // Remove all indels
+  hap.seq.erase( std::remove( hap.seq.begin(), hap.seq.end(), CHAR_BP_DELETED ),
+      hap.seq.end() );
 }
 
   inline void
-impose_errors( std::vector< klibpp::KSeq >& haps,
-    double subrate, double indelrate )
+impose_errors( std::vector< klibpp::KSeq >& haps, unsigned int seed,
+    double errorrate, double indelrate )
 {
-  if ( subrate == 0 && indelrate == 0 ) return;
-  throw std::runtime_error( "imposing errors is not implemented" );
+  if ( errorrate == 0 ) return;
+  for ( auto&& h : haps ) impose_errors( h, seed, errorrate, indelrate );
 }
 
   inline std::string
@@ -299,7 +320,7 @@ simulate_all_reads( std::vector< klibpp::KSeq > const& haps, unsigned int seed,
 
   inline void
 simulate( VarGraph const& vargraph, unsigned int ploidy, unsigned int seed,
-    unsigned int readlen, unsigned int numreads, double subrate,
+    unsigned int readlen, unsigned int numreads, double errorrate,
     double indelrate, bool fwd, bool allow_ns, fmt::Type type,
     std::vector< klibpp::KSeq >& seqs )
 {
@@ -309,7 +330,7 @@ simulate( VarGraph const& vargraph, unsigned int ploidy, unsigned int seed,
   else haps_ptr = &seqs;
   simulate_haplotype( vargraph, ploidy, seed, *haps_ptr );
   if ( !is_reads( type ) ) return;
-  impose_errors( haps_tmp, subrate, indelrate );
+  impose_errors( haps_tmp, seed, errorrate, indelrate );
   simulate_all_reads( haps_tmp, seed, readlen, numreads, fwd, allow_ns, seqs );
 }
 
@@ -376,9 +397,9 @@ config_parser( cxxopts::Options& options )
       cxxopts::value< unsigned int >()->default_value( DEFAULT_PLOIDY ) )
     ( "l, read-length", "Read length", cxxopts::value< unsigned int >() )
     ( "n, num-reads", "Number of reads", cxxopts::value< unsigned int >() )
-    ( "e, sub-rate", "Base substitution error rate",
+    ( "e, error-rate", "Base error rate",
       cxxopts::value< double >()->default_value( DEFAULT_SUBRATE ) )
-    ( "i, indel-rate", "Indel error rate",
+    ( "i, indel-rate", "Fraction of indels",
       cxxopts::value< double >()->default_value( DEFAULT_INDRATE ) )
     ( "s, random-seed", "Seed for random generator",
       cxxopts::value< unsigned int >()->default_value( DEFAULT_RNDSEED ) )
@@ -448,7 +469,7 @@ main( int argc, char* argv[] )
       readlen = res[ "read-length" ].as< unsigned int >();
       numreads = res[ "num-reads" ].as< unsigned int >();
     }
-    double subrate = res[ "sub-rate" ].as< double >();
+    double errorrate = res[ "error-rate" ].as< double >();
     double indelrate = res[ "indel-rate" ].as< double >();
     unsigned int seed = res[ "random-seed" ].as< unsigned int >();
     bool forward = res[ "forward-only" ].as< bool >();
@@ -464,7 +485,7 @@ main( int argc, char* argv[] )
     }
 
     std::vector< klibpp::KSeq > seqs;
-    simulate( vargraph, ploidy, seed, readlen, numreads, subrate, indelrate,
+    simulate( vargraph, ploidy, seed, readlen, numreads, errorrate, indelrate,
         forward, allow_ns, type, seqs );
     write_output( output, seqs, type );
   }
