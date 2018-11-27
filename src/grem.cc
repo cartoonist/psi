@@ -99,10 +99,11 @@ template< typename TPathIndex, typename TMapper >
     void
   prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index,
       bool patched, const std::string& paths_index_file, unsigned int path_num,
-      unsigned int seed_len )
+      unsigned int context, unsigned int seed_len )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
+    if ( !patched && context != 0 ) pindex.set_context( 0 );
     log->info( "Loading path index..." );
     /* Load the genome-wide path index for the variation graph if available. */
     if ( paths_index && pindex.load( paths_index_file, mapper.get_vargraph() ) ) {
@@ -117,17 +118,13 @@ template< typename TPathIndex, typename TMapper >
       log->info( "No valid path index found. Picking paths..." );
       log->info( "Picking {} different path(s) on the graph...", path_num );
       /* Generate the requested number of genome-wide paths. */
-      if ( patched && pindex.get_context() == 0 ) {
+      if ( patched && context == 0 ) {
         log->warn( "Context cannot be zero for patching. "
             "Assuming seed length as context size..." );
         pindex.set_context( seed_len );
       }
-      if ( patched && pindex.get_context() < seed_len ) {
-        std::string msg = "Seed length cannot be larger than context size";
-        log->error( msg );
-        throw std::runtime_error( msg );
-      }
-      if ( !patched && pindex.get_context() != 0 ) pindex.set_context( 0 );
+      /* REQUIRED: the value might has been changed in an unsuccessful loading above. */
+      pindex.set_context( context );
       auto progress = [&log]( std::string const& name, int i ) {
         log->info( "Selecting path {} of region {}...", i, name );
       };
@@ -179,7 +176,12 @@ template< typename TReadsIndexSpec >
     PathIndex< VarGraph, DiskString, grem::FMIndex<>, Reversed > pindex( context, true );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file,
-        path_num, seed_len );
+        path_num, context, seed_len );
+    if ( patched && pindex.get_context() < seed_len ) {
+      std::string msg = "Seed length cannot be larger than context size";
+      log->error( msg );
+      throw std::runtime_error( msg );
+    }
 
     log->info( "Loading starting loci..." );
     /* Loading starting loci. */
