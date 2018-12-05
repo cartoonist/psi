@@ -1186,6 +1186,12 @@ namespace grem {
         {
           return this->sm_ptr != nullptr;
         }
+
+          inline TId
+        get_record_offset( ) const
+        {
+          return this->rec_offset;
+        }
         /* ====================  MUTATORS      ======================================= */
           inline void
         set_record_offset( TId value )
@@ -1665,6 +1671,7 @@ namespace grem {
       sdsl::bit_vector bv;
       seeding( seeds.str, reads.str, k, step, &bv );
       seeds.set_seedmap( std::move( bv ), step );
+      seeds.set_record_offset( reads.get_record_offset() );
     }
 
   /**
