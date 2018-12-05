@@ -1634,6 +1634,7 @@ namespace grem {
       // of reads in R, k is seed length, and s is step size.
       auto lensum = lengthSum( string_set );
       auto nofreads = length( string_set );
+      assert( lensum >= nofreads*k );
       auto est_nofseeds = static_cast<int>( ( lensum - nofreads*k ) / step ) + nofreads;
       reserve( seeds, est_nofseeds );
       if ( bv_ptr ) sdsl::util::assign( *bv_ptr, sdsl::bit_vector( est_nofseeds, 0 ) );
