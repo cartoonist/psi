@@ -117,14 +117,14 @@ template< typename TPathIndex, typename TMapper >
     else {
       log->info( "No valid path index found. Picking paths..." );
       log->info( "Picking {} different path(s) on the graph...", path_num );
+      /* REQUIRED: the value might has been changed in an unsuccessful loading above. */
+      pindex.set_context( context );
       /* Generate the requested number of genome-wide paths. */
       if ( patched && context == 0 ) {
         log->warn( "Context cannot be zero for patching. "
             "Assuming seed length as context size..." );
         pindex.set_context( seed_len );
       }
-      /* REQUIRED: the value might has been changed in an unsuccessful loading above. */
-      pindex.set_context( context );
       auto progress = [&log]( std::string const& name, int i ) {
         log->info( "Selecting path {} of region {}...", i, name );
       };
