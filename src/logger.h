@@ -29,6 +29,59 @@ namespace grem {
   /**
    *  @brief  Configure the main logger.
    *
+   *  @param  nolog Disable logging completely.
+   *  @param  quiet Disable logging to console.
+   *  @param  nocolor Disable coloured output.
+   *  @param  nologfile Disable logging to file.
+   *  @param  log_path Path to log file.
+   *
+   *  It configures the "main" logger. The logger can be accessed by `get_logger`
+   *  method.
+   *
+   *  NOTE: The logger are multi-threaded.
+   */
+    inline void
+  config_logger( bool nolog, bool quiet, bool nocolor, bool verbose, bool nologfile,
+     const std::string& log_path )
+  {
+    // Set to asynchronous mode.
+    spdlog::set_async_mode(8192);
+    std::vector< spdlog::sink_ptr > sinks;
+
+    if ( !nolog && !quiet ) {
+      if ( nocolor ) {
+        auto stdout_sink = spdlog::sinks::stdout_sink_mt::instance();
+        sinks.push_back( stdout_sink );
+      }
+      else {
+        auto color_sink = std::make_shared< spdlog::sinks::ansicolor_stdout_sink_mt >();
+        sinks.push_back( color_sink );
+      }
+      if ( verbose ) {
+        sinks.back()->set_level( spdlog::level::info );
+      }
+      else {
+        sinks.back()->set_level( spdlog::level::warn );
+      }
+    }
+
+    if ( !nolog && !nologfile ) {
+      auto simple
+        = std::make_shared< spdlog::sinks::simple_file_sink_mt >( log_path );
+      sinks.push_back( simple );
+      // Always verbose for file sink.
+      sinks.back()->set_level( spdlog::level::info );
+    }
+
+    auto main_logger
+      = std::make_shared< spdlog::logger >( "main", begin(sinks), end(sinks) );
+
+    spdlog::register_logger( main_logger );
+  }
+
+  /**
+   *  @brief  Configure the main logger.
+   *
    *  @param  options Program options.
    *
    *  It configures the "main" logger. The logger can be accessed by `get_logger`
@@ -39,39 +92,8 @@ namespace grem {
     inline void
   config_logger( const Options& options )
   {
-    // Set to asynchronous mode.
-    spdlog::set_async_mode(8192);
-    std::vector< spdlog::sink_ptr > sinks;
-
-    if ( !options.nolog && !options.quiet ) {
-      if ( options.nocolor ) {
-        auto stdout_sink = spdlog::sinks::stdout_sink_mt::instance();
-        sinks.push_back( stdout_sink );
-      }
-      else {
-        auto color_sink = std::make_shared< spdlog::sinks::ansicolor_stdout_sink_mt >();
-        sinks.push_back( color_sink );
-      }
-      if ( options.verbose ) {
-        sinks.back()->set_level( spdlog::level::info );
-      }
-      else {
-        sinks.back()->set_level( spdlog::level::warn );
-      }
-    }
-
-    if ( !options.nolog && !options.nologfile ) {
-      auto simple
-        = std::make_shared< spdlog::sinks::simple_file_sink_mt >( options.log_path );
-      sinks.push_back( simple );
-      // Always verbose for file sink.
-      sinks.back()->set_level( spdlog::level::info );
-    }
-
-    auto main_logger
-      = std::make_shared< spdlog::logger >( "main", begin(sinks), end(sinks) );
-
-    spdlog::register_logger( main_logger );
+    config_logger( options.nolog, options.quiet, options.nocolor, options.verbose,
+        options.nologfile, options.log_path );
   }
 
   /**

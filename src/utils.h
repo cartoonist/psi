@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <string>
+#include <iostream>
 #include <vector>
 #include <unordered_map>
 #include <set>
