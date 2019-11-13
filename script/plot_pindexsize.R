@@ -31,7 +31,7 @@ d <- read.table(opt$file, sep=',', header=TRUE)
 # Generating a plot for each dataset
 for (cdataset in levels(d$dataset)) {
     # Data subsetting
-    ds <- d[d$dataset == cdataset, c('pathno', 'patched', 'pindexsize')]
+    ds <- d[d$dataset == cdataset, c('pathno', 'patched', 'context', 'pindexsize')]
     # Removing duplicates
     uds <- unique(ds[order(ds$pathno),])
     if (opt$patched != 'all') {
@@ -41,8 +41,9 @@ for (cdataset in levels(d$dataset)) {
     #t <- as_data_frame(uds)
     t <- tibble(npath=uds$pathno,
                 type=factor(ifelse(uds$patched=='yes', 'Patched', 'Full')),
+		context=factor(uds$context),
                 size=(uds$pindexsize/1024^opt$pwr))
-    g <- ggplot(t, aes(x=npath, y=size, colour=type, group=type)) +
+    g <- ggplot(t, aes(x=npath, y=size, colour=type, shape=context, group=interaction(context, type))) +
          geom_line(size=2) +
          geom_point(size=10) +
          labs(title=opt$title,

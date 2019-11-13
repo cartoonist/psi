@@ -62,19 +62,18 @@ for (cdataset in levels(d$dataset)) {
     }
     # Converting dataframe to tibble
     #t <- as_data_frame(uds)
-    t <- tibble(npath=uds$pathno,
+    t <- tibble(npath=factor(uds$pathno),
                 type=factor(ifelse(uds$patched=='yes', 'Patched', 'Full')),
                 stage=factor(sapply(uds$variable, trans)),
                 stage_order=factor(sapply(uds$variable, trans_order)),
                 rtime=(uds$value / opt$time_coeff))
     g <- ggplot(t, aes(x=npath, y=rtime, fill=stage_order)) +
-         geom_area() +
+         geom_bar(stat='identity') +
          labs(title=opt$title,
               subtitle=sprintf(opt$subtitle, cdataset),
               x='Paths',
               y=paste('Time (', opt$unit, ')', sep=''),
               fill='Operation') +
-         scale_x_continuous(breaks=unique(t$npath)) +
          scale_y_continuous(limit=c(0, max(aggregate(t$rtime, list(t$npath, t$type), FUN=sum)$x)*1.1), expand=c(0, 0)) +
          scale_fill_discrete(label=c('Save', 'Index', 'Pick')) +
          theme_bw() +
