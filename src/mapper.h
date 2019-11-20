@@ -548,6 +548,55 @@ namespace grem
           }
         }
 
+        template< typename TPath, typename TSpec >
+            inline unsigned long long int
+          nof_uncovered_kmers( PathSet< TPath, TSpec >& paths, unsigned int k )
+          {
+            if ( this->starting_loci.size() == 0 ) return 0;
+            auto timer = stats_type( "count-uncovered-kmer" );
+
+            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
+            Path< VarGraph > trav_path( this->vargraph );
+            Path< VarGraph > current_path( this->vargraph );
+            unsigned long long int uncovered = 0;
+
+            long long int prev_id = 0;
+            for ( const vg::Position& l : this->starting_loci ) {
+              if ( prev_id == l.node_id() ) continue;
+              prev_id = l.node_id();
+              auto label_len = this->vargraph->node_length( l.node_id() );
+
+              go_begin( bt_itr, l.node_id() );
+              while ( !at_end( bt_itr ) ) {
+                std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
+                extend_to_k( trav_path, bt_itr, offset - 1 + k );
+                if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
+                while ( current_path.get_sequence_len() != 0 &&
+                    !covered_by( current_path, paths ) ) {
+                  auto trimmed_len = current_path.get_sequence_len()
+                    - this->vargraph->node_length( current_path.get_nodes().back() );
+                  if ( trimmed_len <= k - 1 ) {
+                    offset = 0;
+                    break;
+                  }
+                  offset = trimmed_len - k + 1;
+                  trim_back( current_path );
+                }
+                uncovered += label_len - offset;
+                auto ub = trav_path.get_sequence_len() + 1 - k;
+                if ( offset < ub && ub < label_len ) uncovered -= ub - offset;
+
+                --bt_itr;
+                trim_back( trav_path, *bt_itr );
+                clear( current_path );
+              }
+
+              clear( trav_path );
+            }
+
+            return uncovered;
+          }
+
           inline bool
         open_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
