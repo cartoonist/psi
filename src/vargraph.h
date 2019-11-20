@@ -1374,6 +1374,51 @@ namespace grem {
       --iter;
     }
 
+  template< typename TGraph >
+    inline std::size_t
+    count_kmers( TGraph const& vargraph, unsigned int k, bool forward=false )
+    {
+      typedef typename TGraph::nodeid_type rank_type;
+      typedef typename TGraph::rank_type nodeid_type;
+      typedef typename seqan::Iterator< TGraph, Backtracker >::Type bter_type;
+
+      if ( !k ) return 0;
+
+      if ( !forward ) {
+        throw std::runtime_error( "Counting k-mers on both strands is not implemented" );
+      }
+
+      bter_type bt_itr( vargraph );
+      Path< TGraph > trav_path( &vargraph );
+
+      std::size_t counter = 0;
+      for ( rank_type rank = 1; rank <= vargraph.max_node_rank(); ++rank ) {
+        nodeid_type id = vargraph.rank_to_id( rank );
+        auto label_len = vargraph.node_length( id );
+
+        // Count k-mers in the node
+        std::size_t precontext = k - 1;  // precontext = max( label_len, k - 1 )
+        if ( label_len >= k ) {
+          counter += label_len - k + 1;
+          precontext = label_len;
+        }
+
+        // Count k-mers across the node
+        go_begin( bt_itr, id );
+        while ( !at_end( bt_itr ) ) {
+          extend_to_k( trav_path, bt_itr, label_len - 1 + k );
+          if ( trav_path.get_sequence_len() >= k ) {
+            // Number of k-mers across the node: min( |trav_path| - precontext, k - 1 )
+            counter += std::min( trav_path.get_sequence_len() - precontext,
+                static_cast< std::size_t >( k - 1 ) );
+          }
+          --bt_itr;
+          trim_back( trav_path, *bt_itr );
+        }
+      }
+      return counter;
+    }
+
   /* END OF Haplotyper iterator interface functions  ----------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
