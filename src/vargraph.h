@@ -98,6 +98,27 @@ namespace grem
         return this->edges_to_count( node_id ) != 0;
       }
 
+        inline vg::Edge
+      get_edge( nodeid_type from, bool from_start, nodeid_type to, bool to_end ) const
+      {
+        auto type = this->edge_type( from_start, to_end );
+        return this->edge_from_encoding( from, to, type );
+      }
+
+        static inline constexpr int
+      get_overlap( nodeid_type from, bool from_start, nodeid_type to, bool to_end )
+      {
+        // :TODO:Fri Apr 19 13:57:\@cartoonist: Need overlap?
+        return 0;
+      }
+
+        static inline constexpr int
+      get_overlap( nodeid_type from, nodeid_type to, int type )
+      {
+        // :TODO:Fri Apr 19 13:57:\@cartoonist: Need overlap?
+        return 0;
+      }
+
         inline int
       edges_count_by_id( nodeid_type id, bool is_reverse=false, bool go_left=false ) const
       {
@@ -132,6 +153,76 @@ namespace grem
         }
         return max;
       }
+
+        inline std::make_unsigned_t< offset_type >
+      get_total_nof_loci( ) const
+      {
+        std::make_unsigned_t< offset_type > total = 0;
+        for ( std::size_t rank = 1; rank <= this->max_node_rank(); ++rank ) {
+          auto id = this->rank_to_id( rank );
+          total += this->node_length( id );
+        }
+        return total;
+      }
+
+      template< typename TNodesIter, typename TEdgesIter >
+          inline void
+        induced_graph( TNodesIter nbegin, TNodesIter nend,
+            TEdgesIter ebegin, TEdgesIter eend,
+            vg::Graph* graph ) const
+        {
+          for ( ; nbegin != nend; ++nbegin ) {
+            vg::Node* new_node = graph->add_node();
+            new_node->set_id( *nbegin );
+            new_node->set_sequence( this->node_sequence( *nbegin ) );
+          }
+
+          for ( ; ebegin != eend; ++ebegin ) {
+            vg::Edge* new_edge = graph->add_edge();
+            new_edge->set_from( std::get< 0 >( *ebegin ) );
+            new_edge->set_to( std::get< 1 >( *ebegin ) );
+            new_edge->set_from_start( std::get< 2 >( *ebegin ) > 2 );
+            new_edge->set_to_end( !( std::get< 2 >( *ebegin ) % 2 ) );
+            new_edge->set_overlap( this->get_overlap( std::get< 0 >( *ebegin ),
+                  std::get< 1 >( *ebegin ), std::get< 2 >( *ebegin ) ) );
+          }
+        }
+
+      /**
+       *  @brief  Get the induced graph of a set of nodes and edges in `vg::Graph` objects.
+       *
+       *  @param  nbegin The begin iterator of the nodes set.
+       *  @param  nend The end iterator of the nodes set.
+       *  @param  ebegin The begin iterator of the edges set.
+       *  @param  eend The end iterator of the edges set.
+       *  @param  callback The callback function passing each generated `vg::Graph` messages.
+       *  @param  chunk_size The maximum number of nodes allowed in a `vg::Graph` message.
+       *
+       *  :TODO:Sat Apr 20 12:29:\@cartoonist: add ability of including path in the
+       *  `vg::Graph`.
+       */
+      template< typename TNodesIter, typename TEdgesIter >
+          inline void
+        induced_graph( TNodesIter nbegin, TNodesIter nend,
+            TEdgesIter ebegin, TEdgesIter eend,
+            std::function< void( vg::Graph& ) > callback, std::ptrdiff_t chunk_size ) const
+        {
+          auto nodes_l = nbegin;
+          auto nodes_r = nodes_l + 1;
+          auto edges_l = ebegin;
+          auto edges_r = edges_l + 1;
+          auto nofmsg = ( nend - nbegin ) / chunk_size + 1;
+          for ( unsigned int i = 0; i < nofmsg && nodes_r != nend; ++i ) {
+            nodes_r = nodes_l + std::min( chunk_size, nend - nodes_l );
+            auto maxid = *( nodes_r - 1 );
+            while ( edges_r != eend && std::get< 0 >( *edges_r ) <= maxid ) ++edges_r;
+            vg::Graph g;
+            this->induced_graph( nodes_l, nodes_r, edges_l, edges_r, &g );
+            callback( g );
+            nodes_l = nodes_r;
+            edges_l = edges_r;
+          }
+        }
   };
 
   /* Graph interface functions  ------------------------------------------------ */

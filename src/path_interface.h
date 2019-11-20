@@ -934,6 +934,70 @@ namespace grem {
         mapping->set_rank( rank++ );
       }
     }
+
+  template< typename TGraph, typename TSpec, typename TNodeID,
+    typename=std::enable_if_t< std::is_same< typename TGraph::nodeid_type, TNodeID >::value, void > >
+      inline void
+    _induced_graph_impl( Path< TGraph, TSpec > const& path,
+        std::vector< TNodeID >& nodes,
+        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+    {
+      TGraph const* graph = path.get_vargraph();
+      TNodeID prev = 0;
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        nodes.push_back( *it );
+        if ( prev != 0 ) {
+          // :TODO:Sun Apr 14 17:48:\@cartoonist: Path should consider the edge orientation.
+          char type = graph->edge_type( false, false );
+          edges.push_back( std::make_tuple( prev, *it, type ) );
+        }
+        prev = *it;
+      }
+    }  /* -----  end of template function induced_graph  ----- */
+
+  /**
+   *  @brief  Get a path induced graph as a set of unique nodes and edges.
+   *
+   *  @param[in]  path The input path.
+   *  @param[in,out]  nodes The set of unique nodes in the input path.
+   *  @param[in,out]  edges The set of unique edges in the input path.
+   */
+  template< typename TGraph, typename TSpec, typename TNodeID,
+    typename=std::enable_if_t< std::is_same< typename TGraph::nodeid_type, TNodeID >::value, void > >
+      inline void
+    induced_graph( Path< TGraph, TSpec > const& path,
+        std::vector< TNodeID >& nodes,
+        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+    {
+      _induced_graph_impl( path, nodes, edges );
+      // Erase duplicate items.
+      std::sort( nodes.begin(), nodes.end() );
+      nodes.erase( std::unique( nodes.begin(), nodes.end() ), nodes.end() );
+      std::sort( edges.begin(), edges.end() );
+      edges.erase( std::unique( edges.begin(), edges.end() ), edges.end() );
+    }
+
+  /**
+   *  @brief  Get the induced graph of a set of path as a set of unique nodes and edges.
+   *
+   *  @param[in]  pbegin The iterator pointing to the first path in the set.
+   *  @param[in]  pend The iterator pointing to the end of paths set.
+   *  @param[in,out]  nodes The set of unique nodes in the input path.
+   *  @param[in,out]  edges The set of unique edges in the input path.
+   */
+  template< typename TIter, typename TNodeID >
+      inline void
+    induced_graph( TIter pbegin, TIter pend,
+        std::vector< TNodeID >& nodes,
+        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+    {
+      for ( ; pbegin != pend; ++pbegin ) _induced_graph_impl( *pbegin, nodes, edges );
+      // Erase duplicate items.
+      std::sort( nodes.begin(), nodes.end() );
+      nodes.erase( std::unique( nodes.begin(), nodes.end() ), nodes.end() );
+      std::sort( edges.begin(), edges.end() );
+      edges.erase( std::unique( edges.begin(), edges.end() ), edges.end() );
+    }  /* -----  end of template function induced_graph  ----- */
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 
