@@ -564,7 +564,7 @@ SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
 
     WHEN( "The bit vector is partially copied to another" )
     {
-      sdsl::bit_vector dbv( 7000, 1 );
+      sdsl::bit_vector dbv( 8000, 1 );
       bv_icopy( sbv, dbv, 542, 64 );
 
       THEN( "That part of destination bit vector should be equal to the source" )
@@ -623,7 +623,7 @@ SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
 
     WHEN( "The bit vector is partially copied to another" )
     {
-      sdsl::bit_vector dbv( 7000, 1 );
+      sdsl::bit_vector dbv( 8000, 1 );
       bv_icopy( sbv, dbv, 542, 74 );
 
       THEN( "That part of destination bit vector should be equal to the source" )

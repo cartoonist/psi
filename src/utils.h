@@ -235,14 +235,15 @@ namespace grem {
 
 
   /**
-   *  @brief  Copy all bits in `src[idx...idx+len)` to `dst[idx...idx+len)`.
+   *  @brief  Copy all bits in [idx...idx+len) to the same range in the destination.
    *
    *  @param  src The source bit vector.
    *  @param  dst The destination bit vector.
    *  @param  idx The start index in `src` to copy to the "identical" index in `dst`.
+   *  @param  len The length of the range that should be copied.
    *
-   *  Bitvector identical copy. The `src[idx...idx+len)` is copied to the same index of
-   *  `dst`.
+   *  Bitvector identical-range copy. The [idx...idx+len) from `src` is copied
+   *  to the same range in `dst`.
    */
   template< typename TBitVector >
       inline void
