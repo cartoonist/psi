@@ -1,5 +1,5 @@
 /**
- *    @file  tests_base.h
+ *    @file  test_base.hpp
  *   @brief  Test base header file.
  *
  *  This header file includes essential macros such as test data directory which can be
@@ -16,10 +16,12 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef TESTS_BASE_H__
-#define TESTS_BASE_H__
+#ifndef TEST_BASE_HPP__
+#define TEST_BASE_HPP__
 
-#include "catch/catch.hpp"
+#include <string>
+
+#include "catch2/catch.hpp"
 
 #ifndef TESTDIR
 #define TESTDIR ".."  // Test directory path relative to test binary path.
@@ -27,4 +29,4 @@
 
 std::string _testdir(TESTDIR);
 
-#endif  // TESTS_BASE_H__
+#endif  // TEST_BASE_HPP__

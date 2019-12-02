@@ -1,5 +1,5 @@
 /**
- *    @file  tests_traverser.cc
+ *    @file  test_traverser.cpp
  *   @brief  Test traverser module.
  *
  *  Test scenarios for traverser module.
@@ -21,13 +21,14 @@
 
 #include <seqan/seq_io.h>
 
-#include "tests_base.h"
 #include "sequence.h"
 #include "index.h"
 #include "vargraph.h"
 #include "traverser.h"
 #include "utils.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

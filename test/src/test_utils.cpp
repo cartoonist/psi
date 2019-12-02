@@ -1,5 +1,5 @@
 /**
- *    @file  tests_utils.cc
+ *    @file  test_utils.cpp
  *   @brief  utils test cases.
  *
  *  Contains test cases for `utils.h` header file.
@@ -24,8 +24,9 @@
 #include <seqan/sequence.h>
 #include <sdsl/bit_vectors.hpp>
 
-#include "tests_base.h"
 #include "utils.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

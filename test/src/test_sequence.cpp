@@ -1,5 +1,5 @@
 /**
- *    @file  tests_sequence.cc
+ *    @file  test_sequence.cpp
  *   @brief  Test sequence module.
  *
  *  Test scenarios for sequence module.
@@ -20,10 +20,11 @@
 
 #include <seqan/seq_io.h>
 
-#include "tests_base.h"
 #include "sequence.h"
 #include "options.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

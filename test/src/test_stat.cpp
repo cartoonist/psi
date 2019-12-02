@@ -1,5 +1,5 @@
 /**
- *    @file  tests_stat.cc
+ *    @file  test_stat.cpp
  *   @brief  Test stat module.
  *
  *  This test contains test scenarios for stat module.
@@ -19,9 +19,10 @@
 #include <chrono>
 #include <thread>
 
-#include "tests_base.h"
 #include "stat.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

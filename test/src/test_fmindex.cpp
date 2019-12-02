@@ -1,5 +1,5 @@
 /**
- *    @file  tests_fmindex.h
+ *    @file  test_fmindex.cpp
  *   @brief  Test grem::FM-Index module.
  *
  *  Test scenarios for FM-Index class in grem (not SeqAn).
@@ -17,9 +17,10 @@
 
 #include <string>
 
-#include "tests_base.h"
 #include "fmindex.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

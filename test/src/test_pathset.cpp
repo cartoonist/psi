@@ -1,5 +1,5 @@
 /**
- *    @file  tests_pathset.cc
+ *    @file  test_pathset.cpp
  *   @brief  Test PathSet class.
  *
  *  Test scenarios for PathSet class.
@@ -18,10 +18,11 @@
 #include <fstream>
 #include <string>
 
-#include "tests_base.h"
 #include "vargraph.h"
 #include "pathset.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

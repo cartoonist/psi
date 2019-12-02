@@ -1,5 +1,5 @@
 /**
- *    @file  tests_indexiter.cc
+ *    @file  test_indexiter.cpp
  *   @brief  Test index iterators.
  *
  *  It includes all tests related to modules in `index_iter.h`.
@@ -18,12 +18,13 @@
 #include <string>
 #include <functional>
 
-#include "tests_base.h"
 #include "sequence.h"
 #include "seed.h"
 #include "index.h"
 #include "index_iter.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

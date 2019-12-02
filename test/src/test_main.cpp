@@ -1,13 +1,13 @@
 /**
- *    @file  tests_main.cc
- *   @brief  Unit test framework (Catch) implementation file.
+ *    @file  test_main.cpp
+ *   @brief  Unit test framework (Catch2) implementation file.
  *
  *  In order to compile the unit testing framework once, not for each tranlation unit
  *  which includes the header file, we put the `CATCH_CONFIG_MAIN` macro in a separated
  *  source file while the header file is included. This file should be linked with other
  *  test implementations.
  *
- *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@gmail.com>
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
  *  @internal
  *       Created:  Mon Feb 13, 2017  00:44
@@ -19,4 +19,4 @@
  */
 
 #define CATCH_CONFIG_MAIN
-#include "catch/catch.hpp"
+#include "catch2/catch.hpp"

@@ -1,5 +1,5 @@
 /**
- *    @file  tests_mapper.cc
+ *    @file  test_mapper.cpp
  *   @brief  Mapper class test cases.
  *
  *  This test contains test scenarios for Mapper class.
@@ -19,11 +19,12 @@
 #include <string>
 #include <utility>
 
-#include "tests_base.h"
 #include "mapper.h"
 #include "traverser.h"
 #include "utils.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

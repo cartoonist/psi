@@ -1,5 +1,5 @@
 /**
- *    @file  tests_pathindex.cc
+ *    @file  test_pathindex.cpp
  *   @brief  Test PathIndex class.
  *
  *  Test scenarios for PathIndex class.
@@ -18,11 +18,12 @@
 #include <fstream>
 #include <string>
 
-#include "tests_base.h"
 #include "vargraph.h"
 #include "pathindex.h"
 #include "index.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

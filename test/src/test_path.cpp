@@ -1,5 +1,5 @@
 /**
- *    @file  tests_path.cc
+ *    @file  test_path.cpp
  *   @brief  Test cases for Path submodule of module VarGraph.
  *
  *  Contains test cases for Path template class.
@@ -20,9 +20,10 @@
 #include <string>
 #include <vector>
 
-#include "tests_base.h"
 #include "vargraph.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;

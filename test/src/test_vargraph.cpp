@@ -1,5 +1,5 @@
 /**
- *    @file  tests_vargraph.cc
+ *    @file  test_vargraph.cpp
  *   @brief  VarGraph module test cases.
  *
  *  Contains test cases for VarGraph header file.
@@ -24,9 +24,10 @@
 #include <string>
 #include <vector>
 
-#include "tests_base.h"
 #include "vargraph.h"
 #include "logger.h"
+
+#include "test_base.hpp"
 
 
 using namespace grem;
