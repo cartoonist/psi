@@ -10,3 +10,6 @@
 [submodule "test/ext/catch2"]
 	path = test/ext/catch2
 	url = https://github.com/philsquared/Catch.git
+[submodule "ext/gum"]
+	path = ext/gum
+	url = git@github.com:cartoonist/gum.git
