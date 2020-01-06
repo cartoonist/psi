@@ -20,7 +20,7 @@
 
 #include <functional>
 
-#include "cpp/vg.pb.h"
+#include "vg/vg.pb.h"
 
 #include "path_base.h"
 

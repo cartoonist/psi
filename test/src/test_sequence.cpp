@@ -691,7 +691,7 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
 {
   auto check_content =
     []( seqan::StringSet< MemString >& d, const std::string& data ) {
-      REQUIRE( data == d );
+      REQUIRE( ( data == d ) );
     };
 
   GIVEN( "A set of strings" )

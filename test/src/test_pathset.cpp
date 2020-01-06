@@ -27,7 +27,7 @@
 
 using namespace grem;
 
-SCENARIO( "PathSet provides an interface similar to a conventional container", "[pathindex]" )
+SCENARIO( "PathSet provides an interface similar to a conventional container", "[pathset]" )
 {
   auto basic_tests = []( auto&& set, const VarGraph& vargraph ) {
     REQUIRE( set.size() == 4 );

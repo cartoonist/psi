@@ -28,7 +28,7 @@
 
 using namespace grem;
 
-SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
+SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 {
   std::vector< VarGraph::nodeid_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
@@ -1341,7 +1341,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
   }
 }
 
-SCENARIO( "Basic tests for offset path", "[graph][path]" )
+SCENARIO( "Basic tests for offset path", "[path]" )
 {
   std::vector< VarGraph::nodeid_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
@@ -1867,7 +1867,7 @@ SCENARIO( "Basic tests for offset path", "[graph][path]" )
   }
 }
 
-SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
+SCENARIO( "Trim a path in a variation graph", "[path]" )
 {
   std::vector< VarGraph::nodeid_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
@@ -2248,7 +2248,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
   }
 }
 
-SCENARIO( "Trim a path to the length of k", "[graph][path]" )
+SCENARIO( "Trim a path to the length of k", "[path]" )
 {
   GIVEN( "A small variation graph" )
   {
@@ -2673,7 +2673,7 @@ SCENARIO( "Trim a path to the length of k", "[graph][path]" )
   }
 }
 
-SCENARIO( "Query node coordinates by position in the path", "[graph][path]" )
+SCENARIO( "Query node coordinates by position in the path", "[path]" )
 {
   std::vector< VarGraph::nodeid_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };

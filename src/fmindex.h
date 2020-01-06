@@ -162,12 +162,7 @@ namespace seqan {
           this->text_p->load( in );
           this->owner = true;
         }
-      private:
-        /* ====================  DATA MEMBERS  ======================================= */
-        value_type fm;
-        text_type* text_p;
-        bool owner;
-        /* ====================  METHODS              ================================ */
+
         // :TODO:Wed Apr 04 13:17:\@cartoonist: FIXME: a Holder class should be
         //     responsible for the text fibre not client class.
         //     === PROBLEM ===
@@ -195,6 +190,11 @@ namespace seqan {
           this->text_p = ext_p;
           this->owner = false;
         }
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        value_type fm;
+        text_type* text_p;
+        bool owner;
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
         indexRequire< TWT, TDens, TInvDens >( Index& index, FibreSALF );
