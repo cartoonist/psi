@@ -431,6 +431,157 @@ namespace grem {
           pindex.get_paths_set() );
     }  /* -----  end of template function covered_by  ----- */
 
+  /**
+   *  @brief  Simulate a unique haplotype.
+   *
+   *  @param[out]  haplotype The simulated haplotype as a Path.
+   *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @param[in]  tries Number of tries if the generated haplotype is not unique.
+   *
+   *  This function gets a Haplotyper graph iterator and generate a unique haplotype
+   *  if available. The input Haplotyper iterator stores required information of the
+   *  previous simulated haplotypes for which the iterator is used. So, in order to
+   *  simulate multiple unique haplotypes use the same iterator as the input. It tries
+   *  `tries` times to generated a unique haplotype.
+   */
+  template< typename TSpec >
+      inline void
+    get_uniq_full_haplotype( Path< VarGraph >& haplotype,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        int tries=0 )
+    {
+      do {
+        while ( !at_end( iter ) ) {
+          add_node( haplotype, *iter );
+          ++iter;
+        }
+        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
+          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        }
+        else {
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          break;
+        }
+        /* trying again */
+      } while ( true );
+    }
+
+  /**
+   *  @brief  Add a simulated haplotype to the given pathset.
+   *
+   *  @param  paths The pathset.
+   *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @param[in]  tries Number of tries if the generated haplotype is not unique.
+   *
+   *  @overload for `PathSet`.
+   */
+  template< typename TPathSet, typename TSpec >
+      inline void
+    get_uniq_full_haplotype( TPathSet& paths,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        int tries=0 )
+    {
+      Path< VarGraph > haplotype( iter.get_vargraph() );
+      get_uniq_full_haplotype( haplotype, iter, tries );
+      if ( length( haplotype ) != 0 ){
+        paths.push_back( std::move( haplotype ) );
+      }
+    }
+
+  template< typename TPathSet, typename TSpec >
+      inline void
+    get_uniq_patches( TPathSet& paths,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        unsigned int k )
+    { // :TODO:Fri Dec 01 21:26:\@cartoonist: the length of pre-context sequence won't be k all the time.
+      iter.set_raise_on_end( true );
+      Path< VarGraph > patch( iter.get_vargraph() );
+      Path< VarGraph, Dynamic > frontier( iter.get_vargraph() );
+      typename Path< VarGraph, Dynamic >::nodes_type::value_type marked;
+      try {
+        while ( true ) {
+          marked = 0;
+          if ( !frontier.empty() ) marked = frontier.get_nodes().back();
+          // Bootstrap.
+          if ( !marked ) extend_to_k( frontier, iter, k );
+          else extend_to_k( frontier, iter,
+              2*k + frontier.get_sequence_len() - frontier.get_seqlen_tail() );
+          // Check the next patch distance to merge with previous patch if is less than k.
+          if ( !patch.empty() && iter[ frontier.get_nodes() ] ) {
+            patch.set_right_by_len( k - 1 );
+            paths.push_back( std::move( patch ) );
+            clear( patch );
+            rtrim_front_by_len( frontier, k, true );
+          }
+          else if ( !patch.empty() ) {
+            // Nodes from first to the `marked` are already added.
+            trim_front( frontier, marked );
+            marked = 0;
+            extend_to_k( frontier, iter, k );
+          }
+          if ( patch.empty() ) {
+            // Search for a patch of length k that is not covered by visited paths of `iter`.
+            while ( iter[ frontier.get_nodes() ] ) {
+              add_node( frontier, *iter );
+              ltrim_front_by_len( frontier, k, true );
+              ++iter;
+            }
+          }
+          // Extend the patch.
+          patch += frontier;
+          rtrim_front_by_len( frontier, k );
+          while ( !iter[ frontier.get_nodes() ] ) {
+            add_node( frontier, *iter );
+            add_node( patch, *iter );
+            rtrim_front_by_len( frontier, k );
+            ++iter;
+          }
+        }
+      }
+      catch( const std::range_error& ) {
+        if ( length( patch ) > 0 ) {
+          if ( !iter[ frontier.get_nodes() ] &&
+              !rcontains( patch, frontier.get_nodes().rbegin(), frontier.get_nodes().rend() ) )
+          {
+            if ( marked != 0 ) trim_front( frontier, marked );
+            patch += frontier;
+          }
+          paths.push_back( std::move( patch ) );
+        }
+        --iter;  // save the traversed path and reset the Haplotyper iterator.
+      }
+      iter.set_raise_on_end( false );
+    }
+
+  template< typename TPathSet, typename TSpec >
+      inline bool
+    get_uniq_patched_haplotype( TPathSet& paths,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        unsigned int context_len )
+    {
+      assert( context_len != 0 );
+      if ( level( iter ) == 0 ) {
+        get_uniq_full_haplotype( paths, iter );
+        return true;
+      }
+      unsigned int paths_no = paths.size();
+      get_uniq_patches( paths, iter, context_len );
+      if ( paths_no == paths.size() ) return false;
+      return true;
+    }
+
+  template< typename TPath >
+      inline void
+    get_rnd_full_haplotype( TPath& haplotype,
+        GraphIter< VarGraph, Haplotyper< Random > >& iter )
+    {
+      while ( !at_end( iter ) ) {
+        haplotype.push_back( *iter );
+        ++iter;
+      }
+      --iter;
+    }
+
   /* END OF PathIndex interface functions  ----------------------------------------- */
 
 }  /* -----  end of namespace grem  ----- */
