@@ -70,7 +70,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
 
   GIVEN( "A small VarGraph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );

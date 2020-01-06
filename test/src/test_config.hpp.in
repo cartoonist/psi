@@ -1,0 +1,25 @@
+/**
+ *    @file  test_config.hpp.in
+ *   @brief  Configure header file template.
+ *
+ *  This template is used by the build script to generate the configure header file
+ *  defining the absolute paths required by the test module.
+ *
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
+ *
+ *  @internal
+ *       Created:  Sat Nov 23, 2019  01:22
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2019, Ali Ghaffaari
+ *
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
+ */
+
+#ifndef  PSI_TEST_CONFIG_HPP__
+#define  PSI_TEST_CONFIG_HPP__
+
+#cmakedefine PROJECT_SOURCE_DIR "@PROJECT_SOURCE_DIR@"
+#cmakedefine TEST_DATA_DIR "@TEST_DATA_DIR@"
+
+#endif  /* --- #ifndef PSI_TEST_CONFIG_HPP__ --- */

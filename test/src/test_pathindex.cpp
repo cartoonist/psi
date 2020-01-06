@@ -34,7 +34,7 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
   {
     typedef seqan::IndexEsa<> TIndexSpec;
 
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -84,7 +84,7 @@ SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
   {
     typedef seqan::IndexEsa<> TIndexSpec;
 
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -130,7 +130,7 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
   {
     typedef seqan::IndexEsa<> TIndexSpec;
 
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );

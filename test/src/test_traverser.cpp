@@ -40,13 +40,13 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
     typedef seqan::IndexWotd<> TIndexSpec;
     typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
 
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath.c_str() );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
     VarGraph vargraph( gifs );
-    std::string readspath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    std::string readspath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     seqan::SeqFileIn reads_file;
     if ( !open( reads_file, readspath.c_str() ) ) {
       throw std::runtime_error( "cannot open file " + readspath );

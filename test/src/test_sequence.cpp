@@ -35,7 +35,7 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
   unsigned int reads_num = 10;
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
-    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     seqan::SeqFileIn infile;
     if ( !open( infile, fqpath.c_str() ) ) {
       throw std::runtime_error( "cannot open file '" + fqpath + "'" );
@@ -78,7 +78,7 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
   unsigned int reads_num = 10;
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
-    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     klibpp::SeqStreamIn iss( fqpath.c_str() );
     Records< seqan::StringSet< MemString > > records;
     unsigned int subset_len = 4;
@@ -1155,7 +1155,7 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
   unsigned int reads_num = 10;
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
-    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     klibpp::SeqStreamIn iss( fqpath.c_str() );
     if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
 
@@ -1272,7 +1272,7 @@ SCENARIO( "Seeding", "[seeding][sequence]" )
   unsigned int reads_num = 10;
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
-    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     seqan::SeqFileIn infile;
     if ( !open( infile, fqpath.c_str() ) ) {
       throw std::runtime_error( "cannot open file '" + fqpath + "'" );
@@ -1356,7 +1356,7 @@ SCENARIO( "Seeding", "[seeding][sequence]" )
 
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
-    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     klibpp::SeqStreamIn iss( fqpath.c_str() );
     if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
 

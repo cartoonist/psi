@@ -23,10 +23,14 @@
 
 #include "catch2/catch.hpp"
 
-#ifndef TESTDIR
-#define TESTDIR ".."  // Test directory path relative to test binary path.
+#include "test_config.hpp"
+
+#define TEMPLATE_SCENARIO TEMPLATE_TEST_CASE
+
+#ifndef TEST_DATA_DIR
+#define TEST_DATA_DIR PROJECT_SOURCE_DIR "/test/data"
 #endif
 
-std::string _testdir(TESTDIR);
+static const std::string test_data_dir( TEST_DATA_DIR );
 
 #endif  /* --- #ifndef PSI_TEST_BASE_HPP__ --- */

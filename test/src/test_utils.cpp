@@ -208,7 +208,7 @@ SCENARIO( "Rounding up to the next closest power of 2", "[utils]" )
 
 SCENARIO( "Serialize and deserialize a vector", "[utils]" )
 {
-  std::string file_name_prefix = _testdir + "/test_";
+  std::string file_name_prefix = test_data_dir + "/test_";
 
   size_t size = 20;
   GIVEN( "A vector of integer with size " + std::to_string( size ) )

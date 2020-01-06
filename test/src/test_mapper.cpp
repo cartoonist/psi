@@ -33,7 +33,7 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
 {
   GIVEN ( "A tiny variation graph" )
   {
-    std::string vgpath = _testdir + "/data/tiny/tiny.xg";
+    std::string vgpath = test_data_dir + "/tiny/tiny.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::ifstream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -71,7 +71,7 @@ SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
 {
   GIVEN ( "A tiny variation graph" )
   {
-    std::string vgpath = _testdir + "/data/tiny/tiny.xg";
+    std::string vgpath = test_data_dir + "/tiny/tiny.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::ifstream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -149,7 +149,7 @@ SCENARIO( "Load and save starting loci", "[mapper]" )
 {
   GIVEN ( "A tiny variation graph" )
   {
-    std::string vgpath = _testdir + "/data/tiny/tiny.xg";
+    std::string vgpath = test_data_dir + "/tiny/tiny.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::ifstream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );

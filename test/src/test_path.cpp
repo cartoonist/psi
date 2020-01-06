@@ -105,7 +105,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -1349,7 +1349,7 @@ SCENARIO( "Basic tests for offset path", "[graph][path]" )
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -1874,7 +1874,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
@@ -2249,7 +2249,7 @@ SCENARIO( "Trim a path to the length of k", "[graph][path]" )
 {
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
 
@@ -2678,7 +2678,7 @@ SCENARIO( "Query node coordinates by position in the path", "[graph][path]" )
 
   GIVEN ( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );

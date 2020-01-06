@@ -36,7 +36,7 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
 {
   GIVEN( "A small graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x";
+    std::string vgpath = test_data_dir + "/small/x";
     std::function<void(VarGraph&)> x_basic_test = []( VarGraph& xgraph )
     {
       REQUIRE( xgraph.node_count == 210 );
@@ -72,7 +72,7 @@ SCENARIO( "Counting forward and backward edges", "[graph]" )
 {
   GIVEN( "A small graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph;
     vargraph.load( ifs );
@@ -96,7 +96,7 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
 {
   GIVEN( "A tiny variation graph" )
   {
-    std::string vgpath = _testdir + "/data/tiny/tiny.xg";
+    std::string vgpath = test_data_dir + "/tiny/tiny.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
 
@@ -183,7 +183,7 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
 
@@ -249,7 +249,7 @@ SCENARIO( "A Haplotyper graph iterator raise on end", "[graph][iterator][haploty
 {
   GIVEN( "A small variation graph and a Haplotyper iterator with `raise_on_end` enabled" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
     seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( vargraph );
@@ -272,7 +272,7 @@ SCENARIO( "Extend a path to length k using Haplotyper graph iterator", "[graph][
 {
   GIVEN( "A small variation graph and a Haplotyper graph iterator" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
     seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( vargraph );
@@ -314,7 +314,7 @@ SCENARIO( "Get unique patched haplotypes using Haplotyper graph iterator", "[gra
 {
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
     unsigned int context_len = 10;
@@ -343,7 +343,7 @@ SCENARIO( "Traverse a variation graph using backtracking algorithm", "[graph][it
 {
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
 
@@ -351,7 +351,7 @@ SCENARIO( "Traverse a variation graph using backtracking algorithm", "[graph][it
 
     WHEN( "enumerating all kmers of length " + std::to_string( kmer_len ) )
     {
-      std::string truth_dir = _testdir + "/data/small/";
+      std::string truth_dir = test_data_dir + "/small/";
       std::string truth_filepath = truth_dir + std::to_string( kmer_len ) + "-mers";
       std::ifstream truth_stream( truth_filepath, std::ifstream::in );
       std::string true_kmer;
@@ -417,7 +417,7 @@ SCENARIO( "Variation graph breadth-first traverse (BFS)", "[graph][iterator][bfs
 {
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
 
@@ -439,7 +439,7 @@ SCENARIO( "Variation graph breadth-first traverse (BFS)", "[graph][iterator][bfs
   }
   GIVEN( "A variation graph with more than one connected component" )
   {
-    std::string vgpath = _testdir + "/data/multi/multi.xg";
+    std::string vgpath = test_data_dir + "/multi/multi.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
     VarGraph vargraph( ifs );
 
