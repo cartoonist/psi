@@ -595,16 +595,18 @@ namespace seqan {
       typename StringSet< grem::DiskString, Owner<> >::string_type const& str )
   {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
-    ++this->count;
     *this += str;
     stringsize_type breakpoint = this->raw_length();
     if ( breakpoint >= this->bv_str_breaks.size() ) {
       sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
-      grem::bv_icopy( this->bv_str_breaks, new_bv, 0, breakpoint - str.size() );
+      if ( this->length() != 0 ) grem::bv_icopy( this->bv_str_breaks,
+                                                 new_bv,
+                                                 0, this->bv_str_breaks.size() );
       sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
     }
     this->bv_str_breaks[ breakpoint ] = 1;
     this->initialized = false;
+    ++this->count;
   }
 
     inline void
@@ -853,16 +855,18 @@ namespace seqan {
       typename StringSet< grem::MemString, Owner<> >::string_type const& str )
   {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
-    ++this->count;
     *this += str;
     stringsize_type breakpoint = this->raw_length();
     if ( breakpoint >= this->bv_str_breaks.size() ) {
       sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
-      grem::bv_icopy( this->bv_str_breaks, new_bv, 0, breakpoint - str.size() );
+      if ( this->length() != 0 ) grem::bv_icopy( this->bv_str_breaks,
+                                                 new_bv,
+                                                 0, this->bv_str_breaks.size() );
       sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
     }
     this->bv_str_breaks[ breakpoint ] = 1;
     this->initialized = false;
+    ++this->count;
   }
 
     inline void
