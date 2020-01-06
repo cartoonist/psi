@@ -75,7 +75,8 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     GIVEN( "A PathSet containing some paths" )
     {

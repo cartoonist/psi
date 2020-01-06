@@ -38,7 +38,8 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     typedef seqan::IndexEsa<> TIndexSpec;
     typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
@@ -76,7 +77,8 @@ SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     typedef seqan::IndexEsa<> TIndexSpec;
     typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
@@ -154,7 +156,8 @@ SCENARIO( "Load and save starting loci", "[mapper]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     GIVEN( "A mapper on this graph with known starting loci" )
     {

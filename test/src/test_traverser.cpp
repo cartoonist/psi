@@ -45,7 +45,8 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
     std::string readspath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     seqan::SeqFileIn reads_file;
     if ( !open( reads_file, readspath.c_str() ) ) {

@@ -55,6 +55,7 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
         x_basic_test( vargraph );
       }
     }
+
     WHEN( "The format is xg")
     {
       std::ifstream ifs( vgpath + ".xg", std::ifstream::in | std::ifstream::binary );
@@ -98,7 +99,8 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/tiny/tiny.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
 
     WHEN( "the eigth haplotypes are generated using Haplotyper" )
     {
@@ -185,7 +187,8 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
 
     WHEN( "the three haplotypes are generated using Haplotyper" )
     {
@@ -251,7 +254,8 @@ SCENARIO( "A Haplotyper graph iterator raise on end", "[graph][iterator][haploty
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
     seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( vargraph );
     hap_itr.raise_on_end = true;
 
@@ -274,7 +278,8 @@ SCENARIO( "Extend a path to length k using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
     seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( vargraph );
     unsigned int k = 5;
 
@@ -316,7 +321,8 @@ SCENARIO( "Get unique patched haplotypes using Haplotyper graph iterator", "[gra
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
     unsigned int context_len = 10;
 
     WHEN( "Generate 32x patched haplotypes are generated using a Haplotyper iterator" )
@@ -345,7 +351,8 @@ SCENARIO( "Traverse a variation graph using backtracking algorithm", "[graph][it
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
 
     unsigned int kmer_len = 20;
 
@@ -419,7 +426,8 @@ SCENARIO( "Variation graph breadth-first traverse (BFS)", "[graph][iterator][bfs
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
 
     WHEN( "traverse the graph using BFS graph iterator" )
     {
@@ -441,7 +449,8 @@ SCENARIO( "Variation graph breadth-first traverse (BFS)", "[graph][iterator][bfs
   {
     std::string vgpath = test_data_dir + "/multi/multi.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
 
     WHEN( "traverse the graph using BFS graph iterator" )
     {

@@ -39,7 +39,8 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
     Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
 
     unsigned int paths_num = 2;
@@ -89,7 +90,8 @@ SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
     Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
@@ -135,7 +137,8 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     WHEN( "A set of paths are added to a PathIndex with non-zero context in lazy mode" )
     {

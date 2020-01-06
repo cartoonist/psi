@@ -110,7 +110,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     GIVEN( "An empty path" )
     {
@@ -1354,7 +1355,8 @@ SCENARIO( "Basic tests for offset path", "[graph][path]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     GIVEN( "A path in the graph" )
     {
@@ -1879,7 +1881,8 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     GIVEN( "An empty path in the graph" )
     {
@@ -2251,7 +2254,8 @@ SCENARIO( "Trim a path to the length of k", "[graph][path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph( ifs );
+    VarGraph vargraph;
+    vargraph.load( ifs );
 
     GIVEN( "Two paths: one Default and one Dynamic" )
     {
@@ -2683,7 +2687,8 @@ SCENARIO( "Query node coordinates by position in the path", "[graph][path]" )
     if ( !gifs ) {
       throw std::runtime_error( "cannot open file " + vgpath );
     }
-    VarGraph vargraph( gifs );
+    VarGraph vargraph;
+    vargraph.load( gifs );
 
     WHEN( "A path in the graph" )
     {
