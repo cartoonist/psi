@@ -1,5 +1,5 @@
 /**
- *    @file  traverser.h
+ *    @file  traverser.hpp
  *   @brief  Traverser main header file.
  *
  *  The main header file for Traversers.
@@ -15,11 +15,11 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_TRAVERSER_H__
-#define PSI_TRAVERSER_H__
+#ifndef PSI_TRAVERSER_HPP__
+#define PSI_TRAVERSER_HPP__
 
-#include "traverser_bfs.h"
-#include "traverser_dfs.h"
+#include "traverser_bfs.hpp"
+#include "traverser_dfs.hpp"
 
 namespace grem {
   template< typename TIndex,
@@ -41,4 +41,4 @@ namespace grem {
     };  /* ----------  end of template class Traverser  ---------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_TRAVERSER_H__ --- */
+#endif  /* --- #ifndef PSI_TRAVERSER_HPP__ --- */

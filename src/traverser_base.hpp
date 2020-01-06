@@ -1,5 +1,5 @@
 /**
- *    @file  traverser.h
+ *    @file  traverser.hpp
  *   @brief  TraverserBase template class.
  *
  *  TraverserBase template class definition and its template specialisations.
@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_TRAVERSER_BASE_H__
-#define PSI_TRAVERSER_BASE_H__
+#ifndef PSI_TRAVERSER_BASE_HPP__
+#define PSI_TRAVERSER_BASE_HPP__
 
 // :TODO:Fri Aug 25 13:15:\@cartoonist: remove unused headers.
 // :TODO:Fri Aug 25 13:15:\@cartoonist: add required headers explicitly.
@@ -29,13 +29,13 @@
 #include <array>
 #include <functional>
 
-#include "vargraph.h"
-#include "logger.h"
-#include "sequence.h"
-#include "index.h"
-#include "index_iter.h"
-#include "seed.h"
-#include "stat.h"
+#include "graph.hpp"
+#include "logger.hpp"
+#include "sequence.hpp"
+#include "index.hpp"
+#include "index_iter.hpp"
+#include "seed.hpp"
+#include "stat.hpp"
 
 // TODO: refactor: types (const, * and &).
 
@@ -375,4 +375,4 @@ namespace grem
     };  /* ----------  end of template class TraverserBase  ---------- */
 }
 
-#endif  /* --- #ifndef PSI_TRAVERSER_BASE_H__ --- */
+#endif  /* --- #ifndef PSI_TRAVERSER_BASE_HPP__ --- */

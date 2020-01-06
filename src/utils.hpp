@@ -1,5 +1,5 @@
 /**
- *    @file  utils.h
+ *    @file  utils.hpp
  *   @brief  Utility and helper functions.
  *
  *  This header file contains general utility and helper functions.
@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_UTILS_H__
-#define  PSI_UTILS_H__
+#ifndef  PSI_UTILS_HPP__
+#define  PSI_UTILS_HPP__
 
 #include <cstdio>
 #include <cstdlib>
@@ -32,7 +32,7 @@
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 
-#include "base.h"
+#include "base.hpp"
 
 
 #define GREM_DEFAULT_TMPDIR "/tmp"
@@ -859,4 +859,4 @@ namespace grem {
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_UTILS_H__ --- */
+#endif  /* --- #ifndef PSI_UTILS_HPP__ --- */

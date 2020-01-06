@@ -1,5 +1,5 @@
 /**
- *    @file  seed.h
+ *    @file  seed.hpp
  *   @brief  Define the Seed class.
  *
  *  Seed class definition.
@@ -15,13 +15,12 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_SEED_H__
-#define PSI_SEED_H__
+#ifndef PSI_SEED_HPP__
+#define PSI_SEED_HPP__
 
 #include <cstdlib>
 
-#include "vargraph.h"
-#include "base.h"
+#include "base.hpp"
 
 
 namespace grem {
@@ -47,4 +46,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_SEED_H__ --- */
+#endif  /* --- #ifndef PSI_SEED_HPP__ --- */

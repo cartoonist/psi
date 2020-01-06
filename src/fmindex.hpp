@@ -1,5 +1,5 @@
 /**
- *    @file  fmindex.h
+ *    @file  fmindex.hpp
  *   @brief  FM-Index wrapper on `sdsl::csa_wt`.
  *
  *  This is a wrapper module for `sdsl::csa_wt`.
@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_FMINDEX_H__
-#define  PSI_FMINDEX_H__
+#ifndef  PSI_FMINDEX_HPP__
+#define  PSI_FMINDEX_HPP__
 
 #include <fstream>
 #include <string>
@@ -24,8 +24,8 @@
 #include <seqan/index.h>
 #include <sdsl/suffix_arrays.hpp>
 
-#include "sequence.h"
-#include "utils.h"
+#include "sequence.hpp"
+#include "utils.hpp"
 
 
 namespace grem {
@@ -785,4 +785,4 @@ namespace seqan {
     };
 }  /* -----  end of namespace seqan  ----- */
 
-#endif  /* --- #ifndef PSI_FMINDEX_H__ --- */
+#endif  /* --- #ifndef PSI_FMINDEX_HPP__ --- */

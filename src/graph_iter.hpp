@@ -1,5 +1,5 @@
 /**
- *    @file  graph_iter.h
+ *    @file  graph_iter.hpp
  *   @brief  Generic graph iterator template classes.
  *
  *  This is a header file for generic graph iterators. All definitions/declarations are
@@ -16,12 +16,12 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_GRAPH_ITER_H__
-#define  PSI_GRAPH_ITER_H__
+#ifndef  PSI_GRAPH_ITER_HPP__
+#define  PSI_GRAPH_ITER_HPP__
 
 #include <seqan/basic.h>
 
-#include "base.h"
+#include "base.hpp"
 
 
 namespace grem {
@@ -160,4 +160,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_GRAPH_ITER_H__  --- */
+#endif  /* --- #ifndef PSI_GRAPH_ITER_HPP__  --- */

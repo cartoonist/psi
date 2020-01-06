@@ -1,5 +1,5 @@
 /**
- *    @file  mapper.h
+ *    @file  mapper.hpp
  *   @brief  Mapper template class.
  *
  *  Mapper template class definition and its template specialisations.
@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_MAPPER_H__
-#define PSI_MAPPER_H__
+#ifndef PSI_MAPPER_HPP__
+#define PSI_MAPPER_HPP__
 
 #include <fstream>
 #include <type_traits>
@@ -30,14 +30,14 @@
 #include <sdsl/bit_vectors.hpp>
 #include "stream.hpp"
 
-#include "vargraph.h"
-#include "sequence.h"
-#include "index.h"
-#include "index_iter.h"
-#include "pathindex.h"
-#include "utils.h"
-#include "logger.h"
-#include "stat.h"
+#include "graph.hpp"
+#include "sequence.hpp"
+#include "index.hpp"
+#include "index_iter.hpp"
+#include "pathindex.hpp"
+#include "utils.hpp"
+#include "logger.hpp"
+#include "stat.hpp"
 
 
 namespace grem
@@ -697,4 +697,4 @@ namespace grem
     };  /* ----------  end of template class Stat  ---------- */
 }
 
-#endif  /* --- #ifndef PSI_MAPPER_H__ --- */
+#endif  /* --- #ifndef PSI_MAPPER_HPP__ --- */

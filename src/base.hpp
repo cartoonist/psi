@@ -1,5 +1,5 @@
 /**
- *    @file  base.h
+ *    @file  base.hpp
  *   @brief  Base header file.
  *
  *  The base header file including essential macros that should be defined globally
@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_BASE_H__
-#define PSI_BASE_H__
+#ifndef PSI_BASE_HPP__
+#define PSI_BASE_HPP__
 
 // Define/Undefine NDEBUG according to GREM_DEBUG macro value specified at compile time.
 #undef NDEBUG
@@ -41,4 +41,4 @@
 #define UPDATE_DATE __DATE__
 #endif
 
-#endif  /* --- #ifndef PSI_BASE_H__ --- */
+#endif  /* --- #ifndef PSI_BASE_HPP__ --- */

@@ -1,5 +1,5 @@
 /**
- *    @file  sequence.h
+ *    @file  sequence.hpp
  *   @brief  Sequence abstract data types.
  *
  *  Sequence header file contains type definitions, abstract data types, and helper
@@ -17,8 +17,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_SEQUENCE_H__
-#define  PSI_SEQUENCE_H__
+#ifndef  PSI_SEQUENCE_HPP__
+#define  PSI_SEQUENCE_HPP__
 
 #include <fstream>
 #include <stdexcept>
@@ -29,8 +29,8 @@
 #include <seqan/sequence.h>
 #include <sdsl/bit_vectors.hpp>
 
-#include "utils.h"
-#include "logger.h"
+#include "utils.hpp"
+#include "logger.hpp"
 
 
 #define SEQUENCE_DEFAULT_SENTINEL_CHAR '$'
@@ -1760,4 +1760,4 @@ namespace seqan {
     };
 }  /* -----  end of namespace seqan  ----- */
 
-#endif  /* --- #ifndef PSI_SEQUENCE_H__ --- */
+#endif  /* --- #ifndef PSI_SEQUENCE_HPP__ --- */

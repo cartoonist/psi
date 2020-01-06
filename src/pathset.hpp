@@ -1,5 +1,5 @@
 /**
- *    @file  pathset.h
+ *    @file  pathset.hpp
  *   @brief  PathSet template class definition.
  *
  *  This header files contains PathSet template class definition and its interface
@@ -16,17 +16,17 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_PATHSET_H__
-#define  PSI_PATHSET_H__
+#ifndef  PSI_PATHSET_HPP__
+#define  PSI_PATHSET_HPP__
 
 #include <vector>
 
 #include <sdsl/bit_vectors.hpp>
 
-#include "sequence.h"
-#include "index.h"
-#include "path.h"
-#include "utils.h"
+#include "sequence.hpp"
+#include "index.hpp"
+#include "path.hpp"
+#include "utils.hpp"
 
 
 #define PATHSET_ID_SEPARATOR_CHAR ','
@@ -388,4 +388,4 @@ namespace grem {
   /* END OF PathSet interface functions  ------------------------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_PATHSET_H__ --- */
+#endif  /* --- #ifndef PSI_PATHSET_HPP__ --- */

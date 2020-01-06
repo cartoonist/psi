@@ -1,5 +1,5 @@
 /**
- *    @file  index_iter.h
+ *    @file  index_iter.hpp
  *   @brief  Custom iterators for SeqAn indexes.
  *
  *  The header file includes custom iterator template classes for SeqAn indexes.
@@ -15,16 +15,16 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_INDEX_ITER_H__
-#define  PSI_INDEX_ITER_H__
+#ifndef  PSI_INDEX_ITER_HPP__
+#define  PSI_INDEX_ITER_HPP__
 
 #include <vector>
 #include <functional>
 #include <algorithm>
 #include <type_traits>
 
-#include "index.h"
-#include "seed.h"
+#include "index.hpp"
+#include "seed.hpp"
 
 namespace grem {
   /**
@@ -738,4 +738,4 @@ namespace grem {
     }
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_INDEX_ITER_H__ --- */
+#endif  /* --- #ifndef PSI_INDEX_ITER_HPP__ --- */

@@ -1,5 +1,5 @@
 /**
- *    @file  stat.h
+ *    @file  stat.hpp
  *   @brief  Stat template class.
  *
  *  Stat template class definition.
@@ -15,15 +15,15 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_STAT_H__
-#define PSI_STAT_H__
+#ifndef PSI_STAT_HPP__
+#define PSI_STAT_HPP__
 
 #include <chrono>
 #include <unordered_map>
 
 #include <seqan/basic.h>
 
-#include "base.h"
+#include "base.hpp"
 
 
 namespace grem {
@@ -289,4 +289,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_STAT_H__ --- */
+#endif  /* --- #ifndef PSI_STAT_HPP__ --- */

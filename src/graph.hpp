@@ -1,9 +1,8 @@
 /**
- *    @file  vargraph.h
- *   @brief  VarGraph class definition.
+ *    @file  graph.hpp
+ *   @brief  Interface function definitions for the sequence graph class.
  *
- *  This header file contains VarGraph, Paths, and VarGraph iterators class definitions
- *  and interface functions.
+ *  This header file defines interface functions for the sequence graph class.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -16,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_VARGRAPH_H__
-#define PSI_VARGRAPH_H__
+#ifndef PSI_GRAPH_HPP__
+#define PSI_GRAPH_HPP__
 
 #include <algorithm>
 #include <fstream>
@@ -1422,4 +1421,4 @@ namespace grem {
   /* END OF Haplotyper iterator interface functions  ----------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_VARGRAPH_H__ --- */
+#endif  /* --- #ifndef PSI_GRAPH_HPP__ --- */

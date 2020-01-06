@@ -1,5 +1,5 @@
 /**
- *    @file  index.h
+ *    @file  index.hpp
  *   @brief  Index header file.
  *
  *  This header file contains type definitions, abstract data types, and helper
@@ -17,13 +17,13 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_INDEX_H__
-#define  PSI_INDEX_H__
+#ifndef  PSI_INDEX_HPP__
+#define  PSI_INDEX_HPP__
 
 #include <seqan/index.h>
 
-#include "sequence.h"
-#include "fmindex.h"
+#include "sequence.hpp"
+#include "fmindex.hpp"
 
 
 namespace grem {
@@ -107,4 +107,4 @@ namespace seqan {
     };
 }  /* -----  end of namespace seqan  ----- */
 
-#endif  /* --- #ifndef PSI_INDEX_H__ --- */
+#endif  /* --- #ifndef PSI_INDEX_HPP__ --- */

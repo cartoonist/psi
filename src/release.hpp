@@ -1,5 +1,5 @@
 /**
- *    @file  release.h
+ *    @file  release.hpp
  *   @brief  Release information.
  *
  *  This header file contains release information, such as version, short and long
@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_RELEASE_H__
-#define PSI_RELEASE_H__
+#ifndef PSI_RELEASE_HPP__
+#define PSI_RELEASE_HPP__
 
 namespace grem
 {
@@ -34,4 +34,4 @@ namespace grem
     " └─┘┴└─└─┘┴ ┴\n";
 }
 
-#endif  /* --- #ifndef PSI_RELEASE_H__ --- */
+#endif  /* --- #ifndef PSI_RELEASE_HPP__ --- */

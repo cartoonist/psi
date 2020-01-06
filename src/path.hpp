@@ -1,5 +1,5 @@
 /**
- *    @file  path.h
+ *    @file  path.hpp
  *   @brief  Path header file.
  *
  *  This header file includes definitions for Path template class, its specializations
@@ -16,10 +16,10 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_PATH_H__
-#define PSI_PATH_H__
+#ifndef PSI_PATH_HPP__
+#define PSI_PATH_HPP__
 
-#include "path_base.h"
-#include "path_interface.h"
+#include "path_base.hpp"
+#include "path_interface.hpp"
 
-#endif  /* --- #ifndef PSI_PATH_H__ --- */
+#endif  /* --- #ifndef PSI_PATH_HPP__ --- */

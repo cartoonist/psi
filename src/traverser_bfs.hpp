@@ -1,5 +1,5 @@
 /**
- *    @file  traverser_bfs.h
+ *    @file  traverser_bfs.hpp
  *   @brief  BFS Traverser template class specialization.
  *
  *  The `Traverser` template class specialization for BFS traversal strategy.
@@ -15,10 +15,10 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_TRAVERSER_BFS_H__
-#define PSI_TRAVERSER_BFS_H__
+#ifndef PSI_TRAVERSER_BFS_HPP__
+#define PSI_TRAVERSER_BFS_HPP__
 
-#include "traverser_base.h"
+#include "traverser_base.hpp"
 
 namespace grem {
   /**
@@ -148,4 +148,4 @@ namespace grem {
     };  /* ----------  end of template class TraverserBFS  ---------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_TRAVERSER_BFS_H__ --- */
+#endif  /* --- #ifndef PSI_TRAVERSER_BFS_HPP__ --- */

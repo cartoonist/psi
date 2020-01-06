@@ -1,5 +1,5 @@
 /**
- *    @file  options.h
+ *    @file  options.hpp
  *   @brief  Options class definition.
  *
  *  It contains data structures storing program options.
@@ -15,15 +15,15 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_OPTIONS_H__
-#define PSI_OPTIONS_H__
+#ifndef PSI_OPTIONS_HPP__
+#define PSI_OPTIONS_HPP__
 
 #include <stdexcept>
 #include <string>
 
 #include <seqan/index.h>
 
-#include "base.h"
+#include "base.hpp"
 
 
 namespace grem
@@ -92,4 +92,4 @@ namespace grem
   } Options;
 }
 
-#endif  /* --- #ifndef PSI_OPTIONS_H__ --- */
+#endif  /* --- #ifndef PSI_OPTIONS_HPP__ --- */

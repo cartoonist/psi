@@ -1,6 +1,6 @@
 /**
- *    @file  grem.cc
- *   @brief  grem main program.
+ *    @file  psi.cpp
+ *   @brief  PSI command-line interface.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -26,17 +26,17 @@
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 
-#include "vargraph.h"
-#include "mapper.h"
-#include "traverser.h"
-#include "pathindex.h"
-#include "sequence.h"
-#include "seed.h"
-#include "utils.h"
-#include "options.h"
-#include "stat.h"
-#include "logger.h"
-#include "release.h"
+#include "graph.hpp"
+#include "mapper.hpp"
+#include "traverser.hpp"
+#include "pathindex.hpp"
+#include "sequence.hpp"
+#include "seed.hpp"
+#include "utils.hpp"
+#include "options.hpp"
+#include "stat.hpp"
+#include "logger.hpp"
+#include "release.hpp"
 
 using namespace klibpp;
 using namespace seqan;

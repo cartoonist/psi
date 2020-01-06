@@ -1,5 +1,5 @@
 /**
- *    @file  logger.h
+ *    @file  logger.hpp
  *   @brief  Logger header file.
  *
  *  This header file wraps the external logging library and sets up the general
@@ -16,11 +16,11 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_LOGGER_H__
-#define PSI_LOGGER_H__
+#ifndef PSI_LOGGER_HPP__
+#define PSI_LOGGER_HPP__
 
-#include "base.h"
-#include "options.h"
+#include "base.hpp"
+#include "options.hpp"
 
 #include "spdlog/spdlog.h"
 
@@ -134,4 +134,4 @@ namespace grem {
     spdlog::drop_all();
   }  /* -----  end of function drop_all_loggers  ----- */
 }  /* -----  end of namespace grem  ----- */
-#endif  /* --- #ifndef PSI_LOGGER_H__ --- */
+#endif  /* --- #ifndef PSI_LOGGER_HPP__ --- */

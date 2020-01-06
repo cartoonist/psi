@@ -1,5 +1,5 @@
 /**
- *    @file  path_base.h
+ *    @file  path_base.hpp
  *   @brief  Path template class definitions.
  *
  *  This header file defines Path template class in variation graph, its specializations
@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_PATH_BASE_H__
-#define  PSI_PATH_BASE_H__
+#ifndef  PSI_PATH_BASE_HPP__
+#define  PSI_PATH_BASE_HPP__
 
 #include <fstream>
 #include <stdexcept>
@@ -32,8 +32,8 @@
 #include <seqan/basic.h>
 #include <sdsl/bit_vectors.hpp>
 
-#include "sequence.h"
-#include "utils.h"
+#include "sequence.hpp"
+#include "utils.hpp"
 
 
 namespace grem{
@@ -1274,4 +1274,4 @@ namespace grem{
     class is_generic_path< Haplotype > : public std::false_type {};
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_PATH_BASE_H__ --- */
+#endif  /* --- #ifndef PSI_PATH_BASE_HPP__ --- */

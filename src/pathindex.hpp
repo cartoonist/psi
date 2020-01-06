@@ -1,5 +1,5 @@
 /**
- *    @file  pathindex.h
+ *    @file  pathindex.hpp
  *   @brief  PathIndex template class definition.
  *
  *  This header files contains PathIndex template class definition and its interface
@@ -16,16 +16,16 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_PATHINDEX_H__
-#define  PSI_PATHINDEX_H__
+#ifndef  PSI_PATHINDEX_HPP__
+#define  PSI_PATHINDEX_HPP__
 
 #include <vector>
 #include <algorithm>
 
-#include "sequence.h"
-#include "index.h"
-#include "pathset.h"
-#include "utils.h"
+#include "sequence.hpp"
+#include "index.hpp"
+#include "pathset.hpp"
+#include "utils.hpp"
 
 
 namespace grem {
@@ -435,4 +435,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_PATHINDEX_H__ --- */
+#endif  /* --- #ifndef PSI_PATHINDEX_HPP__ --- */

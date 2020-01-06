@@ -1,5 +1,5 @@
 /**
- *    @file  path_interface.h
+ *    @file  path_interface.hpp
  *   @brief  Interface function definitions for Path template class.
  *
  *  This header file contains interface functions for Path template class.
@@ -15,14 +15,14 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PSI_PATH_INTERFACE_H__
-#define  PSI_PATH_INTERFACE_H__
+#ifndef  PSI_PATH_INTERFACE_HPP__
+#define  PSI_PATH_INTERFACE_HPP__
 
 #include <functional>
 
 #include "vg/vg.pb.h"
 
-#include "path_base.h"
+#include "path_base.hpp"
 
 
 namespace grem {
@@ -1001,4 +1001,4 @@ namespace grem {
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_PATH_INTERFACE_H__ --- */
+#endif  /* --- #ifndef PSI_PATH_INTERFACE_HPP__ --- */

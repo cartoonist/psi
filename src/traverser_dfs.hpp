@@ -1,5 +1,5 @@
 /**
- *    @file  traverser_dfs.h
+ *    @file  traverser_dfs.hpp
  *   @brief  DFS Traverser template class specialization.
  *
  *  The `Traverser` template class specialization for DFS traversal strategy.
@@ -15,10 +15,10 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_TRAVERSER_DFS_H__
-#define PSI_TRAVERSER_DFS_H__
+#ifndef PSI_TRAVERSER_DFS_HPP__
+#define PSI_TRAVERSER_DFS_HPP__
 
-#include "traverser_base.h"
+#include "traverser_base.hpp"
 
 namespace grem {
   /**
@@ -151,4 +151,4 @@ namespace grem {
     };  /* ----------  end of template class TraverserDFS  ---------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* --- #ifndef PSI_TRAVERSER_DFS_H__ --- */
+#endif  /* --- #ifndef PSI_TRAVERSER_DFS_HPP__ --- */
