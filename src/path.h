@@ -16,10 +16,10 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PATH_H__
-#define PATH_H__
+#ifndef PSI_PATH_H__
+#define PSI_PATH_H__
 
 #include "path_base.h"
 #include "path_interface.h"
 
-#endif  /* ----- #ifndef PATH_H__  ----- */
+#endif  /* --- #ifndef PSI_PATH_H__ --- */

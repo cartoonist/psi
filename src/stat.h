@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef STAT_H__
-#define STAT_H__
+#ifndef PSI_STAT_H__
+#define PSI_STAT_H__
 
 #include <chrono>
 #include <unordered_map>
@@ -289,4 +289,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  // end of STAT_H__
+#endif  /* --- #ifndef PSI_STAT_H__ --- */

@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  GRAPH_ITER_H__
-#define  GRAPH_ITER_H__
+#ifndef  PSI_GRAPH_ITER_H__
+#define  PSI_GRAPH_ITER_H__
 
 #include <seqan/basic.h>
 
@@ -160,4 +160,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef GRAPH_ITER_H__  ----- */
+#endif  /* --- #ifndef PSI_GRAPH_ITER_H__  --- */

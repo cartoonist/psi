@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  FMINDEX_H__
-#define  FMINDEX_H__
+#ifndef  PSI_FMINDEX_H__
+#define  PSI_FMINDEX_H__
 
 #include <fstream>
 #include <string>
@@ -785,4 +785,4 @@ namespace seqan {
     };
 }  /* -----  end of namespace seqan  ----- */
 
-#endif  /* ----- #ifndef FMINDEX_H__  ----- */
+#endif  /* --- #ifndef PSI_FMINDEX_H__ --- */

@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef RELEASE_H__
-#define RELEASE_H__
+#ifndef PSI_RELEASE_H__
+#define PSI_RELEASE_H__
 
 namespace grem
 {
@@ -34,4 +34,4 @@ namespace grem
     " └─┘┴└─└─┘┴ ┴\n";
 }
 
-#endif  // RELEASE_H__
+#endif  /* --- #ifndef PSI_RELEASE_H__ --- */

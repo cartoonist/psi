@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  INDEX_ITERATOR_H__
-#define  INDEX_ITERATOR_H__
+#ifndef  PSI_INDEX_ITER_H__
+#define  PSI_INDEX_ITER_H__
 
 #include <vector>
 #include <functional>
@@ -738,4 +738,4 @@ namespace grem {
     }
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef INDEX_ITERATOR_H__  ----- */
+#endif  /* --- #ifndef PSI_INDEX_ITER_H__ --- */

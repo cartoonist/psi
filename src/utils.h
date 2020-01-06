@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  UTILS_H__
-#define  UTILS_H__
+#ifndef  PSI_UTILS_H__
+#define  PSI_UTILS_H__
 
 #include <cstdio>
 #include <cstdlib>
@@ -859,4 +859,4 @@ namespace grem {
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef UTILS_H__  ----- */
+#endif  /* --- #ifndef PSI_UTILS_H__ --- */

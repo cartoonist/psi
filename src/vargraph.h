@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef VARGRAPH_H__
-#define VARGRAPH_H__
+#ifndef PSI_VARGRAPH_H__
+#define PSI_VARGRAPH_H__
 
 #include <algorithm>
 #include <fstream>
@@ -1422,4 +1422,4 @@ namespace grem {
   /* END OF Haplotyper iterator interface functions  ----------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef VARGRAPH_H__  ----- */
+#endif  /* --- #ifndef PSI_VARGRAPH_H__ --- */

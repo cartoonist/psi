@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef TRAVERSER_BASE_H__
-#define TRAVERSER_BASE_H__
+#ifndef PSI_TRAVERSER_BASE_H__
+#define PSI_TRAVERSER_BASE_H__
 
 // :TODO:Fri Aug 25 13:15:\@cartoonist: remove unused headers.
 // :TODO:Fri Aug 25 13:15:\@cartoonist: add required headers explicitly.
@@ -375,4 +375,4 @@ namespace grem
     };  /* ----------  end of template class TraverserBase  ---------- */
 }
 
-#endif  // end of TRAVERSER_BASE_H__
+#endif  /* --- #ifndef PSI_TRAVERSER_BASE_H__ --- */

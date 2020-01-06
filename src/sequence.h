@@ -17,8 +17,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  SEQUENCE_H__
-#define  SEQUENCE_H__
+#ifndef  PSI_SEQUENCE_H__
+#define  PSI_SEQUENCE_H__
 
 #include <fstream>
 #include <stdexcept>
@@ -1756,4 +1756,4 @@ namespace seqan {
     };
 }  /* -----  end of namespace seqan  ----- */
 
-#endif  /* ----- #ifndef SEQUENCE_H__  ----- */
+#endif  /* --- #ifndef PSI_SEQUENCE_H__ --- */

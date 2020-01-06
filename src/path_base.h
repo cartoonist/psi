@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PATH_BASE_H__
-#define  PATH_BASE_H__
+#ifndef  PSI_PATH_BASE_H__
+#define  PSI_PATH_BASE_H__
 
 #include <fstream>
 #include <stdexcept>
@@ -1274,4 +1274,4 @@ namespace grem{
     class is_generic_path< Haplotype > : public std::false_type {};
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef PATH_BASE_H__  ----- */
+#endif  /* --- #ifndef PSI_PATH_BASE_H__ --- */

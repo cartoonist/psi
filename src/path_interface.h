@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PATH_INTERFACE_H__
-#define  PATH_INTERFACE_H__
+#ifndef  PSI_PATH_INTERFACE_H__
+#define  PSI_PATH_INTERFACE_H__
 
 #include <functional>
 
@@ -1001,4 +1001,4 @@ namespace grem {
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef PATH_INTERFACE_H__  ----- */
+#endif  /* --- #ifndef PSI_PATH_INTERFACE_H__ --- */

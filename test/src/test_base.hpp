@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef TEST_BASE_HPP__
-#define TEST_BASE_HPP__
+#ifndef PSI_TEST_BASE_HPP__
+#define PSI_TEST_BASE_HPP__
 
 #include <string>
 
@@ -29,4 +29,4 @@
 
 std::string _testdir(TESTDIR);
 
-#endif  // TEST_BASE_HPP__
+#endif  /* --- #ifndef PSI_TEST_BASE_HPP__ --- */

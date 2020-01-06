@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PATHSET_H__
-#define  PATHSET_H__
+#ifndef  PSI_PATHSET_H__
+#define  PSI_PATHSET_H__
 
 #include <vector>
 
@@ -388,4 +388,4 @@ namespace grem {
   /* END OF PathSet interface functions  ------------------------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  /* ----- #ifndef PATHSET_H__  ----- */
+#endif  /* --- #ifndef PSI_PATHSET_H__ --- */

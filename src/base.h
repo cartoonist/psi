@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef BASE_H__
-#define BASE_H__
+#ifndef PSI_BASE_H__
+#define PSI_BASE_H__
 
 // Define/Undefine NDEBUG according to GREM_DEBUG macro value specified at compile time.
 #undef NDEBUG
@@ -41,4 +41,4 @@
 #define UPDATE_DATE __DATE__
 #endif
 
-#endif  // BASE_H__
+#endif  /* --- #ifndef PSI_BASE_H__ --- */

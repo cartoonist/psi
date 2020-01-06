@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef SEED_H__
-#define SEED_H__
+#ifndef PSI_SEED_H__
+#define PSI_SEED_H__
 
 #include <cstdlib>
 
@@ -47,4 +47,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  // end of SEED_H__
+#endif  /* --- #ifndef PSI_SEED_H__ --- */

@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef LOGGER_H__
-#define LOGGER_H__
+#ifndef PSI_LOGGER_H__
+#define PSI_LOGGER_H__
 
 #include "base.h"
 #include "options.h"
@@ -134,4 +134,4 @@ namespace grem {
     spdlog::drop_all();
   }  /* -----  end of function drop_all_loggers  ----- */
 }  /* -----  end of namespace grem  ----- */
-#endif  // LOGGER_H__
+#endif  /* --- #ifndef PSI_LOGGER_H__ --- */

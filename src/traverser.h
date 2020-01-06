@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef TRAVERSER_H__
-#define TRAVERSER_H__
+#ifndef PSI_TRAVERSER_H__
+#define PSI_TRAVERSER_H__
 
 #include "traverser_bfs.h"
 #include "traverser_dfs.h"
@@ -41,4 +41,4 @@ namespace grem {
     };  /* ----------  end of template class Traverser  ---------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  // end of TRAVERSER_H__
+#endif  /* --- #ifndef PSI_TRAVERSER_H__ --- */

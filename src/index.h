@@ -17,8 +17,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  INDEX_H__
-#define  INDEX_H__
+#ifndef  PSI_INDEX_H__
+#define  PSI_INDEX_H__
 
 #include <seqan/index.h>
 
@@ -107,4 +107,4 @@ namespace seqan {
     };
 }  /* -----  end of namespace seqan  ----- */
 
-#endif  /* ----- #ifndef INDEX_H__  ----- */
+#endif  /* --- #ifndef PSI_INDEX_H__ --- */

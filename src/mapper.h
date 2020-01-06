@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef MAPPER_H__
-#define MAPPER_H__
+#ifndef PSI_MAPPER_H__
+#define PSI_MAPPER_H__
 
 #include <fstream>
 #include <type_traits>
@@ -697,4 +697,4 @@ namespace grem
     };  /* ----------  end of template class Stat  ---------- */
 }
 
-#endif  // end of MAPPER_H__
+#endif  /* --- #ifndef PSI_MAPPER_H__ --- */

@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef OPTIONS_H__
-#define OPTIONS_H__
+#ifndef PSI_OPTIONS_H__
+#define PSI_OPTIONS_H__
 
 #include <stdexcept>
 #include <string>
@@ -92,4 +92,4 @@ namespace grem
   } Options;
 }
 
-#endif  // OPTIONS_H__
+#endif  /* --- #ifndef PSI_OPTIONS_H__ --- */

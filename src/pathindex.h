@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef  PATHINDEX_H__
-#define  PATHINDEX_H__
+#ifndef  PSI_PATHINDEX_H__
+#define  PSI_PATHINDEX_H__
 
 #include <vector>
 #include <algorithm>
@@ -435,4 +435,4 @@ namespace grem {
 
 }  /* -----  end of namespace grem  ----- */
 
-#endif  // end of PATHINDEX_H__
+#endif  /* --- #ifndef PSI_PATHINDEX_H__ --- */
