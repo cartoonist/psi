@@ -26,37 +26,42 @@ namespace psi {
    *
    *  Traverser a graph from a starting point and find seed hits using the read index.
    */
-  template< typename TIndex,
-    template<typename> class TMatchingTraits,
+  template< class TGraph,
+    typename TIndex,
+    template<typename, typename> class TMatchingTraits,
     typename TStatSpec >
       class TraverserDFS;
 
-  template< typename TIndex, typename TStatSpec >
-    class TraverserDFS< TIndex, ExactMatching, TStatSpec >
-    : public TraverserBase< TIndex, DFS, ExactMatching, TStatSpec >
+  template< class TGraph, typename TIndex, typename TStatSpec >
+    class TraverserDFS< TGraph, TIndex, ExactMatching, TStatSpec >
+    : public TraverserBase< TGraph, TIndex, DFS, ExactMatching, TStatSpec >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef TraverserBase< TIndex, DFS, ExactMatching, TStatSpec > TBase;
-        typedef typename TBase::output_type output_type;
-        typedef typename TBase::index_type index_type;
-        typedef typename TBase::indexspec_type indexspec_type;
-        typedef typename TBase::stringset_type stringset_type;
-        typedef typename TBase::text_type text_type;
-        typedef typename TBase::records_type records_type;
-        typedef typename TBase::iterspec_type iterspec_type;
-        typedef typename TBase::iterator_type iterator_type;
-        typedef typename TBase::traits_type traits_type;
-        typedef typename TBase::TSAValue TSAValue;
-        typedef typename TBase::stats_type stats_type;
+        typedef TraverserBase< TGraph, TIndex, DFS, ExactMatching, TStatSpec > base_type;
+        typedef typename base_type::graph_type graph_type;
+        typedef typename graph_type::id_type id_type;
+        typedef typename graph_type::offset_type offset_type;
+        typedef typename graph_type::linktype_type linktype_type;
+        typedef typename base_type::output_type output_type;
+        typedef typename base_type::index_type index_type;
+        typedef typename base_type::indexspec_type indexspec_type;
+        typedef typename base_type::stringset_type stringset_type;
+        typedef typename base_type::text_type text_type;
+        typedef typename base_type::records_type records_type;
+        typedef typename base_type::iterspec_type iterspec_type;
+        typedef typename base_type::iterator_type iterator_type;
+        typedef typename base_type::traits_type traits_type;
+        typedef typename base_type::TSAValue TSAValue;
+        typedef typename base_type::stats_type stats_type;
         /* ====================  LIFECYCLE     ======================================= */
-        TraverserDFS( const VarGraph* graph, const records_type* r, TIndex* index,
+        TraverserDFS( const graph_type* g, const records_type* r, TIndex* index,
             unsigned int len )
-          : TBase( graph, r, index, len ), cstate( index, 0, 0, 0, 0 )
+          : base_type( g, r, index, len ), cstate( index, 0, 0, 0, 0 )
         { }
 
-        TraverserDFS( const VarGraph* graph, unsigned int len )
-          : TBase( graph, len ), cstate( nullptr, 0, 0, 0, 0 )
+        TraverserDFS( const graph_type* g, unsigned int len )
+          : base_type( g, len ), cstate( nullptr, 0, 0, 0, 0 )
         { }
         /* ====================  METHODS       ======================================= */
           inline void
@@ -96,11 +101,10 @@ namespace psi {
         {
           if ( cstate.mismatches == 0 ) return false;
 
-          const auto& sequence = this->vargraph->node_sequence( cstate.cpos.node_id() );
+          const auto& sequence = this->graph_ptr->node_sequence( cstate.cpos.node_id() );
           assert( cstate.depth < this->seed_len );
-          std::make_unsigned_t< VarGraph::offset_type > end_idx =
-            cstate.cpos.offset() + this->seed_len - cstate.depth;
-          std::make_unsigned_t< VarGraph::offset_type > i;
+          offset_type end_idx = cstate.cpos.offset() + this->seed_len - cstate.depth;
+          offset_type i;
           for ( i = cstate.cpos.offset(); i < end_idx && i < sequence.size(); ++i ) {
             if ( sequence[i] == 'N' || !go_down( cstate.iter, sequence[i] ) ) {
               cstate.mismatches--;
@@ -127,28 +131,31 @@ namespace psi {
 
           if ( cstate.mismatches == 0 || !cstate.end ) return;
 
-          const auto& edges = this->vargraph->edges_from( this->cstate.cpos.node_id() );
-          auto it = edges.begin();
-          if ( it == edges.end() ) {
+          if ( !this->graph_ptr->has_edges_out( this->cstate.cpos.node_id() ) ) {
             cstate.mismatches = 0;
             return;
           }
-          cstate.cpos.set_node_id( (*it).to() );
-          cstate.cpos.set_offset( 0 );
-          cstate.end = false;
-          ++it;
-
-          for ( ; it != edges.end(); ++it )
-          {
-            this->states.emplace_back( cstate );
-            this->states.back().cpos.set_node_id( (*it).to() );
-            this->states.back().cpos.set_offset( 0 );
-          }
+          bool first = true;
+          this->graph_ptr->for_each_edges_out(
+              this->cstate.cpos.node_id(),
+              [this, &first]( id_type to, linktype_type ) {
+                if ( first ) {
+                  this->cstate.cpos.set_node_id( to );
+                  this->cstate.cpos.set_offset( 0 );
+                  this->cstate.end = false;
+                  first = false;
+                  return true;
+                }
+                this->states.emplace_back( this->cstate );
+                this->states.back().cpos.set_node_id( to );
+                this->states.back().cpos.set_offset( 0 );
+                return true;
+              } );
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         typename traits_type::TState cstate;
-    };  /* ----------  end of template class TraverserDFS  ---------- */
+    };  /* --- end of template class TraverserDFS --- */
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_TRAVERSER_DFS_HPP__ --- */

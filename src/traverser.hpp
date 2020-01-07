@@ -22,22 +22,23 @@
 #include "traverser_dfs.hpp"
 
 namespace psi {
-  template< typename TIndex,
+  template< typename TGraph,
+    typename TIndex,
     typename TStrategy,
-    template<typename> class TMatchingTraits,
+    template<typename, typename> class TMatchingTraits,
     typename TStatSpec = void >
     class Traverser;
 
-  template< typename TIndex, typename TStatSpec >
-    class Traverser< TIndex, BFS, ExactMatching, TStatSpec > {
+  template< typename TGraph, typename TIndex, typename TStatSpec >
+    class Traverser< TGraph, TIndex, BFS, ExactMatching, TStatSpec > {
       public:
-        typedef TraverserBFS< TIndex, ExactMatching, TStatSpec > Type;
+        typedef TraverserBFS< TGraph, TIndex, ExactMatching, TStatSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
 
-  template< typename TIndex, typename TStatSpec >
-    class Traverser< TIndex, DFS, ExactMatching, TStatSpec > {
+  template< typename TGraph, typename TIndex, typename TStatSpec >
+    class Traverser< TGraph, TIndex, DFS, ExactMatching, TStatSpec > {
       public:
-        typedef TraverserDFS< TIndex, ExactMatching, TStatSpec > Type;
+        typedef TraverserDFS< TGraph, TIndex, ExactMatching, TStatSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
 }  /* --- end of namespace psi --- */
 

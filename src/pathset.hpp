@@ -169,7 +169,7 @@ namespace psi {
           push_back( Path< graph_type, TPathSpec > path,
               enable_if_not_equal_t< typename value_type::spec_type, TPathSpec > tag = TPathSpec() )
           {
-            value_type native_path( path.get_vargraph() );
+            value_type native_path( path.get_graph_ptr() );
             native_path = std::move( path );
             this->push_back( std::move( native_path ) );
           }
@@ -268,7 +268,7 @@ namespace psi {
         }
 
           inline void
-        load( std::istream& in, const graph_type* vargraph )
+        load( std::istream& in, const graph_type* graph_ptr )
         {
           this->clear();
           size_type paths_num = 0;
@@ -278,7 +278,7 @@ namespace psi {
           this->bv_ids_set.reserve( paths_num );
           this->rs_ids_set.reserve( paths_num );
           for ( size_type i = 0; i < paths_num; ++i ) {
-            value_type path( vargraph );
+            value_type path( graph_ptr );
             psi::open( path, in );
             this->set.push_back( std::move( path ) );
           }
@@ -356,12 +356,12 @@ namespace psi {
 
   template< typename TPath, typename TSpec >
       inline bool
-    open( PathSet< TPath, TSpec >& set, typename TPath::graph_type const* vargraph,
+    open( PathSet< TPath, TSpec >& set, typename TPath::graph_type const* graph_ptr,
         const std::string& file_path )
     {
       std::ifstream ifs( file_path, std::ifstream::in | std::ifstream::binary );
       if( !ifs ) return false;
-      set.load( ifs, vargraph );
+      set.load( ifs, graph_ptr );
       return true;
     }
 

@@ -106,7 +106,7 @@ template< typename TPathIndex, typename TMapper >
     if ( !patched && context != 0 ) pindex.set_context( 0 );
     log->info( "Loading path index..." );
     /* Load the genome-wide path index for the variation graph if available. */
-    if ( paths_index && pindex.load( paths_index_file, mapper.get_vargraph() ) ) {
+    if ( paths_index && pindex.load( paths_index_file, mapper.get_graph_ptr() ) ) {
       log->info( "Path index found. Loaded." );
       return;
     }
@@ -202,7 +202,7 @@ template< typename TReadsIndexSpec >
       }
     }
     log->info( "Number of starting loci selected (in {} nodes of total {}): {}",
-        mapper.get_nof_uniq_nodes(), mapper.get_vargraph()->node_count,
+        mapper.get_nof_uniq_nodes(), mapper.get_graph_ptr()->node_count,
         mapper.get_starting_loci().size() );
 
     if ( nomapping ) {

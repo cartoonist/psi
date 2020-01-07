@@ -52,7 +52,7 @@ namespace psi {
    */
   template< typename TGraph, typename TSpec >
       inline void
-    add_node( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type const& node_id )
+    add_node( Path< TGraph, TSpec >& path, typename TGraph::id_type const& node_id )
     {
       path.push_back( node_id );
     }  /* -----  end of template function add_node  ----- */
@@ -67,7 +67,7 @@ namespace psi {
    */
   template< typename TGraph, typename TSpec >
       inline void
-    add_node( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type const& node_id,
+    add_node( Path< TGraph, TSpec >& path, typename TGraph::id_type const& node_id,
         typename TGraph::offset_type const& node_offset )
     {
       path.push_back( node_id, node_offset );
@@ -171,7 +171,7 @@ namespace psi {
    *  It gets the node ID at rank `rank(pos)` in the node queue.
    */
   template< typename TGraph, typename TSpec >
-      inline typename TGraph::nodeid_type
+      inline typename TGraph::id_type
     position_to_id( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
@@ -209,8 +209,8 @@ namespace psi {
       inline typename Path< TGraph, TSpec >::string_type
     sequence( const Path< TGraph, TSpec >& path, Forward )
     {
-      TGraph const* vargraph = path.get_vargraph();
-      assert( vargraph != nullptr );
+      TGraph const* graph_ptr = path.get_graph_ptr();
+      assert( graph_ptr != nullptr );
 
       if ( path.empty() ) return "";
 
@@ -219,15 +219,15 @@ namespace psi {
 
       /* Add sequence of the head node. */
       auto off = path.get_head_offset();
-      repr += vargraph->node_sequence( path.front() ).substr( off, path.get_sequence_len() );
+      repr += graph_ptr->node_sequence( path.front() ).substr( off, path.get_sequence_len() );
       if ( path.size() > 1 ) {
         /* Add sequence of intermediate nodes. */
         for ( auto itr = path.begin()+1; itr != path.end()-1; ++itr ) {
-          repr += vargraph->node_sequence( *itr );
+          repr += graph_ptr->node_sequence( *itr );
         }
         /* Add sequence of the tail node. */
         auto len = path.get_seqlen_tail();
-        repr += vargraph->node_sequence( path.back() ).substr( 0, len );
+        repr += graph_ptr->node_sequence( path.back() ).substr( 0, len );
       }
 
       return repr;
@@ -338,7 +338,7 @@ namespace psi {
    */
   template< typename TGraph, typename TSpec >
       inline void
-    trim_back( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id=0,
+    trim_back( Path< TGraph, TSpec >& path, typename TGraph::id_type node_id=0,
         bool exclusive=false )
     {
       bool found = false;
@@ -418,7 +418,7 @@ namespace psi {
    */
   template< typename TGraph >
       inline void
-    trim_front( Path< TGraph, Dynamic >& path, typename TGraph::nodeid_type node_id=0,
+    trim_front( Path< TGraph, Dynamic >& path, typename TGraph::id_type node_id=0,
         bool exclusive=false )
     {
       bool found = false;
@@ -483,18 +483,18 @@ namespace psi {
     }  /* -----  end of template function rtrim_front_by_len  ----- */
 
   template< typename TGraph, typename TSpec >
-      inline YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type >
+      inline YaPair< typename TGraph::id_type, typename TGraph::offset_type >
     leftmost_kmer_pos( Path< TGraph, TSpec > const& path,
         typename Path< TGraph, TSpec >::seqsize_type k )
     {
-      YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type > endpos;
-      TGraph const* vargraph = path.get_vargraph();
+      YaPair< typename TGraph::id_type, typename TGraph::offset_type > endpos;
+      TGraph const* graph_ptr = path.get_graph_ptr();
       typename Path< TGraph, TSpec >::seqsize_type len = 0;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
-        len += vargraph->node_length( *it );
+        len += graph_ptr->node_length( *it );
         if ( len >= k ) {
           endpos.first = *it;
-          endpos.second = k + vargraph->node_length( *it ) - len - 1;
+          endpos.second = k + graph_ptr->node_length( *it ) - len - 1;
           break;
         }
       }
@@ -502,15 +502,15 @@ namespace psi {
     }
 
   template< typename TGraph, typename TSpec >
-      inline YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type >
+      inline YaPair< typename TGraph::id_type, typename TGraph::offset_type >
     rightmost_kmer_pos( Path< TGraph, TSpec > const& path,
         typename Path< TGraph, TSpec >::seqsize_type k )
     {
-      YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type > startpos;
-      TGraph const* vargraph = path.get_vargraph();
+      YaPair< typename TGraph::id_type, typename TGraph::offset_type > startpos;
+      TGraph const* graph_ptr = path.get_graph_ptr();
       typename Path< TGraph, TSpec >::seqsize_type len = 0;
       for ( auto it = path.end(); it != path.begin(); --it ) {
-        len += vargraph->node_length( *(it - 1) );
+        len += graph_ptr->node_length( *(it - 1) );
         if ( len >= k ) {
           startpos.first = *(it - 1);
           startpos.second = len - k;
@@ -535,7 +535,7 @@ namespace psi {
    */
   template< typename TGraph, typename TSpec >
       inline bool
-    contains( const Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id )
+    contains( const Path< TGraph, TSpec >& path, typename TGraph::id_type node_id )
     {
       return path.contains( node_id );
     }  /* -----  end of template function contains  ----- */
@@ -557,7 +557,7 @@ namespace psi {
       inline bool
     contains( const Path< TGraph, Micro >& path, TIter begin, TIter end )
     {
-      auto on_path = [&path]( typename TGraph::nodeid_type i ) {
+      auto on_path = [&path]( typename TGraph::id_type i ) {
         return contains( path, i );
       };
 
@@ -844,7 +844,7 @@ namespace psi {
       inline void
     convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath )
     {
-      TGraph const* vargraph = path.get_vargraph();
+      TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
         typename TGraph::offset_type label_len;
@@ -854,7 +854,7 @@ namespace psi {
           noff = path.get_head_offset();
         }
         else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
-        else label_len = vargraph->node_length( *it );
+        else label_len = graph_ptr->node_length( *it );
         vg::Mapping* mapping = vgpath->add_mapping();
         mapping->mutable_position()->set_node_id( *it );
         mapping->mutable_position()->set_offset( noff );
@@ -870,23 +870,23 @@ namespace psi {
     convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath,
         std::vector< vg::Position > const& loci )
     {
-      TGraph const* vargraph = path.get_vargraph();
+      TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
 
       auto comp_id =
-        [vargraph]( vg::Position const& elem, vg::Position const& value ) {
-          return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value );
+        [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+          return graph_ptr->id_to_rank( elem ) < graph_ptr->id_to_rank( value );
         };
 
       auto comp_both =
-        [vargraph]( vg::Position const& elem, vg::Position const& value ) {
-          return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value ) ||
-            ( vargraph->id_to_rank( elem ) == vargraph->id_to_rank( value ) &&
+        [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+          return graph_ptr->id_to_rank( elem ) < graph_ptr->id_to_rank( value ) ||
+            ( graph_ptr->id_to_rank( elem ) == graph_ptr->id_to_rank( value ) &&
               elem.offset() < value.offset() );
         };
 
       for ( auto it = path.begin(); it != path.end(); ++it ) {
-        typename TGraph::offset_type label_len = vargraph->node_length( *it );
+        typename TGraph::offset_type label_len = graph_ptr->node_length( *it );
         typename TGraph::offset_type coffset = 0;
         if ( it == path.begin() ) coffset = path.get_head_offset();
         else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
@@ -935,21 +935,21 @@ namespace psi {
       }
     }
 
-  template< typename TGraph, typename TSpec, typename TNodeID,
-    typename=std::enable_if_t< std::is_same< typename TGraph::nodeid_type, TNodeID >::value, void > >
+  template< typename TGraph, typename TSpec >
       inline void
     _induced_graph_impl( Path< TGraph, TSpec > const& path,
-        std::vector< TNodeID >& nodes,
-        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+                         std::vector< typename TGraph::id_type >& nodes,
+                         std::vector< typename TGraph::link_type >& edges )
     {
-      TGraph const* graph = path.get_vargraph();
-      TNodeID prev = 0;
+      TGraph const* graph = path.get_graph_ptr();
+      typename TGraph::id_type prev = 0;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
         nodes.push_back( *it );
         if ( prev != 0 ) {
           // :TODO:Sun Apr 14 17:48:\@cartoonist: Path should consider the edge orientation.
-          char type = graph->edge_type( false, false );
-          edges.push_back( std::make_tuple( prev, *it, type ) );
+          auto from = graph->end_side( prev );
+          auto to = graph->start_side( *it );
+          edges.push_back( graph.make_link( from, to ) );
         }
         prev = *it;
       }
@@ -962,12 +962,11 @@ namespace psi {
    *  @param[in,out]  nodes The set of unique nodes in the input path.
    *  @param[in,out]  edges The set of unique edges in the input path.
    */
-  template< typename TGraph, typename TSpec, typename TNodeID,
-    typename=std::enable_if_t< std::is_same< typename TGraph::nodeid_type, TNodeID >::value, void > >
+  template< typename TGraph, typename TSpec >
       inline void
     induced_graph( Path< TGraph, TSpec > const& path,
-        std::vector< TNodeID >& nodes,
-        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+                   std::vector< typename TGraph::id_type >& nodes,
+                   std::vector< typename TGraph::link_type >& edges )
     {
       _induced_graph_impl( path, nodes, edges );
       // Erase duplicate items.
@@ -985,11 +984,11 @@ namespace psi {
    *  @param[in,out]  nodes The set of unique nodes in the input path.
    *  @param[in,out]  edges The set of unique edges in the input path.
    */
-  template< typename TIter, typename TNodeID >
+  template< typename TIter, typename TNodeID, typename TLink >
       inline void
     induced_graph( TIter pbegin, TIter pend,
         std::vector< TNodeID >& nodes,
-        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+        std::vector< TLink >& edges )
     {
       for ( ; pbegin != pend; ++pbegin ) _induced_graph_impl( *pbegin, nodes, edges );
       // Erase duplicate items.

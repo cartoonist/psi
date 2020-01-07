@@ -25,6 +25,7 @@
 #include "sequence.hpp"
 #include "index.hpp"
 #include "pathset.hpp"
+#include "graph_iter.hpp"
 #include "utils.hpp"
 
 
@@ -95,7 +96,7 @@ namespace psi {
          *  @brief  Load the path index from file.
          *
          *  @param[in]   filepath_prefix The file path prefix of the saved path index.
-         *  @param[in]   vargraph A pointer to the graph whose paths is loading.
+         *  @param[in]   graph_ptr A pointer to the graph whose paths is loading.
          *  @return `true` if the path index is successfully loaded from file; otherwise
          *          `false`.
          *
@@ -103,12 +104,12 @@ namespace psi {
          *  attributes.
          */
           inline bool
-        load( const std::string& filepath_prefix, const TGraph* vargraph )
+        load( const std::string& filepath_prefix, const TGraph* graph_ptr )
         {
           this->clear();
 
           if ( open( this->index, filepath_prefix ) &&
-              this->load_paths_set( filepath_prefix + "_paths", vargraph ) ) {
+              this->load_paths_set( filepath_prefix + "_paths", graph_ptr ) ) {
             /* XXX: Unnecessary copy. Use `FibreText` of `this->index` directly. */
             //this->string_set = indexText( this->index );
             return true;
@@ -169,7 +170,7 @@ namespace psi {
           add_path( Path< TGraph, TPathSpec > new_path,
               enable_if_not_equal_t< typename value_type::spec_type, TPathSpec > tag = TPathSpec() )
           {
-            value_type native_path( new_path.get_vargraph() );
+            value_type native_path( new_path.get_graph_ptr() );
             native_path = std::move( new_path );
             this->add_path( std::move( native_path ) );
           }
@@ -267,14 +268,14 @@ namespace psi {
          *  @brief  Load the set of paths and other attributes from file.
          *
          *  @param[in]   filepath The file path of the saved paths.
-         *  @param[in]   vargraph A pointer to the graph whose paths is loading.
+         *  @param[in]   graph_ptr A pointer to the graph whose paths is loading.
          *  @return `true` if the paths set is successfully loaded from file; otherwise
          *          `false`.
          *
          *  It deserializes the paths set. The paths are prefixed by the number of paths.
          */
           inline bool
-        load_paths_set( const std::string& filepath, const TGraph* vargraph )
+        load_paths_set( const std::string& filepath, const TGraph* graph_ptr )
         {
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
@@ -291,7 +292,7 @@ namespace psi {
             if ( dir != std::is_same< TSequenceDirection, Forward >::value ) {
               return false;
             }
-            this->paths_set.load( ifs, vargraph );
+            this->paths_set.load( ifs, graph_ptr );
           }
           catch ( const std::runtime_error& ) {
             return false;
@@ -384,7 +385,7 @@ namespace psi {
     }
 
   template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename TGraph::nodeid_type
+      inline typename TGraph::id_type
     position_to_id( PathIndex< TGraph, TText, TIndexSpec, Forward > const& pindex,
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Forward >::index_type > const& pos )
     {
@@ -402,7 +403,7 @@ namespace psi {
    *  the function would be the real position in forward sequence.
    */
   template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename TGraph::nodeid_type
+      inline typename TGraph::id_type
     position_to_id( PathIndex< TGraph, TText, TIndexSpec, Reversed > const& pindex,
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::index_type > const& pos )
     {
@@ -444,22 +445,23 @@ namespace psi {
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
-  template< typename TSpec >
+  template< class TGraph, typename TSpec >
       inline void
-    get_uniq_full_haplotype( Path< VarGraph >& haplotype,
-        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+    get_uniq_full_haplotype( Path< TGraph >& haplotype,
+        GraphIter< TGraph, Haplotyper< TSpec > >& hp_itr,
+        typename GraphIter< TGraph, Haplotyper< TSpec > >::end_type& hp_end,
         int tries=0 )
     {
       do {
-        while ( !at_end( iter ) ) {
-          add_node( haplotype, *iter );
-          ++iter;
+        while ( hp_itr != hp_end ) {
+          add_node( haplotype, *hp_itr );
+          ++hp_itr;
         }
-        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
-          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        if ( tries-- && hp_itr[ haplotype.get_nodes() ] ) {
+          hp_itr--;  // discard the traversed path and reset the Haplotyper iterator.
         }
         else {
-          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          --hp_itr;  // save the traversed path and reset the Haplotyper iterator.
           break;
         }
         /* trying again */
@@ -475,39 +477,41 @@ namespace psi {
    *
    *  @overload for `PathSet`.
    */
-  template< typename TPathSet, typename TSpec >
+  template< typename TPathSet, class TGraph, typename TSpec >
       inline void
     get_uniq_full_haplotype( TPathSet& paths,
-        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        GraphIter< TGraph, Haplotyper< TSpec > >& hp_itr,
+        typename GraphIter< TGraph, Haplotyper< TSpec > >::end_type& hp_end,
         int tries=0 )
     {
-      Path< VarGraph > haplotype( iter.get_vargraph() );
-      get_uniq_full_haplotype( haplotype, iter, tries );
+      Path< TGraph > haplotype( hp_itr.get_graph_ptr() );
+      get_uniq_full_haplotype( haplotype, hp_itr, hp_end, tries );
       if ( length( haplotype ) != 0 ){
         paths.push_back( std::move( haplotype ) );
       }
     }
 
-  template< typename TPathSet, typename TSpec >
+  template< typename TGraph, typename TPathSet, typename TSpec >
       inline void
     get_uniq_patches( TPathSet& paths,
-        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        GraphIter< TGraph, Haplotyper< TSpec > >& hp_itr,
+        typename GraphIter< TGraph, Haplotyper< TSpec > >::end_type& hp_end,
         unsigned int k )
     { // :TODO:Fri Dec 01 21:26:\@cartoonist: the length of pre-context sequence won't be k all the time.
-      iter.set_raise_on_end( true );
-      Path< VarGraph > patch( iter.get_vargraph() );
-      Path< VarGraph, Dynamic > frontier( iter.get_vargraph() );
-      typename Path< VarGraph, Dynamic >::nodes_type::value_type marked;
+      hp_itr.set_raise_on_end( true );
+      Path< TGraph > patch( hp_itr.get_graph_ptr() );
+      Path< TGraph, Dynamic > frontier( hp_itr.get_graph_ptr() );
+      typename Path< TGraph, Dynamic >::nodes_type::value_type marked;
       try {
         while ( true ) {
           marked = 0;
           if ( !frontier.empty() ) marked = frontier.get_nodes().back();
           // Bootstrap.
-          if ( !marked ) extend_to_k( frontier, iter, k );
-          else extend_to_k( frontier, iter,
+          if ( !marked ) extend_to_k( frontier, hp_itr, hp_end, k );
+          else extend_to_k( frontier, hp_itr, hp_end,
               2*k + frontier.get_sequence_len() - frontier.get_seqlen_tail() );
           // Check the next patch distance to merge with previous patch if is less than k.
-          if ( !patch.empty() && iter[ frontier.get_nodes() ] ) {
+          if ( !patch.empty() && hp_itr[ frontier.get_nodes() ] ) {
             patch.set_right_by_len( k - 1 );
             paths.push_back( std::move( patch ) );
             clear( patch );
@@ -517,30 +521,30 @@ namespace psi {
             // Nodes from first to the `marked` are already added.
             trim_front( frontier, marked );
             marked = 0;
-            extend_to_k( frontier, iter, k );
+            extend_to_k( frontier, hp_itr, hp_end, k );
           }
           if ( patch.empty() ) {
-            // Search for a patch of length k that is not covered by visited paths of `iter`.
-            while ( iter[ frontier.get_nodes() ] ) {
-              add_node( frontier, *iter );
+            // Search for a patch of length k that is not covered by visited paths of `hp_itr`.
+            while ( hp_itr[ frontier.get_nodes() ] ) {
+              add_node( frontier, *hp_itr );
               ltrim_front_by_len( frontier, k, true );
-              ++iter;
+              ++hp_itr;
             }
           }
           // Extend the patch.
           patch += frontier;
           rtrim_front_by_len( frontier, k );
-          while ( !iter[ frontier.get_nodes() ] ) {
-            add_node( frontier, *iter );
-            add_node( patch, *iter );
+          while ( !hp_itr[ frontier.get_nodes() ] ) {
+            add_node( frontier, *hp_itr );
+            add_node( patch, *hp_itr );
             rtrim_front_by_len( frontier, k );
-            ++iter;
+            ++hp_itr;
           }
         }
       }
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
-          if ( !iter[ frontier.get_nodes() ] &&
+          if ( !hp_itr[ frontier.get_nodes() ] &&
               !rcontains( patch, frontier.get_nodes().rbegin(), frontier.get_nodes().rend() ) )
           {
             if ( marked != 0 ) trim_front( frontier, marked );
@@ -548,38 +552,54 @@ namespace psi {
           }
           paths.push_back( std::move( patch ) );
         }
-        --iter;  // save the traversed path and reset the Haplotyper iterator.
+        --hp_itr;  // save the traversed path and reset the Haplotyper iterator.
       }
-      iter.set_raise_on_end( false );
+      hp_itr.set_raise_on_end( false );
     }
 
-  template< typename TPathSet, typename TSpec >
+  template< typename TPathSet, class TGraph, typename TSpec >
       inline bool
     get_uniq_patched_haplotype( TPathSet& paths,
-        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        GraphIter< TGraph, Haplotyper< TSpec > >& hp_itr,
+        typename GraphIter< TGraph, Haplotyper< TSpec > >::end_type& hp_end,
         unsigned int context_len )
     {
       assert( context_len != 0 );
-      if ( level( iter ) == 0 ) {
-        get_uniq_full_haplotype( paths, iter );
+      if ( level( hp_itr ) == 0 ) {
+        get_uniq_full_haplotype( paths, hp_itr, hp_end );
         return true;
       }
       unsigned int paths_no = paths.size();
-      get_uniq_patches( paths, iter, context_len );
+      get_uniq_patches( paths, hp_itr, hp_end, context_len );
       if ( paths_no == paths.size() ) return false;
       return true;
     }
 
-  template< typename TPath >
+  template< typename TPathSet, class TGraph, typename TSpec >
+      inline bool
+    get_uniq_haplotype( TPathSet& paths,
+        GraphIter< TGraph, Haplotyper< TSpec > >& hp_itr,
+        typename GraphIter< TGraph, Haplotyper< TSpec > >::end_type& hp_end,
+        unsigned int context_len,
+        bool patched )
+    {
+      if ( patched )
+        return get_uniq_patched_haplotype( paths, hp_itr, hp_end, context_len );
+      get_uniq_full_haplotype( paths, hp_itr, hp_end );
+      return true;
+    }
+
+  template< typename TPath, class TGraph >
       inline void
     get_rnd_full_haplotype( TPath& haplotype,
-        GraphIter< VarGraph, Haplotyper< Random > >& iter )
+        GraphIter< TGraph, Haplotyper< Random > >& hp_itr,
+        typename GraphIter< TGraph, Haplotyper< Random > >::end_type& hp_end )
     {
-      while ( !at_end( iter ) ) {
-        haplotype.push_back( *iter );
-        ++iter;
+      while ( hp_itr != hp_end ) {
+        haplotype.push_back( *hp_itr );
+        ++hp_itr;
       }
-      --iter;
+      --hp_itr;
     }
 
   /* END OF PathIndex interface functions  ----------------------------------------- */

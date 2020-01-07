@@ -24,8 +24,9 @@
 #include <random>
 #include <cstdint>
 
-#include <gum/seqgraph.hpp>
+#include <vg/vg.pb.h>
 #include <vg/io/stream.hpp>
+#include <gum/seqgraph.hpp>
 
 
 namespace psi {
@@ -34,9 +35,10 @@ namespace psi {
     inline typename TGraph::offset_type
     max_node_len( TGraph const& graph )
     {
-      typedef typename TGraph::id_type id_type;
-      typedef typename TGraph::rank_type rank_type;
-      typedef typename TGraph::offset_type offset_type;
+      typedef TGraph graph_type;
+      typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::rank_type rank_type;
+      typedef typename graph_type::offset_type offset_type;
 
       offset_type max = 1;
       graph.for_each_node(
@@ -52,6 +54,11 @@ namespace psi {
     inline typename TGraph::offset_type
     total_nof_loci( TGraph const& graph )
     {
+      typedef TGraph graph_type;
+      typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::rank_type rank_type;
+      typedef typename graph_type::offset_type offset_type;
+
       offset_type total = 0;
       graph.for_each_node(
           [&graph, &total]( rank_type rank, id_type id ) {
@@ -103,7 +110,7 @@ namespace psi {
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
                    std::function< void( vg::Graph& ) > callback,
-                   std::ptrdiff_t chunk_size ) const
+                   std::ptrdiff_t chunk_size )
     {
       assert( chunk_size < std::PTRDIFF_MAX );
       auto nodes_l = nbegin;
@@ -126,7 +133,7 @@ namespace psi {
     /**
      *  @brief  Get the node ID of an ajacent node randomly.
      *
-     *  @param  vargraph The variation graph.
+     *  @param  graph The graph.
      *  @param  node_id The ID of the node whose an adjacent node should be returned.
      *  @return an adjacent node ID if available any; otherwise 0 -- an invalid node ID.
      *
@@ -138,6 +145,10 @@ namespace psi {
     random_adjacent( TGraph const& graph, typename TGraph::id_type node_id,
                          unsigned int seed=0 )
     {
+      typedef TGraph graph_type;
+      typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::linktype_type linktype_type;
+
       auto odeg = graph.outdegree( node_id );
       if ( odeg == 0 ) return 0;
 
@@ -147,7 +158,7 @@ namespace psi {
       std::uniform_int_distribution<> dis(0, odeg - 1);
       auto idx = dis(gen);
 
-      typename TGraph::id_type candidate = 0;
+      id_type candidate = 0;
       graph.for_each_edges_out(
           node_id,
           [&candidate, &idx]( id_type to, linktype_type type ) {
@@ -165,7 +176,7 @@ namespace psi {
     /**
      *  @brief  Get the ID of an adjacent node with least coverage.
      *
-     *  @param  vargraph The variation graph.
+     *  @param  graph The graph.
      *  @param  node_id The ID ot the node whose an adjacent node should be returned.
      *  @param  paths_set A set of paths as a container of `Path`.
      *  @return the ID of the one of adjacent nodes with least coverage. If there are
@@ -181,6 +192,7 @@ namespace psi {
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::linktype_type linktype_type;
 
       id_type lc_id = 0;
       int lc_value = -1;
@@ -209,11 +221,12 @@ namespace psi {
 
     template< class TGraph, typename TPath, typename TContainer >
     inline typename TGraph::id_type
-    least_covered_adjacent( TGraph const& vargraph, TPath& tail,
+    least_covered_adjacent( TGraph const& graph, TPath& tail,
                             TContainer const& paths_set )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::linktype_type linktype_type;
 
       id_type lc_id = 0;
       int lc_value = -1;

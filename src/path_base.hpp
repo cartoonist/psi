@@ -60,12 +60,12 @@ namespace psi {
 
   template< typename TGraph >
     struct PathTraits< TGraph, Default > {
-      typedef std::vector< typename TGraph::nodeid_type > TNodeSequence;
+      typedef std::vector< typename TGraph::id_type > TNodeSequence;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Dynamic > {
-      typedef std::deque< typename TGraph::nodeid_type > TNodeSequence;
+      typedef std::deque< typename TGraph::id_type > TNodeSequence;
     };
 
   template< typename TGraph >
@@ -96,14 +96,14 @@ namespace psi {
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
-        typedef typename graph_type::nodeid_type value_type;
+        typedef typename graph_type::id_type value_type;
         typedef typename graph_type::offset_type offset_type;
         typedef typename nodes_type::size_type size_type;
         typedef ptrdiff_t difference_type;
         typedef typename nodes_type::const_iterator const_iterator;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        const graph_type* vargraph;
+        const graph_type* graph_ptr;
         nodes_type nodes;
         offset_type left;   /**< @brief The length of the first node sequence */
         offset_type right;  /**< @brief The length of the last node sequence */
@@ -118,7 +118,7 @@ namespace psi {
       public:
         /* ====================  LIFECYCLE     ======================================= */
         Path( const graph_type* g )
-          : vargraph( g ), left( 0 ), right( 0 ), seqlen( 0 ), initialized( false )
+          : graph_ptr( g ), left( 0 ), right( 0 ), seqlen( 0 ), initialized( false )
         { }
 
         /**
@@ -136,7 +136,7 @@ namespace psi {
 
         Path( const Path& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = other.nodes;
           this->left = other.left;
           this->right = other.right;
@@ -150,7 +150,7 @@ namespace psi {
 
         Path( Path&& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = std::move( other.nodes );
           this->left = other.left;
           this->right = other.right;
@@ -168,7 +168,7 @@ namespace psi {
 
         Path& operator=( const Path& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = other.nodes;
           this->left = other.left;
           this->right = other.right;
@@ -183,7 +183,7 @@ namespace psi {
 
         Path& operator=( Path&& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = std::move( other.nodes );
           this->left = other.left;
           this->right = other.right;
@@ -212,13 +212,13 @@ namespace psi {
             inline Path& operator=( const Path< graph_type, TSpec2 >& other );
         /* ====================  ACCESSORS     ======================================= */
         /**
-         *  @brief  getter function for vargraph.
+         *  @brief  getter function for graph_ptr.
          */
           inline const graph_type*
-        get_vargraph( ) const
+        get_graph_ptr( ) const
         {
-          return this->vargraph;
-        }  /* -----  end of method get_vargraph  ----- */
+          return this->graph_ptr;
+        }
 
         /**
          *  @brief  getter function for nodes.
@@ -227,7 +227,7 @@ namespace psi {
         get_nodes( ) const
         {
           return this->nodes;
-        }  /* -----  end of method get_nodes  ----- */
+        }
 
         /**
          *  @brief  get the node offset of the head node (front node).
@@ -237,7 +237,7 @@ namespace psi {
         {
           if ( this->left == 0 ) return 0;
           assert( !this->empty() );  /* Left offset of an empty path should be always 0 */
-          return this->vargraph->node_length( this->front() ) - this->left;
+          return this->graph_ptr->node_length( this->front() ) - this->left;
         }
 
         /**
@@ -247,7 +247,7 @@ namespace psi {
         get_sequence_len( ) const
         {
           return this->seqlen;
-        }  /* -----  end of method get_sequence_len  ----- */
+        }
 
         /**
          *  @brief  get left offset value.
@@ -256,7 +256,7 @@ namespace psi {
         get_left_len( ) const
         {
           assert( !this->empty() );
-          return this->left ? this->left : this->vargraph->node_length( this->front() );
+          return this->left ? this->left : this->graph_ptr->node_length( this->front() );
         }
 
         /**
@@ -266,7 +266,7 @@ namespace psi {
         get_right_len( ) const
         {
           assert( !this->empty() );
-          return this->right ? this->right : this->vargraph->node_length( this->back() );
+          return this->right ? this->right : this->graph_ptr->node_length( this->back() );
         }
 
         /**
@@ -301,7 +301,7 @@ namespace psi {
         {
           if ( this->seq.empty() ) this->seq = sequence( *this );
           return this->seq;
-        }  /* -----  end of method get_sequence  ----- */
+        }
 
         /**
          *  @brief  Is path initialized?
@@ -365,13 +365,13 @@ namespace psi {
         }
         /* ====================  MUTATORS      ======================================= */
         /**
-         *  @brief  setter function for vargraph.
+         *  @brief  setter function for graph_ptr.
          */
           inline void
-        set_vargraph( const graph_type* value )
+        set_graph_ptr( const graph_type* value )
         {
-          this->vargraph = value;
-        }  /* -----  end of method set_vargraph  ----- */
+          this->graph_ptr = value;
+        }
 
           inline void
         set_left_by_len( offset_type value )
@@ -381,7 +381,7 @@ namespace psi {
             throw std::runtime_error( "Cannot set offset for an empty path" );
           }
 
-          offset_type front_len = this->vargraph->node_length( this->front() );
+          offset_type front_len = this->graph_ptr->node_length( this->front() );
           if ( value > front_len || value == 0 ) value = front_len;
           if ( this->size() == 1 && front_len - value >= this->get_right_len() ) {
             throw std::runtime_error( "left exceeds right on the one-node path" );
@@ -394,7 +394,7 @@ namespace psi {
               this->seq.erase( 0, -diff );
             }
             else {
-              auto nstr = this->vargraph->node_sequence( this->front() );
+              auto nstr = this->graph_ptr->node_sequence( this->front() );
               this->seq.insert( 0, nstr.substr( front_len - value, diff ) );
             }
           }
@@ -410,7 +410,7 @@ namespace psi {
             throw std::runtime_error( "Cannot set offset for an empty path" );
           }
 
-          offset_type back_len = this->vargraph->node_length( this->back() );
+          offset_type back_len = this->graph_ptr->node_length( this->back() );
           if ( value > back_len || value == 0 ) value = back_len;
           if ( this->size() == 1 && value <= this->get_head_offset() ) {
             throw std::runtime_error( "right exceeds left on the one-node path" );
@@ -423,7 +423,7 @@ namespace psi {
               this->seq.resize( this->seqlen );
             }
             else {
-              auto nstr = this->vargraph->node_sequence( this->back() );
+              auto nstr = this->graph_ptr->node_sequence( this->back() );
               this->seq += nstr.substr( this->right, diff );  /**< @brief `right` is always non-zero here */
             }
           }
@@ -455,7 +455,7 @@ namespace psi {
         {
           if ( this->is_initialized() || this->size() == 0 ) return;
 
-          assert( this->vargraph != nullptr );
+          assert( this->graph_ptr != nullptr );
 
           this->init_bv_node_breaks();
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
@@ -466,12 +466,12 @@ namespace psi {
           inline void
         push_back( value_type const& nid )
         {
-          assert( this->vargraph != nullptr );
+          assert( this->graph_ptr != nullptr );
           if ( this->right != 0 ) this->set_right_by_len( 0 );
           this->nodes.push_back( nid );
-          this->seqlen += this->vargraph->node_length( nid );
+          this->seqlen += this->graph_ptr->node_length( nid );
           if ( !this->seq.empty() ) {
-            this->seq += this->vargraph->node_sequence( nid );
+            this->seq += this->graph_ptr->node_sequence( nid );
           }
           this->initialized = false;
         }
@@ -492,9 +492,9 @@ namespace psi {
           inline void
         push_back( value_type const& nid, offset_type noff )
         {
-          assert( this->vargraph != nullptr );
+          assert( this->graph_ptr != nullptr );
           bool first = this->empty();
-          offset_type nlen = this->vargraph->node_length( nid );
+          offset_type nlen = this->graph_ptr->node_length( nid );
           if ( noff < 0 ) noff = 0;
           this->initialized = false;
           if ( first ) {
@@ -511,7 +511,7 @@ namespace psi {
             this->seqlen += noff;
             this->right = ( noff == nlen ) ? 0 : noff;
             if ( !this->seq.empty() ) {
-              this->seq += this->vargraph->node_sequence( nid ).substr( 0, noff );
+              this->seq += this->graph_ptr->node_sequence( nid ).substr( 0, noff );
             }
           }
         }
@@ -661,14 +661,14 @@ namespace psi {
           this->bv_node_breaks[ cursor - 1 ] = 1;
           if ( this->size() > 1 ) {
             for ( auto it = this->begin()+1; it != this->end()-1; ++it ) {
-                cursor += this->vargraph->node_length( *it );
+                cursor += this->graph_ptr->node_length( *it );
                 this->bv_node_breaks[ cursor - 1 ] = 1;
               }
             cursor += this->get_seqlen_tail();
             this->bv_node_breaks[ cursor - 1 ] = 1;
           }
         }
-    };  /* -----  end of template class Path  ----- */
+    };  /* --- end of template class Path --- */
 
   /* Path member functions  ---------------------------------------------------- */
 
@@ -685,7 +685,7 @@ namespace psi {
       {
         using namespace sdsl::util;
 
-        this->vargraph = other.vargraph;
+        this->graph_ptr = other.graph_ptr;
 
         assign( this->nodes, other.nodes );
         psi::clear( other.nodes );
@@ -717,7 +717,7 @@ namespace psi {
       {
         using namespace sdsl::util;
 
-        this->vargraph = other.vargraph;
+        this->graph_ptr = other.graph_ptr;
         assign( this->nodes, other.nodes );
         this->left = other.left;
         this->right = other.right;
@@ -740,19 +740,19 @@ namespace psi {
       this->clear();
       if ( value.empty() ) return;
 
-      assert( this->vargraph != nullptr );
+      assert( this->graph_ptr != nullptr );
 
       this->nodes = std::move( value );
-      for ( auto n : this->nodes ) this->seqlen += this->vargraph->node_length( n );
+      for ( auto n : this->nodes ) this->seqlen += this->graph_ptr->node_length( n );
       this->set_left_by_len( l );
       this->set_right_by_len( r );
-    }  /* -----  end of method set_nodes  ----- */
+    }
 
   template< typename TGraph, typename TSpec >
       inline void
     Path< TGraph, TSpec >::pop_back( )
     {
-      assert( this->vargraph != nullptr );
+      assert( this->graph_ptr != nullptr );
 
       if ( this->empty() ) return;
 
@@ -768,7 +768,7 @@ namespace psi {
       inline void
     Path< TGraph, TSpec >::pop_front( )
     {
-      assert( this->vargraph != nullptr );
+      assert( this->graph_ptr != nullptr );
 
       if ( this->nodes.empty() ) return;
 
@@ -798,14 +798,14 @@ namespace psi {
         /* ====================  TYPEDEFS      ======================================= */
         typedef TGraph graph_type;
         typedef Micro spec_type;
-        typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
-        typedef typename graph_type::nodeid_type value_type;
+        typedef typename graph_type::id_type value_type;
+        typedef std::set< value_type > nodes_set_type;
         typedef typename nodes_set_type::size_type size_type;
         typedef typename nodes_set_type::difference_type difference_type;
         typedef typename nodes_set_type::const_iterator const_iterator;
         /* ====================  LIFECYCLE     ======================================= */
         Path( ) = default;
-        Path( const std::vector< typename graph_type::nodeid_type >& p )
+        Path( const std::vector< value_type >& p )
         {
           this->set_nodes( p );
         }
@@ -835,7 +835,7 @@ namespace psi {
         get_nodes_set( ) const
         {
           return this->nodes_set;
-        }  /* -----  end of method get_nodes_set  ----- */
+        }
 
           inline size_type
         size( ) const
@@ -871,7 +871,7 @@ namespace psi {
           psi::reserve( this->nodes_set, value.size() );
           std::copy( value.begin(), value.end(),
               std::inserter( this->nodes_set, this->nodes_set.end() ) );
-        }  /* -----  end of method set_nodes  ----- */
+        }
         /* ====================  METHODS       ======================================= */
           inline void
         push_back( value_type const& node_id )
@@ -911,7 +911,7 @@ namespace psi {
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         nodes_set_type nodes_set;
-    };  /* -----  end of specialized template class Path  ----- */
+    };  /* --- end of specialized template class Path --- */
 
   template< >
     class is_generic_path< Micro > : public std::false_type {};
@@ -932,13 +932,13 @@ namespace psi {
         typedef TGraph graph_type;
         typedef Haplotype spec_type;
         typedef typename TTraits::TNodeSequence nodes_type;
-        typedef typename graph_type::nodeid_type value_type;
+        typedef typename graph_type::id_type value_type;
         typedef typename nodes_type::size_type size_type;
         typedef ptrdiff_t difference_type;
         typedef sdsl::random_access_const_iterator< Path > const_iterator;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        const graph_type* vargraph;
+        const graph_type* graph_ptr;
         nodes_type nodes;
         typename graph_type::rank_type last_node_rank;
         bool initialized;
@@ -947,8 +947,8 @@ namespace psi {
       public:
         /* ====================  LIFECYCLE     ======================================= */
         Path( const graph_type* g ) :
-          vargraph( g ),
-          nodes( g->max_node_rank(), 0 ),
+          graph_ptr( g ),
+          nodes( g->get_node_count(), 0 ),
           last_node_rank( 0 ),
           initialized( false )
         { }
@@ -962,7 +962,7 @@ namespace psi {
 
         Path( const Path& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = other.nodes;
           this->last_node_rank = other.last_node_rank;
           this->initialize();
@@ -970,7 +970,7 @@ namespace psi {
 
         Path( Path&& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = std::move( other.nodes );
           this->last_node_rank = other.last_node_rank;
           this->initialize();
@@ -981,7 +981,7 @@ namespace psi {
           Path&
         operator=( const Path& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = other.nodes;
           this->last_node_rank = other.last_node_rank;
           this->initialize();
@@ -991,7 +991,7 @@ namespace psi {
           Path&
         operator=( Path&& other )
         {
-          this->vargraph = other.vargraph;
+          this->graph_ptr = other.graph_ptr;
           this->nodes = std::move( other.nodes );
           this->last_node_rank = other.last_node_rank;
           this->initialize();
@@ -1006,19 +1006,19 @@ namespace psi {
             inline Path&
           operator=( const Path< graph_type, TSpec2 >& other )
           {
-            this->vargraph = other.vargraph;
+            this->graph_ptr = other.graph_ptr;
             this->set_nodes( other.nodes );
             return *this;
           }
         /* ====================  ACCESSORS     ======================================= */
         /**
-         *  @brief  getter function for vargraph.
+         *  @brief  getter function for graph_ptr.
          */
           inline const graph_type*
-        get_vargraph( ) const
+        get_graph_ptr( ) const
         {
-          return this->vargraph;
-        }  /* -----  end of method get_vargraph  ----- */
+          return this->graph_ptr;
+        }
 
         /**
          *  @brief  getter function for nodes.
@@ -1027,7 +1027,7 @@ namespace psi {
         get_nodes( ) const
         {
           return *this;
-        }  /* -----  end of method get_nodes  ----- */
+        }
 
         /**
          *  @brief  Is path initialized?
@@ -1046,7 +1046,7 @@ namespace psi {
         operator[]( size_t idx ) const
         {
           assert( this->is_initialized() );
-          return this->vargraph->rank_to_id( this->ss_nodes( idx + 1 ) + 1 );
+          return this->graph_ptr->rank_to_id( this->ss_nodes( idx + 1 ) + 1 );
         }
 
           inline value_type
@@ -1097,13 +1097,13 @@ namespace psi {
         }
         /* ====================  MUTATORS      ======================================= */
         /**
-         *  @brief  setter function for vargraph.
+         *  @brief  setter function for graph_ptr.
          */
           inline void
-        set_vargraph( const graph_type* value )
+        set_graph_ptr( const graph_type* value )
         {
-          this->vargraph = value;
-        }  /* -----  end of method set_vargraph  ----- */
+          this->graph_ptr = value;
+        }
 
         template< typename TIter >
             inline void
@@ -1119,14 +1119,14 @@ namespace psi {
           set_nodes( const TContainer& node_ids )
           {
             this->set_nodes( node_ids.begin(), node_ids.end() );
-          }  /* -----  end of template method set_nodes  ----- */
+          }
         /* ====================  METHODS       ======================================= */
           inline void
         push_back( value_type const& nid )
         {
-          assert( this->vargraph != nullptr );
+          assert( this->graph_ptr != nullptr );
 
-          auto nrank = this->vargraph->id_to_rank( nid );
+          auto nrank = this->graph_ptr->id_to_rank( nid );
           if ( nrank <= this->last_node_rank )
             throw std::runtime_error( "Path IDs sequence must be non-decreasing" );
 
@@ -1200,17 +1200,17 @@ namespace psi {
         clear( )
         {
           sdsl::util::assign( this->nodes,
-              sdsl::bit_vector( this->vargraph->max_node_rank(), 0 ) );
+              sdsl::bit_vector( this->graph_ptr->get_node_count(), 0 ) );
           this->initialize();
           this->last_node_rank = 0;
-        }  /* -----  end of method clear  ----- */
+        }
 
           inline bool
         contains( value_type nid ) const
         {
-          if ( ! this->vargraph->has_node( nid ) ) return false;
+          if ( ! this->graph_ptr->has_node( nid ) ) return false;
 
-          auto nrank = this->vargraph->id_to_rank( nid );
+          auto nrank = this->graph_ptr->id_to_rank( nid );
           return this->contains_by_rank( nrank );
         }
 
@@ -1220,8 +1220,8 @@ namespace psi {
           {
             if ( begin == end ) return false;
 
-            auto brank = this->vargraph->id_to_rank( *begin );
-            auto erank = this->vargraph->id_to_rank( *( end - 1 ) );
+            auto brank = this->graph_ptr->id_to_rank( *begin );
+            auto erank = this->graph_ptr->id_to_rank( *( end - 1 ) );
             if ( erank < brank || brank == 0 || erank == 0 ) return false;
 
             long int plen = this->rs_nodes( erank ) - this->rs_nodes( brank - 1 );
@@ -1230,7 +1230,7 @@ namespace psi {
 
             typename graph_type::rank_type prev = 0;
             for ( ; begin != end; ++begin ) {
-              auto curr = this->vargraph->id_to_rank( *begin );
+              auto curr = this->graph_ptr->id_to_rank( *begin );
               if ( curr <= prev || !this->contains_by_rank( curr ) ) return false;
               prev = curr;
             }
@@ -1244,17 +1244,17 @@ namespace psi {
           {
             if ( rbegin == rend ) return false;
 
-            auto rbrank = this->vargraph->id_to_rank( *rbegin );
-            auto rerank = this->vargraph->id_to_rank( *( rend - 1 ) );
+            auto rbrank = this->graph_ptr->id_to_rank( *rbegin );
+            auto rerank = this->graph_ptr->id_to_rank( *( rend - 1 ) );
             if ( rbrank < rerank || rbrank == 0 || rerank == 0 ) return false;
 
             long int plen = this->rs_nodes( rbrank ) - this->rs_nodes( rerank - 1 );
             long int qlen = rend - rbegin;
             if ( plen != qlen || plen < 0 ) return false;
 
-            auto prev = this->vargraph->id_to_rank( *rbegin ) + 1;
+            auto prev = this->graph_ptr->id_to_rank( *rbegin ) + 1;
             for ( ; rbegin != rend; ++rbegin ) {
-              auto curr = this->vargraph->id_to_rank( *rbegin );
+              auto curr = this->graph_ptr->id_to_rank( *rbegin );
               if ( curr >= prev || !this->contains_by_rank( curr ) ) return false;
               prev = curr;
             }
@@ -1268,7 +1268,7 @@ namespace psi {
           if ( rank == 0 ) return false;
           return this->nodes[ rank - 1 ] == 1;
         }
-    };  /* -----  end of specialized template class Path  ----- */
+    };  /* --- end of specialized template class Path --- */
 
   template< >
     class is_generic_path< Haplotype > : public std::false_type {};

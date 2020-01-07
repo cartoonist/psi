@@ -28,7 +28,7 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
-#include "stream.hpp"
+#include <vg/io/stream.hpp>
 
 #include "graph.hpp"
 #include "sequence.hpp"
@@ -44,17 +44,21 @@ namespace psi {
   /**
    *  @brief  MapperStat template class.
    *
-   *  Collect statistics from a `Mapper` class instance(s) in running time.
+   *  Collect statistics from one (or more) `Mapper` class instance(s) in running time.
    */
-  template< typename TSpec = void >
+  template< class TMapper, typename TSpec = void >
     class MapperStat : public Timer<>
     {
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename TMapper::graph_type graph_type;
+        typedef typename graph_type::id_type id_type;
+        typedef typename graph_type::offset_type offset_type;
         /* ====================  MEMBER TYPES  ======================================= */
         struct Coordinates {
-          VarGraph::nodeid_type node_id;
-          VarGraph::offset_type offset;
-          Coordinates( VarGraph::nodeid_type nid, VarGraph::offset_type noff )
+          id_type node_id;
+          offset_type offset;
+          Coordinates( id_type nid, offset_type noff )
             : node_id( nid ), offset( noff ) { }
         };
         /* ====================  LIFECYCLE     ======================================= */
@@ -80,7 +84,7 @@ namespace psi {
         {
           static std::atomic< Coordinates > lastproc_locus( { 0, 0 } );
           return lastproc_locus;
-        }  /* -----  end of method get_lastproc_locus  ----- */
+        }
 
         /**
          *  @brief  Get the index of the last done processing locus in the starting loci.
@@ -95,7 +99,7 @@ namespace psi {
         {
           static std::atomic< std::size_t > lastdone_locus_idx( 0 );
           return lastdone_locus_idx;
-        }  /* -----  end of method get_lastdone_locus_idx  ----- */
+        }
 
         /**
          *  @brief  Get the total number of loci in the starting loci vector.
@@ -107,7 +111,7 @@ namespace psi {
         {
           static std::size_t total_nof_loci = 0;
           return total_nof_loci;
-        }  /* -----  end of method get_total_nof_loci  ----- */
+        }
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Set the last processing locus.
@@ -121,7 +125,7 @@ namespace psi {
         set_lastproc_locus( const vg::Position& value )
         {
           get_lastproc_locus().store( Coordinates( value.node_id(), value.offset() ) );
-        }  /* -----  end of method set_lastproc_locus  ----- */
+        }
 
         /**
          *  @brief  Set the index of the last done processing locus in the starting loci.
@@ -135,7 +139,7 @@ namespace psi {
         set_lastdone_locus_idx( const std::size_t& value )
         {
           get_lastdone_locus_idx().store( value );
-        }  /* -----  end of method set_lastdone_locus_idx  ----- */
+        }
 
         /**
          *  @brief  Set the total number of loci in the starting loci vector.
@@ -146,23 +150,27 @@ namespace psi {
         set_total_nof_loci( const std::size_t& value )
         {
           get_total_nof_loci() = value;
-        }  /* -----  end of method set_total_nof_loci  ----- */
-    };  /* ----------  end of template class MapperStat  ---------- */
+        }
+    };  /* --- end of template class MapperStat --- */
 
   /**
    *  @brief  MapperStat template specialization for no-stat.
    *
    *  Do nothing.
    */
-  template< >
-    class MapperStat< NoStat >
+  template< class TMapper >
+    class MapperStat< TMapper, NoStat >
     {
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename TMapper::graph_type graph_type;
+        typedef typename graph_type::id_type id_type;
+        typedef typename graph_type::offset_type offset_type;
         /* ====================  MEMBER TYPES  ======================================= */
         typedef Timer<> timer_type;
         struct Coordinates {
-          VarGraph::nodeid_type node_id;
-          VarGraph::offset_type offset;
+          id_type node_id;
+          offset_type offset;
         };
         /* ====================  LIFECYCLE     ======================================= */
         MapperStat( const std::string& ) { }
@@ -215,51 +223,71 @@ namespace psi {
         static inline void set_lastproc_locus( const vg::Position& value ) { }
         static inline void set_lastdone_locus_idx( const std::size_t& value ) { }
         static inline void set_total_nof_loci( const std::size_t& value ) { }
-    };  /* ----------  end of template class MapperStat  ---------- */
+    };  /* --- end of template class MapperStat --- */
+
+  template< class TTraverser, typename TStatSpec >
+    class Mapper;
+
+  /**
+   *  @brief  Stat template class specialization for `MapperStat`.
+   */
+  template< class TTraverser, typename TSpec >
+    class Stat< Mapper< TTraverser, TSpec > >
+    {
+      public:
+        typedef MapperStat< Mapper< TTraverser, TSpec >, TSpec > Type;
+    };  /* --- end of template class Stat --- */
+
+  template< class TMapper >
+    using StatT = typename Stat< TMapper >::Type;
 
   template< class TTraverser, typename TStatSpec = void >
     class Mapper
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef typename Stat< Mapper >::Type stats_type;
         typedef TTraverser traverser_type;
+        typedef typename traverser_type::graph_type graph_type;
+        typedef typename graph_type::id_type id_type;
+        typedef typename graph_type::offset_type offset_type;
+        typedef typename graph_type::rank_type rank_type;
+        typedef StatT< Mapper > stats_type;
         typedef Records< typename TTraverser::stringset_type > readsrecord_type;
         typedef typename TTraverser::index_type readsindex_type;
         /* ====================  LIFECYCLE      ====================================== */
-        Mapper( const VarGraph* graph,
+        Mapper( const graph_type* g,
             readsrecord_type&& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : vargraph( graph ), reads( std::move( r ) ), seed_len( len ),
-          seed_mismatches( mismatches ), traverser( vargraph, seed_len )
+          : graph_ptr( g ), reads( std::move( r ) ), seed_len( len ),
+          seed_mismatches( mismatches ), traverser( graph_ptr, seed_len )
         {
           if ( length( this->reads.str ) != 0 ) {
             this->index_reads();
           }
         }
 
-        Mapper( const VarGraph* graph,
+        Mapper( const graph_type* g,
             const readsrecord_type& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( graph , readsrecord_type( r ), len, mismatches )
+          : Mapper( g, readsrecord_type( r ), len, mismatches )
         { }
 
-        Mapper( const VarGraph* graph,
+        Mapper( const graph_type* g,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( graph , readsrecord_type( ), len, mismatches )
+          : Mapper( g, readsrecord_type( ), len, mismatches )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
-         *  @brief  getter function for vargraph.
+         *  @brief  getter function for graph_ptr.
          */
-          inline const VarGraph*
-        get_vargraph( ) const
+          inline const graph_type*
+        get_graph_ptr( ) const
         {
-          return this->vargraph;
-        }  /* -----  end of method get_vargraph  ----- */
+          return this->graph_ptr;
+        }
 
         /**
          *  @brief  getter function for starting_loci.
@@ -268,7 +296,7 @@ namespace psi {
         get_starting_loci( ) const
         {
           return this->starting_loci;
-        }  /* -----  end of method get_starting_loci  ----- */
+        }
 
         /**
          *  @brief  getter function for seed_len.
@@ -277,7 +305,7 @@ namespace psi {
         get_seed_len( ) const
         {
           return this->seed_len;
-        }  /* -----  end of method get_seed_len  ----- */
+        }
 
         /**
          *  @brief  getter function for seed_mismatches.
@@ -286,7 +314,7 @@ namespace psi {
         get_seed_mismatches( ) const
         {
           return this->seed_mismatches;
-        }  /* -----  end of method get_seed_mismatches  ----- */
+        }
 
         /**
          *  @brief  getter function for reads.
@@ -295,16 +323,16 @@ namespace psi {
         get_reads( ) const
         {
           return this->reads;
-        }  /* -----  end of method get_reads  ----- */
+        }
         /* ====================  MUTATORS       ====================================== */
         /**
-         *  @brief  setter function for vargraph.
+         *  @brief  setter function for graph_ptr.
          */
           inline void
-        set_vargraph( const VarGraph* value )
+        set_graph_ptr( const graph_type* value )
         {
-          this->vargraph = value;
-        }  /* -----  end of method set_vargraph  ----- */
+          this->graph_ptr = value;
+        }
 
         /**
          *  @brief  setter function for starting_loci.
@@ -315,7 +343,7 @@ namespace psi {
         set_starting_loci( const std::vector< vg::Position >& loci )
         {
           this->starting_loci = loci;
-        }  /* -----  end of method set_starting_loci  ----- */
+        }
 
         /**
          *  @brief  setter function for starting_loci.
@@ -326,7 +354,7 @@ namespace psi {
         set_starting_loci( std::vector< vg::Position >&& loci )
         {
           this->starting_loci = std::move( loci );
-        }  /* -----  end of method set_starting_loci  ----- */
+        }
 
         /**
          *  @brief  setter function for seed_len.
@@ -335,7 +363,7 @@ namespace psi {
         set_seed_len( unsigned int value )
         {
           this->seed_len = value;
-        }  /* -----  end of method set_seed_len  ----- */
+        }
 
         /**
          *  @brief  setter function for seed_mismatches.
@@ -344,7 +372,7 @@ namespace psi {
         set_seed_mismatches( unsigned char value )
         {
           this->seed_mismatches = value;
-        }  /* -----  end of method set_seed_mismatches  ----- */
+        }
 
         /**
          *  @brief  setter function for reads.
@@ -356,7 +384,7 @@ namespace psi {
         {
           this->reads = std::move( value );
           this->index_reads();
-        }  /* -----  end of method set_reads  ----- */
+        }
 
         /**
          *  @brief  setter function for reads.
@@ -367,7 +395,7 @@ namespace psi {
         set_reads( const readsrecord_type& value )
         {
           this->set_reads( readsrecord_type( value ) );
-        }  /* -----  end of method set_reads  ----- */
+        }
 
           inline void
         add_start( const vg::Position& locus )
@@ -376,7 +404,7 @@ namespace psi {
         }
 
           inline void
-        add_start( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
+        add_start( id_type node_id, offset_type offset )
         {
           vg::Position locus;
           locus.set_node_id( node_id );
@@ -396,29 +424,32 @@ namespace psi {
          *  XXX: We assume that each connect component in the graph has one and only one
          *  path indicating a sample haplotype in that region.
          */
-        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
-            void
-          pick_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
+        template< typename TText, typename TIndexSpec, typename TSequenceDirection >
+            inline void
+          pick_paths( PathIndex< graph_type, TText, TIndexSpec, TSequenceDirection >& paths,
               int n, bool patched=true,
               std::function< void( std::string const&, int ) > callback=nullptr )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
 
-            paths.reserve( n * this->vargraph->path_count );
-            seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph );
+            paths.reserve( n * this->graph_ptr->path_count );
+            auto hap_itr = begin( *this->graph_ptr, Haplotyper<>() );
+            auto hap_end = end( *this->graph_ptr, Haplotyper<>() );
             auto context = paths.get_context();
-            for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
-              const auto& path_name = this->vargraph->path_name( rank );
-              auto s = this->vargraph->node_at_path_position( path_name, 0 );
-              go_begin( hap_itr, s );
-              for ( int i = 0; i < n; ++i ) {
-                if ( callback ) callback( path_name, i + 1 );
-                if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, context );
-                else get_uniq_full_haplotype( paths, hap_itr );
-              }
-            }
-          }  /* -----  end of template function pick_paths  ----- */
+            this->graph_ptr->for_each_path(
+                [&]( auto path_id ) {
+                  auto path_name = this->graph_ptr->path_name( path_id );
+                  id_type s = *this->graph_ptr->path( path_id ).begin();
+                  hap_itr.reset( s );
+                  for ( int i = 0; i < n; ++i ) {
+                    if ( callback ) callback( path_name, i + 1 );
+                    if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, context );
+                    else get_uniq_full_haplotype( paths, hap_itr );
+                  }
+                  return true;
+                } );
+          }
 
         /**
          *  @brief  Find seeds on a set of whole-genome paths for the input reads chunk.
@@ -431,13 +462,13 @@ namespace psi {
          *  both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
+        template< typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
-          seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
+          seeds_on_paths( PathIndex< graph_type, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) > callback )
           {
             typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
-            typedef typename PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >::index_type TPIndex;
+            typedef typename PathIndex< graph_type, TText, TIndexSpec, TSequenceDirection >::index_type TPIndex;
             typedef typename seqan::Iterator< TPIndex, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
@@ -448,7 +479,7 @@ namespace psi {
             TPIterator piter( paths.index );
             TRIterator riter( this->reads_index );
             kmer_exact_matches( piter, riter, &paths, &(this->reads), this->seed_len, callback );
-          }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
+          }
 
         template< typename TPath, typename TSpec >
             inline void
@@ -458,51 +489,53 @@ namespace psi {
             if ( paths.size() == 0 ) return this->add_all_loci( step );
             auto timer = stats_type( "add-starts" );
 
-            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
-            Path< VarGraph > trav_path( this->vargraph );
-            Path< VarGraph > current_path( this->vargraph );
-            sdsl::bit_vector bv_starts( this->vargraph->get_max_node_len(), 0 );
+            auto bt_itr = begin( *this->graph_ptr, Backtracker() );
+            auto bt_end = end( *this->graph_ptr, Backtracker() );
+            Path< graph_type > trav_path( this->graph_ptr );
+            Path< graph_type > current_path( this->graph_ptr );
+            sdsl::bit_vector bv_starts( util::max_node_len( *this->graph_ptr ), 0 );
 
-            for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
-              VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
-              auto label_len = this->vargraph->node_length( id );
-              std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
+            this->graph_ptr->for_each_node(
+                [&]( rank_type rank, id_type id ) {
+                  auto label_len = this->graph_ptr->node_length( id );
+                  offset_type offset = label_len;
 
-              go_begin( bt_itr, id );
-              while ( !at_end( bt_itr ) && offset != 0 ) {
-                extend_to_k( trav_path, bt_itr, offset - 1 + k );
-                if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
-                while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths ) ) {
-                  auto trimmed_len = current_path.get_sequence_len()
-                    - this->vargraph->node_length( current_path.get_nodes().back() );
-                  if ( trimmed_len <= k - 1 ) {
-                    offset = 0;
-                    break;
+                  bt_itr.reset( id );
+                  while ( bt_itr != bt_end && offset != 0 ) {
+                    extend_to_k( trav_path, bt_itr, bt_end, offset - 1 + k );
+                    if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
+                    while ( current_path.get_sequence_len() != 0 &&
+                        !covered_by( current_path, paths ) ) {
+                      auto trimmed_len = current_path.get_sequence_len()
+                        - this->graph_ptr->node_length( current_path.get_nodes().back() );
+                      if ( trimmed_len <= k - 1 ) {
+                        offset = 0;
+                        break;
+                      }
+                      offset = trimmed_len - k + 1;
+                      trim_back( current_path );
+                    }
+                    for ( auto f = offset;
+                        f < label_len && f + k < trav_path.get_sequence_len() + 1;
+                        f += step ) {
+                      bv_starts[f] = 1;
+                    }
+
+                    --bt_itr;
+                    trim_back( trav_path, *bt_itr );
+                    clear( current_path );
                   }
-                  offset = trimmed_len - k + 1;
-                  trim_back( current_path );
-                }
-                for ( auto f = offset;
-                    f < label_len && f + k < trav_path.get_sequence_len() + 1;
-                    f += step ) {
-                  bv_starts[f] = 1;
-                }
 
-                --bt_itr;
-                trim_back( trav_path, *bt_itr );
-                clear( current_path );
-              }
+                  for ( std::size_t f = 0; f < label_len; ++f ) {
+                    if ( bv_starts[ f ] == 1 ) {
+                      bv_starts[ f ] = 0;
+                      this->add_start( id, f );
+                    }
+                  }
 
-              for ( std::size_t f = 0; f < label_len; ++f ) {
-                if ( bv_starts[ f ] == 1 ) {
-                  bv_starts[ f ] = 0;
-                  this->add_start( id, f );
-                }
-              }
-
-              clear( trav_path );
-            }
+                  clear( trav_path );
+                  return true;
+                } );
           }
 
         inline void add_all_loci( unsigned int step=1 )
@@ -512,22 +545,23 @@ namespace psi {
           //       the whole graph.
           auto timer = stats_type( "add-starts" );
 
-          seqan::Iterator<VarGraph, BFS>::Type itr( this->vargraph );
+          auto bfs_itr = begin( *this->graph_ptr,  BFS() );
+          auto bfs_end = end( *this->graph_ptr,  BFS() );
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
-          VarGraph::nodeid_type prenode_level = 0;
-          while ( !at_end( itr ) ) {
-            if ( prenode_level != level( itr ) ) {
+          id_type prenode_level = 0;
+          while ( bfs_itr != bfs_end ) {
+            if ( prenode_level != bfs_itr.level() ) {
               prenode_remain = remain_estimate;
               remain_estimate = 0;
-              prenode_level = level( itr );
+              prenode_level = bfs_itr.level();
             }
 
-            auto seq_len = this->vargraph->node_length( *itr );
+            auto seq_len = this->graph_ptr->node_length( *bfs_itr );
             unsigned long int cursor = ( step - prenode_remain ) % step;
             while ( cursor < seq_len ) {
-              this->add_start( *itr, cursor );
+              this->add_start( *bfs_itr, cursor );
               cursor += step;
             }
 
@@ -543,7 +577,7 @@ namespace psi {
               remain_estimate = new_remain;
             }
 
-            ++itr;
+            ++bfs_itr;
           }
         }
 
@@ -554,26 +588,27 @@ namespace psi {
             if ( this->starting_loci.size() == 0 ) return 0;
             auto timer = stats_type( "count-uncovered-kmer" );
 
-            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
-            Path< VarGraph > trav_path( this->vargraph );
-            Path< VarGraph > current_path( this->vargraph );
+            auto bt_itr = begin( *this->graph_ptr, Backtracker() );
+            auto bt_end = end( *this->graph_ptr, Backtracker() );
+            Path< graph_type > trav_path( this->graph_ptr );
+            Path< graph_type > current_path( this->graph_ptr );
             unsigned long long int uncovered = 0;
 
             long long int prev_id = 0;
             for ( const vg::Position& l : this->starting_loci ) {
               if ( prev_id == l.node_id() ) continue;
               prev_id = l.node_id();
-              auto label_len = this->vargraph->node_length( l.node_id() );
+              auto label_len = this->graph_ptr->node_length( l.node_id() );
 
-              go_begin( bt_itr, l.node_id() );
-              while ( !at_end( bt_itr ) ) {
-                std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
-                extend_to_k( trav_path, bt_itr, offset - 1 + k );
+              bt_itr.reset( l.node_id() );
+              while ( bt_itr != bt_end ) {
+                offset_type offset = label_len;
+                extend_to_k( trav_path, bt_itr, bt_end, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
                     !covered_by( current_path, paths ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
-                    - this->vargraph->node_length( current_path.get_nodes().back() );
+                    - this->graph_ptr->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
                     offset = 0;
                     break;
@@ -609,7 +644,7 @@ namespace psi {
             [this]( vg::Position& pos ) { this->starting_loci.push_back( pos ); };
 
           try {
-            stream::for_each( ifs, push_back );
+            vg::io::for_each( ifs, push_back );
           }
           catch ( const std::runtime_error& ) {
             return false;
@@ -631,7 +666,7 @@ namespace psi {
             [this]( uint64_t i ) { return this->starting_loci.at( i ); };
 
           try {
-            stream::write( ofs, this->starting_loci.size(), lambda );
+            vg::io::write( ofs, this->starting_loci.size(), lambda );
           }
           catch ( const std::runtime_error& ) {
             return false;
@@ -643,7 +678,7 @@ namespace psi {
           inline std::size_t
         get_nof_uniq_nodes( )
         {
-          std::unordered_set< VarGraph::nodeid_type > set;
+          std::unordered_set< id_type > set;
           for ( const auto& l : this->starting_loci ) set.insert( l.node_id() );
           return set.size();
         }
@@ -669,7 +704,7 @@ namespace psi {
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        const VarGraph* vargraph;
+        const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
         readsrecord_type reads;
         unsigned int seed_len;
@@ -684,17 +719,6 @@ namespace psi {
           this->reads_index = readsindex_type( this->reads.str );
         }
     };
-
-  /**
-   *  @brief  Stat template class specialization for `MapperStat`.
-   */
-  template< class TTraverser, typename TSpec >
-    class Stat< Mapper< TTraverser, TSpec > >
-    {
-      public:
-        typedef MapperStat< TSpec > Type;
-    };  /* ----------  end of template class Stat  ---------- */
-}
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_MAPPER_HPP__ --- */

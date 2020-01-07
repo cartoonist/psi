@@ -30,6 +30,7 @@
 #include <functional>
 
 #include "graph.hpp"
+#include "graph_iter.hpp"
 #include "logger.hpp"
 #include "sequence.hpp"
 #include "index.hpp"
@@ -41,13 +42,14 @@
 
 namespace psi {
   /* Forwards */
-  template< typename TIndex,
+  template< class TGraph,
+    typename TIndex,
     typename TStrategy,
-    template<typename> class TMatchingTraits,
+    template<typename, typename> class TMatchingTraits,
     typename TStatSpec >
     class TraverserBase;
 
-  template< typename TIter, std::size_t MaxMismatches >
+  template< typename TGraph, typename TIter, std::size_t MaxMismatches >
     struct MatchingTraits {
       static const std::size_t max_mismatches = MaxMismatches;
       typedef struct State {
@@ -61,8 +63,8 @@ namespace psi {
         bool end;
 
         State( TIndex* index, unsigned char mm,
-            VarGraph::nodeid_type sid, VarGraph::offset_type soffset,
-            VarGraph::nodeid_type cid, VarGraph::offset_type coffset, size_t d )
+            typename TGraph::id_type sid, typename TGraph::offset_type soffset,
+            typename TGraph::id_type cid, typename TGraph::offset_type coffset, size_t d )
           : iter( *index ), mismatches( mm ), depth( d ), end( false )
         {
           spos.set_node_id( sid );
@@ -72,7 +74,7 @@ namespace psi {
         }
 
         State( TIndex* index, unsigned char mm,
-            VarGraph::nodeid_type sid, VarGraph::offset_type soffset, size_t d )
+            typename TGraph::id_type sid, typename TGraph::offset_type soffset, size_t d )
           : State( index, mm, sid, soffset, sid, soffset, d )
         { }
 
@@ -94,10 +96,10 @@ namespace psi {
       } TState;
     };
 
-  template< typename TIter >
-    using ExactMatching = MatchingTraits< TIter, 0 >;
-  template< typename TIter >
-    using ApproxMatching = MatchingTraits< TIter, 3 >;
+  template< typename TGraph, typename TIter >
+    using ExactMatching = MatchingTraits< TGraph, TIter, 0 >;
+  template< typename TGraph, typename TIter >
+    using ApproxMatching = MatchingTraits< TGraph, TIter, 3 >;
 
   /**
    *  @brief  TraverserStat template class.
@@ -199,7 +201,7 @@ namespace psi {
         {
           get_partial_nof_paths().store( 0 );
         }
-    };  /* ----------  end of template class TraverserStat  ---------- */
+    };  /* --- end of template class TraverserStat --- */
 
   /**
    *  @brief  TraverserStat template class no-stat specialization.
@@ -220,60 +222,65 @@ namespace psi {
         static inline void inc_total_nof_paths( unsigned int by=1 ) { }
         static inline void reset_total_nof_paths( ) { }
         static inline void inc_pathlens_partial_sum( unsigned int by=1 ) { }
-    };  /* ----------  end of template class TraverserStat  ---------- */
+    };  /* --- end of template class TraverserStat --- */
 
   /**
    *  @brief  Stat template class specialization for `TraverserBase`.
    */
-  template< typename TIndex,
+  template< class TGraph,
+    typename TIndex,
     typename TStrategy,
-    template<typename> class TMatchingTraits,
+    template<typename, typename> class TMatchingTraits,
     typename TSpec >
-    class Stat< TraverserBase< TIndex, TStrategy, TMatchingTraits, TSpec > >
+    class Stat< TraverserBase< TGraph, TIndex, TStrategy, TMatchingTraits, TSpec > >
     {
       public:
         typedef TraverserStat< TSpec > Type;
     };
 
-  template< typename TIndex,
+  template< class TGraph,
+    typename TIndex,
     typename TStrategy,
-    template<typename> class TMatchingTraits,
+    template<typename, typename> class TMatchingTraits,
     typename TStatSpec >
     class TraverserBase
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef Seed<> output_type;
+        typedef TGraph graph_type;
         typedef TIndex index_type;
+        typedef typename graph_type::id_type id_type;
+        typedef typename graph_type::offset_type offset_type;
         typedef typename seqan::Spec< TIndex >::Type indexspec_type;
         typedef typename seqan::Fibre< TIndex, seqan::FibreText >::Type stringset_type;
         typedef typename seqan::Value< stringset_type >::Type text_type;
         typedef Records< stringset_type > records_type;
         typedef TopDownFine< > iterspec_type;
         typedef TIndexIter< TIndex, iterspec_type > iterator_type;
-        typedef TMatchingTraits< iterator_type > traits_type;
+        typedef TMatchingTraits< graph_type, iterator_type > traits_type;
         typedef typename seqan::SAValue< TIndex >::Type TSAValue;
         typedef typename Stat< TraverserBase >::Type stats_type;
         /* ====================  DATA MEMBERS  ======================================= */
         static const auto max_mismatches = traits_type::max_mismatches;
         /* ====================  LIFECYCLE      ====================================== */
-        TraverserBase( const VarGraph* graph, const records_type* r, TIndex* index,
+        TraverserBase( const graph_type* g, const records_type* r, TIndex* index,
             unsigned int len )
-          : vargraph( graph ), reads( r ), reads_index( index ), seed_len( len )
+          : graph_ptr( g ), reads( r ), reads_index( index ), seed_len( len )
         { }
 
-        TraverserBase( const VarGraph* graph, unsigned int len )
-          : TraverserBase( graph, nullptr, nullptr, len )
+        TraverserBase( const graph_type* g, unsigned int len )
+          : TraverserBase( g, nullptr, nullptr, len )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
-         *  @brief  getter function for vargraph.
+         *  @brief  getter function for graph_ptr.
          */
-          inline const VarGraph*
-        get_vargraph (  ) const
+          inline const graph_type*
+        get_graph_ptr (  ) const
         {
-          return this->vargraph;
-        }  /* -----  end of method get_vargraph  ----- */
+          return this->graph_ptr;
+        }
 
         /**
          *  @brief  getter function for reads.
@@ -282,7 +289,7 @@ namespace psi {
         get_reads( ) const
         {
           return this->reads;
-        }  /* -----  end of method get_reads  ----- */
+        }
 
         /**
          *  @brief  getter function for reads_index.
@@ -291,7 +298,7 @@ namespace psi {
         get_reads_index (  ) const
         {
           return this->reads_index;
-        }  /* -----  end of method get_reads_index  ----- */
+        }
 
         /**
          *  @brief  getter function for seed_len.
@@ -300,16 +307,16 @@ namespace psi {
         get_seed_len (  ) const
         {
           return this->seed_len;
-        }  /* -----  end of method get_seed_len  ----- */
+        }
         /* ====================  MUTATORS       ====================================== */
         /**
-         *  @brief  setter function for vargraph.
+         *  @brief  setter function for graph_ptr.
          */
           inline void
-        set_vargraph ( const VarGraph* value )
+        set_graph_ptr ( const graph_type* value )
         {
-          this->vargraph = value;
-        }  /* -----  end of method set_vargraph  ----- */
+          this->graph_ptr = value;
+        }
 
         /**
          *  @brief  setter function for reads.
@@ -318,7 +325,7 @@ namespace psi {
         set_reads( const records_type* value )
         {
           this->reads = value;
-        }  /* -----  end of method set_reads  ----- */
+        }
 
         /**
          *  @brief  setter function for reads_index.
@@ -327,7 +334,7 @@ namespace psi {
         set_reads_index ( TIndex* value )
         {
           this->reads_index = value;
-        }  /* -----  end of method set_reads_index  ----- */
+        }
 
         /**
          *  @brief  setter function for seed_len.
@@ -336,7 +343,7 @@ namespace psi {
         set_seed_len ( unsigned int value )
         {
           this->seed_len = value;
-        }  /* -----  end of method set_seed_len  ----- */
+        }
 
           inline void
         add_locus( vg::Position p )
@@ -349,7 +356,7 @@ namespace psi {
         }
 
           inline void
-        add_locus( VarGraph::nodeid_type id, VarGraph::offset_type offset )
+        add_locus( id_type id, offset_type offset )
         {
           this->states.emplace_back(
               this->reads_index,
@@ -366,12 +373,12 @@ namespace psi {
         }
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
-        const VarGraph* vargraph;      /**< @brief Pointer to variation graph. */
+        const graph_type* graph_ptr;   /**< @brief Pointer to variation graph. */
         const records_type* reads;     /**< @brief Pointer to reads record. */
         TIndex* reads_index;           /**< @brief Pointer to reads index. */
         unsigned int seed_len;         /**< @brief Seed length. */
         std::vector< typename traits_type::TState > states;
-    };  /* ----------  end of template class TraverserBase  ---------- */
+    };  /* --- end of template class TraverserBase --- */
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_TRAVERSER_BASE_HPP__ --- */
