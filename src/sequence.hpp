@@ -1536,17 +1536,19 @@ namespace psi {
    *  @param[out]  records Sequence record set to store records in the input file.
    *  @param[in,out]  infile The input file.
    *  @param[in]  num_record Read this number of record from the input file.
+   *  @return The number of read records loaded from the input file.
    *
    *  A wrapper function for `seqan::readRecords` method to read the records into
    *  sequence record set. If `num_record` is equal to zero, it reads all recrods.
    */
   template< typename TText >
-      inline void
+      inline std::size_t
     readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
         seqan::SeqFileIn& infile,
         unsigned int num_record = 0 )
     {
       CharStringSet<> quals;
+      clear( records );
       if ( num_record != 0 ) {
         seqan::readRecords( records.name, records.str, quals, infile, num_record );
       }
@@ -1554,11 +1556,11 @@ namespace psi {
         seqan::readRecords( records.name, records.str, quals, infile );
       }
       assignQualities( records.str, quals );
-      return;
+      return length( records );
     }  /* -----  end of template function readRecords  ----- */
 
   template< typename TText >
-      inline void
+      inline std::size_t
     readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
         klibpp::SeqStreamIn& iss,
         unsigned int num_record=0 )
@@ -1566,12 +1568,13 @@ namespace psi {
       klibpp::KSeq rec;
       clear( records );
       records.set_record_offset( iss.counts() );
-      unsigned int i = 0;
+      std::size_t i = 0;
       while ( iss >> rec ) {
         appendValue( records.name, rec.name );
         appendValue( records.str, rec.seq );
         if ( ++i == num_record ) break;
       }
+      return i;
     }
 
   /**
