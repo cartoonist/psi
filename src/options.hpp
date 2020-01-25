@@ -79,10 +79,9 @@ namespace psi {
     std::string fq_path;
     std::string output_path;
     std::string log_path;
-    std::string paths_index_file;
-    bool paths_index;
+    std::string pindex_path;
     bool patched;
-    bool nomapping;
+    bool indexonly;
     bool nologfile;
     bool nolog;
     bool quiet;

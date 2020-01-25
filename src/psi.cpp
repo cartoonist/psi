@@ -25,11 +25,10 @@
 
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
+#include <gum/io_utils.hpp>
 
 #include "graph.hpp"
 #include "mapper.hpp"
-#include "traverser.hpp"
-#include "pathindex.hpp"
 #include "sequence.hpp"
 #include "seed.hpp"
 #include "utils.hpp"
@@ -61,7 +60,7 @@ signal_handler( int signal )
   std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
             << "---------------------------" << std::endl;
   std::cout << "Elapsed time in traversal phase: "
-            << Stat< TMapper >::Type::get_lap_str( "traverse" ) << std::endl;
+            << Stat< TMapper >::Type::get_lap_str( "seeds-off-paths" ) << std::endl;
   auto pos = Stat< TMapper >::Type::get_lastproc_locus().load();
   std::cout << "Current node: (" << pos.node_id << ", " << pos.offset << ")"
             << std::endl;
@@ -95,122 +94,74 @@ template< typename TMapper, typename TSet >
     }
   }
 
-template< typename TPathIndex, typename TMapper >
-    void
-  prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index,
-      bool patched, const std::string& paths_index_file, unsigned int path_num,
-      unsigned int context, unsigned int seed_len )
-  {
-    /* Get the main logger. */
-    auto log = get_logger( "main" );
-    if ( !patched && context != 0 ) pindex.set_context( 0 );
-    log->info( "Loading path index..." );
-    /* Load the genome-wide path index for the variation graph if available. */
-    if ( paths_index && pindex.load( paths_index_file, mapper.get_graph_ptr() ) ) {
-      log->info( "Path index found. Loaded." );
-      return;
-    }
-    /* No genome-wide path index requested. */
-    if ( path_num == 0 ) {
-      log->info( "Specified number of path is 0. Skipping path indexing..." );
-    }
-    else {
-      log->info( "No valid path index found. Picking paths..." );
-      log->info( "Picking {} different path(s) on the graph...", path_num );
-      /* REQUIRED: the value might has been changed in an unsuccessful loading above. */
-      pindex.set_context( context );
-      /* Generate the requested number of genome-wide paths. */
-      if ( patched && context == 0 ) {
-        log->warn( "Context cannot be zero for patching. "
-            "Assuming seed length as context size..." );
-        pindex.set_context( seed_len );
-      }
-      auto progress = [&log]( std::string const& name, int i ) {
-        log->info( "Selecting path {} of region {}...", i, name );
-      };
-      mapper.pick_paths( pindex, path_num, patched, progress );
-      log->info( "Picked paths in {}.", Timer<>::get_duration_str( "pick-paths" ) );
-      {
-        auto timer = Timer<>( "index-paths" );
-        log->info( "Indexing the paths..." );
-        /* Index the paths. */
-        pindex.create_index();
-      }
-      log->info( "Indexed paths in {}.", Timer<>::get_duration_str( "index-paths" ) );
-      {
-        auto timer = Timer<>( "save-paths" );
-        log->info( "Saving path index..." );
-        /* Serialize the indexed paths. */
-        if ( !paths_index ) {
-          log->warn( "No path index file is specified. Skipping..." );
-        } else if ( !pindex.serialize( paths_index_file ) ) {
-          log->warn( "Specified path index file is not writable. Skipping..." );
-        }
-      }
-      log->info( "Saved path index in {}.", Timer<>::get_duration_str( "save-paths" ) );
-    }
-  }
 
-
-template< typename TReadsIndexSpec >
+template< class TGraph, typename TReadsIndexSpec >
     void
-  find_seeds( VarGraph& vargraph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
-      unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
-      unsigned int distance, unsigned int path_num, unsigned int context,
-      bool paths_index, bool patched, const std::string& paths_index_file,
-      bool nomapping, TReadsIndexSpec const )
+  find_seeds( TGraph& graph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
+              Options const& params, TReadsIndexSpec const )
   {
     /* typedefs */
     typedef Dna5QStringSet<> TReadsStringSet;
     typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
-    typedef typename Traverser< TReadsIndex, BFS, ExactMatching >::Type TTraverser;
+    typedef typename Traverser< TGraph, TReadsIndex, BFS, ExactMatching >::Type TTraverser;
     typedef Mapper< TTraverser > TMapper;
 
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    /* The mapper for input variation graph. */
-    TMapper mapper( &vargraph, seed_len );
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
-    /* Genome-wide path index in lazy mode. */
-    PathIndex< VarGraph, DiskString, psi::FMIndex<>, Reversed > pindex( context, true );
-    /* Prepare (load or create) genome-wide paths. */
-    prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file,
-        path_num, context, seed_len );
-    if ( patched && pindex.get_context() < seed_len ) {
-      std::string msg = "Seed length cannot be larger than context size";
-      log->error( msg );
-      throw std::runtime_error( msg );
-    }
 
-    log->info( "Loading starting loci..." );
-    /* Loading starting loci. */
-    if ( mapper.open_starts( paths_index_file, seed_len, step_size ) ) {
-      log->info( "The starting loci file found. Loaded." );
+    /* The mapper for the input graph. */
+    TMapper mapper( graph, params.seed_len );
+    /* Prepare (load or create) genome-wide paths. */
+    log->info( "Looking for an existing path index..." );
+    /* Load the genome-wide path index for the graph if available. */
+    if ( mapper.load_path_index( params.pindex_path,
+                                 params.context,
+                                 params.step_size ) ) {
+      log->info( "The path index has been found and loaded." );
+      return;
+    }
+    /* No genome-wide path index requested. */
+    if ( params.path_num == 0 ) {
+      log->info( "No path has been specified. Skipping path indexing..." );
     }
     else {
-      log->info( "Selecting starting loci..." );
-      /* Locate starting loci. */
-      mapper.add_all_loci( pindex.get_paths_set(), seed_len, step_size );
+      log->info( "No valid path index found. Creating the path index..." );
+      log->info( "Selecting {} different path(s) in the graph...", params.path_num );
+      mapper.create_path_index( params.path_num, params.context,
+                                params.patched, params.step_size,
+                                [&log]( std::string const& msg ) {
+                                  log->info( msg );
+                                },
+                                [&log]( std::string const& msg ) {
+                                  log->warn( msg );
+                                } );
+      log->info( "Picked paths in {}.", Timer<>::get_duration_str( "pick-paths" ) );
+      log->info( "Indexed paths in {}.", Timer<>::get_duration_str( "index-paths" ) );
       log->info( "Selected starting loci in {}.",
-          Timer<>::get_duration_str( "add-starts" ) );
-      log->info( "Saving starting loci..." );
-      /* Saving starting loci. */
-      if ( ! mapper.save_starts( paths_index_file, seed_len, step_size ) ) {
-        log->warn( "The specified path for saving starting loci is not writable. "
-            "Skipping..." );
+                 Timer<>::get_duration_str( "add-starts" ) );
+      log->info( "Saving path index..." );
+      /* Serialize the indexed paths. */
+      if ( params.pindex_path.empty() ) {
+        log->warn( "No path index file is specified. Skipping..." );
+      } else if ( !mapper.serialize_path_index( params.pindex_path, params.step_size ) ) {
+        log->warn( "Specified path index file is not writable. Skipping..." );
+      } else {
+        log->info( "Saved path index in {}.", Timer<>::get_duration_str( "save-paths" ) );
       }
     }
-    log->info( "Number of starting loci selected (in {} nodes of total {}): {}",
-        mapper.get_nof_uniq_nodes(), mapper.get_graph_ptr()->node_count,
+    log->info( "Number of uncovered loci (in {} nodes of total {}): {}",
+        mapper.get_nof_uniq_nodes(), mapper.get_graph_ptr()->get_node_count(),
         mapper.get_starting_loci().size() );
 
-    if ( nomapping ) {
-      log->info( "Skipping mapping as requested..." );
+    if ( params.indexonly ) {
+      log->info( "Skipping seed finding as requested..." );
       return;
     }
 
     unsigned long long int found = 0;
+    unsigned long long int total_found = 0;
     std::unordered_set< Records< TReadsStringSet >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
@@ -223,47 +174,42 @@ template< typename TReadsIndexSpec >
       covered_reads.insert(seed_hit.read_id);
     };
 
-    /* Reads are mapped in chunks. */
-    Records< TReadsStringSet > reads_chunk;
-    Records< TReadsStringSet > seeds_chunk;
-    log->info( "Finding seeds..." );
+    /* Found seeds in chunks. */
     {
+      auto chunk = mapper.create_readrecord();
+      log->info( "Finding seeds..." );
       auto timer = Timer<>( "seed-finding" );
-      while (true) {
-        log->info( "Loading the next reads chunk..." );
+      while ( true ) {
+        log->info( "Loading a read chunk..." );
         {
           auto timer = Timer<>( "load-chunk" );
           /* Load a chunk from reads set. */
-          readRecords( reads_chunk, reads_iss, chunk_size );
-          if ( length( reads_chunk ) == 0 ) break;
+          if ( !readRecords( chunk, reads_iss, params.chunk_size ) ) break;
         }
-        log->info( "Fetched {} reads in {}.", length( reads_chunk ),
+        log->info( "Fetched {} reads in {}.", length( chunk ),
             Timer<>::get_duration_str( "load-chunk" ) );
-        /* Seed current chunk. */
-        {
-          auto timer = Timer<>( "seeding" );
-          seeding( seeds_chunk, reads_chunk, seed_len, distance );
-        }
-        log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         /* Give the current chunk to the mapper. */
-        mapper.set_reads( std::move( seeds_chunk ) );
+        mapper.set_reads( chunk, params.distance );
+        log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         log->info( "Finding seeds on paths..." );
-        auto pre_found = found;
         /* Find seeds on genome-wide paths. */
-        if ( path_num != 0 ) {
-          mapper.seeds_on_paths( pindex, write_callback );
-          log->info( "Found seed on paths in {}.",
-              Timer<>::get_duration_str( "paths-seed-find" ) );
-          log->info( "Total number of seeds found on paths: {}", found - pre_found );
-        }
-        log->info( "Traversing..." );
-        /* Find seeds on variation graph by traversing starting loci. */
-        mapper.traverse( write_callback );
-        log->info( "Traversed in {}.", Timer<>::get_duration_str( "traverse" ) );
+        mapper.seeds_on_paths( write_callback );
+        log->info( "Found seeds on paths in {}.",
+            Timer<>::get_duration_str( "seeds-on-paths" ) );
+        log->info( "Total number of seeds found on paths: {}", found );
+        total_found += found;
+        found = 0;
+        log->info( "Finding seeds off paths..." );
+        /* Find seeds on the graph by traversing starting loci. */
+        mapper.seeds_off_paths( write_callback );
+        log->info( "Found seeds off paths in {}.", Timer<>::get_duration_str( "seeds-off-paths" ) );
+        log->info( "Total number of seeds found off paths: {}", found );
+        total_found += found;
+        found = 0;
       }
     }
     log->info( "Found seed in {}.", Timer<>::get_duration_str( "seed-finding" ) );
-    report( mapper, covered_reads, found );
+    report( mapper, covered_reads, total_found );
   }
 
 
@@ -275,37 +221,25 @@ startup( const Options & options )
   log->info( "- Seed length: {}", options.seed_len );
   log->info( "- Seed distance: {}", options.distance );
   log->info( "- Number of paths: {}", options.path_num );
-  log->info( "- Context length (used in patching): {}", options.context );
+  log->info( "- Context size (used in patching): {}", options.context );
   log->info( "- Patched: {}", ( options.patched ? "yes" : "no" ) );
-  log->info( "- Paths index file: '{}'", options.paths_index_file );
+  log->info( "- Path index file: '{}'", options.pindex_path );
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
   log->info( "- Output file: '{}'", options.output_path );
 
-  log->info( "Opening file '{}'...", options.fq_path );
+  log->info( "Loading input graph from file '{}'...", options.rf_path );
+  gum::SeqGraph< gum::Succinct > graph;
+  gum::util::load( graph, options.rf_path );
+
+  log->info( "Opening reads file '{}'...", options.fq_path );
   SeqStreamIn reads_iss( options.fq_path.c_str() );
   if ( !reads_iss ) {
     std::string msg = "could not open file '" + options.fq_path + "'!";
     log->error( msg );
     throw std::runtime_error( msg );
-  }
-
-  log->info( "Loading the graph from file '{}'...", options.rf_path );
-  std::ifstream ifs( options.rf_path, std::ifstream::in | std::ifstream::binary );
-  if( !ifs ) {
-    std::string msg = "could not open file '" + options.rf_path + "'!";
-    log->error( msg );
-    throw std::runtime_error( msg );
-  }
-
-  VarGraph vargraph;
-  if ( ends_with( options.rf_path, ".vg" ) ) {
-    vargraph.from_stream( ifs );
-  }
-  else {
-    vargraph.load( ifs );
   }
 
   seqan::File<> output_file;
@@ -317,34 +251,16 @@ startup( const Options & options )
   }
 
   switch ( options.index ) {
-    case IndexType::Wotd: find_seeds( vargraph,
+    case IndexType::Wotd: find_seeds( graph,
                               reads_iss,
                               output_file,
-                              options.seed_len,
-                              options.chunk_size,
-                              options.step_size,
-                              options.distance,
-                              options.path_num,
-                              options.context,
-                              options.paths_index,
-                              options.patched,
-                              options.paths_index_file,
-                              options.nomapping,
+                              options,
                               UsingIndexWotd() );
                           break;
-    case IndexType::Esa: find_seeds( vargraph,
+    case IndexType::Esa: find_seeds( graph,
                              reads_iss,
                              output_file,
-                             options.seed_len,
-                             options.chunk_size,
-                             options.step_size,
-                              options.distance,
-                             options.path_num,
-                             options.context,
-                             options.paths_index,
-                             options.patched,
-                             options.paths_index_file,
-                             options.nomapping,
+                             options,
                              UsingIndexEsa() );
                          break;
     default: throw std::runtime_error("Index not implemented.");
@@ -381,11 +297,11 @@ setup_argparser( seqan::ArgumentParser& parser )
         "Output file.",
         seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" ) );
   setDefaultValue( parser, "o", "out.gam" );
-  // paths index file
+  // path index file
   addOption( parser,
-      seqan::ArgParseOption( "I", "paths-index",
-        "Paths index file.",
-        seqan::ArgParseArgument::STRING, "PATHS_INDEX_FILE" ) );
+      seqan::ArgParseOption( "I", "path-index",
+        "Path index file.",
+        seqan::ArgParseArgument::STRING, "PATH_INDEX_FILE" ) );
   // seed length -- **required** option.
   addOption( parser,
       seqan::ArgParseOption( "l", "seed-length",
@@ -413,7 +329,7 @@ setup_argparser( seqan::ArgumentParser& parser )
   // number of paths
   addOption( parser,
       seqan::ArgParseOption( "n", "path-num",
-        "Number of paths from the variation graph in hybrid approach.",
+        "Number of paths from the graph included in the path index.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "n", 0 );
   // whether use patched paths or full genome-wide paths
@@ -433,10 +349,10 @@ setup_argparser( seqan::ArgumentParser& parser )
         seqan::ArgParseArgument::STRING, "INDEX" ) );
   setValidValues( parser, "i", "SA ESA WOTD DFI QGRAM FM" );
   setDefaultValue( parser, "i", "WOTD" );
-  // no map -- just do the paths indexing phase
+  // index only
   addOption( parser,
-      seqan::ArgParseOption( "x", "only-index",
-        "Only build paths index and skip mapping." ) );
+      seqan::ArgParseOption( "x", "index-only",
+        "Only build path index and skip seed finding." ) );
   // log file
   addOption( parser,
       seqan::ArgParseOption( "L", "log-file",
@@ -479,11 +395,10 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.distance, parser, "distance" );
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
-  options.paths_index = isSet( parser, "paths-index" );
   options.patched = !isSet( parser, "no-patched" );
-  getOptionValue( options.paths_index_file, parser, "paths-index" );
+  getOptionValue( options.pindex_path, parser, "path-index" );
   getOptionValue( indexname, parser, "index" );
-  options.nomapping = isSet( parser, "only-index" );
+  options.indexonly = isSet( parser, "index-only" );
   getOptionValue( options.log_path, parser, "log-file" );
   options.nologfile = isSet( parser, "no-log-file" );
   options.quiet = isSet( parser, "quiet" );
@@ -554,7 +469,7 @@ main( int argc, char *argv[] )
   std::signal( SIGUSR1, default_signal_handler );
   /* Configure loggers */
   config_logger( options );
-  /* Start mapping... */
+  /* Start seed finding... */
   startup( options );
 
   /* Close all loggers. */

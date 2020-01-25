@@ -87,11 +87,11 @@ namespace psi {
         }
 
         /**
-         *  @brief  Get the index of the last done processing locus in the starting loci.
+         *  @brief  Get the index of the last processed locus in the starting loci.
          *
          *  @return The reference to static variable `lastdone_locus_idx`.
          *
-         *  It is set to the index of the last done processing locus in the starting loci
+         *  It gets the index of the last processed locus in the starting loci
          *  vector when the mapper is in the middle of the "traversal" phase.
          */
           static inline std::atomic< std::size_t >&
@@ -102,7 +102,7 @@ namespace psi {
         }
 
         /**
-         *  @brief  Get the total number of loci in the starting loci vector.
+         *  @brief  Get the total number of starting loci.
          *
          *  @return The reference to static variable `total_nof_loci`.
          */
@@ -128,11 +128,11 @@ namespace psi {
         }
 
         /**
-         *  @brief  Set the index of the last done processing locus in the starting loci.
+         *  @brief  Set the index of the last processed locus in the starting loci.
          *
          *  @param  value The value to be set as last done locus index.
          *
-         *  It sets the index of the last done processing locus in the starting loci
+         *  It sets the index of the last processed locus in the starting loci
          *  vector when the mapper is in the middle of the "traversal" phase.
          */
           static inline void
@@ -142,7 +142,7 @@ namespace psi {
         }
 
         /**
-         *  @brief  Set the total number of loci in the starting loci vector.
+         *  @brief  Set the total number of starting loci.
          *
          *  @param  value The value to be set as total number of loci.
          */
@@ -252,14 +252,15 @@ namespace psi {
         typedef typename graph_type::offset_type offset_type;
         typedef typename graph_type::rank_type rank_type;
         typedef StatT< Mapper > stats_type;
-        typedef Records< typename TTraverser::stringset_type > readsrecord_type;
-        typedef typename TTraverser::index_type readsindex_type;
+        typedef Records< typename traverser_type::stringset_type > readsrecord_type;
+        typedef typename traverser_type::index_type readsindex_type;
+        typedef PathIndex< graph_type, DiskString, psi::FMIndex<>, Reversed > pathindex_type;
         /* ====================  LIFECYCLE      ====================================== */
-        Mapper( const graph_type* g,
-            readsrecord_type&& r,
+        Mapper( const graph_type& g,
+            readsrecord_type r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : graph_ptr( g ), reads( std::move( r ) ), seed_len( len ),
+          : graph_ptr( &g ), reads( std::move( r ) ), pindex( true ), seed_len( len ),
           seed_mismatches( mismatches ), traverser( graph_ptr, seed_len )
         {
           if ( length( this->reads.str ) != 0 ) {
@@ -267,14 +268,7 @@ namespace psi {
           }
         }
 
-        Mapper( const graph_type* g,
-            const readsrecord_type& r,
-            unsigned int len,
-            unsigned char mismatches = 0 )
-          : Mapper( g, readsrecord_type( r ), len, mismatches )
-        { }
-
-        Mapper( const graph_type* g,
+        Mapper( const graph_type& g,
             unsigned int len,
             unsigned char mismatches = 0 )
           : Mapper( g, readsrecord_type( ), len, mismatches )
@@ -374,27 +368,32 @@ namespace psi {
           this->seed_mismatches = value;
         }
 
-        /**
-         *  @brief  setter function for reads.
-         *
-         *  Move assignment.
-         */
-          inline void
-        set_reads( readsrecord_type&& value )
+          inline readsrecord_type
+        create_readrecord( )
         {
-          this->reads = std::move( value );
-          this->index_reads();
+          return readsrecord_type();
         }
 
         /**
          *  @brief  setter function for reads.
          *
-         *  Copy assignment.
          */
           inline void
-        set_reads( const readsrecord_type& value )
+        set_reads( readsrecord_type value )
         {
-          this->set_reads( readsrecord_type( value ) );
+          this->reads = std::move( value );
+          this->index_reads();
+        }
+
+        template< typename T >
+          inline void
+        set_reads( readsrecord_type const& value, T distance )
+        {
+          {
+            auto timer = Timer<>( "seeding" );
+            seeding( this->reads, value, this->seed_len, distance );
+          }
+          this->index_reads();
         }
 
           inline void
@@ -413,43 +412,127 @@ namespace psi {
         }
         /* ====================  METHODS        ====================================== */
         /**
-         *  @brief  Pick n paths from the variation graph.
+         *  @brief  Pick n paths from the graph.
          *
          *  @param[out]  paths Set of paths to be generated.
          *  @param[in]  n Number of paths.
          *
          *  This method generates a set of (probably) unique whole-genome paths from the
-         *  variation graph.
+         *  graph.
          *
          *  XXX: We assume that each connect component in the graph has one and only one
          *  path indicating a sample haplotype in that region.
          */
-        template< typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
-          pick_paths( PathIndex< graph_type, TText, TIndexSpec, TSequenceDirection >& paths,
-              int n, bool patched=true,
+          pick_paths( unsigned int n, bool patched=true,
               std::function< void( std::string const&, int ) > callback=nullptr )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
 
-            paths.reserve( n * this->graph_ptr->path_count );
-            auto hap_itr = begin( *this->graph_ptr, Haplotyper<>() );
-            auto hap_end = end( *this->graph_ptr, Haplotyper<>() );
-            auto context = paths.get_context();
+            this->pindex.reserve( n * this->graph_ptr->path_count );
+            auto hp_itr = begin( *this->graph_ptr, Haplotyper<>() );
+            auto hp_end = end( *this->graph_ptr, Haplotyper<>() );
+            auto context = this->pindex.get_context();
             this->graph_ptr->for_each_path(
                 [&]( auto path_id ) {
                   auto path_name = this->graph_ptr->path_name( path_id );
                   id_type s = *this->graph_ptr->path( path_id ).begin();
-                  hap_itr.reset( s );
-                  for ( int i = 0; i < n; ++i ) {
+                  hp_itr.reset( s );
+                  for ( unsigned int i = 0; i < n; ++i ) {
                     if ( callback ) callback( path_name, i + 1 );
-                    if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, context );
-                    else get_uniq_full_haplotype( paths, hap_itr );
+                    get_uniq_haplotype( this->pindex, hp_itr, hp_end, context, patched );
                   }
                   return true;
                 } );
           }
+
+        /**
+         *  @brief  Create path index.
+         *
+         *  @param  n The number of paths.
+         *  @param  context The context size for patching.
+         *  @param  patched Whether patch the selected paths or not.
+         *  @param  progress A callback function reporting the progress of path selection.
+         *
+         *  NOTE: If `patched` is set, the context size cannot be zero. If the
+         *  given value for context size is zero, it will be reset to seed
+         *  length value. Otherwise (`patched` is `false`), the context doesn't
+         *  matter and will be set to zero.
+         */
+        inline void
+        create_path_index( unsigned int n, unsigned int context=0,
+            bool patched=true, unsigned int step_size=1,
+            std::function< void( std::string const& ) > info=nullptr,
+            std::function< void( std::string const& ) > warn=nullptr )
+        {
+          /* See the NOTE section above. */
+          if ( !patched ) context = 0;
+          if ( patched && context == 0 ) {
+            if ( warn ) warn( "The context size cannot be zero for patching. "
+                              "Assuming the seed length as the context size..." );
+            context = this->seed_len;
+          }
+          /* Set the context size for path index. */
+          this->pindex.set_context( context );
+          /* Select the requested number of genome-wide paths. */
+          std::function< void( std::string const&, int ) > progress = nullptr;
+          if ( info ) {
+            progress =
+                [&info]( std::string const& name, int i ) {
+                  info( "Selecting path " + std::to_string( i ) +
+                        " of region " + name + "..." );
+                };
+          }
+          this->pick_paths( n, patched, progress );
+          info( "Indexing the selected paths..." );
+          this->index_paths();
+          info( "Detecting uncovered loci..." );
+          this->add_uncovered_loci( step_size );
+        }
+
+        inline bool
+        serialize_path_index_only( std::string const& fpath )
+        {
+          if ( fpath.empty() ) return false;
+          auto timer = stats_type( "save-paths" );
+          return this->pindex.serialize( fpath );
+        }
+
+        /**
+         *  @brief  Serialise path index.
+         *
+         */
+        inline bool
+        serialize_path_index( std::string const& fpath, unsigned int step_size=1 )
+        {
+          return this->serialize_path_index_only( fpath ) &&
+                this->save_starts( fpath, this->seed_len, step_size );
+        }
+
+        /**
+         *  @brief  Load path index.
+         *
+         */
+        inline bool
+        load_path_index_only( std::string const& fpath, unsigned int context=0 )
+        {
+          if ( fpath.empty() ) return false;
+          this->pindex.set_context( context );
+          return this->pindex.load( fpath, this->graph_ptr );
+        }
+
+        inline bool
+        load_path_index( std::string const& fpath, unsigned int context=0,
+                         unsigned int step_size=1 )
+        {
+          if ( !this->load_path_index_only( fpath, context ) ) return false;
+          if ( !this->open_starts( fpath, this->seed_len, step_size ) ) {
+            this->add_uncovered_loci( step_size );
+            this->save_starts( fpath, this->seed_len, step_size );
+          }
+          return true;
+        }
 
         /**
          *  @brief  Find seeds on a set of whole-genome paths for the input reads chunk.
@@ -457,36 +540,37 @@ namespace psi {
          *  @param[in]  paths The set of paths used for finding the seeds.
          *  @param[in]  callback The call back function applied on the found seeds.
          *
-         *  This function uses a set of paths from variation graph to find seeds of the
-         *  input set of reads on these paths by traversing the virtual suffix tree of
-         *  both indexes of reads chunk and whole-genome paths.
+         *  This function uses a set of paths from the graph to find seeds of
+         *  the input set of reads on these paths by traversing the virtual
+         *  suffix tree of both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-        template< typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
-          seeds_on_paths( PathIndex< graph_type, TText, TIndexSpec, TSequenceDirection >& paths,
-              std::function< void(typename TTraverser::output_type const &) > callback )
+          seeds_on_paths( std::function< void(typename traverser_type::output_type const &) > callback )
           {
             typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
-            typedef typename PathIndex< graph_type, TText, TIndexSpec, TSequenceDirection >::index_type TPIndex;
-            typedef typename seqan::Iterator< TPIndex, TIterSpec >::Type TPIterator;
+            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
-            if ( length( indexText( paths.index ) ) == 0 ) return;
+            auto context = this->pindex.get_context();
+            if (  context != 0 /* means patched */ && context < this->seed_len ) {
+              throw std::runtime_error( "seed length should not be larger than context size" );
+            }
 
-            auto timer = stats_type( "paths-seed-find" );
+            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 
-            TPIterator piter( paths.index );
+            auto timer = stats_type( "seeds-on-paths" );
+
+            TPIterator piter( this->pindex.index );
             TRIterator riter( this->reads_index );
-            kmer_exact_matches( piter, riter, &paths, &(this->reads), this->seed_len, callback );
+            kmer_exact_matches( piter, riter, &this->pindex, &(this->reads), this->seed_len, callback );
           }
 
-        template< typename TPath, typename TSpec >
             inline void
-          add_all_loci( PathSet< TPath, TSpec >& paths, unsigned int k,
-              unsigned int step=1)
+          add_uncovered_loci( unsigned int step=1 )
           {
-            if ( paths.size() == 0 ) return this->add_all_loci( step );
+            auto&& pathset = this->pindex.get_paths_set();
+            if ( pathset.size() == 0 ) this->add_all_loci( step );
             auto timer = stats_type( "add-starts" );
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
@@ -502,21 +586,21 @@ namespace psi {
 
                   bt_itr.reset( id );
                   while ( bt_itr != bt_end && offset != 0 ) {
-                    extend_to_k( trav_path, bt_itr, bt_end, offset - 1 + k );
-                    if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
+                    util::extend_to_k( trav_path, bt_itr, bt_end, offset - 1 + this->seed_len );
+                    if ( trav_path.get_sequence_len() >= this->seed_len ) current_path = trav_path;
                     while ( current_path.get_sequence_len() != 0 &&
-                        !covered_by( current_path, paths ) ) {
+                        !covered_by( current_path, pathset ) ) {
                       auto trimmed_len = current_path.get_sequence_len()
                         - this->graph_ptr->node_length( current_path.get_nodes().back() );
-                      if ( trimmed_len <= k - 1 ) {
+                      if ( trimmed_len <= this->seed_len - 1 ) {
                         offset = 0;
                         break;
                       }
-                      offset = trimmed_len - k + 1;
+                      offset = trimmed_len - this->seed_len + 1;
                       trim_back( current_path );
                     }
                     for ( auto f = offset;
-                        f < label_len && f + k < trav_path.get_sequence_len() + 1;
+                        f < label_len && f + this->seed_len < trav_path.get_sequence_len() + 1;
                         f += step ) {
                       bv_starts[f] = 1;
                     }
@@ -603,7 +687,7 @@ namespace psi {
               bt_itr.reset( l.node_id() );
               while ( bt_itr != bt_end ) {
                 offset_type offset = label_len;
-                extend_to_k( trav_path, bt_itr, bt_end, offset - 1 + k );
+                util::extend_to_k( trav_path, bt_itr, bt_end, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
                     !covered_by( current_path, paths ) ) {
@@ -684,9 +768,9 @@ namespace psi {
         }
 
           inline void
-        traverse( std::function< void( typename TTraverser::output_type const& ) > callback )
+        seeds_off_paths( std::function< void( typename traverser_type::output_type const& ) > callback )
         {
-          auto timer = stats_type( "traverse" );
+          auto timer = stats_type( "seeds-off-path" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
 
           this->traverser.set_reads( &(this->reads) );
@@ -707,16 +791,24 @@ namespace psi {
         const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
         readsrecord_type reads;
+        pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         readsindex_type reads_index;
-        TTraverser traverser;
+        traverser_type traverser;
         /* ====================  METHODS       ======================================= */
           inline void
         index_reads( )
         {
           auto timer = stats_type( "index-reads" );
           this->reads_index = readsindex_type( this->reads.str );
+        }
+
+          inline void
+        index_paths( )
+        {
+          auto timer = stats_type( "index-paths" );
+          this->pindex.create_index();
         }
     };
 }  /* --- end of namespace psi --- */
