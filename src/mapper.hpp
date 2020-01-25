@@ -31,6 +31,7 @@
 #include <vg/io/stream.hpp>
 
 #include "graph.hpp"
+#include "traverser.hpp"
 #include "sequence.hpp"
 #include "index.hpp"
 #include "index_iter.hpp"
@@ -241,7 +242,8 @@ namespace psi {
   template< class TMapper >
     using StatT = typename Stat< TMapper >::Type;
 
-  template< class TTraverser, typename TStatSpec = void >
+  template< class TTraverser = typename Traverser< gum::SeqGraph< gum::Succinct >, seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> >, BFS, ExactMatching >::Type,
+            typename TStatSpec = void >
     class Mapper
     {
       public:
