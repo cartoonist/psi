@@ -1,8 +1,8 @@
 /**
- *    @file  mapper.hpp
- *   @brief  Mapper template class.
+ *    @file  seed_finder.hpp
+ *   @brief  SeedFinder template class.
  *
- *  Mapper template class definition and its template specialisations.
+ *  SeedFinder template class definition and its template specialisations.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -15,8 +15,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_MAPPER_HPP__
-#define PSI_MAPPER_HPP__
+#ifndef PSI_SEED_FINDER_HPP__
+#define PSI_SEED_FINDER_HPP__
 
 #include <fstream>
 #include <type_traits>
@@ -43,16 +43,16 @@
 
 namespace psi {
   /**
-   *  @brief  MapperStat template class.
+   *  @brief  SeedFinderStat template class.
    *
-   *  Collect statistics from one (or more) `Mapper` class instance(s) in running time.
+   *  Collect statistics from one (or more) `SeedFinder` class instance(s) in running time.
    */
-  template< class TMapper, typename TSpec = void >
-    class MapperStat : public Timer<>
+  template< class TSeedFinder, typename TSpec = void >
+    class SeedFinderStat : public Timer<>
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef typename TMapper::graph_type graph_type;
+        typedef typename TSeedFinder::graph_type graph_type;
         typedef typename graph_type::id_type id_type;
         typedef typename graph_type::offset_type offset_type;
         /* ====================  MEMBER TYPES  ======================================= */
@@ -64,11 +64,11 @@ namespace psi {
         };
         /* ====================  LIFECYCLE     ======================================= */
         /**
-         *  @brief  MapperStat constructor.
+         *  @brief  SeedFinderStat constructor.
          *
          *  Start the timer.
          */
-        MapperStat( const std::string& name )
+        SeedFinderStat( const std::string& name )
           : Timer( name )
         { }
         /* ====================  ACCESSORS     ======================================= */
@@ -77,8 +77,8 @@ namespace psi {
          *
          *  @return The reference to static variable `lastproc_locus`.
          *
-         *  It is set to the last processing locus when the mapper is in the middle
-         *  of the "traversal" phase.
+         *  It is set to the last processing locus when the seed finder is in
+         *  the middle of the "traversal" phase.
          */
           static inline std::atomic< Coordinates >&
         get_lastproc_locus( )
@@ -93,7 +93,8 @@ namespace psi {
          *  @return The reference to static variable `lastdone_locus_idx`.
          *
          *  It gets the index of the last processed locus in the starting loci
-         *  vector when the mapper is in the middle of the "traversal" phase.
+         *  vector when the seed finder is in the middle of the "traversal"
+         *  phase.
          */
           static inline std::atomic< std::size_t >&
         get_lastdone_locus_idx( )
@@ -119,8 +120,8 @@ namespace psi {
          *
          *  @param  value The value to be set as last processing locus.
          *
-         *  It sets the last processing locus when the mapper is in the middle of
-         *  the "traversal" phase.
+         *  It sets the last processing locus when the seed finder is in the
+         *  middle of the "traversal" phase.
          */
           static inline void
         set_lastproc_locus( const vg::Position& value )
@@ -134,7 +135,8 @@ namespace psi {
          *  @param  value The value to be set as last done locus index.
          *
          *  It sets the index of the last processed locus in the starting loci
-         *  vector when the mapper is in the middle of the "traversal" phase.
+         *  vector when the seed finder is in the middle of the "traversal"
+         *  phase.
          */
           static inline void
         set_lastdone_locus_idx( const std::size_t& value )
@@ -152,19 +154,19 @@ namespace psi {
         {
           get_total_nof_loci() = value;
         }
-    };  /* --- end of template class MapperStat --- */
+    };  /* --- end of template class SeedFinderStat --- */
 
   /**
-   *  @brief  MapperStat template specialization for no-stat.
+   *  @brief  SeedFinderStat template specialization for no-stat.
    *
    *  Do nothing.
    */
-  template< class TMapper >
-    class MapperStat< TMapper, NoStat >
+  template< class TSeedFinder >
+    class SeedFinderStat< TSeedFinder, NoStat >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef typename TMapper::graph_type graph_type;
+        typedef typename TSeedFinder::graph_type graph_type;
         typedef typename graph_type::id_type id_type;
         typedef typename graph_type::offset_type offset_type;
         /* ====================  MEMBER TYPES  ======================================= */
@@ -174,8 +176,8 @@ namespace psi {
           offset_type offset;
         };
         /* ====================  LIFECYCLE     ======================================= */
-        MapperStat( const std::string& ) { }
-        ~MapperStat() { }
+        SeedFinderStat( const std::string& ) { }
+        ~SeedFinderStat() { }
         /* ====================  METHODS       ======================================= */
         constexpr static inline timer_type::duration_type get_duration( const std::string& )
         {
@@ -224,27 +226,27 @@ namespace psi {
         static inline void set_lastproc_locus( const vg::Position& value ) { }
         static inline void set_lastdone_locus_idx( const std::size_t& value ) { }
         static inline void set_total_nof_loci( const std::size_t& value ) { }
-    };  /* --- end of template class MapperStat --- */
+    };  /* --- end of template class SeedFinderStat --- */
 
   template< class TTraverser, typename TStatSpec >
-    class Mapper;
+    class SeedFinder;
 
   /**
-   *  @brief  Stat template class specialization for `MapperStat`.
+   *  @brief  Stat template class specialization for `SeedFinderStat`.
    */
   template< class TTraverser, typename TSpec >
-    class Stat< Mapper< TTraverser, TSpec > >
+    class Stat< SeedFinder< TTraverser, TSpec > >
     {
       public:
-        typedef MapperStat< Mapper< TTraverser, TSpec >, TSpec > Type;
+        typedef SeedFinderStat< SeedFinder< TTraverser, TSpec >, TSpec > Type;
     };  /* --- end of template class Stat --- */
 
-  template< class TMapper >
-    using StatT = typename Stat< TMapper >::Type;
+  template< class TSeedFinder >
+    using StatT = typename Stat< TSeedFinder >::Type;
 
   template< class TTraverser = typename Traverser< gum::SeqGraph< gum::Succinct >, seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> >, BFS, ExactMatching >::Type,
             typename TStatSpec = void >
-    class Mapper
+    class SeedFinder
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
@@ -253,12 +255,12 @@ namespace psi {
         typedef typename graph_type::id_type id_type;
         typedef typename graph_type::offset_type offset_type;
         typedef typename graph_type::rank_type rank_type;
-        typedef StatT< Mapper > stats_type;
+        typedef StatT< SeedFinder > stats_type;
         typedef Records< typename traverser_type::stringset_type > readsrecord_type;
         typedef typename traverser_type::index_type readsindex_type;
         typedef PathIndex< graph_type, DiskString, psi::FMIndex<>, Reversed > pathindex_type;
         /* ====================  LIFECYCLE      ====================================== */
-        Mapper( const graph_type& g,
+        SeedFinder( const graph_type& g,
             readsrecord_type r,
             unsigned int len,
             unsigned char mismatches = 0 )
@@ -270,10 +272,10 @@ namespace psi {
           }
         }
 
-        Mapper( const graph_type& g,
+        SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( g, readsrecord_type( ), len, mismatches )
+          : SeedFinder( g, readsrecord_type( ), len, mismatches )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
@@ -815,4 +817,4 @@ namespace psi {
     };
 }  /* --- end of namespace psi --- */
 
-#endif  /* --- #ifndef PSI_MAPPER_HPP__ --- */
+#endif  /* --- #ifndef PSI_SEED_FINDER_HPP__ --- */

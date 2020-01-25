@@ -28,7 +28,7 @@
 #include <gum/io_utils.hpp>
 
 #include "graph.hpp"
-#include "mapper.hpp"
+#include "seed_finder.hpp"
 #include "sequence.hpp"
 #include "seed.hpp"
 #include "utils.hpp"
@@ -53,19 +53,19 @@ using namespace psi;
 // TODO: Add value_t< T > typedef as typename seqan::Value< T >::Type
 
 
-template< typename TMapper >
+template< typename TSeedFinder >
   void
 signal_handler( int signal )
 {
   std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
             << "---------------------------" << std::endl;
   std::cout << "Elapsed time in traversal phase: "
-            << Stat< TMapper >::Type::get_lap_str( "seeds-off-paths" ) << std::endl;
-  auto pos = Stat< TMapper >::Type::get_lastproc_locus().load();
+            << Stat< TSeedFinder >::Type::get_lap_str( "seeds-off-paths" ) << std::endl;
+  auto pos = Stat< TSeedFinder >::Type::get_lastproc_locus().load();
   std::cout << "Current node: (" << pos.node_id << ", " << pos.offset << ")"
             << std::endl;
-  auto idx = Stat< TMapper >::Type::get_lastdone_locus_idx().load();
-  auto total = Stat< TMapper >::Type::get_total_nof_loci();
+  auto idx = Stat< TSeedFinder >::Type::get_lastdone_locus_idx().load();
+  auto total = Stat< TSeedFinder >::Type::get_total_nof_loci();
   unsigned int wlen = std::to_string( total ).length();
   std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
             << total << " [%" << std::setw(3) << idx * 100 / total << "]" << std::endl;
@@ -75,17 +75,17 @@ signal_handler( int signal )
   void
 default_signal_handler( int signal ) { /* Do nothing */ }
 
-template< typename TMapper, typename TSet >
+template< typename TSeedFinder, typename TSet >
     void
-  report( TMapper& mapper, TSet& covered_reads, unsigned long long int found )
+  report( TSeedFinder& finder, TSet& covered_reads, unsigned long long int found )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    log->info( "Total number of starting loci: {}", mapper.get_starting_loci().size() );
+    log->info( "Total number of starting loci: {}", finder.get_starting_loci().size() );
     log->info( "Total number of seeds found: {}", found );
     log->info( "Total number of reads covered: {}", covered_reads.size() );
     log->info( "Total number of 'godown' operations: {}",
-      TMapper::traverser_type::stats_type::get_total_nof_godowns() );
+      TSeedFinder::traverser_type::stats_type::get_total_nof_godowns() );
 
     log->info( "All Timers" );
     log->info( "----------" );
@@ -104,19 +104,19 @@ template< class TGraph, typename TReadsIndexSpec >
     typedef Dna5QStringSet<> TReadsStringSet;
     typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
     typedef typename Traverser< TGraph, TReadsIndex, BFS, ExactMatching >::Type TTraverser;
-    typedef Mapper< TTraverser > TMapper;
+    typedef SeedFinder< TTraverser > TSeedFinder;
 
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    /* Install mapper singal handler for getting progress report. */
-    std::signal( SIGUSR1, signal_handler< TMapper > );
+    /* Install seed finder singal handler for getting progress report. */
+    std::signal( SIGUSR1, signal_handler< TSeedFinder > );
 
-    /* The mapper for the input graph. */
-    TMapper mapper( graph, params.seed_len );
+    /* The seed finder for the input graph. */
+    TSeedFinder finder( graph, params.seed_len );
     /* Prepare (load or create) genome-wide paths. */
     log->info( "Looking for an existing path index..." );
     /* Load the genome-wide path index for the graph if available. */
-    if ( mapper.load_path_index( params.pindex_path,
+    if ( finder.load_path_index( params.pindex_path,
                                  params.context,
                                  params.step_size ) ) {
       log->info( "The path index has been found and loaded." );
@@ -129,7 +129,7 @@ template< class TGraph, typename TReadsIndexSpec >
     else {
       log->info( "No valid path index found. Creating the path index..." );
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
-      mapper.create_path_index( params.path_num, params.context,
+      finder.create_path_index( params.path_num, params.context,
                                 params.patched, params.step_size,
                                 [&log]( std::string const& msg ) {
                                   log->info( msg );
@@ -145,15 +145,15 @@ template< class TGraph, typename TReadsIndexSpec >
       /* Serialize the indexed paths. */
       if ( params.pindex_path.empty() ) {
         log->warn( "No path index file is specified. Skipping..." );
-      } else if ( !mapper.serialize_path_index( params.pindex_path, params.step_size ) ) {
+      } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size ) ) {
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
         log->info( "Saved path index in {}.", Timer<>::get_duration_str( "save-paths" ) );
       }
     }
     log->info( "Number of uncovered loci (in {} nodes of total {}): {}",
-        mapper.get_nof_uniq_nodes(), mapper.get_graph_ptr()->get_node_count(),
-        mapper.get_starting_loci().size() );
+        finder.get_nof_uniq_nodes(), finder.get_graph_ptr()->get_node_count(),
+        finder.get_starting_loci().size() );
 
     if ( params.indexonly ) {
       log->info( "Skipping seed finding as requested..." );
@@ -176,7 +176,7 @@ template< class TGraph, typename TReadsIndexSpec >
 
     /* Found seeds in chunks. */
     {
-      auto chunk = mapper.create_readrecord();
+      auto chunk = finder.create_readrecord();
       log->info( "Finding seeds..." );
       auto timer = Timer<>( "seed-finding" );
       while ( true ) {
@@ -188,12 +188,12 @@ template< class TGraph, typename TReadsIndexSpec >
         }
         log->info( "Fetched {} reads in {}.", length( chunk ),
             Timer<>::get_duration_str( "load-chunk" ) );
-        /* Give the current chunk to the mapper. */
-        mapper.set_reads( chunk, params.distance );
+        /* Give the current chunk to the finder. */
+        finder.set_reads( chunk, params.distance );
         log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         log->info( "Finding seeds on paths..." );
         /* Find seeds on genome-wide paths. */
-        mapper.seeds_on_paths( write_callback );
+        finder.seeds_on_paths( write_callback );
         log->info( "Found seeds on paths in {}.",
             Timer<>::get_duration_str( "seeds-on-paths" ) );
         log->info( "Total number of seeds found on paths: {}", found );
@@ -201,7 +201,7 @@ template< class TGraph, typename TReadsIndexSpec >
         found = 0;
         log->info( "Finding seeds off paths..." );
         /* Find seeds on the graph by traversing starting loci. */
-        mapper.seeds_off_paths( write_callback );
+        finder.seeds_off_paths( write_callback );
         log->info( "Found seeds off paths in {}.", Timer<>::get_duration_str( "seeds-off-paths" ) );
         log->info( "Total number of seeds found off paths: {}", found );
         total_found += found;
@@ -209,7 +209,7 @@ template< class TGraph, typename TReadsIndexSpec >
       }
     }
     log->info( "Found seed in {}.", Timer<>::get_duration_str( "seed-finding" ) );
-    report( mapper, covered_reads, total_found );
+    report( finder, covered_reads, total_found );
   }
 
 
