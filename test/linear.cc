@@ -40,7 +40,7 @@ using namespace grem;
 
 typedef struct
 {
-  typedef Dna5QStringSetIndex < IndexWotd<> > TIndex;
+  typedef seqan::Index< Dna5QStringSet<>, IndexWotd<> > TIndex;
   typedef typename Iterator < TIndex, TopDown<> >::Type TIndexIter;
 
   TIndexIter index_iter;
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     throw std::runtime_error(msg);
   }
 
-  Dna5QRecords reads;
+  Records< Dna5QStringSet<> > reads;
   bool found;
   unsigned int nof_found = 0;
   log->info("Seed finding...");
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
         readRecords(reads, readsInFile, options.chunk_size);
       }
       log->info("Reads loaded in {} us.", Timer::get_duration("load-reads").count());
-      if (length(reads.id) == 0)
+      if (length(reads.name) == 0)
       {
         log->info("All reads are processed.");
         break;
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
         }
       }
       log->info("Traversed in {} us.", Timer::get_duration("traverse").count());
-      clear(reads.id);
+      clear(reads.name);
       clear(reads.str);
     }
   }

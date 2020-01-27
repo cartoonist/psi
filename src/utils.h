@@ -24,31 +24,9 @@
 #include <vector>
 #include <memory>
 
-#include <seqan/seq_io.h>
-
 #include "sequence.h"
 
 namespace grem {
-  /**
-   *  @brief  Read records from the input file into named string set.
-   *
-   *  @param[out]  records Named string set to store records in the input file.
-   *  @param[in,out]  infile The input file.
-   *  @param[in]  num_record Read this number of record from the input file.
-   *
-   *  A wrapper function for `seqan::readRecords` method to read the records into named
-   *  string set.
-   */
-    inline void
-  readRecords( Dna5QRecords& records, seqan::SeqFileIn& infile, unsigned int num_record )
-  {
-    CharStringSet quals;
-    seqan::readRecords( records.id, records.str, quals, infile, num_record );
-    assignQualities( records.str, quals );
-    return;
-  }  /* -----  end of function readRecords  ----- */
-
-
   /**
    *  @brief  Check whether a string ends with another string.
    *

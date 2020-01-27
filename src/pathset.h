@@ -34,15 +34,17 @@ namespace grem {
    *  This class encapsulate the data structures to represent a set of path, its strings
    *  set, and its index. It also provides load/save functionalities.
    */
-  template< typename TIndexSpec >
+  template< typename TText, typename TIndexSpec >
     class PathSet {
       public:
-        /* ====================  DATA MEMBERS  ======================================= */
-        Dna5QStringSet string_set;
-        Dna5QStringSetIndex< TIndexSpec > index;
-        std::vector< Path<> > paths_set;
         /* ====================  TYPEDEFS      ======================================= */
+        typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
+        typedef seqan::Index< TStringSet, TIndexSpec > TIndex;
         typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
+        /* ====================  DATA MEMBERS  ======================================= */
+        TStringSet string_set;
+        TIndex index;
+        std::vector< Path<> > paths_set;
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( ) = default;
         /* ====================  METHODS       ======================================= */
@@ -101,13 +103,12 @@ namespace grem {
           inline void
         add_path( Path<>&& new_path )
         {
-          typedef typename seqan::Value< Dna5QStringSet >::Type TText;
           TText path_str( sequence( new_path ) );
           // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
           char fake_qual = 'I';
           assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
           appendValue( this->string_set, path_str );
-          this->index = Dna5QStringSetIndex< TIndexSpec >( this->string_set );
+          this->index = TIndex( this->string_set );
           paths_set.push_back( std::move( new_path ) );
         }  /* -----  end of method add_path  ----- */
 
