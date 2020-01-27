@@ -1,18 +1,18 @@
-/*
- * =====================================================================================
+/**
+ *    @file  vargraph.cc
+ *   @brief  VarGraph class implementation.
  *
- * Filename: vargraph.cc
+ *  Implementing VarGraph class.
  *
- * Created: Fri Nov 11, 2016  23:12
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
- * Description: VarGraph class implementation.
+ *  @internal
+ *       Created:  Fri Nov 11, 2016  23:12
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Copyright (c) 2016, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari, <ali.ghaffaari@mpi-inf.mpg.de>
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #include <stdexcept>
@@ -21,10 +21,13 @@
 #include <ios>
 #include <exception>
 
-#include <stream/src/stream.hpp>
+#include "stream/stream.h"
 
 #include "vargraph.h"
 #include "logger.h"
+
+ // :TODO:Tue Sep 26 17:03:\@cartoonist: This file should be `vargraph_iter`.
+
 
 namespace grem
 {

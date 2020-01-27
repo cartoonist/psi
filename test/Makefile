@@ -1,6 +1,4 @@
 ## Directories:
-# External libraries directory.
-EXTDIR       := ../ext
 # Package source files directory.
 SRCDIR       := ../src
 # Binary files directory.
@@ -23,7 +21,6 @@ MACROS       ?= -DGREM_DEBUG=1 -DTESTDIR=\"${TEST_PATH}\"
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
 CXXFLAGS     ?= -g
 LIBS_CFLAGS  := -I ${SRCDIR}/ \
-	        -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \
 	        $(shell pkg-config --cflags xg) \
 	        $(shell pkg-config --cflags protobuf)

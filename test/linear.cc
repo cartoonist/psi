@@ -1,18 +1,18 @@
-/*
- * =====================================================================================
+/**
+ *    @file  linear.cc
+ *   @brief  Finding seed hits in a linear sequence.
  *
- * Filename: linear.cc
+ *  This program does exactly same algorithm on linear sequence for comparison.
  *
- * Created: Tue Nov 29, 2016  15:04
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
- * Description: Finding seed hits in a linear sequence.
+ *  @internal
+ *       Created:  Tue Nov 29, 2016  15:04
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Copyright (c) 2016, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari <ali.ghaffaari@mpi-inf.mpg.de>
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #include <cstdlib>
@@ -24,9 +24,9 @@
 #include "index.h"
 #include "utils.h"
 #include "options.h"
+#include "stat.h"
+#include "logger.h"
 #include "release.h"
-
-#include <easyloggingpp/src/easylogging++.h>
 
 #define SEEDHITS_REPORT_BUF 1000
 #define TRAVERSE_CHECKPOINT_LOCI_NO 1000
@@ -36,8 +36,6 @@ using namespace seqan;
 using namespace grem;
 
 // TODO: Localize Options (it is written for the main program).
-
-INITIALIZE_EASYLOGGINGPP
 
 
 typedef struct
@@ -82,7 +80,13 @@ setup_argparser(seqan::ArgumentParser& parser)
                                           seqan::ArgParseArgument::INTEGER, "INT"));
   setRequired(parser, "c");
 
-  // verbosity options -- HANDLED BY EASYLOGGING++
+  // quiet -- no output to console
+  addOption(parser, seqan::ArgParseOption("q", "quiet", "Quiet mode. No output will be printed to console."));
+
+  // no colored output
+  addOption(parser, seqan::ArgParseOption("C", "no-color", "Do not use a colored output."));
+
+  // verbosity options
   addOption(parser, seqan::ArgParseOption("v", "verbose",
                                           "Activates maximum verbosity."));
 }
@@ -115,6 +119,9 @@ parse_args(Options & options, int argc, char *argv[])
   getOptionValue(options.fq_path, parser, "fastq");
   getOptionValue(options.seed_len, parser, "seed-length");
   getOptionValue(options.chunk_size, parser, "chunk-size");
+  options.quiet = isSet( parser, "quiet" );
+  options.nocolor = isSet( parser, "no-color" );
+  options.verbose = isSet( parser, "verbose" );
   getArgumentValue(options.rf_path, parser, 0);
 
   return seqan::ArgumentParser::PARSE_OK;
@@ -141,8 +148,6 @@ bool go_down(IterState &its, seqan::Value< Dna5QString >::Type c)
 
 int main(int argc, char *argv[])
 {
-  START_EASYLOGGINGPP(argc, argv);
-
   // Parse the command line.
   Options options;
   auto res = parse_args(options, argc, argv);
@@ -151,83 +156,95 @@ int main(int argc, char *argv[])
   if (res != seqan::ArgumentParser::PARSE_OK)
     return res == seqan::ArgumentParser::PARSE_ERROR;
 
+  options.nolog = false;
+  options.nologfile = true;
+  config_logger(options);
+  auto log = get_logger("main");
+
   SeqFileIn refInFile;
-  if (!open(refInFile, toCString(options.rf_path)))
+  if (!open(refInFile, options.rf_path.c_str()))
   {
-    LOG(FATAL) << "could not open the file '" << toCString(options.rf_path) << "'.";
+    std::string msg = "could not open the file '" + options.rf_path + "'.";
+    log->error(msg);
+    throw std::runtime_error(msg);
   }
 
   CharString ref_id;
   Dna5QString     ref_seq;
 
   {
-    TIMED_SCOPE(loadRefTimer, "load-ref");
+    auto timer = Timer("load-ref");
     readRecord(ref_id, ref_seq, refInFile);
   }
+  log->info("Reference loaded in {} us.", Timer::get_duration("load-ref").count());
 
   SeqFileIn readsInFile;
-  if (!open(readsInFile, toCString(options.fq_path)))
+  if (!open(readsInFile, options.fq_path.c_str()))
   {
-    LOG(FATAL) << "could not open the file '" << toCString(options.fq_path) << "'.";
+    std::string msg = "could not open the file '" + options.fq_path + "'.";
+    log->error(msg);
+    throw std::runtime_error(msg);
   }
 
   Dna5QRecords reads;
   bool found;
   unsigned int nof_found = 0;
-  while (true)
+  log->info("Seed finding...");
   {
-    TIMED_SCOPE(readChunkTimer, "read-chunk");
-
+    auto timer = Timer("seed-finding");
+    while (true)
     {
-      TIMED_SCOPE(loadReadsTimer, "load-reads");
-      readRecords(reads, readsInFile, options.chunk_size);
-    }
-
-    if (length(reads.id) == 0)
-    {
-      LOG(INFO) << "All reads are processed.";
-      break;
-    }
-
-    LOG(INFO) << "Reading " << options.chunk_size << " reads...";
-
-    {
-      TIMED_SCOPE(traverseTimer, "traverse");
-
-      unsigned int i;
-      IterState::TIndex reads_index( reads.str );
-      for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
       {
-        IterState iter_state = {IterState::TIndexIter(reads_index), 0, 0};
-        // Explicit is better than implicit.
-        if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
+        auto timer = Timer("load-reads");
+        readRecords(reads, readsInFile, options.chunk_size);
+      }
+      log->info("Reads loaded in {} us.", Timer::get_duration("load-reads").count());
+      if (length(reads.id) == 0)
+      {
+        log->info("All reads are processed.");
+        break;
+      }
+      log->info( "Reading {} reads...", options.chunk_size );
 
-        found = true;
-        for (i = pos; iter_state.ref_len < options.seed_len; ++i)
+      {
+        auto timer = Timer("traverse");
+
+        unsigned int i;
+        IterState::TIndex reads_index( reads.str );
+        for (unsigned int pos = 0; pos < length(ref_seq); ++pos)
         {
-          if(!go_down(iter_state, ref_seq[i]))
+          IterState iter_state = {IterState::TIndexIter(reads_index), 0, 0};
+          // Explicit is better than implicit.
+          if (pos > length(ref_seq) - options.seed_len /*+ allowed_diffs*/) break;
+
+          found = true;
+          for (i = pos; iter_state.ref_len < options.seed_len; ++i)
           {
-            found = false;
-            break;
+            if(!go_down(iter_state, ref_seq[i]))
+            {
+              found = false;
+              break;
+            }
+          }
+          if (found)
+          {
+            ++nof_found;
+            if (nof_found % SEEDHITS_REPORT_BUF == 0)
+              log->info("{} seed hits so far.", nof_found);
+          }
+
+          if (pos % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
+          {
+            log->info("Traversing lap: {} us.", Timer::get_lap("traverse").count());
           }
         }
-        if (found)
-        {
-          ++nof_found;
-          if (nof_found % SEEDHITS_REPORT_BUF == 0)
-            LOG(INFO) << nof_found << " seed hits so far.";
-        }
-
-        if (pos % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
-        {
-          PERFORMANCE_CHECKPOINT(traverseTimer);
-        }
       }
+      log->info("Traversed in {} us.", Timer::get_duration("traverse").count());
+      clear(reads.id);
+      clear(reads.str);
     }
-
-    clear(reads.id);
-    clear(reads.str);
   }
+  log->info("Seed finding was done in {} us.", Timer::get_duration("seed-finding").count());
 
   return EXIT_SUCCESS;
 }

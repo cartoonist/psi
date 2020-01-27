@@ -189,6 +189,7 @@ namespace grem
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename Stat< Mapper >::Type stats_type;
+        typedef TTraverser traverser_type;
         /* ====================  LIFECYCLE      ====================================== */
         Mapper( const VarGraph *graph,
             Dna5QRecords&& r,

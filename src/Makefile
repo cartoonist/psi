@@ -1,6 +1,4 @@
 ## Directories:
-# External libraries directory.
-EXTDIR       := ../ext
 # Binary files directory.
 BINDIR       := ../bin
 # Release binary directory (relative to `$BINDIR`).
@@ -27,7 +25,7 @@ MACROS       ?= -DGREM_DEBUG=0
 
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
 CXXFLAGS     ?= -g -O3
-LIBS_CFLAGS  := -I ${EXTDIR}/ \
+LIBS_CFLAGS  := -I. \
 	        $(shell pkg-config --cflags seqan-2) \
 	        $(shell pkg-config --cflags xg) \
 	        $(shell pkg-config --cflags protobuf)

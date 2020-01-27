@@ -5,12 +5,13 @@ bin/
 src/.d/
 test/.d/
 
-# Generated source codes
-src/*.pb.cc
-src/*.pb.h
+# Installed header-only libraries
+src/stream
+src/catch
+src/spdlog
 
-# Easyloggingpp log files
-logs/
+# Log files
+*.log
 
 # Performance reports
 **/callgrind.out.*

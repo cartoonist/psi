@@ -80,6 +80,7 @@ namespace grem
     bool nolog;
     bool quiet;
     bool nocolor;
+    bool verbose;
   } Options;
 }
 

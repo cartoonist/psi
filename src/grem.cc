@@ -38,8 +38,6 @@
 #include "logger.h"
 #include "release.h"
 
-INITIALIZE_EASYLOGGINGPP
-
 using namespace seqan;
 using namespace grem;
 
@@ -53,100 +51,198 @@ using namespace grem;
 // TODO: fix code style: spacing.
 // TODO: inconsistency: some public methods are interface functions, some are members.
 
-// Forwards
-  void
-startup ( const Options & options );
-
-template < typename TIndexSpec >
-  void
-find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
-    unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-    std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ );
 
 template< typename TMapper >
-    void
-  signal_handler( int signal );
+  void
+signal_handler( int signal )
+{
+  std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
+            << "---------------------------" << std::endl;
+  std::cout << "Elapsed time in traversal phase: "
+            << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
+            << std::endl;
+  std::cout << "Current node: ("
+            << Stat< TMapper >::Type::get_current_locus().node_id() << ", "
+            << Stat< TMapper >::Type::get_current_locus().offset() << ")" << std::endl;
+  auto idx = Stat< TMapper >::Type::get_current_locus_idx();
+  auto total = Stat< TMapper >::Type::get_total_nof_loci();
+  unsigned int wlen = std::to_string( total ).length();
+  std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
+            << total << " [%" << std::setw(3) << idx * 100 / total << "]" << std::endl;
+}
+
 
   void
 default_signal_handler( int signal ) { /* Do nothing */ }
 
-  seqan::ArgumentParser::ParseResult
-parse_args ( Options & options, int argc, char *argv[] );
-
-  inline void
-get_option_values ( Options & options, seqan::ArgumentParser & parser );
-
-  void
-setup_argparser ( seqan::ArgumentParser & parser );
-
-  void
-config_logger ( const Options & options );
-
-  void
-config_logger ( const char * logger_name, const Options & options );
-
-
-int main(int argc, char *argv[])
-{
-  START_EASYLOGGINGPP(argc, argv);
-
-  // Parse the command line.
-  Options options;
-  auto res = parse_args(options, argc, argv);
-  // If parsing was not successful then exit with code 1 if there were errors.
-  // Otherwise, exit with code 0 (e.g. help was printed).
-  if (res != seqan::ArgumentParser::PARSE_OK)
-    return res == seqan::ArgumentParser::PARSE_ERROR;
-
-  // Verify that the version of the library that we linked against is
-  // compatible with the version of the headers we compiled against.
-  GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-  std::signal( SIGUSR1, default_signal_handler );
-
-  /* Configure loggers */
-  config_logger(options);
-  config_logger("default", options);
-  config_logger("performance", options);
-
-  startup ( options );
-
-  // Delete all global objects allocated by libprotobuf.
-  google::protobuf::ShutdownProtobufLibrary();
-
-  return EXIT_SUCCESS;
-}
-
-  void
-startup ( const Options & options )
-{
-  LOG(INFO) << "Parameters:";
-  LOG(INFO) << "- Seed length: " << options.seed_len;
-  LOG(INFO) << "- Reads index type: " << index_to_str(options.index);
-  LOG(INFO) << "- Starting points interval: " << options.start_every;
-  LOG(INFO) << "- Reads chunk size: " << options.chunk_size;
-  LOG(INFO) << "- Number of paths: " << options.path_num;
-  LOG(INFO) << "- Paths index file: " << options.paths_index_file;
-
-  SeqFileIn reads_infile;
-  LOG(INFO) << "Opening file '" << options.fq_path << "'...";
-  if (!open(reads_infile, options.fq_path.c_str()))
+template< typename TMapper, typename TSet >
+    void
+  report( TMapper& mapper, TSet& covered_reads, unsigned long long int found )
   {
-    LOG(FATAL) << "could not open the file '" << options.fq_path << "'.";
+    auto log = get_logger( "main" );
+    log->info( "Total number of starting points: {}", mapper.get_starting_loci().size() );
+    log->info( "Total number of seeds found: {}", found );
+    log->info( "Total number of reads covered: {}", covered_reads.size() );
+    log->info( "Total number of 'godown' operations: {}",
+      TMapper::traverser_type::stats_type::get_total_nof_godowns() );
+
+    log->info( "All Timers" );
+    log->info( "----------" );
+    for ( const auto& timer : Timer::get_timers() ) {
+      log->info( "{}: {} us", timer.first, Timer::get_duration( timer.first ).count() );
+    }
   }
 
+template< typename TPathSet, typename TMapper >
+    void
+  prepare_paths_index( TPathSet& paths, TMapper& mapper,
+      const std::string& paths_index_file, unsigned int path_num )
+  {
+    auto log = get_logger( "main" );
+    log->info( "Loading paths index..." );
+
+    if ( path_num == 0 ) {
+      log->info( "Specified number of path is 0. Skipping paths indexing..." );
+    }
+    else if ( !paths.load( paths_index_file, mapper.get_vargraph(), path_num ) ) {
+      log->info( "No valid paths index found. Picking paths..." );
+
+      log->info( "Picking {} different path(s) on the graph...", path_num );
+      mapper.pick_paths( paths, path_num );
+      log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
+
+      {
+        auto timer = Timer( "index-paths" );
+
+        log->info( "Indexing the paths..." );
+        paths.create_index();
+
+        log->info( "Saving paths index..." );
+        if ( !paths.save( paths_index_file.c_str() ) ) {
+          log->warn( "Paths index file is not specified or not writable. Skipping..." );
+        }
+      }
+      log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
+    }
+    else {
+      log->info( "Paths index found. Loaded." );
+    }
+  }
+
+
+template< typename TIndexSpec  >
+    void
+  find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, unsigned int seed_len,
+      unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
+      const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
+  {
+    auto log = get_logger( "main" );
+    typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
+    Mapper< TTraverser > mapper( &vargraph, seed_len );
+
+    typedef decltype( mapper ) TMapper;
+    std::signal( SIGUSR1, signal_handler< TMapper > );
+
+    // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
+    PathSet< seqan::IndexEsa<> > paths;
+    prepare_paths_index( paths, mapper, paths_index_file, path_num );
+
+    if ( nomapping ) {
+      log->info( "Skipping mapping as requested..." );
+      return;
+    }
+
+    log->info( "Selecting starting loci..." );
+    mapper.add_all_loci( paths, seed_len, start_every );
+    log->info( "Selected starting loci in {} us.",
+        Timer::get_duration( "add-starts" ).count() );
+    log->info( "Number of starting points selected (in {} nodes): {}",
+        mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
+
+     // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
+    unsigned long long int found = 0;
+    std::unordered_set< Dna5QStringSetPosition > covered_reads;
+    std::function< void(typename TTraverser::output_type const &) > write =
+      [&found, &covered_reads] (typename TTraverser::output_type const & seed_hit){
+      ++found;
+      covered_reads.insert(seqan::beginPositionV(seed_hit));
+    };
+
+    Dna5QRecords reads_chunk;
+
+    log->info( "Finding seeds..." );
+    {
+      auto timer = Timer( "seed-finding" );
+      while (true)
+      {
+        log->info( "Reading the next reads chunk..." );
+        {
+          auto timer = Timer( "load-chunk" );
+          readRecords( reads_chunk, reads_infile, chunk_size );
+        }
+        if (length(reads_chunk.id) == 0) break;
+        log->info( "Loaded reads chunk in {} us.",
+            Timer::get_duration( "load-chunk" ).count() );
+
+        mapper.set_reads( std::move( reads_chunk ) );
+        log->info( "Seeding was done in {} us.",
+            Timer::get_duration( "seeding" ).count() );
+
+        log->info( "Finding seeds on paths..." );
+        auto pre_found = found;
+        mapper.seeds_on_paths( paths, write );
+        log->info( "Found seed on paths in {} us.",
+            Timer::get_duration( "paths-seed-find" ).count() );
+        log->info( "Total number of seeds found on paths: {}", found - pre_found );
+
+        log->info( "Traversing..." );
+        mapper.traverse ( write );
+        log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
+
+        clear( reads_chunk.id );
+        clear( reads_chunk.str );
+      }
+    }
+    log->info( "found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );
+
+    report( mapper, covered_reads, found );
+  }
+
+
+  void
+startup( const Options & options )
+{
+  auto log = get_logger( "main" );
+  log->info( "Parameters:" );
+  log->info( "- Seed length: {}", options.seed_len );
+  log->info( "- Number of paths: {}", options.path_num );
+  log->info( "- Paths index file: '{}'", options.paths_index_file );
+  log->info( "- Reads chunk size: {}", options.chunk_size );
+  log->info( "- Reads index type: {}", index_to_str(options.index) );
+  log->info( "- Starting points interval: {}", options.start_every );
+
+  log->info( "Opening file '{}'...", options.fq_path );
+  SeqFileIn reads_infile;
+  if ( !open( reads_infile, options.fq_path.c_str() ) )
+  {
+    std::string msg = "could not open file '" + options.fq_path + "'!";
+    log->error( msg );
+    throw std::runtime_error( msg );
+  }
+
+  log->info( "Loading the graph from file '{}'...", options.rf_path );
   std::ifstream ifs( options.rf_path, std::ifstream::in | std::ifstream::binary );
-  LOG(INFO) << "Loading the graph from file '" << options.rf_path << "'...";
   if( !ifs )
   {
-    LOG(FATAL) << "could not open the file '" << options.rf_path << "'.";
+    std::string msg = "could not open file '" + options.rf_path + "'!";
+    log->error( msg );
+    throw std::runtime_error( msg );
   }
 
   bool xg_format = true;
   if ( ends_with( options.rf_path, ".vg" ) ) {
     xg_format = false;
   }
-
   VarGraph vargraph( ifs, xg_format );
 
   switch ( options.index ) {
@@ -173,138 +269,11 @@ startup ( const Options & options )
     default: throw std::runtime_error("Index not implemented.");
              break;
   }
-
-}
-
-
-template<typename TIndexSpec >
-  void
-find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
-    unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-    std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
-{
-  typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
-  Mapper< TTraverser > mapper( &vargraph, seed_len );
-
-  typedef decltype( mapper ) TMapper;
-  std::signal( SIGUSR1, signal_handler< TMapper > );
-
-  LOG(INFO) << "Loading paths index...";
-  // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-  PathSet< seqan::IndexEsa<> > paths;
-  if ( path_num == 0 ) {
-    LOG(INFO) << "Specified number of path is 0. Skipping paths indexing...";
-  }
-  else if ( !paths.load( paths_index_file, &vargraph, path_num ) ) {
-    LOG(INFO) << "No valid paths index found. Picking paths...";
-    LOG(INFO) << "Picking " << path_num << " different path(s) on the graph...";
-    mapper.pick_paths( paths, path_num );
-    LOG(INFO) << "Picking paths: " << Timer::get_duration( "pick-paths" ).count() << " us";
-    {
-      auto timer = Timer( "path-indexing" );
-      LOG(INFO) << "Indexing the paths...";
-      paths.create_index();
-      LOG(INFO) << "Saving paths index...";
-      if ( !paths.save( paths_index_file.c_str() ) ) {
-        LOG(WARNING) << "Paths index file is not specified or is not writable.";
-        LOG(INFO) << "Skipping...";
-      }
-    }
-    LOG(INFO) << "Path indexing: " << Timer::get_duration( "path-indexing" ).count() << " us";
-  }
-  else {
-    LOG(INFO) << "Paths index found. Loaded.";
-  }
-
-  if ( nomapping ) {
-    LOG(INFO) << "Skipping mapping as requested...";
-    return;
-  }
-
-  LOG(INFO) << "Selecting starting loci...";
-  mapper.add_all_loci( paths, seed_len, start_every );
-  LOG(INFO) << "Add starting loci: " << Timer::get_duration( "add-starts" ).count() << " us";
-  LOG(INFO) << "Number of starting points selected (in "
-            << mapper.get_vargraph()->node_count << " nodes): "
-            << mapper.get_starting_loci().size();
-
-   // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
-  long int found = 0;
-  std::unordered_set< Dna5QStringSetPosition > covered_reads;
-  std::function< void(typename TTraverser::output_type const &) > write =
-    [&found, &covered_reads] (typename TTraverser::output_type const & seed_hit){
-    ++found;
-    covered_reads.insert(seqan::beginPositionV(seed_hit));
-  };
-
-  Dna5QRecords reads_chunk;
-
-  LOG(INFO) << "Traverse the graph from selected starting points...";
-  {
-    auto timer = Timer( "seed-finding" );
-    while (true)
-    {
-      LOG(INFO) << "Reading the next reads chunk...";
-      {
-        auto timer = Timer( "load-chunk" );
-        readRecords(reads_chunk, reads_infile, chunk_size);
-      }
-
-      if (length(reads_chunk.id) == 0) break;
-      LOG(INFO) << "Load reads chunk: " << Timer::get_duration( "load-chunk" ).count() << " us";
-
-      mapper.set_reads( std::move( reads_chunk ) );
-      LOG(INFO) << "Seeding: " << Timer::get_duration( "seeding" ).count() << " us";
-      LOG(INFO) << "Finding seeds on paths...";
-      auto pre_found = found;
-      mapper.seeds_on_paths( paths, write );
-      LOG(INFO) << "Seed finding on paths: " << Timer::get_duration( "paths-seed-find" ).count() << " us";
-      LOG(INFO) << "Total number of seeds found on paths: " << found - pre_found;
-      LOG(INFO) << "Traversing...";
-      mapper.traverse ( write );
-      LOG(INFO) << "Traverse: " << Timer::get_duration( "traverse" ).count() << " us";
-      clear( reads_chunk.id );
-      clear( reads_chunk.str );
-    }
-  }
-
-  LOG(INFO) << "Seed finding: " << Timer::get_duration( "seed-finding" ).count() << " us";
-  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_loci().size();
-  LOG(INFO) << "Total number of seeds found: " << found;
-  LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
-  LOG(INFO) << "Total number of 'godown' operations: "
-            << TTraverser::stats_type::get_total_nof_godowns();
-
-  LOG(INFO) << "All Timers";
-  LOG(INFO) << "----------";
-  for ( const auto& timer : Timer::get_timers() ) {
-    LOG(INFO) << timer.first << ": " << Timer::get_duration( timer.first ).count() << " us";
-  }
-}
-
-
-template< typename TMapper >
-  void
-signal_handler( int signal )
-{
-  std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
-            << "---------------------------" << std::endl;
-  std::cout << "Elapsed time in traversal phase: "
-            << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
-            << std::endl;
-  std::cout << "Current node: ("
-            << Stat< TMapper >::Type::get_current_locus().node_id() << ", "
-            << Stat< TMapper >::Type::get_current_locus().offset() << ")" << std::endl;
-  auto idx = Stat< TMapper >::Type::get_current_locus_idx();
-  auto total = Stat< TMapper >::Type::get_total_nof_loci();
-  unsigned int wlen = std::to_string( total ).length();
-  std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
-            << total << " [%" << std::setw(3) << idx * 100 / total << "]" << std::endl;
 }
 
 
   inline void
-setup_argparser(seqan::ArgumentParser & parser)
+setup_argparser( seqan::ArgumentParser& parser )
 {
   // positional arguments.
   std::string POSARG1 = "VG_FILE";
@@ -368,7 +337,7 @@ setup_argparser(seqan::ArgumentParser & parser)
                                     "Sets default log file for existing and future loggers.",
                                     seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE");
   addOption(parser, logfile_arg);
-  setDefaultValue(parser, "L", "logs/grem.log");
+  setDefaultValue(parser, "L", "grem.log");
 
   // no log to file
   addOption(parser, seqan::ArgParseOption("Q", "no-log-file", "Disable writing logs to file (overrides \\fB-L\\fP)."));
@@ -382,7 +351,7 @@ setup_argparser(seqan::ArgumentParser & parser)
   // disable logging
   addOption(parser, seqan::ArgParseOption("D", "disable-log", "Disable logging completely."));
 
-  // verbosity options -- HANDLED BY EASYLOGGING++
+  // verbosity options
   addOption(parser, seqan::ArgParseOption("v", "verbose",
                                           "Activates maximum verbosity."));
 }
@@ -393,46 +362,47 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
 {
   std::string indexname;
 
-  getOptionValue(options.fq_path, parser, "fastq");
-  getOptionValue(options.seed_len, parser, "seed-length");
-  getOptionValue(options.chunk_size, parser, "chunk-size");
-  getOptionValue(options.start_every, parser, "start-every");
-  getOptionValue(options.path_num, parser, "path-num");
-  getOptionValue(options.paths_index_file, parser, "paths-index");
-  getOptionValue(indexname, parser, "index");
-  options.nomapping = isSet(parser, "only-index");
-  getOptionValue(options.log_path, parser, "log-file");
-  options.nologfile = isSet(parser, "no-log-file");
-  options.quiet = isSet(parser, "quiet");
-  options.nocolor = isSet(parser, "no-color");
-  options.nolog = isSet(parser, "disable-log");
-  getArgumentValue(options.rf_path, parser, 0);
+  getOptionValue( options.fq_path, parser, "fastq" );
+  getOptionValue( options.seed_len, parser, "seed-length" );
+  getOptionValue( options.chunk_size, parser, "chunk-size" );
+  getOptionValue( options.start_every, parser, "start-every" );
+  getOptionValue( options.path_num, parser, "path-num" );
+  getOptionValue( options.paths_index_file, parser, "paths-index" );
+  getOptionValue( indexname, parser, "index" );
+  options.nomapping = isSet( parser, "only-index" );
+  getOptionValue( options.log_path, parser, "log-file" );
+  options.nologfile = isSet( parser, "no-log-file" );
+  options.quiet = isSet( parser, "quiet" );
+  options.nocolor = isSet( parser, "no-color" );
+  options.nolog = isSet( parser, "disable-log" );
+  options.verbose = isSet( parser, "verbose" );
+  getArgumentValue( options.rf_path, parser, 0 );
 
-  options.index = index_from_str(indexname);
+  options.index = index_from_str( indexname );
 }
 
 
   inline seqan::ArgumentParser::ParseResult
-parse_args(Options & options, int argc, char *argv[])
+parse_args( Options& options, int argc, char* argv[] )
 {
   // setup ArgumentParser.
   seqan::ArgumentParser parser( PACKAGE );
-  setup_argparser(parser);
+  setup_argparser( parser );
 
   // Embedding program's meta data and build information.
-  setShortDescription(parser, SHORT_DESC);
-  setVersion(parser, VERSION);
-  // :TODO:Thu Apr 06 02:06:\@cartoonist: date should be captured from git.
-  setDate(parser, __DATE__);
-  addDescription(parser, LONG_DESC);
+  setShortDescription( parser, SHORT_DESC );
+  setVersion( parser, VERSION );
+  // :TODO:Thu Apr 06 02:06:\@cartoonist: date should be specified by autoconf.
+  setDate( parser, __DATE__ );
+  addDescription( parser, LONG_DESC );
 
   std::ostringstream hold_buf_stdout;
   std::ostringstream hold_buf_stderr;
   // parse command line.
-  auto res = seqan::parse(parser, argc, argv, hold_buf_stdout, hold_buf_stderr);
+  auto res = seqan::parse( parser, argc, argv, hold_buf_stdout, hold_buf_stderr );
   // print the banner in help or version messages.
-  if (res == seqan::ArgumentParser::PARSE_HELP ||
-      res == seqan::ArgumentParser::PARSE_VERSION)
+  if ( res == seqan::ArgumentParser::PARSE_HELP ||
+      res == seqan::ArgumentParser::PARSE_VERSION )
   {
     std::cout << BANNER << std::endl;
   }
@@ -441,42 +411,42 @@ parse_args(Options & options, int argc, char *argv[])
   std::cout << hold_buf_stdout.str();
 
   // only extract options if the program will continue after parse_args()
-  if (res != seqan::ArgumentParser::PARSE_OK) return res;
+  if ( res != seqan::ArgumentParser::PARSE_OK ) return res;
 
   get_option_values ( options, parser );
 
   return seqan::ArgumentParser::PARSE_OK;
 }
 
-  inline void
-config_logger ( const Options & options )
-{
-  // Configure color output.
-  if (!options.nocolor) el::Loggers::addFlag(el::LoggingFlag::ColoredTerminalOutput);
-  // Configure time format.
-  el::Loggers::addFlag(el::LoggingFlag::FixedTimeFormat);
-}
 
-  inline void
-config_logger(const char * logger_name, const Options & options)
+  int
+main( int argc, char *argv[] )
 {
-  el::Configurations conf;
-  conf.setToDefault();
-  // Configure log file.
-  if (!options.nologfile)
-  {
-    conf.setGlobally(el::ConfigurationType::Filename, options.log_path);
-  }
-  // Enabling quiet mode.
-  if (options.quiet)
-  {
-    conf.setGlobally(el::ConfigurationType::ToStandardOutput , std::string("false"));
-  }
-  // Enable or disable the performance logger.
-  if (options.nolog)
-  {
-    conf.setGlobally(el::ConfigurationType::Enabled, std::string("false"));
-  }
-  // Reconfigure the logger.
-  el::Loggers::reconfigureLogger(logger_name, conf);
+  /* Parse the command line. */
+  Options options;
+  auto res = parse_args( options, argc, argv );
+  /* If parsing was not successful then exit with code 1 if there were errors.
+   * Otherwise, exit with code 0 (e.g. help was printed).
+   */
+  if ( res != seqan::ArgumentParser::PARSE_OK )
+    return res == seqan::ArgumentParser::PARSE_ERROR;
+
+  /* Verify that the version of the library that we linked against is
+   * compatible with the version of the headers we compiled against.
+   */
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  /* Install signal handler -- default handler */
+  std::signal( SIGUSR1, default_signal_handler );
+  /* Configure loggers */
+  config_logger( options );
+  /* Start mapping... */
+  startup( options );
+
+  /* Close all loggers. */
+  drop_all_loggers();
+  /* Delete all global objects allocated by libprotobuf. */
+  google::protobuf::ShutdownProtobufLibrary();
+
+  return EXIT_SUCCESS;
 }

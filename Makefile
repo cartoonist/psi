@@ -1,4 +1,6 @@
 ##  Directories:
+# External libraries directory.
+EXTDIR       := ext
 # Source files directory.
 SRCDIR       := src
 # Tests directory.
@@ -14,8 +16,11 @@ SOURCES  += $(wildcard ${SRCDIR}/*.h)
 SOURCES  += $(wildcard ${TESTDIR}/*.cc)
 SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
+##  Header-only libraries:
+HEADERONLY_LIBS = stream catch spdlog
+
 # Specifying phony targets.
-.PHONY: all release debug test test-debug doc tags install install-debug clean distclean
+.PHONY: all init update-submodules release debug test test-debug doc tags install install-debug clean distclean
 
 ## Functions:
 define echotitle
@@ -36,13 +41,34 @@ define run_test
 	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c {}
 endef
 
+define uninstall_headers
+	rm -rfv $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+endef
+
+
 all: release
 
-release:
+update-submodules:
+	$(call echotitle,"Installing header-only libraries...")
+	@git submodule init && git submodule update
+
+init: update-submodules $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+
+${SRCDIR}/stream:
+	@mkdir ${SRCDIR}/stream
+	@cp -v ${EXTDIR}/stream/src/stream.hpp ${SRCDIR}/stream/stream.h
+
+${SRCDIR}/catch:
+	@cp -rv ${EXTDIR}/Catch/single_include ${SRCDIR}/catch
+
+${SRCDIR}/spdlog:
+	@cp -rv ${EXTDIR}/spdlog/include/spdlog ${SRCDIR}/
+
+release: init
 	$(call echotitle,"Building sources...")
 	@make -C ${SRCDIR} BUILD=release
 
-debug:
+debug: init
 	$(call echotitle,"Building sources for debug...")
 	@make -C ${SRCDIR} BUILD=debug CXXFLAGS=-g
 
@@ -75,5 +101,6 @@ clean:
 	@make -C ${TESTDIR} $@
 
 distclean:
+	$(call uninstall_headers)
 	@make -C ${SRCDIR} $@
 	@make -C ${TESTDIR} $@

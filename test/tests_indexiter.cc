@@ -23,10 +23,8 @@
 #include "index_iter.h"
 #include "logger.h"
 
-INITIALIZE_EASYLOGGINGPP
 
 using namespace grem;
-
 
 SCENARIO ( "Fine top-down index iterator basic functionalities", "[index][iterator]" )
 {

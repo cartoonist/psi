@@ -28,10 +28,8 @@
 #include "vargraph.h"
 #include "logger.h"
 
-INITIALIZE_EASYLOGGINGPP
 
 using namespace grem;
-
 
 SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
 {

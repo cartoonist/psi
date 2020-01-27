@@ -29,10 +29,8 @@
 #include "utils.h"
 #include "logger.h"
 
-INITIALIZE_EASYLOGGINGPP
 
 using namespace grem;
-
 
 SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
 {
