@@ -19,6 +19,7 @@
 #define MAPPER_H__
 
 #include <fstream>
+#include <type_traits>
 #include <vector>
 #include <iterator>
 #include <functional>
@@ -28,33 +29,184 @@
 #include "sequence.h"
 #include "index.h"
 #include "index_iter.h"
+#include "pathset.h"
 #include "utils.h"
 #include "logger.h"
+#include "stat.h"
+
 
 namespace grem
 {
-  template <class TTraverser>
+  // :TODO:Mon Sep 25 00:59:\@cartoonist: Fix MapperStat to be thread-safe like TraverserStat.
+  /**
+   *  @brief  MapperStat template class.
+   *
+   *  Collect statistics from a `Mapper` class instance(s) in running time.
+   */
+  template< typename TSpec = void >
+    class MapperStat : public Timer
+    {
+      public:
+        /**
+         *  @brief  MapperStat constructor.
+         *
+         *  Start the timer.
+         */
+        MapperStat( const std::string& name )
+          : Timer( name )
+        { }
+
+        /**
+         *  @brief  Get the current processing locus.
+         *
+         *  @return The reference to static variable `current_locus`.
+         *
+         *  It is set to the current processing locus when the mapper is in the middle
+         *  of the "traversal" phase.
+         */
+          static inline vg::Position&
+        get_current_locus( )
+        {
+          static vg::Position current_locus;
+          return current_locus;
+        }  /* -----  end of method get_current_locus  ----- */
+
+        /**
+         *  @brief  Set the current processing locus.
+         *
+         *  @param  value The value to be set as current locus.
+         *
+         *  It sets the current processing locus when the mapper is in the middle of
+         *  the "traversal" phase.
+         */
+          static inline void
+        set_current_locus( const vg::Position& value )
+        {
+          get_current_locus() = value;
+        }  /* -----  end of method set_current_locus  ----- */
+
+        /**
+         *  @brief  Get the index of the current processing locus in the starting loci.
+         *
+         *  @return The reference to static variable `current_locus_idx`.
+         *
+         *  It is set to the index of the current processing locus in the starting loci
+         *  vector when the mapper is in the middle of the "traversal" phase.
+         */
+          static inline std::size_t&
+        get_current_locus_idx( )
+        {
+          static std::size_t current_locus_idx;
+          return current_locus_idx;
+        }  /* -----  end of method get_current_locus_idx  ----- */
+
+        /**
+         *  @brief  Set the index of the current processing locus in the starting loci.
+         *
+         *  @param  value The value to be set as current locus index.
+         *
+         *  It sets the index of the current processing locus in the starting loci
+         *  vector when the mapper is in the middle of the "traversal" phase.
+         */
+          static inline void
+        set_current_locus_idx( const std::size_t& value )
+        {
+          get_current_locus_idx() = value;
+        }  /* -----  end of method set_current_locus_idx  ----- */
+
+        /**
+         *  @brief  Get the total number of loci in the starting loci vector.
+         *
+         *  @return The reference to static variable `total_nof_loci`.
+         */
+          static inline std::size_t&
+        get_total_nof_loci( )
+        {
+          static std::size_t total_nof_loci;
+          return total_nof_loci;
+        }  /* -----  end of method get_total_nof_loci  ----- */
+
+        /**
+         *  @brief  Set the total number of loci in the starting loci vector.
+         *
+         *  @param  value The value to be set as total number of loci.
+         */
+          static inline void
+        set_total_nof_loci( const std::size_t& value )
+        {
+          get_total_nof_loci() = value;
+        }  /* -----  end of method set_total_nof_loci  ----- */
+    };  /* ----------  end of template class MapperStat  ---------- */
+
+  /**
+   *  @brief  MapperStat template specialization for no-stat.
+   *
+   *  Do nothing.
+   */
+  template< >
+    class MapperStat< NoStat >
+    {
+      public:
+        /* ====================  METHODS       ======================================= */
+        MapperStat( const std::string& ) { }
+        ~MapperStat() { }
+        static inline std::chrono::microseconds get_duration( const std::string& )
+        {
+          return std::chrono::duration_cast< std::chrono::microseconds >(
+              Timer::clock_type::duration::zero() );
+        }
+        static inline std::chrono::microseconds get_lap( const std::string& )
+        {
+          return std::chrono::duration_cast< std::chrono::microseconds >(
+              Timer::clock_type::duration::zero() );
+        }
+          static inline vg::Position&
+        get_current_locus( )
+        {
+          static vg::Position current_locus;
+          return current_locus;
+        }
+        static inline void set_current_locus( const vg::Position& value ) { }
+          static inline std::size_t&
+        get_current_locus_idx( )
+        {
+          static std::size_t current_locus_idx;
+          return current_locus_idx;
+        }
+        static inline void set_current_locus_idx( const std::size_t& value ) { }
+          static inline std::size_t&
+        get_total_nof_loci( )
+        {
+          static std::size_t total_nof_loci;
+          return total_nof_loci;
+        }
+        static inline void set_total_nof_loci( const std::size_t& value ) { }
+    };  /* ----------  end of template class MapperStat  ---------- */
+
+  template< class TTraverser, typename TStatSpec = void >
     class Mapper
     {
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename Stat< Mapper >::Type stats_type;
         /* ====================  LIFECYCLE      ====================================== */
         Mapper( const VarGraph *graph,
-            Dna5QRecords&& reads,
+            Dna5QRecords&& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : vargraph( graph ), reads( std::move( reads ) ), seed_len( len ),
+          : vargraph( graph ), reads( std::move( r ) ), seed_len( len ),
           seed_mismatches( mismatches )
         {
-          if ( length( reads.str ) != 0 ) {
+          if ( length( this->reads.str ) != 0 ) {
             this->index_reads();
           }
         }
 
         Mapper( const VarGraph *graph,
-            const Dna5QRecords& reads,
+            const Dna5QRecords& r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : Mapper( graph , Dna5QRecords( reads ), len, mismatches )
+          : Mapper( graph , Dna5QRecords( r ), len, mismatches )
         { }
 
         Mapper( const VarGraph *graph,
@@ -62,21 +214,6 @@ namespace grem
             unsigned char mismatches = 0 )
           : Mapper( graph , Dna5QRecords( ), len, mismatches )
         { }
-        /* ====================  METHODS        ====================================== */
-          inline void
-        add_start( const vg::Position &locus )
-        {
-          this->starting_loci.push_back( locus );
-        }
-
-          inline void
-        add_start( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
-        {
-          vg::Position locus;
-          locus.set_node_id( node_id );
-          locus.set_offset( offset );
-          this->add_start ( locus );
-        }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for vargraph.
@@ -195,59 +332,53 @@ namespace grem
           this->set_reads( Dna5QRecords( value ) );
         }  /* -----  end of method set_reads  ----- */
 
+          inline void
+        add_start( const vg::Position &locus )
+        {
+          this->starting_loci.push_back( locus );
+        }
+
+          inline void
+        add_start( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
+        {
+          vg::Position locus;
+          locus.set_node_id( node_id );
+          locus.set_offset( offset );
+          this->add_start ( locus );
+        }
+        /* ====================  METHODS        ====================================== */
         /**
          *  @brief  Pick n paths from the variation graph.
          *
-         *  @param[out]  paths The set of generated paths are added to this string set.
-         *  @param[out]  paths_covered_nodes The vector of `NodeCoverage` of each path.
+         *  @param[out]  paths Set of paths to be generated.
          *  @param[in]  n Number of paths.
          *
-         *  This method generates a set of (probably) unique whole-genome path from the
+         *  This method generates a set of (probably) unique whole-genome paths from the
          *  variation graph.
          */
-          void
-        pick_paths ( Dna5QStringSet& paths,
-            std::vector< VarGraph::NodeCoverage >& paths_covered_nodes, int n )
-        {
-          if ( n == 0 ) return;
+        template< typename TIndexSpec >
+            void
+          pick_paths( PathSet< TIndexSpec >& paths, int n )
+          {
+            if ( n == 0 ) return;
 
-          TIMED_SCOPE(pickPathsTimer, "pick-paths");
+            auto timer = stats_type( "pick-paths" );
 
-          LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
+            seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph );
 
-          seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr ( this->vargraph );
-          std::vector < VarGraph::nodeid_type > new_path;
-          typename seqan::Value< Dna5QStringSet >::Type new_path_str;
-          VarGraph::NodeCoverage covered_nodes;
-
-          new_path.reserve ( this->vargraph->node_count );
-          covered_nodes.reserve ( this->vargraph->node_count );
-          paths_covered_nodes.reserve ( n );
-
-          for ( int i = 0; i < n; ++i ) {
-            get_uniq_haplotype ( new_path, hap_itr );
-
-            std::copy ( new_path.begin(), new_path.end(),
-                std::inserter ( covered_nodes, covered_nodes.end() ) );
-            paths_covered_nodes.push_back ( covered_nodes );
-
-            new_path_str = this->vargraph->get_string ( new_path );
-
-            // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
-            char fake_qual = 'I';
-            assignQualities ( new_path_str, std::string ( length(new_path_str), fake_qual ) );
-
-            appendValue ( paths, new_path_str );
-
-            new_path.clear();
-            covered_nodes.clear();
-          }
-        }  /* -----  end of function pick_paths  ----- */
+            paths.reserve( n );
+            for ( int i = 0; i < n; ++i ) {
+              Path<> new_path( this->vargraph );
+              reserve( new_path, this->vargraph->node_count );
+              get_uniq_haplotype( new_path, hap_itr );
+              paths.add_path( std::move( new_path ) );
+            }
+          }  /* -----  end of template function pick_paths  ----- */
 
         /**
          *  @brief  Find seeds on a set of whole-genome paths for the input reads chunk.
          *
-         *  @param[in]  paths_index The index of the set of paths used for finding the seeds.
+         *  @param[in]  paths The set of paths used for finding the seeds.
          *  @param[in]  callback The call back function applied on the found seeds.
          *
          *  This function uses a set of paths from variation graph to find seeds of the
@@ -255,178 +386,124 @@ namespace grem
          *  both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-          inline void
-        seeds_on_paths( Dna5QStringSetIndex < seqan::IndexEsa<> > &paths_index,
-            std::function< void(typename TTraverser::output_type const &) >& callback )
-        {
-          if ( length ( indexText ( paths_index ) ) == 0 ) return;
+        template< typename TIndexSpec >
+            inline void
+          seeds_on_paths( PathSet< TIndexSpec >& paths,
+              std::function< void(typename TTraverser::output_type const &) >& callback )
+          {
+            if ( length( paths.string_set ) == 0 ) return;
 
-          TIMED_SCOPE(pathsSeedFindTimer, "paths-seed-find");
+            auto timer = stats_type( "paths-seed-find" );
 
-          LOG(INFO) << "Finding seeds on paths...";
+            // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
+            //                                      Check `index_iter.h`.
+            kmer_exact_matches( paths.index, this->seeds_index, this->seed_len, callback );
+          }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
-          // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-          // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
-          //                                      Check `index_iter.h`.
-          kmer_exact_matches( paths_index, this->seeds_index, this->seed_len, callback );
+        template< typename TIndexSpec >
+            inline void
+          add_all_loci( PathSet< TIndexSpec >& paths, unsigned int k,
+              unsigned int step=1)
+          {
+            if ( paths.size() == 0 ) return this->add_all_loci( step );
+            auto timer = stats_type( "add-starts" );
 
-          //std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
-        }  /* -----  end of method Mapper::seeds_on_paths  ----- */
+            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( this->vargraph );
+            Path< Full > trav_path( this->vargraph );
 
-        inline void add_all_loci(std::vector < VarGraph::NodeCoverage > &paths_coverage,
-            unsigned int k, unsigned int step=1)
-        {
-          if ( paths_coverage.size() == 0 ) return this->add_all_loci(step);
+            for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
+              VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
+              auto label_len = this->vargraph->node_length( id );
+              std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
 
-          seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( this->vargraph );
-          std::vector< VarGraph::nodeid_type > trav_path;
-          unsigned int trav_len = 0;
-
-          // :TODO:Sun Jun 11 21:36:\@cartoonist: traverse the graph using BFS instead
-          //   of iterating over node list would be more cache oblivious.
-          for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
-            VarGraph::nodeid_type start_node_id = this->vargraph->rank_to_id( rank );
-            unsigned int label_len = this->vargraph->node_sequence( start_node_id ).length();
-
-            bool set = false;
-            unsigned int init_offset = ( label_len < k - 1 ) ? 0 : label_len - k + 1;
-            for ( unsigned int offset = init_offset; offset < label_len; offset += step ) {
-              // :TODO:Mon May 22 14:40:\@cartoonist: missed some locations when the
-              //     the length of branch node's label is less than k.
-              if ( ! this->vargraph->is_branch ( start_node_id ) &&
-                  covered_by ( start_node_id, paths_coverage ) &&
-                  this->vargraph->has_edges_from ( start_node_id ) &&
-                    this->vargraph->node_sequence(
-                      this->vargraph->edges_from ( start_node_id ).at(0).to() )
-                      .length() > k ) {
-                  continue;
-              }
-
-              if ( set ) {
-                this->add_start( start_node_id, offset );
-                continue;
-              }
-
-              go_begin ( bt_itr, start_node_id );
-
-              while ( !at_end( bt_itr ) ) {
+              go_begin ( bt_itr, id );
+              while ( !at_end( bt_itr ) && offset != 0 ) {
                 while ( !at_end( bt_itr ) ) {
-                  trav_path.push_back ( *bt_itr );
-                  if ( *bt_itr != start_node_id ) {
-                    trav_len += this->vargraph->node_sequence( *bt_itr ).length();
-                  }
-                  else {
-                    trav_len = label_len - offset;
-                  }
-
-                  if ( trav_len < k ) ++bt_itr;
+                  add_node( trav_path, *bt_itr );
+                  if ( trav_path.get_sequence().length() < offset - 1 + k ) ++bt_itr;
                   else break;
                 }
 
-                if ( ! covered_by ( trav_path, paths_coverage ) ) {
-                  this->add_start( start_node_id, offset );
-                  set = true;
-                  break;
+                Path< Full > current_path = trav_path;
+                while ( !covered_by( current_path.get_nodes(), paths.paths_set ) ) {
+                  auto trimmed_len = current_path.get_sequence().length()
+                    - this->vargraph->node_length( current_path.get_nodes().back() );
+                  if ( trimmed_len <= k - 1 ) {
+                    offset = 0;
+                    break;
+                  }
+                  offset = trimmed_len - k + 1;
+                  trim( current_path );
                 }
-
                 --bt_itr;
-
-                VarGraph::nodeid_type poped_id = 0;
-                while ( !trav_path.empty() && poped_id != *bt_itr ) {
-                  poped_id = trav_path.back();
-                  trav_len -= this->vargraph->node_sequence( poped_id ).length();
-                  trav_path.pop_back();
-                }
+                trim( trav_path, *bt_itr );
               }
+
+              for ( auto f = offset; f < label_len; f += step ) {
+                this->add_start( id, f );
+              }
+
+              clear( trav_path );
             }
           }
 
-          LOG(INFO) << "Number of starting points selected (from "
-                    << this->vargraph->node_count << "): "
-                    << this->starting_loci.size();
-        }
-
         inline void add_all_loci(unsigned int step=1)
         {
-          // TODO: mention in the documentation that the `step` is approximately preserved in
-          //       the whole graph. This means that for example add_all_loci(2) would add
-          //       the first loci in each node and then add other loci with distance 2 (every
-          //       other loci) within the node. So at the end, it won't necessarily preserve
-          //       this distance between inter-node loci.
-          // **UPDATE** This algorithm use better approximation.
           // TODO: Add documentation.
-          TIMED_SCOPE(addAllLociTimer, "add-starts");
+          // TODO: mention in the documentation that the `step` is approximately preserved in
+          //       the whole graph.
+          auto timer = stats_type( "add-starts" );
 
           seqan::Iterator<VarGraph, BFS>::Type itr(this->vargraph);
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
           VarGraph::nodeid_type prenode_level = 0;
-          std::string seq;
-          while (!at_end(itr))
-          {
-            if (prenode_level != level(itr))
-            {
+          while (!at_end(itr)) {
+            if (prenode_level != level(itr)) {
               prenode_remain = remain_estimate;
               remain_estimate = 0;
               prenode_level = level(itr);
             }
 
-            seq = this->vargraph->node_sequence(*itr);
-
+            auto seq_len = this->vargraph->node_length(*itr);
             unsigned long int cursor = (step - prenode_remain) % step;
-            while (cursor < seq.length())
-            {
+            while (cursor < seq_len) {
               this->add_start(*itr, cursor);
               cursor += step;
             }
 
             unsigned long int new_remain;
-            if (step - prenode_remain > seq.length())
-            {
-              new_remain = prenode_remain + seq.length();
+            if (step - prenode_remain > seq_len) {
+              new_remain = prenode_remain + seq_len;
             }
-            else
-            {
-              new_remain = (seq.length() - step + prenode_remain) % step;
+            else {
+              new_remain = (seq_len - step + prenode_remain) % step;
             }
 
-            if (remain_estimate < new_remain)
-            {
+            if (remain_estimate < new_remain) {
               remain_estimate = new_remain;
             }
 
             ++itr;
           }
-
-          LOG(INFO) << "Number of starting points selected (from "
-                    << this->vargraph->node_count << "): "
-                    << this->starting_loci.size();
         }
         /* ====================  METHODS       ======================================= */
           inline void
         traverse ( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {
-          TIMED_SCOPE(traverseTimer, "traverse");
-#ifndef NDEBUG
-          unsigned int locus_counter = 0;
-          unsigned int nof_reports = 0;
-#endif
+          auto timer = stats_type( "traverse" );
+          stats_type::set_total_nof_loci( this->starting_loci.size() );
+
           TTraverser traverser( this->vargraph, &(this->reads_index), this->seed_len );
-          for (auto locus : this->starting_loci)
+          for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
+            const auto& locus = this->starting_loci[ idx ];
+            stats_type::set_current_locus( locus );
+            stats_type::set_current_locus_idx( idx );
+
             traverser.set_start_locus( locus );
             traverser.run( callback );
-#ifndef NDEBUG
-            ++locus_counter;
-            if (locus_counter % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
-            {
-              locus_counter = 0;
-              ++nof_reports;
-              PERFORMANCE_CHECKPOINT_WITH_ID(traverseTimer,
-                  std::to_string(nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO));
-            }
-#endif
           }
         }
       private:
@@ -443,86 +520,31 @@ namespace grem
           inline void
         index_reads( )
         {
-          TIMED_BLOCK(readsIndexTimer, "index-reads")
           {
+            auto timer = stats_type( "index-reads" );
             this->reads_index = typename TTraverser::index_type( this->reads.str );
           }
-          TIMED_BLOCK(seedingTimer, "seeding") {
+          {
+            auto timer = stats_type( "seeding" );
             this->seeds =
               seeding ( this->reads.str, this->seed_len, FixedLengthNonOverlapping() );
           }
-          TIMED_BLOCK(seedsIndexTimer, "index-seeds") {
+          {
+            auto timer = stats_type( "index-seeds" );
             this->seeds_index = typename TTraverser::index_type( this->seeds );
           }
         }
     };
 
-  /* interface functions */
-
   /**
-   *  @brief  Save coverage (nodes covered by each path) of the picked paths.
-   *
-   *  @param[in]  paths_covered_nodes The vector of `NodeCoverage` of each path.
-   *  @param[in]  paths_index_file The file path prefix of the paths index.
-   *
-   *  It saves the paths coverage; i.e. the list of node IDs covered by each path,
-   *  separatedly in files. These files in conjuction with the paths index can be
-   *  considered as an offline index for seed finding.
+   *  @brief  Stat template class specialization for `MapperStat`.
    */
-  void
-    save_paths_coverage ( std::vector< VarGraph::NodeCoverage >& paths_covered_nodes,
-        const std::string path_prefix )
+  template< class TTraverser, typename TSpec >
+    class Stat< Mapper< TTraverser, TSpec > >
     {
-      std::ofstream file_stream;
-      unsigned int i = 0;
-      for ( const auto& covered_nodes : paths_covered_nodes ) {
-        std::string file_path = path_prefix + std::to_string ( i );
-        file_stream.open( file_path, std::ofstream::out | std::ofstream::binary );
-        serialize( file_stream, covered_nodes,
-            covered_nodes.begin(), covered_nodes.end() );
-        file_stream.close();
-        ++i;
-      }
-    }  /* -----  end of function save_paths_coverage  ----- */
-
-  /**
-   *  @brief  Load coverage (node covered by each path) from file.
-   *
-   *  @param[out]  paths_covered_nodes The vector of `NodeCoverage` to be filled.
-   *  @param[in]   path_prefix The file path prefix of the saved paths.
-   *  @return true if it successfully load the node coverage of the paths from file;
-   *          otherwise false.
-   *
-   *  It reads the saved files and insert each node ID to the unordered set. The file is
-   *  prefixed by the number of node IDs stored in the file.
-   */
-  bool
-    load_paths_coverage ( std::vector< VarGraph::NodeCoverage >& paths_covered_nodes,
-        const std::string path_prefix, unsigned int path_num )
-    {
-      std::ifstream file_stream;
-
-      VarGraph::NodeCoverage covered_nodes;
-      paths_covered_nodes.reserve ( path_num );
-
-      for ( unsigned int i = 0; i < path_num; ++i ) {
-        std::string file_path = path_prefix + std::to_string ( i );
-        file_stream.open( file_path, std::ifstream::in | std::ifstream::binary );
-
-        if ( !file_stream ) {
-          paths_covered_nodes.clear();
-          return false;
-        }
-
-        deserialize( file_stream, covered_nodes,
-            std::inserter( covered_nodes, covered_nodes.end() ));
-        paths_covered_nodes.push_back ( covered_nodes );
-        file_stream.close();
-        covered_nodes.clear();
-      }
-
-      return true;
-    }  /* -----  end of function load_paths_coverage  ----- */
+      public:
+        typedef MapperStat< TSpec > Type;
+    };  /* ----------  end of template class Stat  ---------- */
 }
 
 #endif  // end of MAPPER_H__

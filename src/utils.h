@@ -18,6 +18,8 @@
 #ifndef  UTILS_H__
 #define  UTILS_H__
 
+#include <cstdio>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <memory>
@@ -47,6 +49,7 @@ namespace grem {
       return;
     }  /* -----  end of function readRecords  ----- */
 
+
   /**
    *  @brief  Check whether a string ends with another string.
    *
@@ -56,7 +59,7 @@ namespace grem {
    *
    *  It checks the first string whether the second one is one of its suffixes or not.
    */
-    bool
+    inline bool
   ends_with ( std::string str, std::string suf )
   {
     if ( suf.length() <= str.length() ) {
@@ -66,6 +69,44 @@ namespace grem {
     }
     return false;
   }  /* -----  end of function ends_with  ----- */
+
+
+  /**
+   *  @brief  Check if the given file exists and is readable.
+   *
+   *  @param  file_name The name of the file to be checked.
+   *  @return `true` if exists and is readable; otherwise `false`.
+   *
+   *  Use `std::ifstream` to check for readability of the given file because of
+   *  portability.
+   */
+    inline bool
+  readable ( const std::string& file_name )
+  {
+    std::ifstream ifs( file_name );
+    return ifs.good();
+  }  /* -----  end of function exists  ----- */
+
+
+  /**
+   *  @brief  Check if the given file exists and is writable.
+   *
+   *  @param  file_name The name of the file to be checked.
+   *  @return `true` if exists and is writable; otherwise `false`.
+   *
+   *  Use `std::ofstream` to check for writability of the given file because of
+   *  portability.
+   */
+    inline bool
+  writable ( const std::string& file_name )
+  {
+    std::ofstream ofs( file_name );
+    if ( ofs.good() ) {
+      std::remove( file_name.c_str() );
+      return true;
+    }
+    return false;
+  }  /* -----  end of function writable  ----- */
 
 
   typedef uint64_t TContainerSize;

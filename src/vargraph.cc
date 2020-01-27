@@ -28,25 +28,8 @@
 
 namespace grem
 {
-  /**
-   *  @brief  Get string value of the given path.
-   *
-   *  @param  path The given path as a set of node IDs.
-   *  @return string representation of the path in the variation graph.
-   *
-   *  Get string representation of a path in the variation graph.
-   */
-  std::string
-    VarGraph::get_string ( std::vector < nodeid_type > &path ) const
-    {
-      std::string repr_str;
-      for ( const auto& node_id : path ) {
-        repr_str += this->node_sequence( node_id );
-      }
-      return repr_str;
-    }  /* -----  end of method VarGraph::get_string  ----- */
-
   /* VarGraph iterators template specialization  --------------------------------- */
+
   template< typename TSpec >
     using VarGraphIterTraits = typename GraphIter< VarGraph, TSpec >::TTraits;
 
@@ -295,7 +278,7 @@ namespace grem
       begin_itr.itr_value = start_node_id;
       begin_itr.state.start = start_node_id;
       begin_itr.state.end = false;
-      begin_itr.state.current_path.insert( begin_itr.itr_value );
+      add_node( begin_itr.state.current_path, begin_itr.itr_value );
       begin_itr.state.setback = 0;
 
       return begin_itr;
@@ -320,8 +303,8 @@ namespace grem
       it.visiting_buffer.clear();
       it.state.end = false;  // Re-set at-end flag.
       it.visited.clear();
-      it.state.current_path.clear();
-      it.state.current_path.insert( it.itr_value );
+      clear( it.state.current_path );
+      add_node( it.state.current_path, it.itr_value );
       it.state.setback = 0;
     }  /* -----  end of template function go_begin  ----- */
 
@@ -392,7 +375,7 @@ namespace grem
       if ( this->state.setback != 0 ) {
         this->visiting_buffer.push_back ( this->itr_value );
       }
-      this->state.current_path.insert( this->itr_value );
+      add_node( this->state.current_path, this->itr_value );
 
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper <> >::operator++  ----- */
@@ -407,8 +390,8 @@ namespace grem
         this->visiting_buffer.push_back( this->itr_value );
       }
       this->state.end = false;                // Reset at-end flag.
-      this->state.current_path.clear();
-      this->state.current_path.insert( this->itr_value );
+      clear( this->state.current_path );
+      add_node( this->state.current_path, this->itr_value );
       return *this;
     }  /* -----  end of method GraphIter < VarGraph, Haplotyper<> >::operator--  ----- */
 
@@ -440,12 +423,12 @@ namespace grem
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
 
-  /* Haplotyper iterator interface functions  ------------------------------------ */
+  /* Haplotyper iterator interface function  ------------------------------------- */
 
   /**
    *  @brief  Simulate a unique haplotype.
    *
-   *  @param[out]  haplotype The simulated haplotype as a list of node IDs.
+   *  @param[out]  haplotype The simulated haplotype as a Path.
    *  @param[in,out]  iter Haplotyper graph iterator.
    *  @param[in]  tries Number of tries if the generated haplotype is not unique.
    *
@@ -455,27 +438,27 @@ namespace grem
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
-  void
-    get_uniq_haplotype ( std::vector < VarGraph::nodeid_type > &haplotype,
-        typename seqan::Iterator < VarGraph, Haplotyper >::Type &iter,
-        int tries )
-    {
-      do {
-        haplotype.clear();
-        while ( !at_end ( iter ) ) {
-          haplotype.push_back ( *iter );
-          ++iter;
-        }
-        if ( tries-- && iter [ haplotype ] ) {
-          iter--;  // discard the traversed path and reset the Haplotyper iterator.
-        }
-        else {
-          --iter;  // save the traversed path and reset the Haplotyper iterator.
-          break;
-        }
-        /* trying again */
-      } while (true);
-    }
+    void
+  get_uniq_haplotype( Path<>& haplotype,
+      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+      int tries )
+  {
+    do {
+      clear( haplotype );
+      while ( !at_end ( iter ) ) {
+        add_node( haplotype, *iter );
+        ++iter;
+      }
+      if ( tries-- && iter [ haplotype.get_nodes() ] ) {
+        iter--;  // discard the traversed path and reset the Haplotyper iterator.
+      }
+      else {
+        --iter;  // save the traversed path and reset the Haplotyper iterator.
+        break;
+      }
+      /* trying again */
+    } while (true);
+  }
 
-  /* END OF Haplotyper iterator interface functions  ----------------------------- */
+  /* END OF Haplotyper iterator interface function  ------------------------------ */
 }

@@ -14,6 +14,7 @@
  */
 
 #include <cstdlib>
+#include <csignal>
 #include <iostream>
 #include <ios>
 #include <fstream>
@@ -29,9 +30,11 @@
 #include "vargraph.h"
 #include "mapper.h"
 #include "traverser.h"
+#include "pathset.h"
 #include "sequence.h"
 #include "utils.h"
 #include "options.h"
+#include "stat.h"
 #include "logger.h"
 #include "release.h"
 
@@ -48,21 +51,24 @@ using namespace grem;
 // TODO: handle 'N's.
 // TODO: comments' first letter?
 // TODO: fix code style: spacing.
+// TODO: inconsistency: some public methods are interface functions, some are members.
 
 // Forwards
   void
 startup ( const Options & options );
-
-template < typename TIndex, typename TCoverage >
-  bool
-load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_nodes,
-    const std::string &index_file, unsigned int path_num );
 
 template < typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
     unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
     std::string paths_index_file, bool nomapping, TIndexSpec const /* Tag */ );
+
+template< typename TMapper >
+    void
+  signal_handler( int signal );
+
+  void
+default_signal_handler( int signal ) { /* Do nothing */ }
 
   seqan::ArgumentParser::ParseResult
 parse_args ( Options & options, int argc, char *argv[] );
@@ -95,6 +101,8 @@ int main(int argc, char *argv[])
   // Verify that the version of the library that we linked against is
   // compatible with the version of the headers we compiled against.
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  std::signal( SIGUSR1, default_signal_handler );
 
   /* Configure loggers */
   config_logger(options);
@@ -169,34 +177,6 @@ startup ( const Options & options )
 }
 
 
-template < typename TIndex, typename TCoverage >
-  bool
-load_paths_index ( TIndex &paths_index, std::vector< TCoverage > &paths_covered_nodes,
-    const std::string &index_file, unsigned int path_num )
-{
-  if ( !open ( paths_index, index_file.c_str() ) ||
-     !load_paths_coverage ( paths_covered_nodes, index_file + "_path_", path_num ))
-  {
-    LOG(INFO) << "No valid paths index found. Creating one...";
-    return false;
-  }
-
-  LOG(INFO) << "Paths index found. Loaded.";
-
-  LOG(INFO) << "Verifying loaded paths index...";
-  auto nof_paths = length ( getFibre ( paths_index, FibreText() ) );
-  if ( nof_paths != path_num ) {
-    LOG(WARNING) << "The number of paths in the index file (" << nof_paths << ")"
-      " and the given parameter (" << path_num << ") are mismatched.";
-    LOG(INFO) << "Updating paths index...";
-
-    return false;
-  }
-
-  return true;
-}
-
-
 template<typename TIndexSpec >
   void
 find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_len,
@@ -206,27 +186,34 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
   typedef typename Traverser< TIndexSpec, BFS, ExactMatching >::Type TTraverser;
   Mapper< TTraverser > mapper( &vargraph, seed_len );
 
-  Dna5QStringSet paths;
-  std::vector < VarGraph::NodeCoverage > paths_covered_nodes;
-  Dna5QStringSetIndex < seqan::IndexEsa<> > paths_index;
-  // :TODO:Fri Aug 25 00:15:\@cartoonist: Move paths index part to Mapper class.
-  // :TODO:Thu Apr 13 03:18:\@cartoonist: Load paths_covered_nodes.
+  typedef decltype( mapper ) TMapper;
+  std::signal( SIGUSR1, signal_handler< TMapper > );
+
+  LOG(INFO) << "Loading paths index...";
+  // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
+  PathSet< seqan::IndexEsa<> > paths;
   if ( path_num == 0 ) {
     LOG(INFO) << "Specified number of path is 0. Skipping paths indexing...";
   }
-  else if ( !load_paths_index
-      ( paths_index, paths_covered_nodes, paths_index_file, path_num ) ) {
-    mapper.pick_paths ( paths, paths_covered_nodes, path_num );
-    paths_index = Dna5QStringSetIndex< seqan::IndexEsa<> > (paths);
-
-    TIMED_BLOCK(pathIndexingTimer, "path-indexing")
+  else if ( !paths.load( paths_index_file, &vargraph, path_num ) ) {
+    LOG(INFO) << "No valid paths index found. Picking paths...";
+    LOG(INFO) << "Picking " << path_num << " different path(s) on the graph...";
+    mapper.pick_paths( paths, path_num );
+    LOG(INFO) << "Picking paths: " << Timer::get_duration( "pick-paths" ).count() << " us";
     {
+      auto timer = Timer( "path-indexing" );
       LOG(INFO) << "Indexing the paths...";
-      create_index ( paths_index );
+      paths.create_index();
       LOG(INFO) << "Saving paths index...";
-      save ( paths_index, paths_index_file.c_str() );
-      save_paths_coverage ( paths_covered_nodes, paths_index_file + "_path_" );
+      if ( !paths.save( paths_index_file.c_str() ) ) {
+        LOG(WARNING) << "Paths index file is not specified or is not writable.";
+        LOG(INFO) << "Skipping...";
+      }
     }
+    LOG(INFO) << "Path indexing: " << Timer::get_duration( "path-indexing" ).count() << " us";
+  }
+  else {
+    LOG(INFO) << "Paths index found. Loaded.";
   }
 
   if ( nomapping ) {
@@ -234,7 +221,12 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
     return;
   }
 
-  mapper.add_all_loci ( paths_covered_nodes, seed_len, start_every );
+  LOG(INFO) << "Selecting starting loci...";
+  mapper.add_all_loci( paths, seed_len, start_every );
+  LOG(INFO) << "Add starting loci: " << Timer::get_duration( "add-starts" ).count() << " us";
+  LOG(INFO) << "Number of starting points selected (in "
+            << mapper.get_vargraph()->node_count << " nodes): "
+            << mapper.get_starting_loci().size();
 
    // :TODO:Mon May 08 12:02:\@cartoonist: read id reported in the seed is relative to the chunk.
   long int found = 0;
@@ -247,31 +239,67 @@ find_seeds ( VarGraph & vargraph, SeqFileIn & reads_infile, unsigned int seed_le
 
   Dna5QRecords reads_chunk;
 
-  TIMED_BLOCK(t, "seed-finding")
+  LOG(INFO) << "Traverse the graph from selected starting points...";
   {
+    auto timer = Timer( "seed-finding" );
     while (true)
     {
-      TIMED_BLOCK(loadChunkTimer, "load-chunk")
+      LOG(INFO) << "Reading the next reads chunk...";
       {
+        auto timer = Timer( "load-chunk" );
         readRecords(reads_chunk, reads_infile, chunk_size);
       }
 
       if (length(reads_chunk.id) == 0) break;
+      LOG(INFO) << "Load reads chunk: " << Timer::get_duration( "load-chunk" ).count() << " us";
 
       mapper.set_reads( std::move( reads_chunk ) );
-      mapper.seeds_on_paths ( paths_index, write );
-      LOG(INFO) << "Total number of seeds found on paths: " << found;
+      LOG(INFO) << "Seeding: " << Timer::get_duration( "seeding" ).count() << " us";
+      LOG(INFO) << "Finding seeds on paths...";
+      auto pre_found = found;
+      mapper.seeds_on_paths( paths, write );
+      LOG(INFO) << "Seed finding on paths: " << Timer::get_duration( "paths-seed-find" ).count() << " us";
+      LOG(INFO) << "Total number of seeds found on paths: " << found - pre_found;
+      LOG(INFO) << "Traversing...";
       mapper.traverse ( write );
+      LOG(INFO) << "Traverse: " << Timer::get_duration( "traverse" ).count() << " us";
+      clear( reads_chunk.id );
+      clear( reads_chunk.str );
     }
   }
 
+  LOG(INFO) << "Seed finding: " << Timer::get_duration( "seed-finding" ).count() << " us";
+  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_loci().size();
   LOG(INFO) << "Total number of seeds found: " << found;
   LOG(INFO) << "Total number of reads covered: " << covered_reads.size();
-  LOG(INFO) << "Total number of starting points: " << mapper.get_starting_loci().size();
-#ifndef NDEBUG
   LOG(INFO) << "Total number of 'godown' operations: "
             << TTraverser::stats_type::get_total_nof_godowns();
-#endif
+
+  LOG(INFO) << "All Timers";
+  LOG(INFO) << "----------";
+  for ( const auto& timer : Timer::get_timers() ) {
+    LOG(INFO) << timer.first << ": " << Timer::get_duration( timer.first ).count() << " us";
+  }
+}
+
+
+template< typename TMapper >
+  void
+signal_handler( int signal )
+{
+  std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
+            << "---------------------------" << std::endl;
+  std::cout << "Elapsed time in traversal phase: "
+            << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
+            << std::endl;
+  std::cout << "Current node: ("
+            << Stat< TMapper >::Type::get_current_locus().node_id() << ", "
+            << Stat< TMapper >::Type::get_current_locus().offset() << ")" << std::endl;
+  auto idx = Stat< TMapper >::Type::get_current_locus_idx();
+  auto total = Stat< TMapper >::Type::get_total_nof_loci();
+  unsigned int wlen = std::to_string( total ).length();
+  std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
+            << total << " [%" << std::setw(3) << idx * 100 / total << "]" << std::endl;
 }
 
 

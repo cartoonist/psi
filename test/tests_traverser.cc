@@ -15,19 +15,17 @@
  *  See LICENSE file for more information.
  */
 
-#include <iostream>
 #include <fstream>
-#include <string>
 #include <vector>
+#include <string>
 
 #include <seqan/seq_io.h>
-#include <seqan/seeds.h>
 
 #include "tests_base.h"
 #include "sequence.h"
-#include "traverser.h"
-#include "mapper.h"
+#include "index.h"
 #include "vargraph.h"
+#include "traverser.h"
 #include "utils.h"
 #include "logger.h"
 
@@ -91,52 +89,6 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
             traverser.set_start_locus( node_id, f );
             traverser.run( count_hits );
           }
-        }
-      }
-    }
-  }
-}
-
-SCENARIO ( "Serialize/deserialize paths nodes coverage into/from the file", "[traverser]" )
-{
-  GIVEN ( "Nodes coverage of two paths" )
-  {
-    std::vector< VarGraph::NodeCoverage > paths_node_coverage;
-    VarGraph::NodeCoverage covered_nodes;
-    unsigned int paths_num = 2;
-    std::string file_path = "/tmp/test_path_coverage";
-
-    for ( unsigned int i = 0; i < paths_num; ++i ) {
-      for ( VarGraph::nodeid_type j = 100*(i+1); j < 100*(i+1) + 12; ++j ) {
-        covered_nodes.insert ( j );
-      }
-      paths_node_coverage.push_back ( covered_nodes );
-      covered_nodes.clear();
-    }
-
-    WHEN ( "Serialize it to the file" )
-    {
-      save_paths_coverage ( paths_node_coverage, file_path );
-
-      THEN ( "Deserializing should yield the same coverage" )
-      {
-        std::vector< VarGraph::NodeCoverage > paths_coverage_reloaded;
-        load_paths_coverage ( paths_coverage_reloaded, file_path, paths_num );
-
-        std::vector< VarGraph::nodeid_type > sorted_node_ids;
-        REQUIRE ( paths_coverage_reloaded.size() == paths_num );
-        for ( unsigned int i = 0; i < paths_num; ++i ) {
-          REQUIRE ( paths_coverage_reloaded[i].size() == 12 );
-          for ( const auto &node_id : paths_coverage_reloaded[i] ) {
-            sorted_node_ids.push_back ( node_id );
-          }
-          unsigned int j = 0;
-          std::sort ( sorted_node_ids.begin(), sorted_node_ids.end() );
-          for ( const auto &node_id : sorted_node_ids ) {
-            REQUIRE ( node_id == 100*(i+1) + j );
-            ++j;
-          }
-          sorted_node_ids.clear();
         }
       }
     }

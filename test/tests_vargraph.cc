@@ -66,6 +66,150 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
   }
 }
 
+SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
+{
+  std::vector< VarGraph::nodeid_type > nodes
+    = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
+  std::vector< VarGraph::nodeid_type > other_nodes
+    = { 56, 123, 9, 10, 27, 9, 10 };
+  auto path_basic_test = [&nodes, &other_nodes]( const auto& path ){
+    REQUIRE( length( path ) == nodes.size() );
+    for ( const auto& n : nodes ) {
+      REQUIRE( contains( path, n ) );
+    }
+    for ( const auto& on : other_nodes ) {
+      REQUIRE( !contains( path, on ) );
+    }
+    REQUIRE( contains( path, nodes.begin(), nodes.end() ));
+    REQUIRE( !contains( path, other_nodes.begin(), other_nodes.end() ) );
+  };
+
+  GIVEN( "A small variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    WHEN( "A Full path in the graph constructed at once" )
+    {
+      Path< Full > path( &vargraph );
+      path.set_nodes( nodes );
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path );
+      }
+    }
+
+    WHEN( "A Full path in the graph constructed incrementally" )
+    {
+      Path< Full > path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( path, n );
+      }
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path );
+      }
+    }
+  }
+}
+
+SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
+{
+  std::vector< VarGraph::nodeid_type > nodes
+    = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
+  std::string init_sequence = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTA"
+    "TTTGAAGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
+
+  GIVEN( "A small variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    GIVEN( "A Full path in the graph" )
+    {
+      Path< Full > path( &vargraph );
+      //path.set_nodes( nodes );
+      for ( const auto& n : nodes ) {
+        add_node( path, n );
+      }
+
+      REQUIRE( path.get_sequence() == init_sequence );
+
+      WHEN( "The last node is trimmed" )
+      {
+        VarGraph::offset_type trimmed_len
+          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        trim( path, 37 );
+
+        THEN( "Its length and sequence should be decreased accordingly" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim further" )
+      {
+        std::size_t trim_len = 0;
+        auto it = path.get_nodes().end();
+        for ( it -= 6; it != path.get_nodes().end(); ++it ) {
+          trim_len += vargraph.node_length( *it );
+        }
+        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        trim( path, 29 );
+        THEN( "Its length and sequence should be decreased accordingly" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing zero as node ID" )
+      {
+        VarGraph::offset_type trimmed_len
+          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        trim( path, 0 );
+        THEN( "The last node should be trimmed" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing no parameter" )
+      {
+        VarGraph::offset_type trimmed_len
+          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        trim( path );
+        THEN( "The last node should be trimmed" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( 0, trimmed_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing unavailable node ID" )
+      {
+        trim( path, 70 );
+        THEN( "It should be empty" )
+        {
+          REQUIRE( path.get_sequence().length() == 0 );
+        }
+      }
+    }
+  }
+}
+
 // VarGraph graph iterators test scenarios.
 SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
 {
@@ -79,33 +223,33 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      std::vector < VarGraph::nodeid_type > haplotype1;
-      std::vector < VarGraph::nodeid_type > haplotype2;
-      std::vector < VarGraph::nodeid_type > haplotype3;
-      std::vector < VarGraph::nodeid_type > haplotype4;
-      std::vector < VarGraph::nodeid_type > haplotype5;
-      std::vector < VarGraph::nodeid_type > haplotype6;
-      std::vector < VarGraph::nodeid_type > haplotype7;
-      std::vector < VarGraph::nodeid_type > haplotype8;
-      get_uniq_haplotype ( haplotype1, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype2, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype3, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype4, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype5, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype6, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype7, hap_itr, 1 );
-      get_uniq_haplotype ( haplotype8, hap_itr, 1 );
+      Path<> haplotype1( &vargraph );
+      Path<> haplotype2( &vargraph );
+      Path<> haplotype3( &vargraph );
+      Path<> haplotype4( &vargraph );
+      Path<> haplotype5( &vargraph );
+      Path<> haplotype6( &vargraph );
+      Path<> haplotype7( &vargraph );
+      Path<> haplotype8( &vargraph );
+      get_uniq_haplotype( haplotype1, hap_itr, 1 );
+      get_uniq_haplotype( haplotype2, hap_itr, 1 );
+      get_uniq_haplotype( haplotype3, hap_itr, 1 );
+      get_uniq_haplotype( haplotype4, hap_itr, 1 );
+      get_uniq_haplotype( haplotype5, hap_itr, 1 );
+      get_uniq_haplotype( haplotype6, hap_itr, 1 );
+      get_uniq_haplotype( haplotype7, hap_itr, 1 );
+      get_uniq_haplotype( haplotype8, hap_itr, 1 );
 
       THEN ( "they should be unique" )
       {
-        std::string hapstr1 = vargraph.get_string ( haplotype1 );
-        std::string hapstr2 = vargraph.get_string ( haplotype2 );
-        std::string hapstr3 = vargraph.get_string ( haplotype3 );
-        std::string hapstr4 = vargraph.get_string ( haplotype4 );
-        std::string hapstr5 = vargraph.get_string ( haplotype5 );
-        std::string hapstr6 = vargraph.get_string ( haplotype6 );
-        std::string hapstr7 = vargraph.get_string ( haplotype7 );
-        std::string hapstr8 = vargraph.get_string ( haplotype8 );
+        std::string hapstr1 = sequence( haplotype1 );
+        std::string hapstr2 = sequence( haplotype2 );
+        std::string hapstr3 = sequence( haplotype3 );
+        std::string hapstr4 = sequence( haplotype4 );
+        std::string hapstr5 = sequence( haplotype5 );
+        std::string hapstr6 = sequence( haplotype6 );
+        std::string hapstr7 = sequence( haplotype7 );
+        std::string hapstr8 = sequence( haplotype8 );
         unsigned int matched = 0;
         if ( hapstr1 == hapstr2 ) matched += pow ( 2, 0 );
         if ( hapstr1 == hapstr3 ) matched += pow ( 2, 1 );
@@ -146,14 +290,14 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
       }
       AND_THEN ( "they should have the correct length" )
       {
-        REQUIRE ( haplotype1.size() == 10 );
-        REQUIRE ( haplotype2.size() == 10 );
-        REQUIRE ( haplotype3.size() == 10 );
-        REQUIRE ( haplotype4.size() == 10 );
-        REQUIRE ( haplotype5.size() == 10 );
-        REQUIRE ( haplotype6.size() == 10 );
-        REQUIRE ( haplotype7.size() == 10 );
-        REQUIRE ( haplotype8.size() == 10 );
+        REQUIRE( length( haplotype1 ) == 10 );
+        REQUIRE( length( haplotype2 ) == 10 );
+        REQUIRE( length( haplotype3 ) == 10 );
+        REQUIRE( length( haplotype4 ) == 10 );
+        REQUIRE( length( haplotype5 ) == 10 );
+        REQUIRE( length( haplotype6 ) == 10 );
+        REQUIRE( length( haplotype7 ) == 10 );
+        REQUIRE( length( haplotype8 ) == 10 );
       }
     }
   }
@@ -168,60 +312,51 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      std::vector < VarGraph::nodeid_type > haplotype1;
-      std::vector < VarGraph::nodeid_type > haplotype2;
-      std::vector < VarGraph::nodeid_type > haplotype3;
-      get_uniq_haplotype ( haplotype1, hap_itr );
-      get_uniq_haplotype ( haplotype2, hap_itr );
-      get_uniq_haplotype ( haplotype3, hap_itr );
+      Path<> haplotype1( &vargraph );
+      Path<> haplotype2( &vargraph );
+      Path<> haplotype3( &vargraph );
+      get_uniq_haplotype( haplotype1, hap_itr );
+      get_uniq_haplotype( haplotype2, hap_itr );
+      get_uniq_haplotype( haplotype3, hap_itr );
 
       THEN ( "they should be unique" )
       {
-        std::string hapstr1 = vargraph.get_string ( haplotype1 );
-        std::string hapstr2 = vargraph.get_string ( haplotype2 );
-        std::string hapstr3 = vargraph.get_string ( haplotype3 );
-        REQUIRE ( hapstr1 != hapstr2 );
-        REQUIRE ( hapstr2 != hapstr3 );
-        REQUIRE ( hapstr1 != hapstr3 );
+        std::string hapstr1 = sequence( haplotype1 );
+        std::string hapstr2 = sequence( haplotype2 );
+        std::string hapstr3 = sequence( haplotype3 );
+        REQUIRE( hapstr1 != hapstr2 );
+        REQUIRE( hapstr2 != hapstr3 );
+        REQUIRE( hapstr1 != hapstr3 );
       }
       AND_THEN ( "they should have the correct length" )
       {
-        REQUIRE ( haplotype1.size() == 147 );
-        REQUIRE ( haplotype2.size() > 130 );  // randomised path.
-        REQUIRE ( haplotype3.size() > 130 );  // randomised path.
+        REQUIRE( length( haplotype1 ) == 147 );
+        REQUIRE( length( haplotype2 ) > 130 );  // randomised path.
+        REQUIRE( length( haplotype3 ) > 130 );  // randomised path.
       }
       AND_THEN ( "they all should cover 'merge' nodes" )
       {
-        std::vector< VarGraph::NodeCoverage > paths_coverage;
-        VarGraph::NodeCoverage cpath;
-        std::copy ( haplotype1.begin(), haplotype1.end(),
-            std::inserter ( cpath, cpath.end() ) );
-        paths_coverage.push_back ( cpath );
-        cpath.clear();
-        std::copy ( haplotype2.begin(), haplotype2.end(),
-            std::inserter ( cpath, cpath.end() ) );
-        paths_coverage.push_back ( cpath );
-        cpath.clear();
-        std::copy ( haplotype3.begin(), haplotype3.end(),
-            std::inserter ( cpath, cpath.end() ) );
-        paths_coverage.push_back ( cpath );
+        std::vector< Path<> > paths_set;
+        paths_set.push_back( haplotype1 );
+        paths_set.push_back( haplotype2 );
+        paths_set.push_back( haplotype3 );
 
-        REQUIRE ( get_path_coverage ( haplotype1.front(), paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 2, paths_coverage ) != 3 );
-        REQUIRE ( get_path_coverage ( 6, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 9, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 18, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 20, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 210, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 207, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 205, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 202, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 200, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 96, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 99, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 101, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( 104, paths_coverage ) == 3 );
-        REQUIRE ( get_path_coverage ( haplotype1.back(), paths_coverage ) == 3 );
+        REQUIRE( get_path_coverage( haplotype1.get_nodes().front(), paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 2, paths_set ) != 3 );
+        REQUIRE( get_path_coverage( 6, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 9, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 18, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 20, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 210, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 207, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 205, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 202, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 200, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 96, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 99, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 101, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( 104, paths_set ) == 3 );
+        REQUIRE( get_path_coverage( haplotype1.get_nodes().back(), paths_set ) == 3 );
       }
     }
   }

@@ -70,7 +70,7 @@ namespace grem {
    *  NOTE: In case that the length of sequence is not dividable by k the last seed
    *        may overlap its previous.
    */
-  Dna5QStringSet
+  inline Dna5QStringSet
     seeding ( Dna5QStringSet string_set, unsigned int k, FixedLengthNonOverlapping )
     {
       Dna5QStringSet seeds;
