@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 library('tibble')
+library('reshape2')
 library('ggplot2')
 library('optparse')
 
@@ -23,24 +24,26 @@ for (cdataset in levels(d$dataset)) {
     ds <- d[d$dataset == cdataset, c('pathno', 'stepsize', 'patched', 'locino', 'uniqnodes')]
     # Removing duplicates
     uds <- unique(ds[order(ds$pathno),])
+    # Melting
+    uds <- melt(uds, id.vars=c('pathno', 'stepsize', 'patched'))
     # Converting dataframe to tibble
     #t <- as_data_frame(uds)
     t <- tibble(npath=uds$pathno,
                 stepsize=factor(uds$stepsize),
                 type=factor(ifelse(uds$patched == 'yes', 'Patched', 'Full')),
-                nloci=uds$locino,
-                uniq=uds$uniqnodes)
-    g <- ggplot(t, aes(x=npath, y=nloci, colour=stepsize, shape=type, group=interaction(stepsize, type))) +
-         geom_point(size=2) +
-         geom_line() +
+                variable=factor(ifelse(uds$variable == 'locino', 'Loci', 'Nodes')),
+                loci=uds$value)
+    g <- ggplot(t, aes(x=npath, y=loci, colour=stepsize, linetype=variable, group=interaction(stepsize, variable))) +
+         geom_point(size=2, alpha=0.7) +
+         geom_line(alpha=0.7) +
+         facet_grid(. ~ type) +
          labs(title=opt$title,
               subtitle=sprintf(opt$subtitle, cdataset),
               x='Paths',
-              y='Loci',
+              y='Counts',
               colour='Step size',
-              shape='Type') +
+              linetype='Starting') +
          scale_x_continuous(breaks=unique(t$npath)) +
-         scale_shape_manual(values=c(2, 6)) +
          theme_bw()
     ggsave(paste('locino_', cdataset, '.pdf', sep=''))
 }

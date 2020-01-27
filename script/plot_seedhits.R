@@ -18,18 +18,21 @@ opt <- parse_args(opt_parser)
 # Reading input file
 d <- read.table(opt$file, sep=',', header=T)
 # Data subsetting
-ds <- d[, c('dataset', 'pathno', 'totalhits', 'seedsonpaths')]
+ds <- d[, c('dataset', 'pathno', 'patched', 'stepsize', 'totalhits', 'seedsonpaths')]
 # Removing duplicates
 uds <- unique(ds[order(ds$pathno),])
 uds <- na.omit(uds)
 # Converting dataframe to tibble
 #t <- as_data_frame(uds)
 t <- tibble(dataset=factor(uds$dataset),
-	    npath=uds$pathno,
-	    hits=uds$seedsonpaths/uds$totalhits)
+            npath=uds$pathno,
+            stepsize=factor(uds$stepsize),
+            type=factor(ifelse(uds$patched == 'yes', 'Patched', 'Full')),
+            hits=uds$seedsonpaths/uds$totalhits)
 g <- ggplot(t, aes(x=npath, y=hits, colour=dataset)) +
      geom_line() +
      geom_point() +
+     facet_grid(. ~ stepsize) +
      labs(title=opt$title,
           subtitle=opt$subtitle,
           x='Paths',

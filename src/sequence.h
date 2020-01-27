@@ -24,6 +24,7 @@
 #include <stdexcept>
 
 #include <seqan/seq_io.h>
+#include <kseq++/seqio.h>
 #include <seqan/sequence.h>
 #include <sdsl/bit_vectors.hpp>
 
@@ -122,6 +123,12 @@ namespace grem {
         {
           return p;
         }
+
+          inline size_type
+        raw_length( ) const
+        {
+          return std::string::size();  /* call base class size function */
+        }
     };
 
   template< >
@@ -192,6 +199,13 @@ namespace grem {
         length( ) const
         {
           return this->len;
+        }
+
+          inline size_type
+        raw_length( ) const
+        {
+          /* to avoid ambiguity of calling `length()` which will be overriden by StringSet class. */
+          return YaString::length();
         }
 
           inline pos_type
@@ -288,28 +302,6 @@ namespace grem {
     reserve( YaString< DiskBased >& dstr, TSize const size )
     {
       dstr.reserve( size );
-    }
-
-  template< typename TSpec >
-      inline void
-    open( YaString< TSpec >& ystr, const std::string& file_name )
-    {
-      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-      if( !ifs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      open( ystr, ifs );
-    }
-
-  template< typename TSpec >
-      inline void
-    save( YaString< TSpec >& ystr, const std::string& file_name )
-    {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( ystr, ofs );
     }
 
   template< typename TString >
@@ -435,6 +427,7 @@ namespace seqan {
           inline void
         initialize( )
         {
+          this->shrink_bv_str_breaks();
           sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
           sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
           this->initialized = true;
@@ -469,6 +462,7 @@ namespace seqan {
           inline void
         serialize( std::ostream& out )
         {
+          this->shrink_bv_str_breaks();
           grem::DiskString::serialize( out );
           grem::serialize( out, this->count );
           grem::serialize( out, static_cast< size_type >( this->initialized ) );
@@ -511,6 +505,12 @@ namespace seqan {
           if ( r == 0 ) return 0;
           return this->ss_str_breaks( r ) + 1;
         }
+
+          inline void
+        shrink_bv_str_breaks( )
+        {
+          this->bv_str_breaks.resize( this->raw_length() + 1 );  // shrink
+        }
     };
 
     inline void
@@ -520,11 +520,13 @@ namespace seqan {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     ++this->count;
     *this += str;
-    stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
-    sdsl::bit_vector new_bv( new_size, 0 );
-    grem::bv_icopy( this->bv_str_breaks, new_bv );
-    sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
-    this->bv_str_breaks[ new_size - 1 ] = 1;
+    stringsize_type breakpoint = this->raw_length();
+    if ( breakpoint >= this->bv_str_breaks.size() ) {
+      sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
+      grem::bv_icopy( this->bv_str_breaks, new_bv, 0, breakpoint - str.size() );
+      sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
+    }
+    this->bv_str_breaks[ breakpoint ] = 1;
     this->initialized = false;
   }
 
@@ -684,6 +686,7 @@ namespace seqan {
           inline void
         initialize( )
         {
+          this->shrink_bv_str_breaks( );
           sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
           sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
           this->initialized = true;
@@ -718,6 +721,7 @@ namespace seqan {
           inline void
         serialize( std::ostream& out )
         {
+          this->shrink_bv_str_breaks( );
           grem::MemString::serialize( out );
           grem::serialize( out, this->count );
           grem::serialize( out, static_cast< size_type >( this->initialized ) );
@@ -760,6 +764,12 @@ namespace seqan {
           if ( r == 0 ) return 0;
           return this->ss_str_breaks( r ) + 1;
         }
+
+          inline void
+        shrink_bv_str_breaks( )
+        {
+          this->bv_str_breaks.resize( this->raw_length() + 1 );  // shrink
+        }
     };
 
     inline void
@@ -769,11 +779,13 @@ namespace seqan {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     ++this->count;
     *this += str;
-    stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
-    sdsl::bit_vector new_bv( new_size, 0 );
-    grem::bv_icopy( this->bv_str_breaks, new_bv );
-    sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
-    this->bv_str_breaks[ new_size - 1 ] = 1;
+    stringsize_type breakpoint = this->raw_length();
+    if ( breakpoint >= this->bv_str_breaks.size() ) {
+      sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
+      grem::bv_icopy( this->bv_str_breaks, new_bv, 0, breakpoint - str.size() );
+      sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
+    }
+    this->bv_str_breaks[ breakpoint ] = 1;
     this->initialized = false;
   }
 
@@ -824,51 +836,10 @@ namespace seqan {
     {
       dstr.reserve( size );
     }
-
-  template< typename TSpec >
-      inline void
-    open( StringSet< grem::YaString< TSpec >, Owner<> >& ystrset,
-        const std::string& file_name )
-    {
-      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-      if( !ifs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      open( ystrset, ifs );
-    }
-
-  template< typename TSpec >
-      inline void
-    save( StringSet< grem::YaString< TSpec >, Owner<> >& ystrset,
-        const std::string& file_name )
-    {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( ystrset, ofs );
-    }
 }  /* -----  end of namespace seqan  ----- */
 
 namespace grem {
-  /**
-   *  @brief  String set with an ID associated with each string.
-   *
-   *  It is a wrapper class on StringSet associating an ID to each string.
-   */
-  template< typename TStringSet >
-    class NamedStringSet {
-      public:
-        /* ====================  DATA MEMBERS  ======================================= */
-        TStringSet str;
-        CharStringSet<> name;
-    };  /* ----------  end of template class NamedStringSet  ---------- */
-
-  /* Forwards */
-  template< typename TStringSet >
-    class Records;
-
-  /* Records interface functions */
+  /* StringSets interface functions */
   template< typename TText >
       inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
     position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
@@ -899,6 +870,11 @@ namespace grem {
       return pos.i2;
     }
 
+  /* Forwards */
+  template< typename TStringSet >
+    class Records;
+
+  /* Records interface functions */
   template< typename TText >
       inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
     position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
@@ -907,7 +883,7 @@ namespace grem {
       if ( pos >= length( records.str ) || pos < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
-      return pos;          /**< @brief In Owner records ID and position are identical. */
+      return records.offset + pos;
     }
 
   template< typename TText >
@@ -946,8 +922,11 @@ namespace grem {
       inline void
     clear( Records< seqan::StringSet< TText, seqan::Owner<> > >&records )
     {
-      clear( records.str );
       clear( records.name );
+      //clear( records.comment );
+      clear( records.str );
+      //clear( records.qual );
+      records.set_offset( 0 );
     }
 
   template< typename TText >
@@ -989,10 +968,7 @@ namespace grem {
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition start_pos )
     {
-      if ( start_pos >= length( ref.str ) || start_pos < 0 )
-      {
-        return false;
-      }
+      if ( start_pos >= length( ref.str ) || start_pos < 0 ) return false;
 
       clear( records.str );
       records.offset = start_pos;
@@ -1005,20 +981,7 @@ namespace grem {
     }
 
   template< typename TText >
-      inline bool
-    load_chunk( Records< seqan::StringSet< TText, grem::Dependent > >& records,
-        const Records< seqan::StringSet< TText, seqan::Owner<> > >& ref,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n )
-    {
-      if ( length( records.str ) == 0 ) {
-        return load_chunk( records, ref, n, 0 );
-      }
-      return load_chunk( records, ref, n, records.offset + n );
-    }
-
-  template< typename TText >
-    class Records< seqan::StringSet< TText, seqan::Owner<> > >
-    : public NamedStringSet< seqan::StringSet< TText, seqan::Owner<> > > {
+    class Records< seqan::StringSet< TText, seqan::Owner<> > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
@@ -1027,11 +990,34 @@ namespace grem {
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
-        /* ====================  METHODS       ======================================= */
+        /* ====================  DATA MEMBERS  ======================================= */
+        CharStringSet<> name;
+        //TStringSet2 comment;
+        TStringSet str;
+        //TStringSet2 qual;
+        /* ====================  LIFECYCLE     ======================================= */
+        Records( ) : offset( 0 ) { }
+        /* ====================  OPERATORS     ======================================= */
           inline typename seqan::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
           inline typename seqan::Reference< TStringSet >::Type
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
+        /* ====================  MUTATORS      ======================================= */
+          inline void
+        set_offset( std::size_t value ) {
+          this->offset = value;
+        }
+
+          inline void
+        add_offset( std::size_t value ) {
+          this->offset += value;
+        }
+      protected:
+        /* ====================  DATA MEMBERS  ======================================= */
+        std::size_t offset;
+        /* ====================  INTERFACE FUNCTIONS  ================================ */
+          friend TId
+        position_to_id< TText >( const Records& records, TPosition pos );
     };
 
   template< typename TText >
@@ -1065,11 +1051,6 @@ namespace grem {
             const Records< TRefStringSet >& ref,
             typename Records< TRefStringSet >::TPosition n,
             typename Records< TRefStringSet >::TPosition start_pos );
-
-          friend bool
-        load_chunk< TText >( Records& records,
-            const Records< TRefStringSet >& ref,
-            typename Records< TRefStringSet >::TPosition n );
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         std::size_t offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
@@ -1323,6 +1304,23 @@ namespace grem {
       assignQualities( records.str, quals );
       return;
     }  /* -----  end of template function readRecords  ----- */
+
+  template< typename TText >
+      inline void
+    readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+        klibpp::SeqStreamIn& iss,
+        unsigned int num_record=0 )
+    {
+      klibpp::KSeq rec;
+      clear( records );
+      records.set_offset( iss.counts() );
+      unsigned int i = 0;
+      while ( iss >> rec ) {
+        appendValue( records.name, rec.name );
+        appendValue( records.str, rec.seq );
+        if ( ++i == num_record ) break;
+      }
+    }
 
   /**
    *  @brief  Get next lexicographical k-mer in a specific position in the string.

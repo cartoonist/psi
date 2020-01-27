@@ -7,3 +7,6 @@
 [submodule "ext/cxxopts"]
 	path = ext/cxxopts
 	url = git@github.com:jarro2783/cxxopts.git
+[submodule "ext/kseq++"]
+	path = ext/kseq++
+	url = git@github.com:cartoonist/kseqpp.git

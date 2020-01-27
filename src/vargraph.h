@@ -60,10 +60,18 @@ namespace grem
       using xg::XG::XG;
 
       // Public methods
+      using xg::XG::id_to_rank;
+
+        inline rank_type
+      id_to_rank( vg::Position pos ) const
+      {
+        return this->id_to_rank( pos.node_id() );
+      }
+
         inline bool
       is_branch ( nodeid_type node_id ) const
       {
-        if ( this->edges_from( node_id ).size() > 1 ) {
+        if ( this->edges_from_count( node_id ) > 1 ) {
           return true;
         }
         return false;
@@ -72,7 +80,7 @@ namespace grem
         inline bool
       is_merge ( nodeid_type node_id ) const
       {
-        if ( this->edges_to( node_id ).size() > 1 ) {
+        if ( this->edges_to_count( node_id ) > 1 ) {
           return true;
         }
         return false;
@@ -81,13 +89,37 @@ namespace grem
         inline bool
       has_edges_from( nodeid_type node_id ) const
       {
-        return this->edges_from( node_id ).size() != 0;
+        return this->edges_from_count( node_id ) != 0;
       }
 
         inline bool
       has_edges_to( nodeid_type node_id ) const
       {
-        return this->edges_to( node_id ).size() != 0;
+        return this->edges_to_count( node_id ) != 0;
+      }
+
+        inline int
+      edges_count_by_id( nodeid_type id, bool is_reverse=false, bool go_left=false ) const
+      {
+        int counter = 0;
+        auto handle = this->get_handle( id, is_reverse );
+        this->follow_edges( handle, go_left, [&counter]( vg::handle_t const& h ) {
+            ++counter;
+            return true;
+          });
+        return counter;
+      }
+
+        inline int
+      edges_from_count( nodeid_type id, bool is_reverse=false ) const
+      {
+        return edges_count_by_id( id, is_reverse, false );
+      }
+
+        inline int
+      edges_to_count( nodeid_type id, bool is_reverse=false ) const
+      {
+        return edges_count_by_id( id, is_reverse, true );
       }
 
         inline std::make_unsigned_t< offset_type >
@@ -115,7 +147,8 @@ namespace grem
    *  uniform distribution in [0, out-degree(v)].
    */
     inline VarGraph::nodeid_type
-  get_random_adjacent ( const VarGraph &vargraph, VarGraph::nodeid_type node_id )
+  get_random_adjacent( const VarGraph &vargraph, VarGraph::nodeid_type node_id,
+     unsigned int seed=0 )
   {
     if ( !vargraph.has_edges_from( node_id ) ) {
       return 0;
@@ -124,7 +157,8 @@ namespace grem
     auto fwd_edges = vargraph.edges_from(node_id);
 
     std::random_device rd;  // Will be used to obtain a seed for the random no. engine
-    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+    if ( seed == 0 ) seed = rd(); // use random_device to generate a seed if seed is not provided
+    std::mt19937 gen( seed );  // Standard mersenne_twister_engine seeded with seed
     std::uniform_int_distribution<> dis(0, fwd_edges.size() - 1);
 
     return fwd_edges[ dis(gen) ].to();
@@ -178,6 +212,43 @@ namespace grem
       return 0;
     }  /* -----  end of template function least_covered_adjacent  ----- */
 
+  template< typename TPath, typename TContainer >
+      inline VarGraph::nodeid_type
+    least_covered_adjacent( const VarGraph& vargraph, TPath& tail,
+        const TContainer& paths_set )
+    {
+      if ( !tail.empty() && vargraph.has_edges_from( tail.back() ) ) {
+        auto fwd_edges = vargraph.edges_from( tail.back() );
+
+        VarGraph::nodeid_type first_adj_id = ( *fwd_edges.begin() ).to();
+        VarGraph::nodeid_type lc_node_id = first_adj_id;
+        tail.push_back( first_adj_id );         /* XXX: should be popped later! */
+        unsigned int lc = get_path_coverage( tail.begin(), tail.end(), paths_set );
+        tail.pop_back();
+
+        bool equally_covered = true;
+        for ( auto e_itr = ++fwd_edges.begin(); e_itr != fwd_edges.end(); ++e_itr ) {
+          const VarGraph::nodeid_type& next_node = ( *e_itr ).to();
+          tail.push_back( next_node );         /* XXX: should be popped later! */
+          unsigned int next_node_cov = get_path_coverage( tail.begin(), tail.end(), paths_set );
+          tail.pop_back();
+
+          if ( equally_covered && lc != next_node_cov ) equally_covered = false;
+
+          if ( next_node_cov < lc ) {
+            lc = next_node_cov;
+            lc_node_id = next_node;
+          }
+        }
+
+        if ( !equally_covered ) {
+          return lc_node_id;
+        }
+      }
+
+      return 0;
+    }
+
   /* END OF graph interface functions  ----------------------------------------- */
 
   /* GRAPH ITERATORS  ============================================================ */
@@ -220,12 +291,14 @@ namespace grem
       typedef struct {
         std::size_t lb_visited_rank;  /**< @brief lower-bound for rank of visited nodes. */
       } TState;
+      typedef void* TParameter;
+      constexpr static const TParameter param_default = nullptr;
     };
 
   /**
    *  @brief  Backtracker graph iterator tag.
    *
-   *  Specialization of generic graph iterator tag BacktrackerIter for VarGraph.
+   *  Specialization of generic graph iterator tag Backtracker for VarGraph.
    */
   template< >
     struct GraphIterTraits< VarGraph, Backtracker > {
@@ -238,27 +311,52 @@ namespace grem
         Value buffer;                           /**< @brief Buffer node ID. 0=nothing */
         bool end;                               /**< @brief End flag. */
       } TState;
+      typedef void* TParameter;
+      constexpr static const TParameter param_default = nullptr;
     };  /* ----------  end of struct Backtracker  ---------- */
 
   /**
    *  @brief  Haplotyper graph iterator tag.
    *
-   *  Specialization of generic graph iterator tag HaplotyperIter for VarGraph.
+   *  Specialization of generic graph iterator tag Haplotyper for VarGraph.
    */
-  template< >
-    struct GraphIterTraits< VarGraph, Haplotyper > {
+  template< typename TSpec >
+    struct GraphIterTraits< VarGraph, Haplotyper< TSpec > > {
       typedef VarGraph::nodeid_type Value;
-      typedef std::deque< Value > TContainer;
+      typedef std::unique_ptr< Path< VarGraph, Dynamic > > TContainer;
       /**< @brief Set of visited paths. */
-      typedef std::vector< Path< VarGraph, Micro > > TSet;
+      typedef std::vector< Path< VarGraph, Haplotype > > TSet;
       typedef TSet::size_type Level;        /**< @brief No. of selected path so far. */
       typedef struct {
         Value start;                        /**< @brief Start node ID. */
         bool end;                           /**< @brief End flag. */
-        Path< VarGraph, Micro > current_path;
+        std::unique_ptr< Path< VarGraph, Haplotype > > current_path;
         unsigned int setback;
+        unsigned int entropy;
       } TState;
+      typedef unsigned int TParameter;
+      static const TParameter param_default = 0;
     };  /* ----------  end of struct HaplotyperIter  ---------- */
+
+  /**
+   *  @brief  Haplotyper graph iterator tag.
+   *
+   *  Specialization of generic graph iterator tag Haplotyper< Random > for VarGraph.
+   */
+  template< >
+    struct GraphIterTraits< VarGraph, Haplotyper< Random > > {
+      typedef VarGraph::nodeid_type Value;
+      typedef Value Level;
+      typedef void* TContainer;
+      typedef void* TSet;
+      typedef struct {
+        Value start;                            /**< @brief Start node ID. */
+        Level level;                            /**< @brief Level. */
+        bool end;                               /**< @brief End flag. */
+      } TState;
+      typedef unsigned int TParameter;
+      constexpr static const TParameter param_default = 0;
+    };
 
   /* END OF tags template specialization  -------------------------------------- */
 
@@ -336,59 +434,41 @@ namespace grem {
     }
 
   template< >
-      inline GraphIter< VarGraph, BFS >
-    begin( const VarGraph& g,
-        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
+      inline void
+    begin( GraphIter< VarGraph, BFS >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start,
+        typename GraphIter< VarGraph, BFS >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
+      if ( start == 0 ) start = g->rank_to_id( 1 );
 
-      GraphIter< VarGraph, BFS > begin_itr;
-
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = g.rank_to_id( 1 );
+      it.state.lb_visited_rank = 1;
+      if ( g->id_to_rank( start ) == 1 ) {
+        ++it.state.lb_visited_rank;
       }
 
-      begin_itr.state.lb_visited_rank = 1;
-      if ( g.id_to_rank( start_node_id ) == 1 ) {
-        ++begin_itr.state.lb_visited_rank;
-      }
-
-      begin_itr.vargraph_ptr = &g;
-      begin_itr.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
-      begin_itr.visited.insert( std::make_pair( start_node_id, 0 ) );
-      begin_itr.itr_value = begin_itr.visiting_buffer.front().first;
-
-      return begin_itr;
+      it.vargraph_ptr = g;
+      it.visiting_buffer.push_back( std::make_pair( start, 0 ) );
+      it.visited.insert( std::make_pair( start, 0 ) );
+      it.itr_value = it.visiting_buffer.front().first;
     }
 
   template< >
       inline void
     go_begin( GraphIter< VarGraph, BFS >& it,
-        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start )
+        typename seqan::Value< GraphIter< VarGraph, BFS > >::Type start,
+        typename GraphIter< VarGraph, BFS >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
-
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = it.vargraph_ptr->rank_to_id( 1 );
-      }
+      if ( start == 0 ) start = it.vargraph_ptr->rank_to_id( 1 );
 
       it.state.lb_visited_rank = 1;
-      if ( it.vargraph_ptr->id_to_rank( start_node_id ) == 1 ) {
+      if ( it.vargraph_ptr->id_to_rank( start ) == 1 ) {
         ++it.state.lb_visited_rank;
       }
 
       it.visiting_buffer.clear();
-      it.visiting_buffer.push_back( std::make_pair( start_node_id, 0 ) );
+      it.visiting_buffer.push_back( std::make_pair( start, 0 ) );
       it.visited.clear();
-      it.visited.insert( std::make_pair( start_node_id, 0 ) );
+      it.visited.insert( std::make_pair( start, 0 ) );
       it.itr_value = it.visiting_buffer.front().first;
     }  /* -----  end of template function go_begin  ----- */
 
@@ -478,48 +558,29 @@ namespace grem {
     }  /* -----  end of template function at_end  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Backtracker >
-    begin( const VarGraph& g,
-        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
+      inline void
+    begin( GraphIter< VarGraph, Backtracker >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start,
+        typename GraphIter< VarGraph, Backtracker >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
+      if ( start == 0 ) start = g->rank_to_id( 1 );
 
-      GraphIter< VarGraph, Backtracker > begin_itr;
-      TValue start_node_id;
-
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = g.rank_to_id( 1 );
-      }
-
-      begin_itr.vargraph_ptr = &g;
-      begin_itr.itr_value = start_node_id;
-      begin_itr.state.buffer = 0;
-      begin_itr.state.end = false;
-      begin_itr.state.start = start_node_id;
-
-      return begin_itr;
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.state.buffer = 0;
+      it.state.end = false;
+      it.state.start = start;
     }  /* -----  end of template function begin  ----- */
 
   template< >
       inline void
     go_begin( GraphIter< VarGraph, Backtracker >& it,
-        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start )
+        typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type start,
+        typename GraphIter< VarGraph, Backtracker >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
+      if ( start == 0 ) start = it.state.start;  // Re-use stored start node.
 
-      TValue start_node_id;
-
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = it.state.start;  // Re-use stored start node.
-      }
-
-      it.itr_value = start_node_id;
+      it.itr_value = start;
       it.state.buffer = 0;  // Re-set buffer.
       it.state.end = false;  // Re-set at-end flag.
       it.visiting_buffer.clear();
@@ -593,66 +654,52 @@ namespace grem {
   /* Interface functions specialization. */
   template< >
       inline bool
-    at_end( GraphIter< VarGraph, Haplotyper >& it )
+    at_end( GraphIter< VarGraph, Haplotyper<> >& it )
     {
       return it.state.end;
     }  /* -----  end of template function at_end  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Haplotyper >
-    begin( const VarGraph& g,
-        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
+      inline void
+    begin( GraphIter< VarGraph, Haplotyper<> >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper<> > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper<> >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+      if ( start == 0 ) start = g->rank_to_id( 1 );
 
-      GraphIter< VarGraph, Haplotyper > begin_itr;
-
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = g.rank_to_id( 1 );
-      }
-
-      begin_itr.vargraph_ptr = &g;
-      begin_itr.itr_value = start_node_id;
-      begin_itr.state.start = start_node_id;
-      begin_itr.state.end = false;
-      add_node( begin_itr.state.current_path, begin_itr.itr_value );
-      begin_itr.state.setback = 0;
-
-      return begin_itr;
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.visiting_buffer = std::make_unique< Path< VarGraph, Dynamic > >( g );
+      it.state.start = start;
+      it.state.end = false;
+      it.state.current_path = std::make_unique< Path< VarGraph, Haplotype > >( g );
+      it.state.current_path->push_back( it.itr_value );
+      it.state.setback = 0;
+      it.state.entropy = 1;
     }  /* -----  end of template function begin  ----- */
 
   template< >
       inline void
-    go_begin( GraphIter< VarGraph, Haplotyper >& it,
-        typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type start )
+    go_begin( GraphIter< VarGraph, Haplotyper<> >& it,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper<> > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper<> >::parameter_type )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+      if ( start == 0 ) start = it.state.start;  // Re-use start node.
 
-      TValue start_node_id;
-      if ( start != 0 ) {
-        start_node_id = start;
-      }
-      else {
-        start_node_id = it.state.start;  // Re-use start node.
-      }
-
-      it.itr_value = start_node_id;
-      it.state.start = start_node_id;
-      it.visiting_buffer.clear();
+      it.itr_value = start;
+      it.state.start = start;
+      it.visiting_buffer->clear();
       it.state.end = false;  // Re-set at-end flag.
       it.visited.clear();
-      clear( it.state.current_path );
-      add_node( it.state.current_path, it.itr_value );
+      it.state.current_path->clear();
+      it.state.current_path->push_back( it.itr_value );
       it.state.setback = 0;
+      it.state.entropy = 1;
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
-      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper > >::Type
-    level( GraphIter< VarGraph, Haplotyper >& it )
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper<> > >::Type
+    level( GraphIter< VarGraph, Haplotyper<> >& it )
     {
       return it.visited.size();
     }
@@ -661,12 +708,10 @@ namespace grem {
 
   template< >
       inline void
-    GraphIter< VarGraph, Haplotyper >::set_setback( )
+    GraphIter< VarGraph, Haplotyper<> >::set_setback( )
     {
-      this->state.setback = (( this->visited.size() == 0 /* first path */||
-                               this->visited.size() % 2 /* odd */) ?
-                             this->visited.size() : this->visited.size() + 1 );
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::set_setback  ----- */
+      this->state.setback = this->visited.size();
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::set_setback  ----- */
 
   /**
    *  A setback path is a sequence of last 's' nodes of currently generating haplotype.
@@ -677,10 +722,10 @@ namespace grem {
    *  more diverse haplotypes.
    */
   template< >
-      inline GraphIter< VarGraph, Haplotyper >&
-    GraphIter< VarGraph, Haplotyper >::operator++( )
+      inline GraphIter< VarGraph, Haplotyper<> >&
+    GraphIter< VarGraph, Haplotyper<> >::operator++( )
     {
-      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper<> > >::Type TValue;
 
       if ( at_end( *this ) && this->raise_on_end ) {
         throw std::range_error( "The iterator has reached the end." );
@@ -691,9 +736,12 @@ namespace grem {
         return *this;
       }
 
-      if ( this->state.setback != 0 &&
-          this->visiting_buffer.size() >= this->state.setback ) {
-        this->visiting_buffer.pop_front();
+      if ( this->state.setback > 1 ) {
+        while ( this->visiting_buffer->size() != 0 &&
+            ( this->state.entropy > this->state.setback ) ) {
+          this->state.entropy /= this->vargraph_ptr->edges_from_count( this->visiting_buffer->front() );
+          this->visiting_buffer->pop_front();
+        }
       }
 
       TValue next_candidate = 0;
@@ -703,20 +751,27 @@ namespace grem {
       }
       else {
         // Search for a forward node such that the setback path is not in previous paths.
-        for ( auto e : fwd_edges ) {
-          this->visiting_buffer.push_back( e.to() );
-          if ( (*this)[ this->visiting_buffer ] ) {  // Visited?
-            this->visiting_buffer.pop_back();
-            continue;                             // Next edge.
+        do {
+          for ( auto e : fwd_edges ) {
+            this->visiting_buffer->push_back( e.to() );
+            if ( (*this)[ *this->visiting_buffer ] ) {  // Visited?
+              this->visiting_buffer->pop_back();
+              continue;                             // Next edge.
+            }
+            this->visiting_buffer->pop_back();       // No change to the iterator state.
+            next_candidate = e.to();                // Found!
+            break;
           }
-          this->visiting_buffer.pop_back();       // No change to the iterator state.
-          next_candidate = e.to();                // Found!
-        }
+        } while ( this->state.setback == 1 &&
+            next_candidate == 0 &&
+            this->visiting_buffer->empty() &&
+            ( this->visiting_buffer->push_back( this->itr_value ), true ) );
+        if ( this->state.setback == 1 && !this->visiting_buffer->empty() ) this->visiting_buffer->pop_back();
       }
       // If no unvisited setback path found, use a node with least path coverage.
       if ( next_candidate == 0 ) {
         next_candidate = least_covered_adjacent( *this->vargraph_ptr,
-            this->itr_value, this->visited );
+            *this->visiting_buffer, this->visited );
       }
       // If all forward edges are visited, pick one randomly with uniform distribution.
       if ( next_candidate == 0 ) {
@@ -725,38 +780,41 @@ namespace grem {
       }
 
       this->itr_value = next_candidate;
-      if ( this->state.setback != 0 ) {
-        this->visiting_buffer.push_back( this->itr_value );
+      if ( this->state.setback > 1 ) {
+        this->visiting_buffer->push_back( this->itr_value );
+        this->state.entropy *= this->vargraph_ptr->edges_from_count( this->itr_value );
       }
-      add_node( this->state.current_path, this->itr_value );
+      this->state.current_path->push_back( this->itr_value );
 
       return *this;
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator++  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator++  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Haplotyper >&
-    GraphIter< VarGraph, Haplotyper >::operator--( int )
+      inline GraphIter< VarGraph, Haplotyper<> >&
+    GraphIter< VarGraph, Haplotyper<> >::operator--( int )
     {
       this->itr_value = this->state.start;    // Reset the iterator to the start node.
-      this->visiting_buffer.clear();
-      if ( this->state.setback != 0 ) {
-        this->visiting_buffer.push_back( this->itr_value );
+      this->visiting_buffer->clear();
+      this->state.entropy = 1;
+      if ( this->state.setback > 1 ) {
+        this->visiting_buffer->push_back( this->itr_value );
+        this->state.entropy *= this->vargraph_ptr->edges_from_count( this->itr_value );
       }
       this->state.end = false;                // Reset at-end flag.
-      clear( this->state.current_path );
-      add_node( this->state.current_path, this->itr_value );
+      this->state.current_path->clear();
+      this->state.current_path->push_back( this->itr_value );
       return *this;
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator--  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator--  ----- */
 
   template< >
-      inline GraphIter< VarGraph, Haplotyper >&
-    GraphIter< VarGraph, Haplotyper >::operator--( )
+      inline GraphIter< VarGraph, Haplotyper<> >&
+    GraphIter< VarGraph, Haplotyper<> >::operator--( )
     {
-      this->visited.push_back( this->state.current_path );
+      this->visited.push_back( std::move( *this->state.current_path ) );
       this->set_setback();
       (*this)--;
       return *this;
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator--  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator--  ----- */
 
   /**
    *  @brief  Check if the given path is present in paths generated so far.
@@ -769,13 +827,268 @@ namespace grem {
   template< >
   template< typename TContainer >
       inline bool
-    GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer& path )
+    GraphIter< VarGraph, Haplotyper<> >::operator[]( const TContainer& path )
     {
       // :TODO:Sun Apr 01 00:01:\@cartoonist: Unordered check!
       // ... `PathSet< Path< TGraph, Compact >, InMemory >` should be used for
       // ... `this->visited`.
       return covered_by( path.begin(), path.end(), this->visited );
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator[]  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::operator[]  ----- */
+
+  /* Interface functions specialization. */
+
+  template< >
+      inline bool
+    at_end( GraphIter< VarGraph, Haplotyper< Local > >& it )
+    {
+      return it.state.end;
+    }  /* -----  end of template function at_end  ----- */
+
+  template< >
+      inline void
+    begin( GraphIter< VarGraph, Haplotyper< Local > >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Local > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
+    {
+      if ( start == 0 ) start = g->rank_to_id( 1 );
+
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.visiting_buffer = std::make_unique< Path< VarGraph, Dynamic > >( g );
+      it.state.start = start;
+      it.state.end = false;
+      it.state.current_path = std::make_unique< Path< VarGraph, Haplotype > >( g );
+      it.state.current_path->push_back( it.itr_value );
+      it.state.setback = 0;
+      it.param = p;
+    }  /* -----  end of template function begin  ----- */
+
+  template< >
+      inline void
+    go_begin( GraphIter< VarGraph, Haplotyper< Local > >& it,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Local > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
+    {
+      if ( start == 0 ) start = it.state.start;  // Re-use start node.
+
+      it.itr_value = start;
+      it.state.start = start;
+      it.visiting_buffer->clear();
+      it.state.end = false;  // Re-set at-end flag.
+      it.visited.clear();
+      it.state.current_path->clear();
+      it.state.current_path->push_back( it.itr_value );
+      it.state.setback = 0;
+      it.param = 0;
+    }  /* -----  end of template function go_begin  ----- */
+
+  template< >
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper< Local > > >::Type
+    level( GraphIter< VarGraph, Haplotyper< Local > >& it )
+    {
+      return it.visited.size();
+    }
+
+  /* Member functions specialization. */
+
+  template< >
+      inline void
+    GraphIter< VarGraph, Haplotyper< Local > >::set_setback( )
+    {
+      if ( this->visited.size() == 0 ) {
+        this->state.setback = 0;
+      }
+      else {
+        this->state.setback = 2 * ceil( log2( this->visited.size() + 1 ) ) - 1;
+      }
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper<> >::set_setback  ----- */
+
+  /**
+   *  A setback path is a sequence of last 's' nodes of currently generating haplotype
+   *  encompassing last k basepair. An unvisited setback path is a path that does
+   *  not occur as a subset of any previously generated haplotypes. This function search
+   *  in adjacent nodes set for a node that together with 's-1' previously selected nodes
+   *  forms an unvisited setback in order to cover more k-mers from all paths in the graph;
+   *  i.e. generating more diverse haplotypes.
+   */
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Local > >&
+    GraphIter< VarGraph, Haplotyper< Local > >::operator++( )
+    {
+      typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper< Local > > >::Type TValue;
+
+      if ( at_end( *this ) && this->raise_on_end ) {
+        throw std::range_error( "The iterator has reached the end." );
+      }
+
+      if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
+        this->state.end = true;
+        return *this;
+      }
+
+      if ( this->state.setback != 0 ) {
+        trim_front_by_len( *this->visiting_buffer, this->param - 1 );
+      }
+
+      TValue next_candidate = 0;
+      auto fwd_edges = this->vargraph_ptr->edges_from( this->itr_value );
+      if ( this->state.setback == 0 || fwd_edges.size() == 1 ) {
+        next_candidate = fwd_edges[0].to();
+      }
+      else {
+        // Search for a forward node such that the setback path is not in previous paths.
+        for ( auto e : fwd_edges ) {
+          this->visiting_buffer->push_back( e.to() );
+          if ( (*this)[ *this->visiting_buffer ] ) {  // Visited?
+            this->visiting_buffer->pop_back();
+            continue;                             // Next edge.
+          }
+          this->visiting_buffer->pop_back();      // No change to the iterator state.
+          next_candidate = e.to();                // Found!
+          break;
+        }
+      }
+      // If no unvisited setback path found, use a node with least path coverage.
+      if ( next_candidate == 0 ) {
+        next_candidate = least_covered_adjacent( *this->vargraph_ptr,
+            *this->visiting_buffer, this->visited );
+      }
+      // If all forward edges are visited, pick one randomly with uniform distribution.
+      if ( next_candidate == 0 ) {
+        next_candidate =
+          get_random_adjacent( ( *this->vargraph_ptr ),  this->itr_value );
+      }
+
+      this->itr_value = next_candidate;
+      if ( this->state.setback != 0 ) {
+        this->visiting_buffer->push_back( this->itr_value );
+      }
+      this->state.current_path->push_back( this->itr_value );
+
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator++  ----- */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Local > >&
+    GraphIter< VarGraph, Haplotyper< Local > >::operator--( int )
+    {
+      this->itr_value = this->state.start;    // Reset the iterator to the start node.
+      this->visiting_buffer->clear();
+      if ( this->state.setback != 0 ) {
+        this->visiting_buffer->push_back( this->itr_value );
+      }
+      this->state.end = false;                // Reset at-end flag.
+      this->state.current_path->clear();
+      this->state.current_path->push_back( this->itr_value );
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator--  ----- */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Local > >&
+    GraphIter< VarGraph, Haplotyper< Local > >::operator--( )
+    {
+      this->visited.push_back( std::move( *this->state.current_path ) );
+      this->set_setback();
+      (*this)--;
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator--  ----- */
+
+  /**
+   *  @brief  Check if the given path is present in paths generated so far.
+   *
+   *  @param  path A container of node IDs indicating nodes in a path.
+   *  @return `true` if the path is present; `false` otherwise.
+   *
+   *  Check whether the given path is generated before or not.
+   */
+  template< >
+  template< typename TContainer >
+      inline bool
+    GraphIter< VarGraph, Haplotyper< Local > >::operator[]( const TContainer& path )
+    {
+      // :TODO:Sun Apr 01 00:01:\@cartoonist: Unordered check!
+      // ... `PathSet< Path< TGraph, Compact >, InMemory >` should be used for
+      // ... `this->visited`.
+      return covered_by( path.begin(), path.end(), this->visited );
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator[]  ----- */
+
+  /* Interface functions specialization. */
+  template< >
+      inline bool
+    at_end( GraphIter< VarGraph, Haplotyper< Random > >& it )
+    {
+      return it.state.end;
+    }  /* -----  end of template function at_end  ----- */
+
+  template< >
+      inline void
+    begin( GraphIter< VarGraph, Haplotyper< Random > >& it, const VarGraph* g,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Random > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Random > >::parameter_type p )
+    {
+      if ( start == 0 ) start = g->rank_to_id( 1 );
+
+      it.vargraph_ptr = g;
+      it.itr_value = start;
+      it.state.start = start;
+      it.state.level = 1;
+      it.state.end = false;
+      it.param = p;
+    }  /* -----  end of template function begin  ----- */
+
+  template< >
+      inline void
+    go_begin( GraphIter< VarGraph, Haplotyper< Random > >& it,
+        typename seqan::Value< GraphIter< VarGraph, Haplotyper< Random > > >::Type start,
+        typename GraphIter< VarGraph, Haplotyper< Random > >::parameter_type p )
+    {
+      if ( start == 0 ) start = it.state.start;  // Re-use start node.
+
+      it.itr_value = start;
+      it.state.start = start;
+      it.state.level = 1;
+      it.state.end = false;  // Re-set at-end flag.
+      it.param = p;
+    }  /* -----  end of template function go_begin  ----- */
+
+  template< >
+      inline typename seqan::Level< GraphIter< VarGraph, Haplotyper< Random > > >::Type
+    level( GraphIter< VarGraph, Haplotyper< Random > >& it )
+    {
+      return it.state.level;
+    }
+
+  /* Member functions specialization. */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Random > >&
+    GraphIter< VarGraph, Haplotyper< Random > >::operator++( )
+    {
+      if ( at_end( *this ) && this->raise_on_end ) {
+        throw std::range_error( "The iterator has reached the end." );
+      }
+
+      if ( !this->vargraph_ptr->has_edges_from( this->itr_value ) ) {
+        this->state.end = true;
+        return *this;
+      }
+
+      this->itr_value =
+        get_random_adjacent( *this->vargraph_ptr,  this->itr_value, this->param );
+      ++this->state.level;
+
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Random > >::operator++  ----- */
+
+  template< >
+      inline GraphIter< VarGraph, Haplotyper< Random > >&
+    GraphIter< VarGraph, Haplotyper< Random > >::operator--( )
+    {
+      this->itr_value = this->state.start;
+      this->state.level = 1;
+      this->state.end = false;
+      return *this;
+    }  /* -----  end of method GraphIter< VarGraph, Haplotyper< Local > >::operator--  ----- */
 
   /* END OF Haplotyper template specialization  ---------------------------------- */
 
@@ -828,26 +1141,27 @@ namespace grem {
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
-    inline void
-  get_uniq_full_haplotype( Path< VarGraph >& haplotype,
-      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
-      int tries=0 )
-  {
-    do {
-      while ( !at_end( iter ) ) {
-        add_node( haplotype, *iter );
-        ++iter;
-      }
-      if ( tries-- && iter[ haplotype.get_nodes() ] ) {
-        iter--;  // discard the traversed path and reset the Haplotyper iterator.
-      }
-      else {
-        --iter;  // save the traversed path and reset the Haplotyper iterator.
-        break;
-      }
-      /* trying again */
-    } while ( true );
-  }
+  template< typename TSpec >
+      inline void
+    get_uniq_full_haplotype( Path< VarGraph >& haplotype,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
+        int tries=0 )
+    {
+      do {
+        while ( !at_end( iter ) ) {
+          add_node( haplotype, *iter );
+          ++iter;
+        }
+        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
+          iter--;  // discard the traversed path and reset the Haplotyper iterator.
+        }
+        else {
+          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          break;
+        }
+        /* trying again */
+      } while ( true );
+    }
 
   /**
    *  @brief  Add a simulated haplotype to the given pathset.
@@ -858,10 +1172,10 @@ namespace grem {
    *
    *  @overload for `PathSet`.
    */
-  template< typename TPathSet >
+  template< typename TPathSet, typename TSpec >
       inline void
     get_uniq_full_haplotype( TPathSet& paths,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         int tries=0 )
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
@@ -871,10 +1185,10 @@ namespace grem {
       }
     }
 
-  template< typename TPathSet >
+  template< typename TPathSet, typename TSpec >
       inline void
     get_uniq_patches( TPathSet& paths,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         unsigned int k )
     { // :TODO:Fri Dec 01 21:26:\@cartoonist: the length of pre-context sequence won't be k all the time.
       iter.raise_on_end = true;
@@ -889,7 +1203,7 @@ namespace grem {
           extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
-            paths.push_back( patch );
+            paths.push_back( std::move( patch ) );
             clear( patch );
             trim_front_by_len( frontier, k );
           }
@@ -899,12 +1213,14 @@ namespace grem {
             marked = 0;
             extend_to_k( frontier, iter, k );
           }
-          // Search for a patch of length k that is not covered by visited paths of `iter`.
-          while ( iter[ frontier.get_nodes() ] )
-          {
-            add_node( frontier, *iter );
-            trim_front_by_len( frontier, k );
-            ++iter;
+          if ( length( patch ) == 0 ) {
+            // Search for a patch of length k that is not covered by visited paths of `iter`.
+            while ( iter[ frontier.get_nodes() ] )
+            {
+              add_node( frontier, *iter );
+              trim_front_by_len( frontier, k );
+              ++iter;
+            }
           }
           // Extend the patch.
           patch += frontier;
@@ -925,17 +1241,17 @@ namespace grem {
             if ( marked != 0 ) trim_front( frontier, marked );
             patch += frontier;
           }
-          paths.push_back( patch );
+          paths.push_back( std::move( patch ) );
         }
         --iter;  // save the traversed path and reset the Haplotyper iterator.
       }
       iter.raise_on_end = false;
     }
 
-  template< typename TPathSet >
+  template< typename TPathSet, typename TSpec >
       inline bool
     get_uniq_patched_haplotype( TPathSet& paths,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+        GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         unsigned int context_len )
     {
       if ( level( iter ) == 0 ) {
@@ -946,6 +1262,18 @@ namespace grem {
       get_uniq_patches( paths, iter, context_len );
       if ( paths_no == paths.size() ) return false;
       return true;
+    }
+
+  template< typename TPath >
+      inline void
+    get_rnd_full_haplotype( TPath& haplotype,
+        GraphIter< VarGraph, Haplotyper< Random > >& iter )
+    {
+      while ( !at_end( iter ) ) {
+        haplotype.push_back( *iter );
+        ++iter;
+      }
+      --iter;
     }
 
   /* END OF Haplotyper iterator interface functions  ----------------------------- */

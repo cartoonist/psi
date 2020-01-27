@@ -17,7 +17,7 @@ SOURCES  += $(wildcard ${TESTDIR}/*.cc)
 SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
 ##  Header-only libraries:
-HEADERONLY_LIBS = catch spdlog cxxopts
+HEADERONLY_LIBS = catch spdlog cxxopts kseq++
 
 # Specifying phony targets.
 .PHONY: all init release debug test test-debug doc tags install install-debug clean distclean
@@ -48,18 +48,23 @@ endef
 
 all: release
 
-init: $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+init-header:
 	$(call echotitle,"Copying header-only libraries...")
 
+init: init-header $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+
 ${SRCDIR}/catch:
-	@cp -rv ${EXTDIR}/Catch/single_include ${SRCDIR}/catch
+	@cp -rv ${EXTDIR}/Catch/single_include $@
 
 ${SRCDIR}/spdlog:
-	@cp -rv ${EXTDIR}/spdlog/include/spdlog ${SRCDIR}/
+	@cp -rv ${EXTDIR}/spdlog/include/spdlog $@
 
 ${SRCDIR}/cxxopts:
-	@mkdir ${SRCDIR}/cxxopts
-	@cp -v ${EXTDIR}/cxxopts/include/cxxopts.hpp ${SRCDIR}/cxxopts/cxxopts.h
+	@mkdir $@
+	@cp -v ${EXTDIR}/cxxopts/include/cxxopts.hpp $@/cxxopts.h
+
+${SRCDIR}/kseq++:
+	@cp -rv ${EXTDIR}/kseq++/src $@
 
 release: init
 	$(call echotitle,"Building sources...")

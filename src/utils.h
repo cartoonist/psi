@@ -23,6 +23,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <set>
 #include <memory>
 
@@ -135,6 +136,73 @@ namespace grem {
     }
     return false;
   }  /* -----  end of function starts_with  ----- */
+
+
+  /**
+   *  @brief  Round up the given number to the closest power of 2.
+   *
+   *  @param  x The input integer
+   *  @return The closest power of 2.
+   *
+   *  XXX: If input is greater than 2^31, it returns zero.
+   */
+    inline uint32_t
+  roundup32( uint32_t x )
+  {
+    if ( x == 0 ) return 1;
+
+    --x;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    ++x;
+    return x;
+  }
+
+
+  /**
+   *  @brief  Round up the given number to the closest power of 2.
+   *
+   *  @param  x The input integer
+   *  @return The closest power of 2.
+   *
+   *  XXX: If input is greater than 2^63, it returns zero.
+   */
+    inline uint64_t
+  roundup64( uint64_t x )
+  {
+    if ( x == 0 ) return 1;
+
+    --x;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x |= x >> 32;
+    ++x;
+    return x;
+  }
+
+
+    inline std::string
+  complement( const std::string& str )
+  {
+    std::unordered_map< char, char > cmap = {
+      { 'A', 'T' },
+      { 'T', 'A' },
+      { 'C', 'G' },
+      { 'G', 'C' },
+      { 'N', 'N' },
+    };
+    std::string result;
+    result.resize( str.length() );
+    unsigned int cursor = 0;
+    for ( const auto& c : str ) result[ cursor++ ] = cmap[ c ];
+    return result;
+  }
 
 
   /**

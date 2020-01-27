@@ -51,10 +51,40 @@ namespace grem
   template< typename TIter, std::size_t MaxMismatches >
     struct MatchingTraits {
       static const std::size_t max_mismatches = MaxMismatches;
-      typedef struct {
+      typedef struct State {
+        typedef typename seqan::Container< TIter >::Type TIndex;
+
         TIter iter;
         unsigned char mismatches;
-        vg::Position pos;
+        vg::Position spos;
+        vg::Position cpos;
+        size_t depth;
+        bool end;
+
+        State( TIndex* index, unsigned char mm,
+            VarGraph::nodeid_type sid, VarGraph::offset_type soffset,
+            VarGraph::nodeid_type cid, VarGraph::offset_type coffset, size_t d )
+          : iter( *index ), mismatches( mm ), depth( d ), end( false )
+        {
+          spos.set_node_id( sid );
+          spos.set_offset( soffset );
+          cpos.set_node_id( cid );
+          cpos.set_offset( coffset );
+        }
+
+        State( TIndex* index, unsigned char mm,
+            VarGraph::nodeid_type sid, VarGraph::offset_type soffset, size_t d )
+          : State( index, mm, sid, soffset, sid, soffset, d )
+        { }
+
+        State( TIndex* index, unsigned char mm,
+            vg::Position sp, vg::Position cp, size_t d )
+          : State( index, mm, sp.node_id(), sp.offset(), cp.node_id(), cp.offset(), d )
+        { }
+
+        State( TIndex* index, unsigned char mm, vg::Position sp, size_t d )
+          : State( index, mm, sp.node_id(), sp.offset(), sp.node_id(), sp.offset(), d )
+        { }
       } TState;
     };
 
@@ -222,17 +252,13 @@ namespace grem
         static const auto max_mismatches = traits_type::max_mismatches;
         /* ====================  LIFECYCLE      ====================================== */
         TraverserBase( const VarGraph* graph, const records_type* r, TIndex* index,
-            unsigned int len, vg::Position s )
-          : vargraph( graph ), reads( r ), reads_index( index ), seed_len( len ),
-          start_locus( s )
-        { }
-
-        TraverserBase( const VarGraph* graph, const records_type* r, TIndex* index,
             unsigned int len )
           : vargraph( graph ), reads( r ), reads_index( index ), seed_len( len )
-        {
-          this->set_start_locus( 0, 0 );
-        }
+        { }
+
+        TraverserBase( const VarGraph* graph, unsigned int len )
+          : TraverserBase( graph, nullptr, nullptr, len )
+        { }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for vargraph.
@@ -269,15 +295,6 @@ namespace grem
         {
           return this->seed_len;
         }  /* -----  end of method get_seed_len  ----- */
-
-        /**
-         *  @brief  getter function for start_locus.
-         */
-          inline vg::Position
-        get_start_locus (  ) const
-        {
-          return this->start_locus;
-        }  /* -----  end of method get_start_locus  ----- */
         /* ====================  MUTATORS       ====================================== */
         /**
          *  @brief  setter function for vargraph.
@@ -315,32 +332,39 @@ namespace grem
           this->seed_len = value;
         }  /* -----  end of method set_seed_len  ----- */
 
-        /**
-         *  @brief  setter function for start_locus.
-         */
           inline void
-        set_start_locus ( vg::Position value )
+        add_locus( vg::Position p )
         {
-          this->start_locus = value;
-        }  /* -----  end of method set_start_locus  ----- */
+          this->states.emplace_back(
+              this->reads_index,
+              max_mismatches + 1,
+              std::move( p ),
+              0 );
+        }
 
-        /**
-         *  @brief  setter function for start_locus.
-         */
           inline void
-        set_start_locus ( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
+        add_locus( VarGraph::nodeid_type id, VarGraph::offset_type offset )
         {
-          this->start_locus.set_node_id( node_id );
-          this->start_locus.set_offset( offset );
-        }  /* -----  end of method set_start_locus  ----- */
+          this->states.emplace_back(
+              this->reads_index,
+              max_mismatches + 1,
+              id,
+              offset,
+              0 );
+        }
+
+          inline void
+        states_reserve( size_t size )
+        {
+          this->states.reserve( size );
+        }
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         const VarGraph* vargraph;      /**< @brief Pointer to variation graph. */
         const records_type* reads;     /**< @brief Pointer to reads record. */
         TIndex* reads_index;           /**< @brief Pointer to reads index. */
         unsigned int seed_len;         /**< @brief Seed length. */
-        vg::Position start_locus;      /**< @brief Starting point. */
-        std::vector< typename traits_type::TState > frontier_states;
+        std::vector< typename traits_type::TState > states;
     };  /* ----------  end of template class TraverserBase  ---------- */
 }
 

@@ -20,6 +20,8 @@
 
 #include <functional>
 
+#include "cpp/vg.pb.h"
+
 #include "path_base.h"
 
 
@@ -608,37 +610,18 @@ namespace grem {
   /**
    *  @brief  Check whether a path is covered by a set of paths.
    *
-   *  @param  path_nodes The given path to be checked as a vector of node IDs.
+   *  @param  path The given path to be checked as a set of node IDs.
    *  @param  paths_set A set of paths as a container of `Path`.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
    *          false -- including the case that the path is empty.
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
-  template< typename TNodeID, class TContainer >
+  template< typename TPath, class TContainer >
       inline bool
-    covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set )
+    covered_by( const TPath& path, const TContainer& paths_set )
     {
-      return covered_by( path_nodes.begin(), path_nodes.end(),
-          paths_set.begin(), paths_set.end() );
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a set of paths.
-   *
-   *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as a container of `Path`.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
-   */
-  template< typename TGraph, typename TSpec, class TContainer >
-      inline bool
-    covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set )
-    {
-      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-          paths_set.begin(), paths_set.end() );
+      return covered_by( path.begin(), path.end(), paths_set.begin(), paths_set.end() );
     }  /* -----  end of template function covered_by  ----- */
 
   /**
@@ -652,7 +635,7 @@ namespace grem {
    *  This function simply checks if a node is on any of the path in the given set of
    *  paths.
    */
-  template< typename TNodeID, typename TContainer >
+  template< typename TNodeID, typename TContainer, typename = std::enable_if_t< std::is_scalar< TNodeID >::value, void > >
       inline bool
     covered_by( TNodeID node_id, const TContainer& paths_set )
     {
@@ -684,6 +667,110 @@ namespace grem {
       }
       return coverage;
     }  /* -----  end of template function get_path_coverage  ----- */
+
+  /**
+   *  @brief  Return the path coverage of a given path.
+   *
+   *  @param  begin The begin iterator of the nodes list whose coverage should be computed.
+   *  @param  end The end iterator of the nodes list whose coverage should be computed.
+   *  @param  paths_set A set of paths as a container of `Path` instances.
+   *  @return the number of paths that cover the given path.
+   *
+   *  This function get a path and return the number of paths that cover the path.
+   */
+  template< typename TIter, typename TContainer >
+      inline std::size_t
+    get_path_coverage( TIter begin, TIter end, TContainer const& paths_set )
+    {
+      std::size_t coverage = 0;
+      for ( const auto& path : paths_set ) {
+        if ( contains( path, begin, end ) ) {
+          ++coverage;
+        }
+      }
+      return coverage;
+    }  /* -----  end of template function get_path_coverage  ----- */
+
+  /**
+   *  @brief  Convert a grem::Path to vg::Path.
+   *
+   *  @param  path The native path.
+   *  @param  vgpath The pointer to an allocated vg path object.
+   *
+   *  A vg path is a protobuf message which represents a path aligned to the graph
+   *  containing a set of Mappings ordered by their ranks. A Mapping is defined for a
+   *  loci in the graph (here a first location of each node) defining a set of edits to
+   *  transform the node label to the path sequence aligned with that node which is a
+   *  full-match here.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath )
+    {
+      TGraph const* vargraph = path.get_vargraph();
+      typename TGraph::rank_type rank = 1;
+      for ( const auto& node_id : path.get_nodes() ) {
+        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
+        vg::Mapping* mapping = vgpath->add_mapping();
+        mapping->mutable_position()->set_node_id( node_id );
+        mapping->mutable_position()->set_offset( 0 );
+        vg::Edit* edit = mapping->add_edit();
+        edit->set_from_length( label_len );
+        edit->set_to_length( label_len );
+        mapping->set_rank( rank++ );
+      }
+    }
+
+  template< typename TGraph, typename TSpec >
+      inline void
+    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath,
+        std::vector< vg::Position > const& loci )
+    {
+      TGraph const* vargraph = path.get_vargraph();
+      typename TGraph::rank_type rank = 1;
+
+      auto comp =
+        [vargraph]( const auto& elem, const auto& value ) {
+          return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value );
+        };
+
+      for ( const auto& node_id : path.get_nodes() ) {
+        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
+        vg::Mapping* mapping = vgpath->add_mapping();
+        mapping->mutable_position()->set_node_id( node_id );
+        mapping->mutable_position()->set_offset( 0 );
+
+        auto nextedit = std::lower_bound( loci.begin(), loci.end(), node_id, comp );
+        auto lastedit = std::upper_bound( loci.begin(), loci.end(), node_id, comp );
+        typename TGraph::offset_type coffset = 0;
+        typename TGraph::offset_type toffset =
+              nextedit != lastedit ?
+              (*nextedit).offset() :
+              label_len;
+        do {
+          vg::Edit* edit = mapping->add_edit();
+          if ( coffset > toffset ) {
+            ++nextedit;
+            toffset =
+              nextedit != lastedit ?
+              (*nextedit).offset() :
+              label_len;
+          }
+          if ( coffset == toffset ) {
+            edit->set_from_length( 1 );
+            edit->set_to_length( 1 );
+            edit->set_sequence( "S" );
+            ++coffset;
+          }
+          else {
+            edit->set_from_length( toffset - coffset );
+            edit->set_to_length( toffset - coffset );
+            coffset = toffset;
+          }
+        } while ( coffset < label_len );
+        mapping->set_rank( rank++ );
+      }
+    }
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 

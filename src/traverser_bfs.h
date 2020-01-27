@@ -51,52 +51,37 @@ namespace grem {
         typedef typename TBase::stats_type stats_type;
         /* ====================  LIFECYCLE     ======================================= */
         TraverserBFS( const VarGraph* graph, const records_type* r, TIndex* index,
-            unsigned int len, vg::Position s )
-          : TBase( graph, r, index, len, s )
-        { }
-
-        TraverserBFS( const VarGraph* graph, const records_type* r, TIndex* index,
             unsigned int len )
           : TBase( graph, r, index, len )
         { }
+
+        TraverserBFS( const VarGraph* graph, unsigned int len )
+          : TBase( graph, len )
+        { }
         /* ====================  METHODS       ======================================= */
           inline void
-        run( std::function< void( output_type const& ) >& callback )
+        run( std::function< void( output_type const& ) > callback )
         {
-          this->frontier_states.push_back( {
-                iterator_type( *( this->reads_index ) ),
-                1,                     /**< @brief One more than allowed mismatches. */
-                this->start_locus } );
+          bool tie;
+          do {
+            std::size_t nofstates = this->states.size();
+            tie = true;
+            for( std::size_t idx = 0; idx < nofstates; ++idx ) {
+              if ( this->states[ idx ].mismatches == 0 ) continue;
+              filter( this->states[ idx ], callback );
+              advance( this->states[ idx ] );
+              if ( compute( this->states[ idx ] ) ) tie = false;
+            }
+          } while ( !tie );
 
-          while( true ) {
-            std::size_t current_size = this->frontier_states.size();
-            for( std::size_t i = 0; i < current_size; ++i ) {
-              filter( i, callback );
-            }
-            for( std::size_t i = 0; i < current_size; ++i ) {
-              advance( i );
-            }
-            bool tie = true;
-            for( std::size_t i = 0; i < current_size; ++i ) {
-              if ( compute( i ) ) {
-                tie = false;
-              }
-            }
-            if ( tie ) {
-              break;
-            }
-          }
-
-          this->frontier_states.clear();
+          this->states.clear();
         }
 
           inline void
-        filter( std::size_t state_idx,
-            std::function< void( output_type const& ) >& callback )
+        filter( typename traits_type::TState& state,
+            std::function< void( output_type const& ) > callback )
         {
-          assert( state_idx < this->frontier_states.size() );
-          auto& state = this->frontier_states[ state_idx ];
-          if ( state.mismatches != 0 && rep_length( state.iter ) == this->seed_len ) {
+          if ( state.mismatches != 0 && state.depth == this->seed_len ) {
             // Cross out the state.
             state.mismatches = 0;
             // Process the seed hit.
@@ -105,10 +90,9 @@ namespace grem {
             for ( i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;
-              hit.node_id = this->start_locus.node_id();
-              hit.node_offset = this->start_locus.offset();
-              auto id = position_to_id( *(this->reads), saPositions[i].i1 );
-              hit.read_id = id;                // Read ID.
+              hit.node_id = state.spos.node_id();
+              hit.node_offset = state.spos.offset();
+              hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
               hit.read_offset = saPositions[i].i2;  // Position in the read.
               callback( hit );
             }
@@ -116,58 +100,49 @@ namespace grem {
         }
 
           inline bool
-        compute( std::size_t state_idx )
+        compute( typename traits_type::TState& state )
         {
-          assert( state_idx < this->frontier_states.size() );
-          auto& state = this->frontier_states[ state_idx ];
-
           if ( state.mismatches == 0 ) return false;
 
-          const auto& sequence = this->vargraph->node_sequence( state.pos.node_id() );
-          const auto& itr_replen = rep_length( state.iter );
-          assert( itr_replen < this->seed_len );
-          VarGraph::offset_type end_idx =
-            std::min( state.pos.offset() + this->seed_len - itr_replen, sequence.size() );
-          VarGraph::offset_type i;
-          for ( i = state.pos.offset(); i < end_idx; ++i ) {
+          const auto& sequence = this->vargraph->node_sequence( state.cpos.node_id() );
+          assert( state.depth < this->seed_len );
+          std::make_unsigned_t< VarGraph::offset_type > end_idx =
+            state.cpos.offset() + this->seed_len - state.depth;
+          std::make_unsigned_t< VarGraph::offset_type > i;
+          for ( i = state.cpos.offset(); i < end_idx && i < sequence.size(); ++i ) {
             if ( sequence[i] == 'N' || !go_down( state.iter, sequence[i] ) ) {
               state.mismatches--;
               break;
             }
+            ++state.depth;
             stats_type::inc_total_nof_godowns();
           }
 
-          state.pos.set_offset( i );
+          state.cpos.set_offset( i );
+          if ( i == sequence.size() ) state.end = true;
           return true;
         }
 
           inline void
-        advance( std::size_t state_idx )
+        advance( typename traits_type::TState& state )
         {
-          assert( state_idx < this->frontier_states.size() );
-          auto& state = this->frontier_states[ state_idx ];
-          VarGraph::offset_type seqlen =
-            this->vargraph->node_length( state.pos.node_id() );
-          if ( state.mismatches == 0 || state.pos.offset() != seqlen )
-          {
-            return;
-          }
-          auto edges = this->vargraph->edges_from( state.pos.node_id() );
+          if ( state.mismatches == 0 || !state.end ) return;
+          const auto& edges = this->vargraph->edges_from( state.cpos.node_id() );
           auto it = edges.begin();
           if ( it == edges.end() ) {
             state.mismatches = 0;
             return;
           }
-          state.pos.set_node_id( (*it).to() );
-          state.pos.set_offset( 0 );
+          state.cpos.set_node_id( (*it).to() );
+          state.cpos.set_offset( 0 );
+          state.end = false;
           ++it;
 
           for ( ; it != edges.end(); ++it )
           {
-            typename traits_type::TState new_state = state;
-            new_state.pos.set_node_id( (*it).to() );
-            new_state.pos.set_offset( 0 );
-            this->frontier_states.push_back( std::move( new_state ) );
+            this->states.emplace_back( state );
+            this->states.back().cpos.set_node_id( (*it).to() );
+            this->states.back().cpos.set_offset( 0 );
           }
         }
     };  /* ----------  end of template class TraverserBFS  ---------- */

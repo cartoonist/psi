@@ -216,7 +216,7 @@ namespace grem
             unsigned int len,
             unsigned char mismatches = 0 )
           : vargraph( graph ), reads( std::move( r ) ), seed_len( len ),
-          seed_mismatches( mismatches )
+          seed_mismatches( mismatches ), traverser( vargraph, seed_len )
         {
           if ( length( this->reads.str ) != 0 ) {
             this->index_reads();
@@ -383,17 +383,20 @@ namespace grem
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             void
           pick_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
-              int n, bool patched=true )
+              int n, bool patched=true,
+              std::function< void( std::string const&, int ) > callback=nullptr )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
 
             paths.reserve( n * this->vargraph->path_count );
+            seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph );
             for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
-              seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
+              go_begin( hap_itr, s );
               for ( int i = 0; i < n; ++i ) {
+                if ( callback ) callback( path_name, i + 1 );
                 if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
                 else get_uniq_full_haplotype( paths, hap_itr );
               }
@@ -414,7 +417,7 @@ namespace grem
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
           seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
-              std::function< void(typename TTraverser::output_type const &) >& callback )
+              std::function< void(typename TTraverser::output_type const &) > callback )
           {
             if ( length( indexText( paths.index ) ) == 0 ) return;
 
@@ -573,20 +576,21 @@ namespace grem
         }
 
           inline void
-        traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
+        traverse( std::function< void( typename TTraverser::output_type const& ) > callback )
         {
           auto timer = stats_type( "traverse" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
 
-          TTraverser traverser( this->vargraph, &(this->reads), &(this->reads_index), this->seed_len );
+          this->traverser.set_reads( &(this->reads) );
+          this->traverser.set_reads_index( &(this->reads_index) );
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
             const auto& locus = this->starting_loci[ idx ];
+            this->traverser.add_locus( locus );
+            if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
+
             stats_type::set_lastproc_locus( locus );
-
-            traverser.set_start_locus( locus );
-            traverser.run( callback );
-
+            this->traverser.run( callback );
             stats_type::set_lastdone_locus_idx( idx );
           }
         }
@@ -598,6 +602,7 @@ namespace grem
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         readsindex_type reads_index;
+        TTraverser traverser;
         /* ====================  METHODS       ======================================= */
           inline void
         index_reads( )
