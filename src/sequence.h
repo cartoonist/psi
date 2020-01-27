@@ -252,10 +252,63 @@ namespace grem {
     }  /* -----  end of template function readRecords  ----- */
 
   /* Seeding strategies */
+  struct GreedyOverlapStrategy;
+  struct NonOverlapStrategy;
   struct GreedyNonOverlapStrategy;
 
   /* Seeding strategy tags */
+  typedef seqan::Tag< GreedyOverlapStrategy > GreedyOverlapping;
+  typedef seqan::Tag< NonOverlapStrategy > NonOverlapping;
   typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
+
+  /**
+   *  @brief  Add any k-mers from the given string set with `step` distance to seed set.
+   *
+   *  @param  seeds The seed set.
+   *  @param  string_set The string set from which seeds are extracted.
+   *  @param  k The length of the seeds.
+   *  @param  step The step size.
+   *
+   *  For each string in string set, it add all substring of length `k` starting from 0
+   *  to end of string with `step` distance with each other. If `step` is equal to `k`,
+   *  it gets non-overlapping substrings of length k.
+   */
+  template< typename TText, typename TStringSetSpec >
+      inline void
+    _seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
+        const seqan::StringSet< TText, TStringSetSpec >& string_set,
+        unsigned int k,
+        unsigned int step )
+    {
+      for ( unsigned int idx = 0; idx < length( string_set ); ++idx ) {
+        for ( unsigned int i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
+          appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
+        }
+      }
+    }  /* -----  end of template function _seeding  ----- */
+
+  /**
+   *  @brief  Seeding a set of sequence by reporting overlapping k-mers.
+   *
+   *  @param  seeds The resulting set of strings containing seeds.
+   *  @param  string_set The string set from which seeds are extracted.
+   *  @param  k The length of the seeds.
+   *  @param  tag Tag for greedy fixed-length overlapping seeding strategy.
+   *
+   *  Extract a set of overlapping seeds of length k.
+   */
+  template< typename TText, typename TStringSetSpec >
+      inline void
+    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
+        const seqan::StringSet< TText, TStringSetSpec >& string_set,
+        unsigned int k,
+        GreedyOverlapping )
+    {
+      clear( seeds );
+      unsigned int avg_read_len = lengthSum( string_set ) / length( string_set );
+      reserve( seeds, static_cast<int>( length( string_set ) * ( avg_read_len - k ) ) );
+      _seeding( seeds, string_set, k, 1 );
+    }  /* -----  end of template function seeding  ----- */
 
   /**
    *  @brief  Seeding by partitioning each sequence into non-overlapping k-mers.
@@ -264,6 +317,28 @@ namespace grem {
    *  @param  string_set The string set from which seeds are extracted.
    *  @param  k The length of the seeds.
    *  @param  tag Tag for fixed-length non-overlapping seeding strategy.
+   *
+   *  Extract a set of non-overlapping seeds of length k.
+   */
+  template< typename TText, typename TStringSetSpec >
+      inline void
+    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
+        const seqan::StringSet< TText, TStringSetSpec >& string_set,
+        unsigned int k,
+        NonOverlapping )
+    {
+      clear( seeds );
+      reserve( seeds, static_cast<int>( lengthSum( string_set ) / k ) );
+      _seeding( seeds, string_set, k, k );
+    }  /* -----  end of function seeding  ----- */
+
+  /**
+   *  @brief  Seeding by greedy partitioning each sequence into non-overlapping k-mers.
+   *
+   *  @param  seeds The resulting set of strings containing seeds.
+   *  @param  string_set The string set from which seeds are extracted.
+   *  @param  k The length of the seeds.
+   *  @param  tag Tag for greedy fixed-length non-overlapping seeding strategy.
    *
    *  Extract a set of non-overlapping seeds of length k.
    *
