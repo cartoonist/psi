@@ -80,7 +80,7 @@ template< typename TMapper, typename TSet >
   report( TMapper& mapper, TSet& covered_reads, unsigned long long int found )
   {
     auto log = get_logger( "main" );
-    log->info( "Total number of starting points: {}", mapper.get_starting_loci().size() );
+    log->info( "Total number of starting loci: {}", mapper.get_starting_loci().size() );
     log->info( "Total number of seeds found: {}", found );
     log->info( "Total number of reads covered: {}", covered_reads.size() );
     log->info( "Total number of 'godown' operations: {}",
@@ -140,7 +140,8 @@ template< typename TIndexSpec  >
     void
   find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, unsigned int seed_len,
       unsigned int chunk_size, unsigned int start_every, unsigned int path_num,
-      const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
+      const std::string& paths_index_file, bool nomapping, bool dumpstarts,
+      const std::string& starts_path, TIndexSpec const /* Tag */ )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
@@ -158,18 +159,28 @@ template< typename TIndexSpec  >
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index_file, path_num );
 
+    log->info( "Selecting starting loci..." );
+    /* Locate starting loci. */
+    mapper.add_all_loci( paths, seed_len, start_every );
+    log->info( "Selected starting loci in {} us.",
+        Timer::get_duration( "add-starts" ).count() );
+    log->info( "Number of starting loci selected (in {} nodes): {}",
+        mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
+
+    // :TODO:Tue Oct 17 22:37:\@cartoonist: save starting points as a part of paths index?
+    if ( dumpstarts ) {
+      log->info( "Dumping starting loci..." );
+      std::ofstream starts_ofs( starts_path, std::ofstream::out );
+      for ( const auto& p : mapper.get_starting_loci() ) {
+        starts_ofs << p.node_id() << "\t" << p.offset() << "\t"
+                   << vargraph.node_length( p.node_id() ) << std::endl;
+      }
+    }
+
     if ( nomapping ) {
       log->info( "Skipping mapping as requested..." );
       return;
     }
-
-    log->info( "Selecting starting loci..." );
-    /* Locate starting points. */
-    mapper.add_all_loci( paths, seed_len, start_every );
-    log->info( "Selected starting loci in {} us.",
-        Timer::get_duration( "add-starts" ).count() );
-    log->info( "Number of starting points selected (in {} nodes): {}",
-        mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
 
     /* All DNA reads to be mapped. */
     Records< Dna5QStringSet<> > reads;
@@ -217,7 +228,7 @@ template< typename TIndexSpec  >
             Timer::get_duration( "paths-seed-find" ).count() );
         log->info( "Total number of seeds found on paths: {}", found - pre_found );
         log->info( "Traversing..." );
-        /* Find seeds on variation graph by traversing starting points. */
+        /* Find seeds on variation graph by traversing starting loci. */
         mapper.traverse ( write );
         log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
       }
@@ -237,7 +248,7 @@ startup( const Options & options )
   log->info( "- Paths index file: '{}'", options.paths_index_file );
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
-  log->info( "- Starting points interval: {}", options.start_every );
+  log->info( "- Starting loci interval: {}", options.start_every );
 
   log->info( "Opening file '{}'...", options.fq_path );
   SeqFileIn reads_infile;
@@ -272,6 +283,8 @@ startup( const Options & options )
                               options.path_num,
                               options.paths_index_file,
                               options.nomapping,
+                              options.dumpstarts,
+                              options.starts_path,
                               UsingIndexWotd() );
                           break;
     case IndexType::Esa: find_seeds ( vargraph,
@@ -282,6 +295,8 @@ startup( const Options & options )
                              options.path_num,
                              options.paths_index_file,
                              options.nomapping,
+                             options.dumpstarts,
+                             options.starts_path,
                              UsingIndexEsa() );
                          break;
     default: throw std::runtime_error("Index not implemented.");
@@ -327,7 +342,7 @@ setup_argparser( seqan::ArgumentParser& parser )
                                           seqan::ArgParseArgument::INTEGER, "INT"));
   setRequired(parser, "c");
 
-  // starting points
+  // starting loci interval
   addOption(parser, seqan::ArgParseOption("e", "start-every", "Start from every given "
                                           "number of loci in all nodes. If it is set to"
                                           " 1, it means start from all positions in a "
@@ -349,6 +364,11 @@ setup_argparser( seqan::ArgumentParser& parser )
 
   // no map -- just do the paths indexing phase
   addOption(parser, seqan::ArgParseOption("x", "only-index", "Only build paths index and skip mapping."));
+
+  // dump starting loci
+  seqan::ArgParseOption startsfile_arg( "s", "dump-starts", "Dump starting loci.",
+      seqan::ArgParseArgument::OUTPUT_FILE, "DUMP_FILE" );
+  addOption( parser, startsfile_arg );
 
   // log file
   seqan::ArgParseOption logfile_arg("L", "log-file",
@@ -388,6 +408,8 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.paths_index_file, parser, "paths-index" );
   getOptionValue( indexname, parser, "index" );
   options.nomapping = isSet( parser, "only-index" );
+  options.dumpstarts = isSet( parser, "dump-starts");
+  getOptionValue( options.starts_path, parser, "dump-starts" );
   getOptionValue( options.log_path, parser, "log-file" );
   options.nologfile = isSet( parser, "no-log-file" );
   options.quiet = isSet( parser, "quiet" );
