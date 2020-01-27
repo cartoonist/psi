@@ -25,6 +25,7 @@
 #include <sdsl/suffix_arrays.hpp>
 
 #include "sequence.h"
+#include "utils.h"
 
 namespace grem {
   template< class TWT = sdsl::wt_huff<>, uint32_t TDens = 32, uint32_t TInvDens = 64 >
@@ -164,7 +165,14 @@ namespace seqan {
         Index< grem::YaString< grem::DiskBased >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
-      if ( index.constructible() ) construct( index.fm, index.text_p->get_file_path(), 1 );
+      if ( index.constructible() ) {
+        std::string tmpdir = grem::get_tmpdir();
+        sdsl::cache_config config;
+        if ( tmpdir.size() != 0 ) {
+          config.dir = std::move( tmpdir );
+        }
+        construct( index.fm, index.text_p->get_file_path(), config, 1 );
+      }
     }
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
@@ -182,7 +190,14 @@ namespace seqan {
         Index< StringSet< grem::YaString< grem::DiskBased > >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
-      if ( index.constructible() ) construct( index.fm, index.text_p->get_file_path(), 1 );
+      if ( index.constructible() ) {
+        std::string tmpdir = grem::get_tmpdir();
+        sdsl::cache_config config;
+        if ( tmpdir.size() != 0 ) {
+          config.dir = std::move( tmpdir );
+        }
+        construct( index.fm, index.text_p->get_file_path(), config, 1 );
+      }
     }
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
@@ -331,9 +346,13 @@ namespace seqan {
           backward_search( TIter pt_begin, TIter pt_end )
           {
             indexRequire( *(this->index_p), FibreSALF() );
-            sdsl::backward_search( this->index_p->fm,
-                0, this->index_p->size()-1,
-                pt_begin, pt_end, this->occ_cur, this->occ_end );
+            this->occ_cur = 0;
+            this->occ_end = this->index_p->size()-1;
+            while ( pt_begin < pt_end && this->occ_cur <= this->occ_end ) {
+              --pt_end;
+              sdsl::backward_search( this->index_p->fm, this->occ_cur, this->occ_end,
+                  (char)*pt_end, this->occ_cur, this->occ_end);
+            }
             this->initiated = true;
           }
       private:
@@ -526,7 +545,7 @@ namespace seqan {
           if ( ! this->is_initialized() ) this->init();
           this->history_push();
           savalue_type no = sdsl::backward_search( this->index_p->fm,
-              this->occ_cur, this->occ_end, c,
+              this->occ_cur, this->occ_end, (char)c,
               this->occ_cur, this->occ_end );
 
           if ( no == 0 ) this->history_pop();

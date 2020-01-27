@@ -38,7 +38,7 @@ endef
 
 define run_test
 	$(call echotitle,"Running tests...")
-	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c {}
+	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c "echo \"** Running '{}'\" && {}"
 endef
 
 define uninstall_headers
