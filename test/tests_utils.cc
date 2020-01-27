@@ -15,6 +15,12 @@
  *  See LICENSE file for more information.
  */
 
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <iterator>
+
 #include "tests_base.h"
 #include "utils.h"
 
@@ -43,6 +49,107 @@ SCENARIO( "Two strings can be checked for suffix match", "[utils]" )
       REQUIRE( !ends_with( str, "MISSISSIPI" ) );
       REQUIRE( !ends_with( str, "I" ) );
       REQUIRE( !ends_with( str, "arizona" ) );
+    }
+  }
+}
+
+SCENARIO( "Serialize and deserialize a vector", "[utils]" )
+{
+  std::string file_name_prefix = _testdir + "/test_";
+
+  size_t size = 20;
+  GIVEN( "A vector of integer with size " + std::to_string( size ) )
+  {
+    std::vector< int > v;
+    for ( unsigned int i = 0; i < size; ++i ) {
+      v.push_back( i * 2 );
+    }
+
+    WHEN( "it is serialized to a file" )
+    {
+      std::string file_name = file_name_prefix + "1";
+      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
+      serialize( ofs, v.begin(), v.end() );
+      ofs.close();
+      THEN( "should be deserialized correctly" )
+      {
+        std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
+        std::vector< int > w;
+        deserialize( ifs, w, std::back_inserter( w ) );
+
+        for ( unsigned int i = 0; i < w.size(); ++i ) {
+          REQUIRE( w[i] == i * 2 );
+        }
+      }
+
+      std::remove( file_name.c_str() );
+    }
+  }
+
+  GIVEN( "An empty string" )
+  {
+    std::vector< int > v;
+
+    WHEN( "it is serialized to a file" )
+    {
+      std::string file_name = file_name_prefix + "2";
+      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
+      serialize( ofs, v.begin(), v.end() );
+      ofs.close();
+      THEN( "should be deserialized correctly" )
+      {
+        std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
+        std::vector< int > w;
+        deserialize( ifs, w, std::back_inserter( w ) );
+        REQUIRE( w.size() == 0 );
+      }
+
+      std::remove( file_name.c_str() );
+    }
+  }
+
+  struct position {
+    int i;
+    double d;
+    char c;
+    char s[10];
+  };
+
+  size = 10;
+  GIVEN( "A vector of a structure with size " + std::to_string( size ) )
+  {
+    std::vector< position > v;
+    for ( unsigned int i = 0; i < size; ++i ) {
+      v.push_back( {
+          static_cast<int>( i + 10 ),
+          i / 3.0,
+          static_cast<char>( i + 65 ),
+          { static_cast<char>( i + 65 ), static_cast<char>( i + 97 ) }
+          } );
+    }
+
+    WHEN( "it is serialized to a file" )
+    {
+      std::string file_name = file_name_prefix + "3";
+      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
+      serialize( ofs, v.begin(), v.end() );
+      ofs.close();
+      THEN( "should be deserialized correctly" )
+      {
+        std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
+        std::vector< position > w;
+        deserialize( ifs, w, std::back_inserter( w ) );
+
+        for ( unsigned int i = 0; i < w.size(); ++i ) {
+          REQUIRE( w[i].i == i + 10 );
+          REQUIRE( w[i].d == i / 3.0 );
+          REQUIRE( w[i].c == i + 65 );
+          const char s[10] = { static_cast<char>( i + 65 ), static_cast<char>( i + 97 ) };
+          REQUIRE( std::strcmp( w[i].s, s ) == 0 );
+        }
+      }
+
+      std::remove( file_name.c_str() );
     }
   }
 }
