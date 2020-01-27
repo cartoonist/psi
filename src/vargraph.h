@@ -45,9 +45,6 @@
 #include "path.h"
 #include "graph_iter.h"
 
-// :TODO:Tue Sep 26 17:03:\@cartoonist: Make graph iterators' specialization template for TGraph?
-//     and move it to `graph_iter.h`?
-
 
 namespace grem
 {
@@ -785,6 +782,74 @@ namespace grem {
   /* Haplotyper iterator interface functions  ------------------------------------ */
 
   /**
+   *  @brief  Extend a path to length k using a graph iterator.
+   *
+   *  @param  path The extended path.
+   *  @param  iter The graph iterator.
+   *  @param  k The extension length.
+   *
+   *  Add nodes using graph iterator until the length of path reach k or longer.
+   */
+  template< typename TPathSpec, typename TIterSpec >
+      inline void
+    extend_to_k( Path< VarGraph, TPathSpec >& path,
+        grem::GraphIter< VarGraph, TIterSpec >& iter,
+        unsigned int k )
+    {
+      while ( path.get_sequence_len() < k ) {
+        add_node( path, *iter );
+        ++iter;
+      }
+    }
+
+  /**
+   *  @overload Prevent using BFS for extension.
+   */
+  template< typename TPathSpec >
+      inline void
+    extend_to_k( Path< VarGraph, TPathSpec >&,
+        grem::GraphIter< VarGraph, BFS >&,
+        unsigned int )
+    {
+      throw std::runtime_error( "Cannot be used by BFS iterator." );
+    }
+
+  /**
+   *  @brief  Move forward a segment and preserve its length of k.
+   *
+   *  @param  segment The segment to move.
+   *  @param  iter The graph iterator.
+   *  @param  k The segment length to be preserved.
+   *
+   *  After each call, the segment will be extended by one nodes. If poping nodes from
+   *  the start of the segment does not make it shorter than k, those are cut off.
+   */
+  template< typename TIterSpec >
+      inline void
+    move_forward( Path< VarGraph, Dynamic >& segment,
+        grem::GraphIter< VarGraph, TIterSpec >& iter,
+        unsigned int k )
+    {
+      add_node( segment, *iter );
+      ++iter;
+      while ( segment.get_sequence_len() -
+          iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
+        pop_front( segment );
+      }
+    }
+
+  /**
+   *  @overload Prevent using BFS for moving a segment.
+   */
+    inline void
+  move_forward( Path< VarGraph, Dynamic >&,
+      grem::GraphIter< VarGraph, BFS >&,
+      unsigned int )
+  {
+    throw std::runtime_error( "Cannot be used by BFS iterator." );
+  }
+
+  /**
    *  @brief  Simulate a unique haplotype.
    *
    *  @param[out]  haplotype The simulated haplotype as a Path.
@@ -797,6 +862,36 @@ namespace grem {
    *  simulate multiple unique haplotypes use the same iterator as the input. It tries
    *  `tries` times to generated a unique haplotype.
    */
+    inline void
+  get_uniq_full_haplotype( Path< VarGraph >& haplotype,
+      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
+      int tries=0 )
+  {
+    do {
+      while ( !at_end( iter ) ) {
+        add_node( haplotype, *iter );
+        ++iter;
+      }
+      if ( tries-- && iter[ haplotype.get_nodes() ] ) {
+        iter--;  // discard the traversed path and reset the Haplotyper iterator.
+      }
+      else {
+        --iter;  // save the traversed path and reset the Haplotyper iterator.
+        break;
+      }
+      /* trying again */
+    } while ( true );
+  }
+
+  /**
+   *  @brief  Add a simulated haplotype to the given pathset.
+   *
+   *  @param  paths The pathset.
+   *  @param[in,out]  iter Haplotyper graph iterator.
+   *  @param[in]  tries Number of tries if the generated haplotype is not unique.
+   *
+   *  @overload for `PathSet`.
+   */
   template< typename TPathSet >
       inline void
     get_uniq_full_haplotype( TPathSet& paths,
@@ -804,47 +899,9 @@ namespace grem {
         int tries=0 )
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
-      do {
-        while ( !at_end( iter ) ) {
-          add_node( haplotype, *iter );
-          ++iter;
-        }
-        if ( tries-- && iter[ haplotype.get_nodes() ] ) {
-          iter--;  // discard the traversed path and reset the Haplotyper iterator.
-        }
-        else {
-          --iter;  // save the traversed path and reset the Haplotyper iterator.
-          break;
-        }
-        /* trying again */
-      } while ( true );
+      get_uniq_full_haplotype( haplotype, iter, tries );
       paths.add_path( std::move( haplotype ) );
     }
-
-  template< typename TSpec >
-      inline void
-    extend_to_k( Path< VarGraph, TSpec >& path,
-        typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
-        unsigned int k )
-    {
-      while ( path.get_sequence_len() < k ) {
-        add_node( path, *iter );
-        ++iter;
-      }
-    }
-
-    inline void
-  move_forward( Path< VarGraph, Dynamic >& segment,
-      typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
-      unsigned int k )
-  {
-    add_node( segment, *iter );
-    ++iter;
-    while ( segment.get_sequence_len() -
-        iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
-      pop_front( segment );
-    }
-  }
 
   template< typename TPathSet >
       inline void

@@ -173,8 +173,10 @@ namespace grem{
          */
         template< typename TSpec2 >
             inline Path&
-          operator=( const Path< TSpec2 >& other ) {
-            assert( this->vargraph == other.get_vargraph() );
+          operator=( const Path< TGraph, TSpec2 >& other ) {
+            if ( this->vargraph != other.get_vargraph() ) {
+              throw std::runtime_error( "Mismatching variation graphs" );
+            }
             nodes_type d;
             std::copy( other.get_nodes().begin(), other.get_nodes().end(), std::back_inserter( d ) );
             this->set_nodes( std::move( d ) );
@@ -329,7 +331,8 @@ namespace grem{
 
       assert( path.vargraph != nullptr );
 
-      sdsl::util::assign( path.bv_node_breaks, bit_vector( path.get_sequence_len(), 0 ) );
+      sdsl::util::assign( path.bv_node_breaks,
+          sdsl::bit_vector( path.get_sequence_len(), 0 ) );
       typename Path< TGraph, TSpec >::seqsize_type cursor = 0;
       for ( const auto& node_id : path.nodes ) {
         cursor += path.vargraph->node_length( node_id );
@@ -492,7 +495,9 @@ namespace grem{
       inline void
     extend( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
     {
-      assert( path.get_vargraph() != other.get_vargraph() );
+      if ( path.get_vargraph() != other.get_vargraph() ) {
+        throw std::runtime_error( "Mismatching variation graphs" );
+      }
       for ( const auto& node_id : other.get_nodes() ) {
         add_node( path, node_id );
       }
@@ -546,7 +551,9 @@ namespace grem{
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
       assert( path.is_initialized() );
-      assert( 0 <= pos && pos < path.get_sequence_len() );
+      if ( pos < 0 || pos >= path.get_sequence_len() ) {
+        throw std::runtime_error( "Position out of range." );
+      }
       return path.rs_node_breaks( pos );
     }
 
@@ -567,7 +574,9 @@ namespace grem{
         typename Path< TGraph, TSpec >::size_type rank )
     {
       assert( path.is_initialized() );
-      assert( 0 <= rank && rank < length( path ) );
+      if ( rank < 0 || rank >= length( path ) ) {
+        throw std::runtime_error( "Rank out of range." );
+      }
       if ( rank == 0 ) return 0;
       return path.ss_node_breaks( rank ) + 1;
     }
@@ -586,7 +595,7 @@ namespace grem{
     position_to_id( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
-      return path.get_nodes()[ rank( path, pos ) ];
+      return path.get_nodes().at( rank( path, pos ) );
     }
 
   /**

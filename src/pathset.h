@@ -109,6 +109,7 @@ namespace grem {
           assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
           appendValue( this->string_set, path_str );
           this->index = TIndex( this->string_set );
+          initialize( new_path );
           paths_set.push_back( std::move( new_path ) );
         }  /* -----  end of method add_path  ----- */
 

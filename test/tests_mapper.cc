@@ -44,7 +44,7 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
     Mapper< TTraverser > mapper( &vargraph, 30 );
 
     unsigned int nof_paths = 4;
-    PathSet< seqan::Dna5QString, TIndexSpec > paths;
+    Dna5QPathSet< VarGraph, TIndexSpec > paths;
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a Mapper" )
     {
       mapper.pick_paths( paths, nof_paths );
@@ -95,7 +95,7 @@ SCENARIO ( "Add starting points when using paths index", "[mapper]" )
     auto truth_itr = truth.begin();
 
     Mapper< TTraverser > mapper( &vargraph, k );
-    PathSet< seqan::Dna5QString, TIndexSpec > paths;
+    Dna5QPathSet< VarGraph, TIndexSpec > paths;
 
     WHEN( "Find starting points using " + std::to_string( nof_paths ) + " paths" )
     {

@@ -91,9 +91,9 @@ SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
     }
     VarGraph vargraph( gifs );
 
-    WHEN( "A Full path in the graph constructed at once" )
+    WHEN( "A path in the graph constructed at once" )
     {
-      Path< Full > path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       path.set_nodes( nodes );
 
       THEN( "It should pass basic tests" )
@@ -102,9 +102,9 @@ SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
       }
     }
 
-    WHEN( "A Full path in the graph constructed incrementally" )
+    WHEN( "A path in the graph constructed incrementally" )
     {
-      Path< Full > path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       for ( const auto& n: nodes ) {
         add_node( path, n );
       }
@@ -112,6 +112,141 @@ SCENARIO( "Basic test for a path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         path_basic_test( path );
+      }
+    }
+
+    WHEN( "A Dynamic path in the graph constructed incrementally" )
+    {
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( dyn_path, n );
+      }
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( dyn_path );
+      }
+    }
+
+    WHEN( "A Dynamic path constructed by a Normal path using assignment" )
+    {
+      Path< VarGraph > path( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+
+      path.set_nodes( nodes );
+      dyn_path = path;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( dyn_path );
+      }
+    }
+
+    WHEN( "A Normal path constructed by a Dynamic path using assignment" )
+    {
+      Path< VarGraph > path( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( dyn_path, n );
+      }
+
+      path = dyn_path;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path );
+      }
+    }
+
+    WHEN( "A Dynamic path constructed by a Dynamic path using assignment" )
+    {
+      Path< VarGraph, Dynamic > dyn_path2( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( dyn_path, n );
+      }
+
+      dyn_path2 = dyn_path;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( dyn_path2 );
+      }
+    }
+
+    WHEN( "A path is extended by another path" )
+    {
+      Path< VarGraph > path1( &vargraph );
+      Path< VarGraph > path2( &vargraph );
+      Path< VarGraph >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( path1, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( path2, nodes[ i ] );
+      }
+      path1 += path2;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path1 );
+      }
+    }
+
+    WHEN( "A Dynamic path is extended by another path" )
+    {
+      Path< VarGraph, Dynamic > path1( &vargraph );
+      Path< VarGraph > path2( &vargraph );
+      Path< VarGraph >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( path1, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( path2, nodes[ i ] );
+      }
+      path1 += path2;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path1 );
+      }
+    }
+
+    WHEN( "A path is extended by a Dynamic Path" )
+    {
+      Path< VarGraph > path1( &vargraph );
+      Path< VarGraph, Dynamic > path2( &vargraph );
+      Path< VarGraph >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( path1, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( path2, nodes[ i ] );
+      }
+      path1 += path2;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path1 );
+      }
+    }
+
+    WHEN( "A Dynamic path is extended by another Dynamic path" )
+    {
+      Path< VarGraph, Dynamic > path1( &vargraph );
+      Path< VarGraph, Dynamic > path2( &vargraph );
+      Path< VarGraph >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( path1, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( path2, nodes[ i ] );
+      }
+      path1 += path2;
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path1 );
       }
     }
   }
@@ -133,9 +268,9 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
     }
     VarGraph vargraph( gifs );
 
-    GIVEN( "A Full path in the graph" )
+    GIVEN( "A path in the graph" )
     {
-      Path< Full > path( &vargraph );
+      Path< VarGraph > path( &vargraph );
       //path.set_nodes( nodes );
       for ( const auto& n : nodes ) {
         add_node( path, n );
@@ -147,7 +282,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
       {
         VarGraph::offset_type trimmed_len
           = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
-        trim( path, 37 );
+        trim_back( path, 37 );
 
         THEN( "Its length and sequence should be decreased accordingly" )
         {
@@ -164,7 +299,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
           trim_len += vargraph.node_length( *it );
         }
         VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
-        trim( path, 29 );
+        trim_back( path, 29 );
         THEN( "Its length and sequence should be decreased accordingly" )
         {
           REQUIRE( path.get_sequence().length() == trimmed_len );
@@ -176,7 +311,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
       {
         VarGraph::offset_type trimmed_len
           = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
-        trim( path, 0 );
+        trim_back( path, 0 );
         THEN( "The last node should be trimmed" )
         {
           REQUIRE( path.get_sequence().length() == trimmed_len );
@@ -188,7 +323,7 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
       {
         VarGraph::offset_type trimmed_len
           = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
-        trim( path );
+        trim_back( path );
         THEN( "The last node should be trimmed" )
         {
           REQUIRE( path.get_sequence().length() == trimmed_len );
@@ -198,7 +333,81 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
 
       WHEN( "Trim by providing unavailable node ID" )
       {
-        trim( path, 70 );
+        trim_back( path, 70 );
+        THEN( "It should be empty" )
+        {
+          REQUIRE( path.get_sequence().length() == 0 );
+        }
+      }
+    }
+
+    GIVEN( "A Dynamic Path in the graph" )
+    {
+      Path< VarGraph, Dynamic > path( &vargraph );
+      for ( const auto& n : nodes ) {
+        add_node( path, n );
+      }
+
+      REQUIRE( path.get_sequence() == init_sequence );
+
+      WHEN( "The first node is trimmed" )
+      {
+        VarGraph::offset_type trim_len =
+          vargraph.node_length( path.get_nodes().front() );
+        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        trim_front( path, 20 );
+
+        THEN( "Its length and sequence should be decreased accordingly" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( trim_len ) );
+        }
+      }
+
+      WHEN( "Trim further" )
+      {
+        std::size_t trim_len = 0;
+        for ( auto it = path.get_nodes().begin(); it != path.get_nodes().end() - 8; ++it ) {
+          trim_len += vargraph.node_length( *it );
+        }
+        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        trim_front( path, 25 );
+        THEN( "Its length and sequence should be decreased accordingly" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( trim_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing zero as node ID" )
+      {
+        VarGraph::offset_type trim_len =
+          vargraph.node_length( path.get_nodes().front() );
+        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        trim_front( path, 0 );
+        THEN( "The last node should be trimmed" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( trim_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing no parameter" )
+      {
+        VarGraph::offset_type trim_len =
+          vargraph.node_length( path.get_nodes().front() );
+        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        trim_front( path );
+        THEN( "The last node should be trimmed" )
+        {
+          REQUIRE( path.get_sequence().length() == trimmed_len );
+          REQUIRE( path.get_sequence() == init_sequence.substr( trim_len ) );
+        }
+      }
+
+      WHEN( "Trim by providing unavailable node ID" )
+      {
+        trim_front( path, 70 );
         THEN( "It should be empty" )
         {
           REQUIRE( path.get_sequence().length() == 0 );
@@ -208,10 +417,62 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
   }
 }
 
-// VarGraph graph iterators test scenarios.
-SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
+SCENARIO( "Query node coordinates by position in the path" )
 {
+  std::vector< VarGraph::nodeid_type > nodes
+    = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
+  std::string init_sequence = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTA"
+    "TTTGAAGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
+
   GIVEN ( "A small variation graph" )
+  {
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    WHEN( "A path in the graph" )
+    {
+      Path< VarGraph > path( &vargraph );
+      path.set_nodes( nodes );
+      initialize( path );
+
+      THEN( "Mapping positions to node coordinates should be correct" )
+      {
+        REQUIRE( position_to_id( path, 0 ) == 20 );
+        REQUIRE( position_to_offset( path, 0 ) == 0 );
+        REQUIRE( position_to_id( path, 18 ) == 20 );
+        REQUIRE( position_to_offset( path, 18 ) == 18 );
+        REQUIRE( position_to_id( path, 40 ) == 20 );
+        REQUIRE( position_to_offset( path, 40 ) == 40 );
+        REQUIRE( position_to_id( path, 41 ) == 21 );
+        REQUIRE( position_to_offset( path, 41 ) == 0 );
+        REQUIRE( position_to_id( path, 42 ) == 23 );
+        REQUIRE( position_to_offset( path, 42 ) == 0 );
+        REQUIRE( position_to_id( path, 43 ) == 23 );
+        REQUIRE( position_to_offset( path, 43 ) == 1 );
+        REQUIRE( position_to_id( path, 44 ) == 25 );
+        REQUIRE( position_to_offset( path, 44 ) == 0 );
+        REQUIRE( position_to_id( path, 100 ) == 32 );
+        REQUIRE( position_to_offset( path, 100 ) == 16 );
+        REQUIRE( position_to_id( path, 113 ) == 35 );
+        REQUIRE( position_to_offset( path, 113 ) == 11 );
+        REQUIRE( position_to_id( path, 116 ) == 37 );
+        REQUIRE( position_to_offset( path, 116 ) == 2 );
+        REQUIRE( position_to_id( path, 118 ) == 37 );
+        REQUIRE( position_to_offset( path, 118 ) == 4 );
+        REQUIRE_THROWS( position_to_id( path, 119 ) );
+      }
+    }
+  }
+}
+
+// VarGraph graph iterators test scenarios.
+SCENARIO ( "Get unique full haplotype using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
+{
+  GIVEN ( "A tiny variation graph" )
   {
     std::string vgpath = _testdir + "/data/tiny/tiny.xg";
     std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
@@ -221,22 +482,22 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      Path<> haplotype1( &vargraph );
-      Path<> haplotype2( &vargraph );
-      Path<> haplotype3( &vargraph );
-      Path<> haplotype4( &vargraph );
-      Path<> haplotype5( &vargraph );
-      Path<> haplotype6( &vargraph );
-      Path<> haplotype7( &vargraph );
-      Path<> haplotype8( &vargraph );
-      get_uniq_haplotype( haplotype1, hap_itr, 1 );
-      get_uniq_haplotype( haplotype2, hap_itr, 1 );
-      get_uniq_haplotype( haplotype3, hap_itr, 1 );
-      get_uniq_haplotype( haplotype4, hap_itr, 1 );
-      get_uniq_haplotype( haplotype5, hap_itr, 1 );
-      get_uniq_haplotype( haplotype6, hap_itr, 1 );
-      get_uniq_haplotype( haplotype7, hap_itr, 1 );
-      get_uniq_haplotype( haplotype8, hap_itr, 1 );
+      Path< VarGraph > haplotype1( &vargraph );
+      Path< VarGraph > haplotype2( &vargraph );
+      Path< VarGraph > haplotype3( &vargraph );
+      Path< VarGraph > haplotype4( &vargraph );
+      Path< VarGraph > haplotype5( &vargraph );
+      Path< VarGraph > haplotype6( &vargraph );
+      Path< VarGraph > haplotype7( &vargraph );
+      Path< VarGraph > haplotype8( &vargraph );
+      get_uniq_full_haplotype( haplotype1, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype2, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype3, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype4, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype5, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype6, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype7, hap_itr, 1 );
+      get_uniq_full_haplotype( haplotype8, hap_itr, 1 );
 
       THEN ( "they should be unique" )
       {
@@ -297,6 +558,10 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
         REQUIRE( length( haplotype7 ) == 10 );
         REQUIRE( length( haplotype8 ) == 10 );
       }
+      AND_THEN( "level of iterator should be the number of haplotypes" )
+      {
+        REQUIRE( level( hap_itr ) == 8 );
+      }
     }
   }
 
@@ -310,12 +575,12 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
     {
       seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr (vargraph);
 
-      Path<> haplotype1( &vargraph );
-      Path<> haplotype2( &vargraph );
-      Path<> haplotype3( &vargraph );
-      get_uniq_haplotype( haplotype1, hap_itr );
-      get_uniq_haplotype( haplotype2, hap_itr );
-      get_uniq_haplotype( haplotype3, hap_itr );
+      Path< VarGraph > haplotype1( &vargraph );
+      Path< VarGraph > haplotype2( &vargraph );
+      Path< VarGraph > haplotype3( &vargraph );
+      get_uniq_full_haplotype( haplotype1, hap_itr );
+      get_uniq_full_haplotype( haplotype2, hap_itr );
+      get_uniq_full_haplotype( haplotype3, hap_itr );
 
       THEN ( "they should be unique" )
       {
@@ -334,7 +599,7 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
       }
       AND_THEN ( "they all should cover 'merge' nodes" )
       {
-        std::vector< Path<> > paths_set;
+        std::vector< Path< VarGraph > > paths_set;
         paths_set.push_back( haplotype1 );
         paths_set.push_back( haplotype2 );
         paths_set.push_back( haplotype3 );
@@ -355,6 +620,10 @@ SCENARIO ( "Get unique haplotype using Haplotyper graph iterator", "[graph][iter
         REQUIRE( get_path_coverage( 101, paths_set ) == 3 );
         REQUIRE( get_path_coverage( 104, paths_set ) == 3 );
         REQUIRE( get_path_coverage( haplotype1.get_nodes().back(), paths_set ) == 3 );
+      }
+      AND_THEN( "level of iterator should be the number of haplotypes" )
+      {
+        REQUIRE( level( hap_itr ) == 3 );
       }
     }
   }
