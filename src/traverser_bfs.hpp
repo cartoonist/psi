@@ -20,7 +20,7 @@
 
 #include "traverser_base.hpp"
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  BFS Traverser.
    *
@@ -146,6 +146,6 @@ namespace grem {
           }
         }
     };  /* ----------  end of template class TraverserBFS  ---------- */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_TRAVERSER_BFS_HPP__ --- */

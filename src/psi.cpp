@@ -40,7 +40,7 @@
 
 using namespace klibpp;
 using namespace seqan;
-using namespace grem;
+using namespace psi;
 
 // TODO: Documentation.
 // TODO: Memory footprint.
@@ -173,7 +173,7 @@ template< typename TReadsIndexSpec >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide path index in lazy mode. */
-    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Reversed > pindex( context, true );
+    PathIndex< VarGraph, DiskString, psi::FMIndex<>, Reversed > pindex( context, true );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file,
         path_num, context, seed_len );
@@ -442,7 +442,7 @@ setup_argparser( seqan::ArgumentParser& parser )
       seqan::ArgParseOption( "L", "log-file",
         "Sets default log file for existing and future loggers.",
         seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE" ) );
-  setDefaultValue( parser, "L", "grem.log" );
+  setDefaultValue( parser, "L", "psi.log" );
   // no log to file
   addOption( parser,
       seqan::ArgParseOption( "Q", "no-log-file",

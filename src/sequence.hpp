@@ -36,7 +36,7 @@
 #define SEQUENCE_DEFAULT_SENTINEL_CHAR '$'
 
 
-namespace grem {
+namespace psi {
   // :TODO:Tue Sep 05 09:36:\@cartoonist: clear the code up from direct usage of seqan::Dna5QString.
   /* Typedefs  ------------------------------------------------------------------- */
   template< typename TSpec = seqan::Owner<> >
@@ -55,7 +55,7 @@ namespace grem {
     class MakeDependent;
 
   template< typename TText >
-    class MakeOwner< seqan::StringSet< TText, grem::Dependent > > {
+    class MakeOwner< seqan::StringSet< TText, psi::Dependent > > {
       public:
         typedef seqan::StringSet< TText, seqan::Owner<> > Type;
     };
@@ -69,13 +69,13 @@ namespace grem {
   template< typename TText >
     class MakeDependent< seqan::StringSet< TText, seqan::Owner<> > > {
       public:
-        typedef seqan::StringSet< TText, grem::Dependent > Type;
+        typedef seqan::StringSet< TText, psi::Dependent > Type;
     };
 
   template< typename TText >
-    class MakeDependent< seqan::StringSet< TText, grem::Dependent > > {
+    class MakeDependent< seqan::StringSet< TText, psi::Dependent > > {
       public:
-        typedef seqan::StringSet< TText, grem::Dependent > Type;
+        typedef seqan::StringSet< TText, psi::Dependent > Type;
     };
 
   template< typename TContainer >
@@ -84,7 +84,7 @@ namespace grem {
   template< typename TText, typename TSpec >
     class Ownership< seqan::StringSet< TText, TSpec > > {
       public:
-        typedef grem::Dependent Type;
+        typedef psi::Dependent Type;
     };
 
   template< typename TText >
@@ -124,14 +124,14 @@ namespace grem {
           inline void
         serialize( std::ostream& out )
         {
-          grem::serialize( out, this->begin(), this->end() );
+          psi::serialize( out, this->begin(), this->end() );
         }
 
           inline void
         load( std::istream& in )
         {
           this->clear();
-          grem::deserialize( in, *this, std::back_inserter( *this ) );
+          psi::deserialize( in, *this, std::back_inserter( *this ) );
         }
 
           inline pos_type
@@ -246,8 +246,8 @@ namespace grem {
         serialize( std::ostream& out )
         {
           out.flush();
-          grem::serialize( out, this->fpath.begin(), this->fpath.end() );
-          grem::serialize( out, static_cast< sint_type >( len ) );
+          psi::serialize( out, this->fpath.begin(), this->fpath.end() );
+          psi::serialize( out, static_cast< sint_type >( len ) );
         }
 
           inline void
@@ -255,7 +255,7 @@ namespace grem {
         {
           this->close();
           this->fpath.clear();
-          grem::deserialize( in, this->fpath, std::back_inserter( this->fpath ) );
+          psi::deserialize( in, this->fpath, std::back_inserter( this->fpath ) );
           if ( !readable( this->fpath ) ) {
             get_logger( "main" )->warn(
                 "File '{}' does not exist: disk-based string content cannot be read.",
@@ -267,7 +267,7 @@ namespace grem {
           }
 
           sint_type l;
-          grem::deserialize( in, l );
+          psi::deserialize( in, l );
           this->len = l;
         }
       private:
@@ -403,26 +403,26 @@ namespace grem {
         T1& i1;
         T2& i2;
     };
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 namespace seqan {
   template< >
-    class StringSet< grem::DiskString, Owner<> > : public grem::DiskString {
+    class StringSet< psi::DiskString, Owner<> > : public psi::DiskString {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef grem::DiskString value_type;
-        typedef grem::DiskString::string_type string_type;
+        typedef psi::DiskString value_type;
+        typedef psi::DiskString::string_type string_type;
         typedef string_type::size_type stringsize_type;
         typedef uint64_t size_type;       /**< @brief Type for serializing the length. */
-        typedef grem::DiskBased device_type;
-        typedef grem::YaPair< size_type, stringsize_type > pos_type;
+        typedef psi::DiskBased device_type;
+        typedef psi::YaPair< size_type, stringsize_type > pos_type;
         /* ====================  LIFECYCLE     ======================================= */
         StringSet( )
-          : grem::DiskString( ), count( 0 ), initialized( false ), bv_str_breaks( )
+          : psi::DiskString( ), count( 0 ), initialized( false ), bv_str_breaks( )
         { }
 
         StringSet( std::string _fpath )
-          : grem::DiskString( string_type(), std::move( _fpath ) ),
+          : psi::DiskString( string_type(), std::move( _fpath ) ),
           count( 0 ), initialized( false ), bv_str_breaks( )
         { }
 
@@ -430,7 +430,7 @@ namespace seqan {
         StringSet& operator=( const StringSet& ) = delete;
 
         StringSet( StringSet&& other )
-          : grem::DiskString( std::move( other ) )
+          : psi::DiskString( std::move( other ) )
         {
           this->count = other.count;
           this->bv_str_breaks.swap( other.bv_str_breaks );
@@ -441,7 +441,7 @@ namespace seqan {
 
         StringSet& operator=( StringSet&& other )
         {
-          grem::DiskString::operator=( std::move( other ) );
+          psi::DiskString::operator=( std::move( other ) );
           this->count = other.count;
           sdsl::util::clear( this->bv_str_breaks );
           this->bv_str_breaks.swap( other.bv_str_breaks );
@@ -457,17 +457,17 @@ namespace seqan {
         /* ====================  CONST MEMBERS ======================================= */
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
-          inline grem::YaInfix< StringSet >
+          inline psi::YaInfix< StringSet >
         operator[]( size_type idx ) const
         {
           ASSERT( this->is_initialized() );
-          grem::YaInfix< StringSet > retval;
+          psi::YaInfix< StringSet > retval;
           retval.first = this->select( idx );
           retval.second = this->select( idx + 1 ) - 1;
           return retval;
         }
 
-          inline grem::YaInfix< StringSet >
+          inline psi::YaInfix< StringSet >
         operator[]( size_type idx )
         {
           if ( !this->is_initialized() ) this->initialize();
@@ -530,7 +530,7 @@ namespace seqan {
           inline void
         clear( )
         {
-          grem::DiskString::clear();
+          psi::DiskString::clear();
           this->count = 0;
           sdsl::util::clear( this->bv_str_breaks );
           sdsl::util::clear( this->rs_str_breaks );
@@ -545,8 +545,8 @@ namespace seqan {
         serialize( std::ostream& out )
         {
           this->shrink_bv_str_breaks();
-          grem::DiskString::serialize( out );
-          grem::serialize( out, this->count );
+          psi::DiskString::serialize( out );
+          psi::serialize( out, this->count );
           this->bv_str_breaks.serialize( out );
         }
 
@@ -554,8 +554,8 @@ namespace seqan {
         load( std::istream& in )
         {
           this->clear();
-          grem::DiskString::load( in );
-          grem::deserialize( in, this->count );
+          psi::DiskString::load( in );
+          psi::deserialize( in, this->count );
           this->bv_str_breaks.load( in );
           this->initialize();
         }
@@ -591,15 +591,15 @@ namespace seqan {
     };
 
     inline void
-  StringSet< grem::DiskString, Owner<> >::push_back(
-      typename StringSet< grem::DiskString, Owner<> >::string_type const& str )
+  StringSet< psi::DiskString, Owner<> >::push_back(
+      typename StringSet< psi::DiskString, Owner<> >::string_type const& str )
   {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     *this += str;
     stringsize_type breakpoint = this->raw_length();
     if ( breakpoint >= this->bv_str_breaks.size() ) {
-      sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
-      if ( this->length() != 0 ) grem::bv_icopy( this->bv_str_breaks,
+      sdsl::bit_vector new_bv( psi::roundup64( breakpoint + 1 ), 0 );
+      if ( this->length() != 0 ) psi::bv_icopy( this->bv_str_breaks,
                                                  new_bv,
                                                  0, this->bv_str_breaks.size() );
       sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
@@ -610,70 +610,70 @@ namespace seqan {
   }
 
     inline void
-  push_back( StringSet< grem::DiskString, Owner<> >& dstr,
-      typename StringSet< grem::DiskString, Owner<> >::string_type const& str )
+  push_back( StringSet< psi::DiskString, Owner<> >& dstr,
+      typename StringSet< psi::DiskString, Owner<> >::string_type const& str )
   {
     dstr.push_back( str );
   }
 
     inline void
-  push_back( StringSet< grem::DiskString, Owner<> >& dstr,
-      typename StringSet< grem::DiskString, Owner<> >::string_type&& str )
+  push_back( StringSet< psi::DiskString, Owner<> >& dstr,
+      typename StringSet< psi::DiskString, Owner<> >::string_type&& str )
   {
     dstr.push_back( str );
   }
 
     inline void
-  appendValue( StringSet< grem::DiskString, Owner<> >& dstr,
-      StringSet< grem::DiskString, Owner<> >::string_type& str )
+  appendValue( StringSet< psi::DiskString, Owner<> >& dstr,
+      StringSet< psi::DiskString, Owner<> >::string_type& str )
   {
     push_back( dstr, str );
   }
 
     inline void
-  appendValue( StringSet< grem::DiskString, Owner<> >& dstr,
-      StringSet< grem::DiskString, Owner<> >::string_type&& str )
+  appendValue( StringSet< psi::DiskString, Owner<> >& dstr,
+      StringSet< psi::DiskString, Owner<> >::string_type&& str )
   {
     push_back( dstr, str );
   }
 
-    inline StringSet< grem::DiskString, Owner<> >::size_type
-  length( const StringSet< grem::DiskString, Owner<> >& dstr )
+    inline StringSet< psi::DiskString, Owner<> >::size_type
+  length( const StringSet< psi::DiskString, Owner<> >& dstr )
   {
     return dstr.length();
   }
 
     inline void
-  clear( StringSet< grem::DiskString, Owner<> >& dstr )
+  clear( StringSet< psi::DiskString, Owner<> >& dstr )
   {
     dstr.clear();
   }
 
   template< typename TSize >
       inline void
-    reserve( StringSet< grem::DiskString, Owner<> >& dstr,
+    reserve( StringSet< psi::DiskString, Owner<> >& dstr,
         TSize const size )
     {
       dstr.reserve( size );
     }
 
   template< >
-    class StringSet< grem::MemString, Owner<> > : public grem::MemString {
+    class StringSet< psi::MemString, Owner<> > : public psi::MemString {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef grem::MemString value_type;
-        typedef grem::MemString::string_type string_type;
+        typedef psi::MemString value_type;
+        typedef psi::MemString::string_type string_type;
         typedef string_type::size_type stringsize_type;
         typedef uint64_t size_type;
-        typedef grem::InMemory device_type;
-        typedef grem::YaPair< size_type, stringsize_type > pos_type;
+        typedef psi::InMemory device_type;
+        typedef psi::YaPair< size_type, stringsize_type > pos_type;
         /* ====================  LIFECYCLE     ======================================= */
         StringSet( )
-          : grem::MemString( ), count( 0 ), initialized( false ), bv_str_breaks( )
+          : psi::MemString( ), count( 0 ), initialized( false ), bv_str_breaks( )
         { }
 
         StringSet( const StringSet& other )
-          : grem::MemString( other )
+          : psi::MemString( other )
         {
           this->count = other.count;
           this->bv_str_breaks = other.bv_str_breaks;
@@ -681,7 +681,7 @@ namespace seqan {
         }
 
         StringSet( StringSet&& other )
-          : grem::MemString( std::move( other ) )
+          : psi::MemString( std::move( other ) )
         {
           this->count = other.count;
           this->bv_str_breaks.swap( other.bv_str_breaks );
@@ -692,7 +692,7 @@ namespace seqan {
 
         StringSet& operator=( const StringSet& other )
         {
-          grem::MemString::operator=( other );
+          psi::MemString::operator=( other );
           this->count = other.count;
           this->bv_str_breaks = other.bv_str_breaks;
           this->initialize();
@@ -701,7 +701,7 @@ namespace seqan {
 
         StringSet& operator=( StringSet&& other )
         {
-          grem::MemString::operator=( std::move( other ) );
+          psi::MemString::operator=( std::move( other ) );
           this->count = other.count;
           sdsl::util::clear( this->bv_str_breaks );
           this->bv_str_breaks.swap( other.bv_str_breaks );
@@ -717,17 +717,17 @@ namespace seqan {
         /* ====================  CONST MEMBERS ======================================= */
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
-          inline grem::YaInfix< StringSet >
+          inline psi::YaInfix< StringSet >
         operator[]( size_type idx ) const
         {
           ASSERT( this->is_initialized() );
-          grem::YaInfix< StringSet > retval;
+          psi::YaInfix< StringSet > retval;
           retval.first = this->select( idx );
           retval.second = this->select( idx + 1 ) - 1;
           return retval;
         }
 
-          inline grem::YaInfix< StringSet >
+          inline psi::YaInfix< StringSet >
         operator[]( size_type idx )
         {
           if ( !this->is_initialized() ) this->initialize();
@@ -790,7 +790,7 @@ namespace seqan {
           inline void
         clear( )
         {
-          grem::MemString::clear();
+          psi::MemString::clear();
           this->count = 0;
           sdsl::util::clear( this->bv_str_breaks );
           sdsl::util::clear( this->rs_str_breaks );
@@ -805,8 +805,8 @@ namespace seqan {
         serialize( std::ostream& out )
         {
           this->shrink_bv_str_breaks( );
-          grem::MemString::serialize( out );
-          grem::serialize( out, this->count );
+          psi::MemString::serialize( out );
+          psi::serialize( out, this->count );
           this->bv_str_breaks.serialize( out );
         }
 
@@ -814,8 +814,8 @@ namespace seqan {
         load( std::istream& in )
         {
           this->clear();
-          grem::MemString::load( in );
-          grem::deserialize( in, this->count );
+          psi::MemString::load( in );
+          psi::deserialize( in, this->count );
           this->bv_str_breaks.load( in );
           this->initialize();
         }
@@ -851,15 +851,15 @@ namespace seqan {
     };
 
     inline void
-  StringSet< grem::MemString, Owner<> >::push_back(
-      typename StringSet< grem::MemString, Owner<> >::string_type const& str )
+  StringSet< psi::MemString, Owner<> >::push_back(
+      typename StringSet< psi::MemString, Owner<> >::string_type const& str )
   {
     if ( this->length() != 0 ) *this += std::string( 1, SENTINEL );
     *this += str;
     stringsize_type breakpoint = this->raw_length();
     if ( breakpoint >= this->bv_str_breaks.size() ) {
-      sdsl::bit_vector new_bv( grem::roundup64( breakpoint + 1 ), 0 );
-      if ( this->length() != 0 ) grem::bv_icopy( this->bv_str_breaks,
+      sdsl::bit_vector new_bv( psi::roundup64( breakpoint + 1 ), 0 );
+      if ( this->length() != 0 ) psi::bv_icopy( this->bv_str_breaks,
                                                  new_bv,
                                                  0, this->bv_str_breaks.size() );
       sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
@@ -870,55 +870,55 @@ namespace seqan {
   }
 
     inline void
-  push_back( StringSet< grem::MemString, Owner<> >& dstr,
-      typename StringSet< grem::MemString, Owner<> >::string_type const& str )
+  push_back( StringSet< psi::MemString, Owner<> >& dstr,
+      typename StringSet< psi::MemString, Owner<> >::string_type const& str )
   {
     dstr.push_back( str );
   }
 
     inline void
-  push_back( StringSet< grem::MemString, Owner<> >& dstr,
-      typename StringSet< grem::MemString, Owner<> >::string_type&& str )
+  push_back( StringSet< psi::MemString, Owner<> >& dstr,
+      typename StringSet< psi::MemString, Owner<> >::string_type&& str )
   {
     dstr.push_back( str );
   }
 
     inline void
-  appendValue( StringSet< grem::MemString, Owner<> >& dstr,
-      StringSet< grem::MemString, Owner<> >::string_type& str )
+  appendValue( StringSet< psi::MemString, Owner<> >& dstr,
+      StringSet< psi::MemString, Owner<> >::string_type& str )
   {
     push_back( dstr, str );
   }
 
     inline void
-  appendValue( StringSet< grem::MemString, Owner<> >& dstr,
-      StringSet< grem::MemString, Owner<> >::string_type&& str )
+  appendValue( StringSet< psi::MemString, Owner<> >& dstr,
+      StringSet< psi::MemString, Owner<> >::string_type&& str )
   {
     push_back( dstr, str );
   }
 
-    inline StringSet< grem::MemString, Owner<> >::size_type
-  length( const StringSet< grem::MemString, Owner<> >& dstr )
+    inline StringSet< psi::MemString, Owner<> >::size_type
+  length( const StringSet< psi::MemString, Owner<> >& dstr )
   {
     return dstr.length();
   }
 
     inline void
-  clear( StringSet< grem::MemString, Owner<> >& dstr )
+  clear( StringSet< psi::MemString, Owner<> >& dstr )
   {
     dstr.clear();
   }
 
   template< typename TSize >
       inline void
-    reserve( StringSet< grem::MemString, Owner<> >& dstr,
+    reserve( StringSet< psi::MemString, Owner<> >& dstr,
         TSize const size )
     {
       dstr.reserve( size );
     }
 }  /* -----  end of namespace seqan  ----- */
 
-namespace grem {
+namespace psi {
   /* StringSets interface functions */
   template< typename TText >
       inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
@@ -958,7 +958,7 @@ namespace grem {
   template< typename TText, typename TSpec >
     class Ownership< Records< seqan::StringSet< TText, TSpec > > > {
       public:
-        typedef grem::Dependent Type;
+        typedef psi::Dependent Type;
     };
 
   template< typename TText >
@@ -980,9 +980,9 @@ namespace grem {
     }
 
   template< typename TText >
-      inline typename Records< seqan::StringSet< TText, grem::Dependent > >::TId
-    position_to_id( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
-        typename Records< seqan::StringSet< TText, grem::Dependent > >::TId rec_id )
+      inline typename Records< seqan::StringSet< TText, psi::Dependent > >::TId
+    position_to_id( const Records< seqan::StringSet< TText, psi::Dependent > >& records,
+        typename Records< seqan::StringSet< TText, psi::Dependent > >::TId rec_id )
     {
       if ( rec_id >= length( records.str ) || rec_id < 0 ) {
         throw std::runtime_error( "position out of range" );
@@ -1000,9 +1000,9 @@ namespace grem {
     }
 
   template< typename TText >
-      inline typename Records< seqan::StringSet< TText, grem::Dependent > >::TPosition
-    position_to_offset( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
-        typename Records< seqan::StringSet< TText, grem::Dependent > >::TStringSetPosition const& pos )
+      inline typename Records< seqan::StringSet< TText, psi::Dependent > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, psi::Dependent > >& records,
+        typename Records< seqan::StringSet< TText, psi::Dependent > >::TStringSetPosition const& pos )
     {
       using seqan::length;
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
@@ -1032,7 +1032,7 @@ namespace grem {
 
   template< typename TText >
       inline void
-    clear( Records< seqan::StringSet< TText, grem::Dependent > >& records )
+    clear( Records< seqan::StringSet< TText, psi::Dependent > >& records )
     {
       clear( records.str );
       records.rec_offset = 0;
@@ -1064,7 +1064,7 @@ namespace grem {
 
   template< typename TText >
       inline bool
-    load_chunk( Records< seqan::StringSet< TText, grem::Dependent > >& records,
+    load_chunk( Records< seqan::StringSet< TText, psi::Dependent > >& records,
         const Records< seqan::StringSet< TText, seqan::Owner<> > >& ref,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition start_pos )
@@ -1219,7 +1219,7 @@ namespace grem {
         clear( )
         {
           using seqan::clear;
-          using grem::clear;
+          using psi::clear;
           clear( this->name );
           //clear( records.comment );
           clear( this->str );
@@ -1248,10 +1248,10 @@ namespace grem {
     };
 
   template< typename TText >
-    class Records< seqan::StringSet< TText, grem::Dependent > > {
+    class Records< seqan::StringSet< TText, psi::Dependent > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef grem::Dependent TSpec;
+        typedef psi::Dependent TSpec;
         typedef seqan::StringSet< TText, TSpec > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
         typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
@@ -1751,12 +1751,12 @@ namespace grem {
     }  /* -----  end of function seeding  ----- */
 
   /* END OF Interface functions  ------------------------------------------------- */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 namespace seqan {
   template< typename TStringSet, typename TSpec >
-    struct Iterator< grem::Records< TStringSet >, TSpec > {
-      typedef grem::RecordsIter< grem::Records< TStringSet >, TSpec > Type;
+    struct Iterator< psi::Records< TStringSet >, TSpec > {
+      typedef psi::RecordsIter< psi::Records< TStringSet >, TSpec > Type;
     };
 }  /* -----  end of namespace seqan  ----- */
 

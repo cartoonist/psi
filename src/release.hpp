@@ -19,19 +19,24 @@
 #ifndef PSI_RELEASE_HPP__
 #define PSI_RELEASE_HPP__
 
-namespace grem
-{
-  const char * const VERSION = "0.0.2";                /**< @brief Version number. */
-  const char * const PACKAGE = "grem";                 /**< @brief Package name. */
-  const char * const SHORT_DESC = "Graph REad Mapper"; /**< @brief Short description. */
+namespace psi {
+  const char * const VERSION = "0.0.2";                     /**< @brief Version number. */
+  const char * const PACKAGE = "PSI";                       /**< @brief Package name. */
+  const char * const SHORT_DESC = "Pan-genome Seed Index";  /**< @brief Short description. */
   /** @brief Long description. */
-  const char * const LONG_DESC = "Map DNA reads to a reference graph.";
+  const char * const LONG_DESC =
+      "Fully-sensitive seed finder in sequence graphs. "
+      "This is an implementation of the method introduced in:\n\n"
+      "  Ghaffaari, A. & Marschall, T. "
+      "Fully-sensitive seed finding in sequence graphs using a hybrid index. "
+      "Bioinformatics 35, i81-i89 (2019)\n\n"
+      "When using PSI library for a publication please cite above article.";
   /** @brief Banner to be printed on help and version messages. */
   const char * const BANNER =
-    "\n"
-    " ┌─┐┬─┐┌─┐┌┬┐\n"
-    " │ ┬├┬┘├┤ │││\n"
-    " └─┘┴└─└─┘┴ ┴\n";
-}
+      "\n"
+      ".---..---..-.\n"
+      "| |-' \\ \\ | |\n"
+      "`-'  `---'`-'\n";
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_RELEASE_HPP__ --- */

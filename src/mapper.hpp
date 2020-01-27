@@ -40,8 +40,7 @@
 #include "stat.hpp"
 
 
-namespace grem
-{
+namespace psi {
   /**
    *  @brief  MapperStat template class.
    *
@@ -696,5 +695,6 @@ namespace grem
         typedef MapperStat< TSpec > Type;
     };  /* ----------  end of template class Stat  ---------- */
 }
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_MAPPER_HPP__ --- */

@@ -21,7 +21,7 @@
 #include "traverser_bfs.hpp"
 #include "traverser_dfs.hpp"
 
-namespace grem {
+namespace psi {
   template< typename TIndex,
     typename TStrategy,
     template<typename> class TMatchingTraits,
@@ -39,6 +39,6 @@ namespace grem {
       public:
         typedef TraverserDFS< TIndex, ExactMatching, TStatSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_TRAVERSER_HPP__ --- */

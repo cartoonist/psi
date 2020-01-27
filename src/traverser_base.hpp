@@ -39,8 +39,7 @@
 
 // TODO: refactor: types (const, * and &).
 
-namespace grem
-{
+namespace psi {
   /* Forwards */
   template< typename TIndex,
     typename TStrategy,
@@ -373,6 +372,6 @@ namespace grem
         unsigned int seed_len;         /**< @brief Seed length. */
         std::vector< typename traits_type::TState > states;
     };  /* ----------  end of template class TraverserBase  ---------- */
-}
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_TRAVERSER_BASE_HPP__ --- */

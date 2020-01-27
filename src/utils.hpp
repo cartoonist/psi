@@ -35,10 +35,10 @@
 #include "base.hpp"
 
 
-#define GREM_DEFAULT_TMPDIR "/tmp"
-#define GREM_TMPFILE_TEMPLATE "/grem-XXXXXX"
+#define PSI_DEFAULT_TMPDIR "/tmp"
+#define PSI_TMPFILE_TEMPLATE "/psi-XXXXXX"
 
-#define BINARY_NAME "grem"
+#define BINARY_NAME "psi"
 #define ASSERT(expr)							\
   ((expr)								\
    ? __ASSERT_VOID_CAST (0)						\
@@ -65,7 +65,7 @@ assert_fail( std::string const& expr, std::string const& outfile,
   std::exit( 134 );
 }
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  Check whether a string ends with another string.
    *
@@ -347,14 +347,14 @@ namespace grem {
   get_tmpdir( )
   {
     std::string tmpdir = get_tmpdir_env();
-    if ( tmpdir.size() == 0 ) tmpdir = GREM_DEFAULT_TMPDIR;
+    if ( tmpdir.size() == 0 ) tmpdir = PSI_DEFAULT_TMPDIR;
     return tmpdir;
   }
 
     inline std::string
   get_tmpfile( )
   {
-    std::string tmpfile_templ = get_tmpdir() + GREM_TMPFILE_TEMPLATE;
+    std::string tmpfile_templ = get_tmpdir() + PSI_TMPFILE_TEMPLATE;
     char* tmpl = new char [ tmpfile_templ.size() + 1 ];
     std::strcpy( tmpl, tmpfile_templ.c_str() );
     int fd = mkstemp( tmpl );
@@ -857,6 +857,6 @@ namespace grem {
 
   template< typename T1, typename T2 >
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_UTILS_HPP__ --- */

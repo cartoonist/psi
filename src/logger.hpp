@@ -25,7 +25,7 @@
 #include "spdlog/spdlog.h"
 
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  Configure the main logger.
    *
@@ -133,5 +133,6 @@ namespace grem {
   {
     spdlog::drop_all();
   }  /* -----  end of function drop_all_loggers  ----- */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
+
 #endif  /* --- #ifndef PSI_LOGGER_HPP__ --- */

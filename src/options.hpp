@@ -26,8 +26,7 @@
 #include "base.hpp"
 
 
-namespace grem
-{
+namespace psi {
   // :TODO:Tue Mar 07 20:34:\@cartoonist: Option class.
   enum class IndexType {
     Sa = 1,               /**< @brief Suffix array index. */
@@ -90,6 +89,6 @@ namespace grem
     bool nocolor;
     bool verbose;
   } Options;
-}
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_OPTIONS_HPP__ --- */

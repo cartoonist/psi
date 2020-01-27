@@ -28,7 +28,7 @@
 #include "utils.hpp"
 
 
-namespace grem {
+namespace psi {
   template< class TWT = sdsl::wt_huff<>, uint32_t TDens = 32, uint32_t TInvDens = 64 >
     struct FMIndex;
 
@@ -39,49 +39,49 @@ namespace grem {
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
     class is_fmindex< FMIndex< TWT, TDens, TInvDens > > : public std::true_type {
     };
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 namespace seqan {
   /* Forwards */
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       void
     indexRequire(
-        Index< grem::YaString< grem::DiskBased >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< psi::YaString< psi::DiskBased >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF );
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       void
     indexRequire(
-        Index< grem::YaString< grem::InMemory >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< psi::YaString< psi::InMemory >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF );
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       void
     indexRequire(
-        Index< StringSet< grem::YaString< grem::DiskBased > >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< StringSet< psi::YaString< psi::DiskBased > >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF );
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       void
     indexRequire(
-        Index< StringSet< grem::YaString< grem::InMemory > >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< StringSet< psi::YaString< psi::InMemory > >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF );
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-      typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::text_type&
-    getFibre( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >& index, FibreText );
+      typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::text_type&
+    getFibre( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index, FibreText );
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-      typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::text_type const&
-    getFibre( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > const& index, FibreText );
+      typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::text_type const&
+    getFibre( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > const& index, FibreText );
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    class Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > {
+    class Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef TText text_type;                               /**< @brief input text type */
         typedef typename text_type::pos_type pos_type;
-        typedef grem::FMIndex< TWT, TDens, TInvDens > spec_type;
+        typedef psi::FMIndex< TWT, TDens, TInvDens > spec_type;
         typedef sdsl::csa_wt< TWT, TDens, TInvDens > value_type;
         typedef typename value_type::string_type string_type;  /**< @brief output string type */
         typedef typename value_type::size_type savalue_type;
@@ -213,11 +213,11 @@ namespace seqan {
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
     indexRequire(
-        Index< grem::YaString< grem::DiskBased >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< psi::YaString< psi::DiskBased >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
       if ( index.constructible() ) {
-        std::string tmpdir = grem::get_tmpdir_env();
+        std::string tmpdir = psi::get_tmpdir_env();
         sdsl::cache_config config;
         if ( tmpdir.size() != 0 ) {
           config.dir = std::move( tmpdir );
@@ -229,7 +229,7 @@ namespace seqan {
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
     indexRequire(
-        Index< grem::YaString< grem::InMemory >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< psi::YaString< psi::InMemory >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
       if ( index.constructible() ) construct_im( index.fm, index.text_p->c_str(), 1 );
@@ -238,11 +238,11 @@ namespace seqan {
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
     indexRequire(
-        Index< StringSet< grem::YaString< grem::DiskBased > >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< StringSet< psi::YaString< psi::DiskBased > >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
       if ( index.constructible() ) {
-        std::string tmpdir = grem::get_tmpdir_env();
+        std::string tmpdir = psi::get_tmpdir_env();
         sdsl::cache_config config;
         if ( tmpdir.size() != 0 ) {
           config.dir = std::move( tmpdir );
@@ -254,29 +254,29 @@ namespace seqan {
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
     indexRequire(
-        Index< StringSet< grem::YaString< grem::InMemory > >, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+        Index< StringSet< psi::YaString< psi::InMemory > >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
       if ( index.constructible() ) construct_im( index.fm, index.text_p->c_str(), 1 );
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-      inline typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::text_type&
-    getFibre( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >& index, FibreText )
+      inline typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::text_type&
+    getFibre( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index, FibreText )
     {
       return *index.text_p;
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-      inline typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::text_type const&
-    getFibre( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > const& index, FibreText )
+      inline typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::text_type const&
+    getFibre( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > const& index, FibreText )
     {
       return *index.text_p;
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
-    open( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+    open( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         const std::string& file_name )
     {
       std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
@@ -287,7 +287,7 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
-    save( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >& index,
+    save( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         const std::string& file_name )
     {
       std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
@@ -298,43 +298,43 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
-    clear( Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >& index )
+    clear( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index )
     {
       index.clear();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    struct Value< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > > {
-      typedef typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::char_type Type;
+    struct Value< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > > {
+      typedef typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::char_type Type;
     };
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    struct Fibre< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, FibreText > {
-      typedef typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::text_type Type;
+    struct Fibre< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, FibreText > {
+      typedef typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::text_type Type;
     };
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    struct Fibre< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > const, FibreText > {
-      typedef typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::text_type const Type;
+    struct Fibre< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > const, FibreText > {
+      typedef typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::text_type const Type;
     };
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    struct SAValue< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > > {
-      typedef typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::pos_type Type;
+    struct SAValue< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > > {
+      typedef typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::pos_type Type;
     };
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    struct SAValue< const Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > > {
-      typedef typename Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >::pos_type Type;
+    struct SAValue< const Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > > {
+      typedef typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::pos_type Type;
     };
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-    class Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > > {
+    class Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef TText text_type;                               /**< @brief input text type */
         typedef typename text_type::pos_type pos_type;
-        typedef Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > index_type;
+        typedef Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > index_type;
         typedef typename index_type::string_type string_type;  /**< @brief output string type */
         typedef typename index_type::savalue_type savalue_type;
         typedef typename index_type::index_category index_category;
@@ -421,28 +421,28 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
-    empty( Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >& finder )
+    empty( Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >& finder )
     {
       return finder.empty();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
-    atEnd( Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >& finder )
+    atEnd( Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >& finder )
     {
       return finder.at_end();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
-      inline typename Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >::pos_type
-    beginPosition( Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >& finder )
+      inline typename Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >::pos_type
+    beginPosition( Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >& finder )
     {
       return finder.get_position();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TPattern >
       inline bool
-    find( Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >& finder,
+    find( Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >& finder,
         TPattern const& pattern )
     {
       using std::begin;
@@ -455,7 +455,7 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
-    find( Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >& finder,
+    find( Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >& finder,
         const char* pattern )
     {
       std::string p( pattern );
@@ -464,18 +464,18 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
-    clear( Finder< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > >& finder )
+    clear( Finder< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > >& finder )
     {
       finder.clear();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-    class Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
+    class Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef TText text_type;                               /**< @brief input text type */
         typedef typename text_type::pos_type pos_type;
-        typedef Index< TText, grem::FMIndex< TWT, TDens, TInvDens > > index_type;
+        typedef Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > index_type;
         typedef typename index_type::string_type string_type;  /**< @brief output string type */
         typedef typename index_type::savalue_type savalue_type;
         typedef typename index_type::index_category index_category;
@@ -694,22 +694,22 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline void
-    reserveHistory( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter,
-        typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type size )
+    reserveHistory( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter,
+        typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type size )
     {
       iter.reserve_history( size );
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    isRoot( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    isRoot( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
       return iter.is_root();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline void
-    goRoot( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    goRoot( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
       if ( isRoot( iter ) ) return;
       iter.init();
@@ -717,15 +717,15 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    goDown( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter,
-        typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::char_type c )
+    goDown( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter,
+        typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::char_type c )
     {
       return iter.go_down( c ) != 0;
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    goUp( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    goUp( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
       if ( isRoot( iter ) ) return false;
       iter.history_pop();
@@ -734,7 +734,7 @@ namespace seqan {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    goRight( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    goRight( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
       if ( isRoot( iter ) ) return false;
       auto c = iter.last_char();
@@ -745,43 +745,43 @@ namespace seqan {
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
-    parentEdgeLength( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    parentEdgeLength( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.parent_edge_length();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::string_type
-    parentEdgeLabel( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::string_type
+    parentEdgeLabel( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.parent_edge_label();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
-    repLength( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    repLength( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.rep_length();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::string_type
-    representative( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::string_type
+    representative( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.representative();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::occs_type
-    getOccurrences( Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::occs_type
+    getOccurrences( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.get_occurrences();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-    struct Iterator< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
-      typedef Iter< Index< TText, grem::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > Type;
+    struct Iterator< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
+      typedef Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > Type;
     };
 }  /* -----  end of namespace seqan  ----- */
 

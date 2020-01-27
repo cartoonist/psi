@@ -246,4 +246,5 @@ namespace psi {
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */
+
 #endif  /* --- #ifndef PSI_GRAPH_HPP__ --- */

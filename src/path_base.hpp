@@ -36,7 +36,7 @@
 #include "utils.hpp"
 
 
-namespace grem{
+namespace psi {
   /* Path specialization tags. */
   struct DefaultStrategy;
   struct DynamicStrategy;
@@ -525,7 +525,7 @@ namespace grem{
           inline void
         clear( )
         {
-          grem::clear( this->nodes );
+          psi::clear( this->nodes );
           this->left = 0;
           this->right = 0;
           this->seqlen = 0;
@@ -539,16 +539,16 @@ namespace grem{
           inline void
         reserve( size_type size )
         {
-          grem::reserve( this->nodes, size );  /* defined in `utils.h` */
+          psi::reserve( this->nodes, size );  /* defined in `utils.h` */
         }
 
           inline void
         serialize( std::ostream& out ) const
         {
           ASSERT( this->is_initialized() );  // Path must be initialized to be serialized
-          grem::serialize( out, this->nodes );
-          grem::serialize( out, static_cast< uint64_t >( this->left ) );
-          grem::serialize( out, static_cast< uint64_t >( this->right ) );
+          psi::serialize( out, this->nodes );
+          psi::serialize( out, static_cast< uint64_t >( this->left ) );
+          psi::serialize( out, static_cast< uint64_t >( this->right ) );
           this->bv_node_breaks.serialize( out );
         }
 
@@ -688,7 +688,7 @@ namespace grem{
         this->vargraph = other.vargraph;
 
         assign( this->nodes, other.nodes );
-        grem::clear( other.nodes );
+        psi::clear( other.nodes );
 
         this->left = other.left;
         this->right = other.right;
@@ -868,7 +868,7 @@ namespace grem{
         set_nodes( const std::vector< value_type >& value )
         {
           this->clear( );
-          grem::reserve( this->nodes_set, value.size() );
+          psi::reserve( this->nodes_set, value.size() );
           std::copy( value.begin(), value.end(),
               std::inserter( this->nodes_set, this->nodes_set.end() ) );
         }  /* -----  end of method set_nodes  ----- */
@@ -888,13 +888,13 @@ namespace grem{
           inline void
         reserve( size_type size )
         {
-          grem::reserve( this->nodes_set, size );
+          psi::reserve( this->nodes_set, size );
         }
 
           inline void
         serialize( std::ostream& out ) const
         {
-          grem::serialize( out, this->nodes_set, this->nodes_set.begin(), this->nodes_set.end() );
+          psi::serialize( out, this->nodes_set, this->nodes_set.begin(), this->nodes_set.end() );
         }
 
           inline void
@@ -1272,6 +1272,6 @@ namespace grem{
 
   template< >
     class is_generic_path< Haplotype > : public std::false_type {};
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_PATH_BASE_HPP__ --- */

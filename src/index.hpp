@@ -26,14 +26,14 @@
 #include "fmindex.hpp"
 
 
-namespace grem {
+namespace psi {
   /* Typedefs  ------------------------------------------------------------------- */
 
   // Configured FMIndex template specialization tags.
   // :TODO:Mon Oct 23 02:11:\@cartoonist: Change all `typedef`s to `using`.
   using TFMIndexConfig = seqan::FastFMIndexConfig< void, uint64_t, 2, 1 >;
   using CFMIndex = seqan::FMIndex< void, TFMIndexConfig >;
-  using CBiFMIndex = seqan::BidirectionalIndex< grem::CFMIndex >;
+  using CBiFMIndex = seqan::BidirectionalIndex< psi::CFMIndex >;
 
   template< >
     class is_fmindex< CFMIndex > : public std::true_type {
@@ -59,14 +59,14 @@ namespace grem {
 
   template< typename TText >
       inline void
-    create_index( seqan::Index< TText, grem::CFMIndex >& index )
+    create_index( seqan::Index< TText, psi::CFMIndex >& index )
     {
       _create_fm_index( index );
     }
 
   template< typename TText >
       inline void
-    create_index( seqan::Index< TText, grem::CBiFMIndex >& index )
+    create_index( seqan::Index< TText, psi::CBiFMIndex >& index )
     {
       _create_fm_index( index );
     }
@@ -91,7 +91,7 @@ namespace grem {
     {
       return seqan::save( index, file_name.c_str() );
     }
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 namespace seqan {
   /**
@@ -101,7 +101,7 @@ namespace seqan {
    *        systems and to 2^64 (=18,446,744,073,709,551,615) in 64-bit ones.
    */
   template< typename TSpec >
-    struct SAValue< grem::Dna5QStringSet< TSpec > >
+    struct SAValue< psi::Dna5QStringSet< TSpec > >
     {
       typedef Pair< long unsigned int, long unsigned int, Tag<Pack_> > Type;
     };

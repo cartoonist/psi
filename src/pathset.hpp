@@ -32,7 +32,7 @@
 #define PATHSET_ID_SEPARATOR_CHAR ','
 
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  Represent a set of path with node ID query functionalities.
    *
@@ -53,7 +53,7 @@ namespace grem {
         /* XXX: `stringset_type::string_type` is underlying internal (in-memory) string
          *      ... type which might not be equivalent to `YaString<TSpec>`. */
         typedef typename stringset_type::string_type string_type;
-        typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+        typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
         typedef std::pair< size_type, typename value_type::size_type > pos_type;
         /* ====================  CONST MEMBERS  ====================================== */
         const char ID_SEPARATOR = PATHSET_ID_SEPARATOR_CHAR;
@@ -156,7 +156,7 @@ namespace grem {
           }
 
           this->set.push_back( std::move( path ) );
-          grem::initialize( this->set.back() );
+          psi::initialize( this->set.back() );
 
           std::string encids_str = this->get_encids_str( this->set.back() );
           appendValue( this->encids_set, encids_str );
@@ -254,9 +254,9 @@ namespace grem {
           inline void
         serialize( std::ostream& out )
         {
-          grem::serialize( out, static_cast< size_type >( this->size() ) );
+          psi::serialize( out, static_cast< size_type >( this->size() ) );
           for ( auto&& path : this->set ) {
-            grem::save( path, out );
+            psi::save( path, out );
           }
 
           indexRequire( this->encids_index, seqan::FibreSALF() );
@@ -279,7 +279,7 @@ namespace grem {
           this->rs_ids_set.reserve( paths_num );
           for ( size_type i = 0; i < paths_num; ++i ) {
             value_type path( vargraph );
-            grem::open( path, in );
+            psi::open( path, in );
             this->set.push_back( std::move( path ) );
           }
 
@@ -386,6 +386,6 @@ namespace grem {
     }
 
   /* END OF PathSet interface functions  ------------------------------------------- */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_PATHSET_HPP__ --- */

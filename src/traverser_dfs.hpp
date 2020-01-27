@@ -20,7 +20,7 @@
 
 #include "traverser_base.hpp"
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  DFS Traverser.
    *
@@ -149,6 +149,6 @@ namespace grem {
         /* ====================  DATA MEMBERS  ======================================= */
         typename traits_type::TState cstate;
     };  /* ----------  end of template class TraverserDFS  ---------- */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_TRAVERSER_DFS_HPP__ --- */

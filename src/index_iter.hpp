@@ -26,7 +26,7 @@
 #include "index.hpp"
 #include "seed.hpp"
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  Top-down index iterator tag with finer traversal in virtual suffix tree.
    *
@@ -396,32 +396,32 @@ namespace grem {
 
   /* END OF Typedefs  ------------------------------------------------------------ */
 
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 namespace seqan {
   /**
-   *  @brief  Iterator type specialization for `grem::TopDownFine< TSpec >` tag.
+   *  @brief  Iterator type specialization for `psi::TopDownFine< TSpec >` tag.
    *
    *  This class extends existing Iterator class in seqan namespace.
    */
   template< typename TIndex, typename TSpec >
-    class Iterator< TIndex, grem::TopDownFine< TSpec > >
+    class Iterator< TIndex, psi::TopDownFine< TSpec > >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef grem::IndexIter< TIndex, grem::TopDownFine< TSpec > > Type;
+        typedef psi::IndexIter< TIndex, psi::TopDownFine< TSpec > > Type;
     };  /* ----------  end of template class Iterator  ---------- */
 
   template< typename TIndex, typename TSpec >
-    class Container< grem::IndexIter< TIndex, TSpec > > {
+    class Container< psi::IndexIter< TIndex, TSpec > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef typename grem::IndexIter< TIndex, TSpec >::container_type Type;
+        typedef typename psi::IndexIter< TIndex, TSpec >::container_type Type;
     };  /* ----------  end of template class Container  ---------- */
 
 }  /* -----  end of namespace seqan  ----- */
 
-namespace grem {
+namespace psi {
 
   /* Typedefs  ------------------------------------------------------------------- */
   template< typename TIndex, typename TSpec = seqan::Preorder >
@@ -440,7 +440,7 @@ namespace grem {
 
   template< typename TText, typename TIterSpec >
       inline bool
-    go_right_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    go_right_stree( seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
       return goRight( iter, seqan::Rev() );
     }
@@ -454,7 +454,7 @@ namespace grem {
 
   template< typename TText, typename TIterSpec >
       inline bool
-    go_down_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    go_down_stree( seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
       return goDown( iter, seqan::Rev() );
     }
@@ -468,7 +468,7 @@ namespace grem {
 
   template< typename TText, typename TIterSpec, typename TPattern >
       inline bool
-    go_down_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter,
+    go_down_stree( seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter,
         TPattern&& p )
     {
       return goDown( iter, p, seqan::Rev() );
@@ -483,7 +483,7 @@ namespace grem {
 
   template< typename TText, typename TIterSpec >
       inline auto
-    parent_edge_char_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    parent_edge_char_stree( const seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
       return parentEdgeLabel( iter, seqan::Rev() );
     }
@@ -497,7 +497,7 @@ namespace grem {
 
   template< typename TText, typename TIterSpec >
       inline unsigned int
-    parent_edge_len_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    parent_edge_len_stree( const seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
       if ( isRoot( iter ) ) return 0;
       return length( parentEdgeLabel( iter, seqan::Rev() ) );
@@ -512,7 +512,7 @@ namespace grem {
 
   template< typename TText, typename TIterSpec >
       inline auto
-    get_occurrences_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    get_occurrences_stree( const seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
       return getOccurrences( iter, seqan::Rev() );
     }
@@ -736,6 +736,6 @@ namespace grem {
         clear( paths_finder );
       }
     }
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_INDEX_ITER_HPP__ --- */

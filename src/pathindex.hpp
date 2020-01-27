@@ -28,7 +28,7 @@
 #include "utils.hpp"
 
 
-namespace grem {
+namespace psi {
   /**
    *  @brief  Represent a path index.
    *
@@ -234,7 +234,7 @@ namespace grem {
           if ( lazy_mode ) {
             this->add_path_sequence( this->paths_set.begin(), this->paths_set.end() );
           }
-          grem::create_index( this->index );
+          psi::create_index( this->index );
           this->paths_set.initialize();
         }  /* -----  end of method create_index  ----- */
       private:
@@ -316,9 +316,9 @@ namespace grem {
           if( !ofs ) return false;
 
           try {
-            grem::serialize( ofs, this->context );
+            psi::serialize( ofs, this->context );
             size_type dir = std::is_same< TSequenceDirection, Forward >::value;
-            grem::serialize( ofs, dir );
+            psi::serialize( ofs, dir );
             this->paths_set.serialize( ofs );
           }
           catch ( const std::runtime_error& ) {
@@ -584,6 +584,6 @@ namespace grem {
 
   /* END OF PathIndex interface functions  ----------------------------------------- */
 
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_PATHINDEX_HPP__ --- */

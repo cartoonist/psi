@@ -25,7 +25,7 @@
 #include "path_base.hpp"
 
 
-namespace grem {
+namespace psi {
   /* Default Path interface functions  ----------------------------------------- */
 
   /**
@@ -829,7 +829,7 @@ namespace grem {
     }  /* -----  end of template function get_path_coverage  ----- */
 
   /**
-   *  @brief  Convert a grem::Path to vg::Path.
+   *  @brief  Convert a psi::Path to vg::Path.
    *
    *  @param  path The native path.
    *  @param  vgpath The pointer to an allocated vg path object.
@@ -999,6 +999,6 @@ namespace grem {
       edges.erase( std::unique( edges.begin(), edges.end() ), edges.end() );
     }  /* -----  end of template function induced_graph  ----- */
   /* END OF Path interface functions  ------------------------------------------ */
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_PATH_INTERFACE_HPP__ --- */

@@ -26,7 +26,7 @@
 #include "base.hpp"
 
 
-namespace grem {
+namespace psi {
   struct NoStatStrategy;                        /**< @brief No-stat mode strategy. */
   typedef seqan::Tag< NoStatStrategy > NoStat;  /**< @brief No-stat mode tag. */
   /**
@@ -287,6 +287,6 @@ namespace grem {
         std::string timer_name;    /**< @brief The timer name of the current instance. */
     };  /* -----  end of class Timer  ----- */
 
-}  /* -----  end of namespace grem  ----- */
+}  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_STAT_HPP__ --- */
