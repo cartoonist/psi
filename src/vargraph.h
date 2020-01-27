@@ -785,6 +785,9 @@ namespace grem {
       inline bool
     GraphIter< VarGraph, Haplotyper >::operator[]( const TContainer& path )
     {
+      // :TODO:Sun Apr 01 00:01:\@cartoonist: Unordered check!
+      // ... `PathSet< Path< TGraph, Compact >, InMemory >` should be used for
+      // ... `this->visited`.
       return covered_by( path.begin(), path.end(), this->visited );
     }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator[]  ----- */
 
@@ -930,9 +933,8 @@ namespace grem {
       }
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
-          // :TODO:Thu Feb 08 15:49:\@cartoonist: `contains` should be called `Ordered` but it is slow!
           if ( !iter[ frontier.get_nodes() ] &&
-              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end(), Unordered() ) )
+              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end() ) )
           {
             if ( marked != 0 ) trim_front( frontier, marked );
             patch += frontier;

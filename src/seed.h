@@ -21,6 +21,8 @@
 #include <cstdlib>
 
 #include "vargraph.h"
+#include "base.h"
+
 
 namespace grem {
   /**

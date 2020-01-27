@@ -23,6 +23,9 @@
 
 #include <seqan/index.h>
 
+#include "base.h"
+
+
 namespace grem
 {
   // :TODO:Tue Mar 07 20:34:\@cartoonist: Option class.

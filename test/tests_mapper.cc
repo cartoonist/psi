@@ -45,27 +45,26 @@ SCENARIO ( "Pick genome-wide paths", "[mapper]" )
     Mapper< TTraverser > mapper( &vargraph, 30 );
 
     unsigned int nof_paths = 4;
-    Dna5QPathSet< VarGraph, TIndexSpec > paths;
+    Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a Mapper" )
     {
-      mapper.pick_paths( paths, nof_paths );
-      REQUIRE( length( indexText( paths.index ) ) == nof_paths );
+      mapper.pick_paths( pindex, nof_paths );
+      REQUIRE( length( indexText( pindex.index ) ) == nof_paths );
       THEN( "The paths should be unique" )
       {
-        REQUIRE( indexText( paths.index )[0] ==
+        REQUIRE( indexText( pindex.index )[0] ==
             "CAAATAAGATTTGAAAATTTTCTGGAGTTCTATAATATACCAACTCTCTG" );
-        REQUIRE( indexText( paths.index )[1] ==
+        REQUIRE( indexText( pindex.index )[1] ==
             "CAAATAAGGCTTGGAAATTTTCTGGAGTTCTATTATATTCCAACTCTCTG" );
-        REQUIRE( indexText( paths.index )[2] != indexText( paths.index )[0] );
-        REQUIRE( indexText( paths.index )[2] != indexText( paths.index )[1] );
-        REQUIRE( indexText( paths.index )[3] != indexText( paths.index )[0] );
-        REQUIRE( indexText( paths.index )[3] != indexText( paths.index )[1] );
-        REQUIRE( indexText( paths.index )[3] != indexText( paths.index )[2] );
+        REQUIRE( indexText( pindex.index )[2] != indexText( pindex.index )[0] );
+        REQUIRE( indexText( pindex.index )[2] != indexText( pindex.index )[1] );
+        REQUIRE( indexText( pindex.index )[3] != indexText( pindex.index )[0] );
+        REQUIRE( indexText( pindex.index )[3] != indexText( pindex.index )[1] );
+        REQUIRE( indexText( pindex.index )[3] != indexText( pindex.index )[2] );
       }
     }
   }
 }
-
 
 SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
 {
@@ -96,12 +95,12 @@ SCENARIO ( "Add starting loci when using paths index", "[mapper]" )
     auto truth_itr = truth.begin();
 
     Mapper< TTraverser > mapper( &vargraph, k );
-    Dna5QPathSet< VarGraph, TIndexSpec > paths;
+    Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
 
     WHEN( "Find starting loci using " + std::to_string( nof_paths ) + " paths" )
     {
-      mapper.pick_paths( paths, nof_paths );
-      mapper.add_all_loci( paths, k );
+      mapper.pick_paths( pindex, nof_paths );
+      mapper.add_all_loci( pindex.get_paths_set(), k );
       for ( const auto& locus : mapper.get_starting_loci() ) {
         REQUIRE( locus.node_id() == (*truth_itr).first );
         REQUIRE( locus.offset() == (*truth_itr).second );

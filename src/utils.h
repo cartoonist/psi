@@ -29,6 +29,8 @@
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 
+#include "base.h"
+
 
 #define GREM_DEFAULT_TMPDIR "/tmp"
 #define GREM_TMPFILE_TEMPLATE "/grem-XXXXXX"
@@ -136,30 +138,35 @@ namespace grem {
 
 
   /**
-   *  @brief  Resize and set all bits in [old_size...new_size) to 0 if the range is valid.
+   *  @brief  Copy all bits in `src[idx...idx+len)` to `dst[idx...idx+len)`.
    *
-   *  @param  bv The bit vector.
-   *  @param  new_size The size to which the bit vector is resized.
+   *  @param  src The source bit vector.
+   *  @param  dst The destination bit vector.
+   *  @param  idx The start index in `src` to copy to the "identical" index in `dst`.
    *
-   *  The number of bytes extended by `resize` is calculated including the last byte in
-   *  [old_size...new_size) when the range is not byte-aligned.
+   *  Bitvector identical copy. The `src[idx...idx+len)` is copied to the same index of
+   *  `dst`.
    */
   template< typename TBitVector >
       inline void
-    resize_zf( TBitVector& bv, typename TBitVector::size_type new_size )
+    bv_icopy( const TBitVector& src, TBitVector& dst, typename TBitVector::size_type idx=0,
+        typename TBitVector::size_type len=0 )
     {
-      typedef typename TBitVector::size_type TSize;
+      static const short int WLEN = 64;
 
-      TSize old_size = bv.size();
-      bv.resize( new_size );
+      assert( idx < src.size() );
+      assert( dst.size() >= src.size() );
 
-      if ( old_size >= new_size ) return;
+      if ( len == 0 ) len = src.size();
+      if ( len + idx > src.size() ) len = src.size() - idx;
 
-      TSize byte_offset = ( old_size >> 3 ) + 1;
-      TSize count = ( new_size  >> 3 ) - byte_offset + (TSize)( new_size % 8 != 0 );
-      bv.set_int( old_size, 0 );  /* zero the range [old_size...byte_offset*8). */
-      std::memset( ((unsigned char*)bv.data()) + byte_offset, 0, count );
-    }  /* -----  end of function resize_zf  ----- */
+      auto i = idx + WLEN;
+      for ( ; i < idx + len /* && i < src.size() */; i += WLEN ) {
+        dst.set_int( i - WLEN, src.get_int( i - WLEN, WLEN ), WLEN );
+      }
+      i -= WLEN;
+      for ( ; i < idx + len; ++i ) dst[ i ] = src[ i ];
+    }  /* -----  end of function bv_icopy  ----- */
 
 
   /**

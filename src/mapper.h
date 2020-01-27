@@ -32,7 +32,7 @@
 #include "sequence.h"
 #include "index.h"
 #include "index_iter.h"
-#include "pathset.h"
+#include "pathindex.h"
 #include "utils.h"
 #include "logger.h"
 #include "stat.h"
@@ -380,7 +380,7 @@ namespace grem
          */
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             void
-          pick_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
+          pick_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               int n, bool patched=true )
           {
             if ( n == 0 ) return;
@@ -411,7 +411,7 @@ namespace grem
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             inline void
-          seeds_on_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
+          seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) >& callback )
           {
             if ( length( indexText( paths.index ) ) == 0 ) return;
@@ -421,9 +421,9 @@ namespace grem
             kmer_exact_matches( paths.index, &paths, &(this->reads), this->seed_len, GreedyOverlapping(), callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
-        template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
+        template< typename TPath, typename TSpec >
             inline void
-          add_all_loci( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths, unsigned int k,
+          add_all_loci( PathSet< TPath, TSpec >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );
@@ -444,7 +444,7 @@ namespace grem
                 extend_to_k( trav_path, bt_itr, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths, Unordered() ) ) {
+                    !covered_by( current_path, paths ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {

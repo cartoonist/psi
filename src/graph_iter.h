@@ -21,6 +21,8 @@
 
 #include <seqan/basic.h>
 
+#include "base.h"
+
 
 namespace grem {
 

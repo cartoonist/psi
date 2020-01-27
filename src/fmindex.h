@@ -27,6 +27,7 @@
 #include "sequence.h"
 #include "utils.h"
 
+
 namespace grem {
   template< class TWT = sdsl::wt_huff<>, uint32_t TDens = 32, uint32_t TInvDens = 64 >
     struct FMIndex;
@@ -88,18 +89,30 @@ namespace seqan {
           : Index( &t ) { }
 
         Index( Index const& ) = delete;
-        Index( Index&& other ) = default;
+        Index( Index&& ) = default;
         Index& operator=( Index const& ) = delete;
         Index& operator=( Index&& ) = default;
         ~Index( ) noexcept
         {
           this->clear();
         }
+        /* ====================  ACCESSORS     ======================================= */
+          inline bool
+        owns_text( ) const
+        {
+          return this->owner;
+        }
         /* ====================  METHODS       ======================================= */
           inline savalue_type
         size( ) const
         {
-          return fm.size();
+          return this->fm.size();
+        }
+
+          inline bool
+        empty( ) const
+        {
+          return this->size() == 0;
         }
 
           inline void
@@ -146,6 +159,34 @@ namespace seqan {
         value_type fm;
         text_type* text_p;
         bool owner;
+        /* ====================  METHODS              ================================ */
+        // :TODO:Wed Apr 04 13:17:\@cartoonist: FIXME: a Holder class should be
+        //     responsible for the text fibre not client class.
+        //     === PROBLEM ===
+        //     The index has a pointer to the text fibre which it might not own it. It
+        //     is valid until the text object lives. When a class aggregates an index
+        //     (particularly, FMIndex) and its text fibre when an object of that class
+        //     is moved to another one. The text fibre of new object's index is no
+        //     longer valid since it points to the text fibre copy of the moved object
+        //     not the new one.
+        //     This is the problem for all classes that aggregates the index and its
+        //     text fibre. The text fibre should be owned by a Holder class not the
+        //     client class (e.g. PathSet, or PathIndex here).
+        //     === SOLUTION ===
+        //     This function is a work-around for this issue. The true solution would be
+        //     wrapping the text fibre in a Holder class which is responsible for the
+        //     memory management of the text fibre not the class aggregating the index
+        //     and its text. In other words, the text fibre object will be handed to
+        //     objects on the fly and finaly the last holder would free the memory.
+        //     This Holder class can be developed from scratch or use smart pointers in
+        //     C++ Standard Library.
+          inline void
+        set_text_fibre( text_type* ext_p, bool update=true )
+        {
+          if ( update ) this->clear_fibres();
+          this->text_p = ext_p;
+          this->owner = false;
+        }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
         indexRequire< TWT, TDens, TInvDens >( Index& index, FibreSALF );
@@ -157,6 +198,8 @@ namespace seqan {
         friend class Finder< Index >;
         friend class Iter< Index, seqan::TopDown<> >;
         friend class Iter< Index, seqan::TopDown< seqan::ParentLinks<> > >;
+        template< typename TPath, typename TSpec >
+          friend class PathSet;
     };
 
   template< class TWT, uint32_t TDens, uint32_t TInvDens >

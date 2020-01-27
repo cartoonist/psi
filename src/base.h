@@ -23,6 +23,8 @@
 #undef NDEBUG
 #if !GREM_DEBUG
 #define NDEBUG
+#else
+#define GREM_DEBUG_ENABLED
 #endif
 
 #endif  // BASE_H__

@@ -8,9 +8,9 @@
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
  *  @internal
- *       Created:  Wed Sep 13, 2017  01:07
+ *       Created:  Tue Mar 27, 2018  17:50
  *  Organization:  Max-Planck-Institut fuer Informatik
- *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
+ *     Copyright:  Copyright (c) 2018, Ali Ghaffaari
  *
  *  This source code is released under the terms of the MIT License.
  *  See LICENSE file for more information.
@@ -20,546 +20,372 @@
 #define  PATHSET_H__
 
 #include <vector>
-#include <algorithm>
 
-#include "vargraph.h"
+#include <sdsl/bit_vectors.hpp>
+
+#include "path.h"
 #include "sequence.h"
 #include "index.h"
 #include "utils.h"
 
 
+#define PATHSET_ID_SEPARATOR_CHAR ','
+
+
 namespace grem {
   /**
-   *  @brief  Represent a set of paths.
+   *  @brief  Represent a set of path with node ID query functionalities.
    *
-   *  This class encapsulate the data structures to represent a set of path, its strings
-   *  set, and its index. It also provides load/save functionalities.
+   *  This class keeps a set of paths with some auxiliary data structure that allows
+   *  more efficient node ID querie.
    */
-  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection = Forward >
+  template< typename TPath, typename TSpec = DiskBased >
     class PathSet {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
-        typedef seqan::Index< TStringSet, TIndexSpec > TIndex;
-        typedef Path< TGraph, Compact > TPath;
-        typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
-        typedef uint64_t context_type;
         typedef TPath value_type;
-        /* ====================  DATA MEMBERS  ======================================= */
-        TIndex index;
-        std::vector< TPath > paths_set;
-      private:
-        /* ====================  DATA MEMBERS  ======================================= */
-        TStringSet string_set;
-        /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
-        context_type context;
-        bool lazy_mode;
-        bool sorted;
-      public:
-        /* ====================  LIFECYCLE     ======================================= */
-        PathSet( context_type ct=0, bool l=false )
-          : context( ct ), lazy_mode( l ), sorted( false ) { };
-        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ), sorted( false ) { };
-        /* ====================  ACCESSORS     ======================================= */
-        /**
-         *  @brief  return true if the paths in the set is sorted by their minimum node ID.
-         */
-          inline bool
-        is_sorted() const
+        typedef uint64_t size_type;     /* The max size type to be (de)serialized now. */
+        typedef typename value_type::graph_type graph_type;
+        typedef std::vector< value_type > container_type;
+        typedef typename container_type::iterator iterator;
+        typedef typename container_type::const_iterator const_iterator;
+        typedef seqan::StringSet< YaString< TSpec > > stringset_type;
+        /* XXX: `stringset_type::string_type` is underlying internal (in-memory) string
+         *      ... type which might not be equivalent to `YaString<TSpec>`. */
+        typedef typename stringset_type::string_type string_type;
+        typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+        typedef std::pair< size_type, typename value_type::size_type > pos_type;
+        /* ====================  CONST MEMBERS  ====================================== */
+        const char ID_SEPARATOR = PATHSET_ID_SEPARATOR_CHAR;
+        /* ====================  LIFECYCLE      ====================================== */
+        PathSet( ) = default;
+
+        PathSet( PathSet const& ) = delete;
+        PathSet& operator=( PathSet const& ) = delete;
+
+        PathSet( PathSet&& other )
         {
-          return this->sorted;
-        }  /* -----  end of method is_sorted  ----- */
+          this->set = std::move( other.set );
+          this->encids_set = std::move( other.encids_set );
+          if ( other.encids_index.owns_text() ) {
+            this->encids_index = std::move( other.encids_index );
+          }
+          else if ( other.encids_index.empty() ) {
+            this->encids_index = index_type( this->encids_set );
+          }
+          else {
+            this->encids_index = std::move( other.encids_index );
+            this->encids_index.set_text_fibre( &this->encids_set, false );
+          }
+          this->bv_ids_set = std::move( other.bv_ids_set );
+
+          for ( const auto& bv_id_breaks : this->bv_ids_set ) {
+            this->rs_ids_set.push_back( sdsl::bit_vector::rank_1_type() );
+            sdsl::util::init_support( this->rs_ids_set.back(), &bv_id_breaks );
+          }
+        }
+
+        PathSet& operator=( PathSet&& other )
+        {
+          this->set = std::move( other.set );
+          this->encids_set = std::move( other.encids_set );
+          if ( other.encids_index.owns_text() ) {
+            this->encids_index = std::move( other.encids_index );
+          }
+          else if ( other.encids_index.empty() ) {
+            this->encids_index = index_type( this->encids_set );
+          }
+          else {
+            this->encids_index = std::move( other.encids_index );
+            this->encids_index.set_text_fibre( &this->encids_set, false );
+          }
+          this->bv_ids_set = std::move( other.bv_ids_set );
+
+          this->rs_ids_set.clear();
+          for ( const auto& bv_id_breaks : this->bv_ids_set ) {
+            this->rs_ids_set.push_back( sdsl::bit_vector::rank_1_type() );
+            sdsl::util::init_support( this->rs_ids_set.back(), &bv_id_breaks );
+          }
+
+          return *this;
+        }
+
+        ~PathSet( ) = default;
+        /* ====================  OPERATORS     ======================================= */
+          inline const value_type&
+        operator[]( size_type idx ) const
+        {
+          return this->set[ idx ];
+        }
+
+          inline value_type&
+        operator[]( size_type idx )
+        {
+          return this->set[ idx ];
+        }
         /* ====================  METHODS       ======================================= */
-        /**
-         *  @brief  Get the shift required to add to trimmed position to get original one.
-         *
-         *  @param  pos Position in the path set.
-         *  @return the shift required to add to the position in the trimmed path in
-         *          order to get the position in the original path.
-         *
-         *  The parameter `pos` indicates one path in the path set. If `context` is
-         *  non-zero the path sequence in the string set is left-trimmed by the length
-         *  of `length( sequence( path.nodes[0] ) ) - context + 1`. So position found in
-         *  the trimmed path sequence needs to be converted to the original position in
-         *  the path by adding this amount.
-         */
-          inline unsigned int
-        get_context_shift( typename seqan::SAValue< TIndex >::Type const& pos ) const
+          inline const_iterator
+        begin( ) const
         {
-          assert( pos.i1 < this->paths_set.size() );
-          auto&& the_path = this->paths_set[ pos.i1 ];
-          auto flen = the_path.get_vargraph()->node_length( the_path.get_nodes()[0] );
-          if ( this->context != 0 && flen + 1 > this->context ) {
-            return flen - this->context + 1;
-          }
-          return 0;
-        }  /* -----  end of method get_context_shift  ----- */
+          return this->set.begin();
+        }
 
-        /**
-         *  @brief  Load the set of paths and its index from file.
-         *
-         *  @param[in]   filepath_prefix The file path prefix of the saved set of paths.
-         *  @param[in]   vargraph A pointer to the graph whose paths is loading.
-         *  @return `true` if the set of paths are successfully loaded from file;
-         *          otherwise `false`.
-         *
-         *  It first loads the index from the file. Then, the nodes and string sets will
-         *  be loaded.
-         */
-          inline bool
-        load( const std::string& filepath_prefix, const TGraph* vargraph )
+          inline const_iterator
+        end( ) const
         {
-          clear( this->string_set );
-          clear( this->index );
+          return this->set.end();
+        }
 
-          if ( open( this->index, filepath_prefix ) &&
-              this->load_paths_set( filepath_prefix + "_paths", vargraph ) ) {
-            //this->string_set = indexText( this->index );  /* XXX: Unnecessary copy. Use `FibreText` of `this->index` directly. */
-            return true;
-          }
-          return false;
-        }  /* -----  end of method load  ----- */
-
-        /**
-         *  @brief  Save the set of paths and its index into file.
-         *
-         *  @param[in]   filepath_prefix The file path prefix to save the set of paths.
-         *  @return `true` if the set of paths are successfully saved into file;
-         *          otherwise `false`.
-         *
-         *  It first saves the index into the file. Then, the nodes sets will be written.
-         */
-          inline bool
-        serialize( const std::string& filepath_prefix )
+          inline iterator
+        begin( )
         {
-          if ( save( this->index, filepath_prefix ) &&
-              this->save_paths_set( filepath_prefix + "_paths" ) ) {
-            return true;
-          }
-          return false;
-        }  /* -----  end of method save  ----- */
+          return this->set.begin();
+        }
 
-        /**
-         *  @brief  Add a path to the set.
-         *
-         *  @param  new_path The new path to be added.
-         *
-         *  It appends the new path to the paths set, adds its string representation
-         *  to the string set, and creates string set index if it is not in lazy mode.
-         */
+          inline iterator
+        end( )
+        {
+          return this->set.end();
+        }
+
           inline void
-        add_path( TPath new_path )
+        push_back( value_type path )
         {
-          this->paths_set.push_back( std::move( new_path ) );
-          initialize( this->paths_set.back() );
-          this->sorted = false;
-          if ( !this->lazy_mode ) {
-            this->add_path_sequence( std::prev(this->paths_set.end()), this->paths_set.end() );
+          if ( length( path ) == 0 ) {
+            throw std::runtime_error( "attempting to add an empty path" );
           }
-        }  /* -----  end of method add_path  ----- */
 
-        /**
-         *  @brief  Add a path of different type to the set.
-         *
-         *  @param  new_path The new path to be added of different type.
-         *
-         *  It appends the new path to the paths set, adds its string representation
-         *  to the string set, and creates string set index if it is not in lazy mode.
-         */
+          this->set.push_back( std::move( path ) );
+          grem::initialize( this->set.back() );
+
+          std::string encids_str = this->get_encids_str( this->set.back() );
+          appendValue( this->encids_set, encids_str );
+          this->encids_index = index_type( this->encids_set );
+          this->set_id_breaks( encids_str );
+        }
+
         template< typename TPathSpec >
             inline void
-          add_path( const Path< VarGraph, TPathSpec >& new_path,
-              enable_if_not_equal_t< typename TPath::spec_type, TPathSpec > tag = TPathSpec() )
+          push_back( Path< graph_type, TPathSpec > path,
+              enable_if_not_equal_t< typename value_type::spec_type, TPathSpec > tag = TPathSpec() )
           {
-            TPath native_path( new_path.get_vargraph() );
-            native_path = new_path;
-            this->add_path( std::move( native_path ) );
+            value_type native_path( path.get_vargraph() );
+            native_path = std::move( path );
+            this->push_back( std::move( native_path ) );
           }
 
-        /**
-         *  @brief  Add a path of different type to the set.
-         *
-         *  @param  new_path The new path to be added of different type.
-         *
-         *  It appends the new path to the paths set, adds its string representation
-         *  to the string set, and creates string set index if it is not in lazy mode.
-         */
-        template< typename TPathSpec >
-            inline void
-          add_path( Path< VarGraph, TPathSpec >&& new_path,
-              enable_if_not_equal_t< typename TPath::spec_type, TPathSpec > tag = TPathSpec() )
-          {
-            TPath native_path( new_path.get_vargraph() );
-            native_path = std::move( new_path );
-            this->add_path( std::move( native_path ) );
+          inline std::vector< pos_type >
+        get_occurrences( const string_type& idstr )
+        {
+          std::vector< pos_type > retval;
+          seqan::Finder< index_type > finder( this->encids_index );
+          while( find( finder, idstr ) ) {
+            auto str_pos = beginPosition( finder );
+            pos_type pos = { 0, 0 };
+            pos.first = str_pos.first;
+            pos.second = this->rank( str_pos );
+            retval.push_back( std::move( pos ) );
           }
 
-        /**
-         *  @brief  alias: See `add_path`.
-         */
-          inline void
-        push_back( TPath new_path )
-        {
-          this->add_path( std::move( new_path ) );
+          return retval;
         }
 
-        /**
-         *  @brief  alias: See `add_path`.
-         */
-        template< typename TPathSpec >
-          inline void
-        push_back( const Path< VarGraph, TPathSpec >& new_path )
+        template< typename TPath2 >
+            inline std::vector< pos_type >
+          get_occurrences( const TPath2& path )
+          {
+            std::string encids_str = this->get_encids_str( path );
+            return this->get_occurrences( encids_str );
+          }
+
+          inline bool
+        found( const string_type& idstr )
         {
-          this->add_path( new_path );
+          seqan::Finder< index_type > finder( this->encids_index );
+          find( finder, idstr );
+          return finder.count() != 0;
         }
 
-        /**
-         *  @brief  alias: See `add_path`.
-         */
-        template< typename TPathSpec >
-          inline void
-        push_back( Path< VarGraph, TPathSpec >&& new_path )
+        template< typename TPath2 >
+            inline bool
+          found( const TPath2& path )
+          {
+            std::string encids_str = this->get_encids_str( path );
+            return this->found( encids_str );
+          }
+
+          inline typename string_type::size_type
+        rank( typename stringset_type::pos_type pos ) const
         {
-          this->add_path( std::move( new_path ) );
+          return this->rs_ids_set[ pos.first ]( pos.second );
         }
 
-        /**
-         *  @brief  Get the size of the paths set.
-         *
-         *  @return The size of the paths set.
-         *
-         *  It returns the size of the vector of `Path` objects.
-         */
+          inline void
+        reserve( size_type size )
+        {
+          this->set.reserve( size );
+          this->encids_set.reserve( size );
+          this->bv_ids_set.reserve( size );
+          this->rs_ids_set.reserve( size );
+        }
+
           inline size_type
         size( ) const
         {
-          return this->paths_set.size();
-        }  /* -----  end of method size  ----- */
+          return this->set.size();
+        }
 
-        /**
-         *  @brief  Reserve memory for the set of paths.
-         *
-         *  @param  size The target capacity.
-         *
-         *  It reserves memory for paths set and strings set.
-         */
-          void
-        reserve( size_type size )
-        {
-          seqan::reserve( this->string_set, size );
-          this->paths_set.reserve( size );
-        }  /* -----  end of method reserve  ----- */
-
-        /**
-         *  @brief  Create index fibres.
-         *
-         *  Initializing the index does not create index fibres. Index fibres are
-         *  generated on-demand. This function forces to create these fibres in
-         *  advance.
-         */
           inline void
-        create_index( )
+        clear( )
         {
-          if ( lazy_mode ) {
-            this->add_path_sequence( this->paths_set.begin(), this->paths_set.end() );
+          this->set.clear();
+          this->encids_set.clear();
+          this->encids_index.clear();
+          sdsl::util::clear( this->bv_ids_set );
+          sdsl::util::clear( this->rs_ids_set );
+        }
+
+          inline void
+        initialize( )
+        {
+          indexRequire( this->encids_index, seqan::FibreSALF() );
+        }
+
+          inline void
+        serialize( std::ostream& out )
+        {
+          grem::serialize( out, static_cast< size_type >( this->size() ) );
+          for ( auto&& path : this->set ) {
+            grem::save( path, out );
           }
-          grem::create_index( this->index );
-        }  /* -----  end of method create_index  ----- */
 
-        /**
-         *  @brief  Sort the paths set by the minimum node ID in each path.
-         *
-         *  Sorting the paths in ascending order of minimum node ID in the paths. This
-         *  helps the `covered_by` query to search in the paths local to the query path.
-         */
+          indexRequire( this->encids_index, seqan::FibreSALF() );
+          save( this->encids_index, out );
+
+          for ( auto&& bv_id_breaks : this->bv_ids_set ) {
+            bv_id_breaks.serialize( out );
+          }
+        }
+
           inline void
-        sort()
+        load( std::istream& in, const graph_type* vargraph )
         {
-          auto compare = []( TPath& a, TPath& b ) {
-            return *a.get_nodes_set().begin() < *b.get_nodes_set().begin();
-          };
+          this->clear();
+          size_type paths_num = 0;
+          deserialize( in, paths_num );
+          this->set.reserve( paths_num );
+          this->encids_set.reserve( paths_num );
+          this->bv_ids_set.reserve( paths_num );
+          this->rs_ids_set.reserve( paths_num );
+          for ( size_type i = 0; i < paths_num; ++i ) {
+            value_type path( vargraph );
+            grem::load( path, in );
+            this->set.push_back( std::move( path ) );
+          }
 
-          std::sort( this->paths_set.begin(), this->paths_set.end(), compare );
-          this->sorted = true;
+          open( this->encids_index, in );
+
+          for ( size_type i = 0; i < paths_num; ++i ) {
+            sdsl::bit_vector bv;
+            bv.load( in );
+            this->bv_ids_set.push_back( std::move( bv ) );
+            this->rs_ids_set.push_back( sdsl::bit_vector::rank_1_type() );
+            sdsl::util::init_support( this->rs_ids_set.back(), &this->bv_ids_set.back() );
+          }
         }
       private:
-        /**
-         *  @brief  Add sequence of the paths in the set from `begin` to `end`.
-         *
-         *  @param  begin The begin iterator of the paths set to add.
-         *  @param  end The end iterator of the paths set to add.
-         *
-         *  It appends the sequence of the paths in the range `[begin, end)` to the
-         *  string set, and update string set index.
-         *
-         *  @note The quality score of the paths are considered `I`.
-         */
-        template< typename TIter >
-            inline void
-          add_path_sequence( TIter begin, TIter end )
+        /* ====================  DATA MEMBERS  ======================================= */
+        container_type set;
+        stringset_type encids_set;
+        index_type encids_index;
+        std::vector< sdsl::bit_vector > bv_ids_set;
+        std::vector< sdsl::bit_vector::rank_1_type > rs_ids_set;
+        /* ====================  METHODS       ======================================= */
+        template< typename TPath2 >
+            inline string_type
+          get_encids_str( const TPath2& path ) const
           {
-            for ( ; begin != end; ++begin ) {
-              //TText path_str( sequence( *begin, TSequenceDirection(), this->context ) );
-              // :TODO:Mon Mar 06 13:00:\@cartoonist: quality score?
-              //char fake_qual = 'I';
-              //assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
-              appendValue( this->string_set,
-                  sequence( *begin, TSequenceDirection(), this->context ) );
+            string_type encids = std::string( 1, ID_SEPARATOR );
+            for ( const auto& node_id : path.get_nodes() ) {
+              encids += std::to_string( node_id ) + std::string( 1, ID_SEPARATOR );
             }
-            this->index = TIndex( this->string_set );
+
+            return encids;
           }
 
-        /**
-         *  @brief  Load nodes sets of paths set from file.
-         *
-         *  @param[in]   filepath The file path of the saved paths.
-         *  @param[in]   vargraph A pointer to the graph whose paths is loading.
-         *  @return `true` if the nodes sets are successfully loaded from file; otherwise
-         *          `false`.
-         *
-         *  It deserializes the paths set. The paths are prefixed by the number of paths.
-         */
-          inline bool
-        load_paths_set( const std::string& filepath, const TGraph* vargraph )
+          inline void
+        set_id_breaks( const string_type& encids )
         {
-          std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
-          if ( !ifs ) return false;
-          size_type path_num = 0;
-          size_type sort_int = 0;
-
-          try {
-            deserialize( ifs, this->context );
-            deserialize( ifs, sort_int );
-            this->sorted = static_cast< bool >( sort_int );
-            deserialize( ifs, path_num );
-            this->paths_set.clear();
-            this->paths_set.reserve( path_num );
-            for ( unsigned int i = 0; i < path_num; ++i ) {
-              TPath path( vargraph );
-              grem::load( path, ifs );
-              this->paths_set.push_back( std::move( path ) );
+          sdsl::bit_vector bv( encids.size(), 0 );
+#ifdef GREM_DEBUG_ENABLED
+          bool flag = false;
+          assert( encids[ 0 ] == ID_SEPARATOR );
+          assert( encids[ 1 ] != ID_SEPARATOR );
+          assert( encids[ encids.size() - 1 ] == ID_SEPARATOR );
+#endif
+          for ( sdsl::bit_vector::size_type i = 2; i < bv.size(); ++i ) {
+            if ( encids[ i ] == ID_SEPARATOR ) {
+              bv[ i - 1 ] = 1;
+#ifdef GREM_DEBUG_ENABLED
+              /* Sanity check: there should not be two 1s subsequently. */
+              assert( !flag );
+              flag = true;
+            }
+            else {
+              flag = false;
+#endif
             }
           }
-          catch ( const std::runtime_error& ) {
-            this->paths_set.clear();
-            return false;
-          }
-
-          return true;
-        }  /* -----  end of function load_paths_set  ----- */
-
-        /**
-         *  @brief  Save nodes sets of paths set into file.
-         *
-         *  @param[in]   filepath The file path of the file to be written.
-         *  @return `true` if the nodes sets are successfully written to file; otherwise
-         *          `false`.
-         *
-         *  It serializes the paths to the files followed by the number of paths.
-         */
-          inline bool
-        save_paths_set( const std::string& filepath )
-        {
-          std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
-          if( !ofs ) return false;
-
-          try {
-            grem::serialize( ofs, this->context );
-            grem::serialize( ofs, static_cast< size_type >( this->sorted ) );
-            grem::serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
-            for ( const auto& path : this->paths_set ) {
-              grem::save( path, ofs );
-            }
-          }
-          catch ( const std::runtime_error& ) {
-            return false;
-          }
-
-          return true;
-        }  /* -----  end of function save_paths_set  ----- */
-    };  /* -----  end of template class PathSet  ----- */
-
-  /* Typedefs  ----------------------------------------------------------------- */
-
-  template< typename TGraph, typename TIndexSpec, typename TSequenceDirection = Forward >
-    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec, TSequenceDirection >;
-
-  /**
-   *  @brief  Meta-function getting direction of paths in a `PathSet`.
-   */
-  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
-    struct Direction< PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > > {
-      typedef TSequenceDirection Type;
+          this->bv_ids_set.push_back( std::move( bv ) );
+          this->rs_ids_set.push_back( sdsl::bit_vector::rank_1_type() );
+          sdsl::util::init_support( this->rs_ids_set.back(), &this->bv_ids_set.back() );
+        }
     };
 
-  /* PathSet interface functions  ------------------------------------------------ */
+  /* PathSet interface functions  -------------------------------------------------- */
 
-  template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename PathSet< TGraph, TText, TIndexSpec >::size_type
-    length( PathSet< TGraph, TText, TIndexSpec >& set )
+  template< typename TPath, typename TSpec >
+      inline bool
+    save( PathSet< TPath, TSpec >& set, const std::string& file_path )
     {
-      return set.size();
+      std::ofstream ofs( file_path, std::ofstream::out | std::ofstream::binary );
+      if( !ofs ) return false;
+      save( set, ofs );
+      return true;
     }
 
-  template< typename TIndex >
-    using TSAValue = typename seqan::SAValue< TIndex >::Type;
-
-  template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename TGraph::offset_type
-    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+  template< typename TPath, typename TSpec >
+      inline bool
+    open( PathSet< TPath, TSpec >& set, typename TPath::graph_type const* vargraph,
+        const std::string& file_path )
     {
-      auto context_shift = set.get_context_shift( pos );
-      assert( pos.i1 < set.paths_set.size() );
-      return position_to_offset( set.paths_set[ pos.i1 ], context_shift + pos.i2 );
-    }
-
-  /**
-   *  @note The input `pos` parameter should be the "end position" of the occurrence; e.g.:
-   *
-   *  The pattern 'ttc' is found in the reversed string:
-   *        0123 456 7890123
-   *        acga ctt taggtcc
-   *  the input `pos` parameter should be 6 (not 4) where the `real_pos` computed inside
-   *  the function would be the real position in forward sequence.
-   */
-  template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename TGraph::offset_type
-    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
-    {
-      auto real_pos = pos;
-      real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
-      auto context_shift = set.get_context_shift( real_pos );
-      assert( real_pos.i1 < set.paths_set.size() );
-      return position_to_offset( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
-    }
-
-  template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename TGraph::nodeid_type
-    position_to_id( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
-    {
-      auto context_shift = set.get_context_shift( pos );
-      assert( pos.i1 < set.paths_set.size() );
-      return position_to_id( set.paths_set[ pos.i1 ], context_shift + pos.i2 );
-    }
-
-  /**
-   *  @note The input `pos` parameter should be the "end position" of the occurrence; e.g.:
-   *
-   *  The pattern 'ttc' is found in the reversed string:
-   *        0123 456 7890123
-   *        acga ctt taggtcc
-   *  the input `pos` parameter should be 6 (not 4) where the `real_pos` computed inside
-   *  the function would be the real position in forward sequence.
-   */
-  template< typename TGraph, typename TText, typename TIndexSpec >
-      inline typename TGraph::nodeid_type
-    position_to_id( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
-        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
-    {
-      auto real_pos = pos;
-      real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
-      auto context_shift = set.get_context_shift( real_pos );
-      assert( real_pos.i1 < set.paths_set.size() );
-      return position_to_id( set.paths_set[ real_pos.i1 ], context_shift + real_pos.i2 );
+      std::ifstream ifs( file_path, std::ifstream::in | std::ifstream::binary );
+      if( !ifs ) return false;
+      set.load( ifs, vargraph );
+      return true;
     }
 
   /**
    *  @brief  Check whether a path is covered by a PathSet.
    *
    *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as PathSet class instance.
+   *  @param  pset The path index as PathSet class instance.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
    *          false -- including the case that the path is empty.
    *
-   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
+   *  Using created index on node IDs string set, it finds the node IDs string of the
+   *  query path in the paths set. If the number of occurrences is not zero, the query
+   *  path is covered by the paths set.
    */
-  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TStrategy >
+  template< typename TGraph, typename TPathSpec1, typename TPathSpec2, typename TSpec >
       inline bool
-    covered_by( const Path< TGraph, TPathSpec >& path,
-        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set, TStrategy )
+    covered_by( const Path< TGraph, TPathSpec1 >& path,
+        PathSet< Path< TGraph, TPathSpec2 >, TSpec >& pset )
     {
-      typedef typename PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >::TPath TPath;
-
-      /* Return `true` if the min node ID of the query path is less than the min node ID
-       * of the element path */
-      auto mn = []( Path< TGraph, TPathSpec > const& query, TPath const& element ) {
-        return *query.get_nodes_set().begin() < *element.get_nodes_set().begin();
-      };
-      /* Return `true` if the max node ID of the element path is less than the max node
-       * ID of the query path */
-      auto mx = []( TPath const& element, Path< TGraph, TPathSpec > const& query ) {
-        return *element.get_nodes_set().rbegin() < *query.get_nodes_set().rbegin();
-      };
-
-      if ( set.is_sorted() ) {
-        /* Find the lower bound and upper bound of the search. */
-        auto lbound = set.paths_set.begin();
-        while ( lbound != set.paths_set.end() && mx( *lbound, path ) ) ++lbound;
-        auto ubound = std::upper_bound( set.paths_set.begin(), set.paths_set.end(), path, mn );
-
-        return lbound < ubound &&
-          covered_by( path.get_nodes().begin(), path.get_nodes().end(), lbound, ubound, TStrategy() );
-      }
-      else {
-        return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-              set.paths_set.begin(), set.paths_set.end(), TStrategy() );
-      }
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a path is covered by a PathSet.
-   *
-   *  @param  path The given path as Path class instance.
-   *  @param  paths_set A set of paths as PathSet class instance.
-   *  @return true if the given path is a subset of a path in the paths set; otherwise
-   *          false -- including the case that the path is empty.
-   *
-   *  Overloaded. with no strategy specified it calls with Default strategy.
-   */
-  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection >
-      inline bool
-    covered_by( const Path< TGraph, TPathSpec >& path,
-        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set )
-    {
-      return covered_by( path, set, Default() );
+      return pset.found( path );
     }
 
-  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
-      inline void
-    compress( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > const& set, TPathSet& out )
-    {
-      typedef typename TPathSet::value_type TPath;
-
-      auto pre_itr = set.paths_set.begin();
-      auto cur_itr = pre_itr + 1;
-      auto vargraph = (*pre_itr).get_vargraph();
-
-      if ( pre_itr == set.paths_set.end() ) return;
-
-      Path< VarGraph > path( vargraph );
-      path = *pre_itr;
-      while ( cur_itr != set.paths_set.end() ) {
-        if ( *( (*pre_itr).get_nodes().end() - 1 ) > *(*cur_itr).get_nodes().begin() ) {
-          TPath final_path( vargraph );
-          final_path = std::move( path );
-          out.push_back( std::move( final_path ) );
-          clear( path );
-        }
-        path += *cur_itr;
-        pre_itr = cur_itr;
-        ++cur_itr;
-      }
-
-      TPath final_path( vargraph );
-      final_path = std::move( path );
-      out.push_back( std::move( final_path ) );
-    }
-
-  /* END OF PathSet interface functions  ----------------------------------------- */
-
+  /* END OF PathSet interface functions  ------------------------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
-#endif  // end of PATHSET_H__
+#endif  /* ----- #ifndef PATHSET_H__  ----- */

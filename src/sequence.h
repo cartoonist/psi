@@ -521,7 +521,9 @@ namespace seqan {
     ++this->count;
     *this += str;
     stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
-    grem::resize_zf( this->bv_str_breaks, new_size );
+    sdsl::bit_vector new_bv( new_size, 0 );
+    grem::bv_icopy( this->bv_str_breaks, new_bv );
+    sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
     this->bv_str_breaks[ new_size - 1 ] = 1;
     this->initialized = false;
   }
@@ -768,7 +770,9 @@ namespace seqan {
     ++this->count;
     *this += str;
     stringsize_type new_size = this->bv_str_breaks.size() + str.size() + 1;
-    grem::resize_zf( this->bv_str_breaks, new_size );
+    sdsl::bit_vector new_bv( new_size, 0 );
+    grem::bv_icopy( this->bv_str_breaks, new_bv );
+    sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
     this->bv_str_breaks[ new_size - 1 ] = 1;
     this->initialized = false;
   }
