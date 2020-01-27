@@ -34,17 +34,19 @@ namespace grem {
    *  This class encapsulate the data structures to represent a set of path, its strings
    *  set, and its index. It also provides load/save functionalities.
    */
-  template< typename TGraph, typename TText, typename TIndexSpec >
+  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection = Forward >
     class PathSet {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
         typedef seqan::Index< TStringSet, TIndexSpec > TIndex;
+        typedef Path< TGraph > TPath;
         typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
+        typedef TPath value_type;
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet string_set;
         TIndex index;
-        std::vector< Path< TGraph > > paths_set;
+        std::vector< TPath > paths_set;
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( ) = default;
         /* ====================  METHODS       ======================================= */
@@ -101,9 +103,9 @@ namespace grem {
          *  to the string set, and creates string set index.
          */
           inline void
-        add_path( Path< TGraph >&& new_path )
+        add_path( TPath&& new_path )
         {
-          TText path_str( sequence( new_path ) );
+          TText path_str( sequence( new_path, TSequenceDirection() ) );
           // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
           char fake_qual = 'I';
           assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
@@ -121,16 +123,16 @@ namespace grem {
          *  Overloaded.
          */
           inline void
-        add_path( const Path< TGraph >& new_path )
+        add_path( const TPath& new_path )
         {
-          this->add_path( Path< TGraph >( new_path ) );
+          this->add_path( TPath( new_path ) );
         }
 
         /**
          *  @brief  alias: See `add_path`.
          */
           inline void
-        push_back( Path< TGraph >&& new_path )
+        push_back( TPath&& new_path )
         {
           this->add_path( std::move( new_path ) );
         }
@@ -139,9 +141,9 @@ namespace grem {
          *  @brief  alias: See `add_path`.
          */
           inline void
-        push_back( const Path< TGraph >& new_path )
+        push_back( const TPath& new_path )
         {
-          this->add_path( Path< TGraph >( new_path ) );
+          this->add_path( TPath( new_path ) );
         }
 
         /**
@@ -206,7 +208,7 @@ namespace grem {
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
             for ( unsigned int i = 0; i < path_num; ++i ) {
-              Path< TGraph > path( vargraph );
+              TPath path( vargraph );
               grem::load( path, ifs );
               this->paths_set.push_back( std::move( path ) );
             }
@@ -250,8 +252,16 @@ namespace grem {
 
   /* Typedefs  ----------------------------------------------------------------- */
 
-  template< typename TGraph, typename TIndexSpec >
-    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec >;
+  template< typename TGraph, typename TIndexSpec, typename TSequenceDirection = Forward >
+    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec, TSequenceDirection >;
+
+  /**
+   *  @brief  Meta-function getting direction of paths in a `PathSet`.
+   */
+  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
+    struct Direction< PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > > {
+      typedef TSequenceDirection Type;
+    };
 
   /* PathSet interface functions  ------------------------------------------------ */
 
@@ -260,6 +270,86 @@ namespace grem {
     length( PathSet< TGraph, TText, TIndexSpec >& set )
     {
       return set.size();
+    }
+
+  template< typename TIndex >
+    using TSAValue = typename seqan::SAValue< TIndex >::Type;
+
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::offset_type
+    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+    {
+      return position_to_offset( set.paths_set.at( pos.i1 ), pos.i2 );
+    }
+
+  /**
+   *  @note The input `pos` parameter should be the "end position" of the occurrence; e.g.:
+   *
+   *  The pattern 'ttc' is found in the reversed string:
+   *        0123 456 7890123
+   *        acga ctt taggtcc
+   *  the input `pos` parameter should be 6 (not 4) where the `real_pos` computed inside
+   *  the function would be the real position in forward sequence.
+   */
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::offset_type
+    position_to_offset( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
+    {
+      auto real_pos = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      return position_to_offset( set.paths_set.at( pos.i1 ), real_pos );
+    }
+
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::nodeid_type
+    position_to_id( PathSet< TGraph, TText, TIndexSpec, Forward > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Forward >::TIndex > const& pos )
+    {
+      return position_to_id( set.paths_set.at( pos.i1 ), pos.i2 );
+    }
+
+  /**
+   *  @note The input `pos` parameter should be the "end position" of the occurrence; e.g.:
+   *
+   *  The pattern 'ttc' is found in the reversed string:
+   *        0123 456 7890123
+   *        acga ctt taggtcc
+   *  the input `pos` parameter should be 6 (not 4) where the `real_pos` computed inside
+   *  the function would be the real position in forward sequence.
+   */
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename TGraph::nodeid_type
+    position_to_id( PathSet< TGraph, TText, TIndexSpec, Reversed > const& set,
+        TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
+    {
+      auto real_pos = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      return position_to_id( set.paths_set.at( pos.i1 ), real_pos );
+    }
+
+  template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
+      inline void
+    compress( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection > const& set, TPathSet& out )
+    {
+      typedef typename TPathSet::value_type TPath;
+
+      auto pre_itr = set.paths_set.begin();
+      auto cur_itr = pre_itr + 1;
+
+      if ( pre_itr == set.paths_set.end() ) return;
+
+      TPath path = *pre_itr;
+      while ( cur_itr != set.paths_set.end() ) {
+        if ( (*pre_itr).get_nodes().back() > (*cur_itr).get_nodes().front() ) {
+          out.push_back( std::move( path ) );
+          clear( path );
+        }
+        path += *cur_itr;
+        pre_itr = cur_itr;
+        ++cur_itr;
+      }
+
+      out.push_back( std::move( path ) );
     }
 
   /* END OF PathSet interface functions  ----------------------------------------- */

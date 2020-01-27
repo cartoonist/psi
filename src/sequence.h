@@ -91,7 +91,7 @@ namespace grem {
 
   /* Records interface functions */
   template< typename TText >
-      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
+      inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
     position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
         typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type pos )
     {
@@ -99,6 +99,25 @@ namespace grem {
         throw std::runtime_error( "position out of range" );
       }
       return pos;
+    }
+
+  template< typename TText >
+      inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
+    position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
+        typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
+    {
+      return position_to_id( strset, pos.i1 );
+    }
+
+  template< typename TText >
+      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
+    position_to_offset( const seqan::StringSet< TText, seqan::Owner<> >& strset,
+        typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
+    {
+      if ( pos.i2 >= length( strset[pos.i1] ) || pos.i2 < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos.i2;
     }
 
   template< typename TText >
@@ -122,6 +141,25 @@ namespace grem {
       }
       assert( records.o_str != nullptr );
       return records.offset + pos;
+    }
+
+  template< typename TText, typename TSpec >
+      inline typename Records< seqan::StringSet< TText, TSpec > >::TId
+    position_to_id( const Records< seqan::StringSet< TText, TSpec > >& records,
+        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+    {
+      return position_to_id( records, pos.i1 );
+    }
+
+  template< typename TText, typename TSpec >
+      inline typename Records< seqan::StringSet< TText, TSpec > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, TSpec > >& records,
+        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+    {
+      if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos.i2;
     }
 
 
@@ -206,6 +244,7 @@ namespace grem {
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
+        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
@@ -222,6 +261,7 @@ namespace grem {
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, grem::Dependent > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
+        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
@@ -256,6 +296,223 @@ namespace grem {
         std::size_t offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
         const TRefStringSet* o_str;  /**< @brief original string set. */
     };
+
+  /* Sequence directions strategies */
+  struct ForwardStrategy;
+  struct ReversedStrategy;
+
+  /* Sequence direction tags */
+  typedef seqan::Tag< ForwardStrategy > Forward;
+  typedef seqan::Tag< ReversedStrategy > Reversed;
+
+  /**
+   *  @brief  Meta-function getting direction of a set of paths.
+   */
+  template< typename TSpec >
+    struct Direction;
+
+  /**
+   *  @brief  Meta-function getting direction of paths in a `StringSet`.
+   */
+  template< typename TText, typename TSpec >
+    struct Direction< seqan::StringSet< TText, TSpec > > {
+      typedef Forward Type;
+    };
+
+  /* Seeding strategies */
+  struct GreedyOverlapStrategy;
+  struct NonOverlapStrategy;
+  struct GreedyNonOverlapStrategy;
+
+  /* Seeding strategy tags */
+  typedef seqan::Tag< GreedyOverlapStrategy > GreedyOverlapping;
+  typedef seqan::Tag< NonOverlapStrategy > NonOverlapping;
+  typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
+
+  /* _RecordsIterBase forward declaration  --------------------------------------- */
+  template< typename TRecords, typename TSpec >
+    class _RecordsIterBase;
+  /* END OF _RecordsIterBase forward declaration  -------------------------------- */
+
+  /* _RecordsIterBase interface functions  --------------------------------------- */
+  template< typename TRecords, typename TSpec >
+      inline bool
+    at_end( const _RecordsIterBase< TRecords, TSpec >& iter );
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TId const&
+    get_id( const _RecordsIterBase< TRecords, TSpec >& iter );
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TTextPosition const&
+    get_offset( const _RecordsIterBase< TRecords, TSpec >& iter );
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TStringSetPosition const&
+    get_position( const _RecordsIterBase< TRecords, TSpec >& iter );
+  /* END OF _RecordsIterBase interface functions  -------------------------------- */
+
+  template< typename TStringSet, typename TSpec >
+    class _RecordsIterBase< Records< TStringSet >, TSpec > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef Records< TStringSet > TRecords;
+        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
+        typedef typename seqan::Value< TStringSet >::Type TText;
+        typedef typename seqan::Id< TStringSet >::Type TId;
+        typedef typename seqan::Position< TText >::Type TTextPosition;
+        typedef typename seqan::Infix< TText const >::Type TInfix;
+        /* ====================  LIFECYCLE     ======================================= */
+        _RecordsIterBase( const TRecords* recs, TTextPosition len )
+          : records( recs ), current_pos( { 0, 0 } ), infix_len( len ) { }
+
+        _RecordsIterBase( const _RecordsIterBase& ) = default;
+        _RecordsIterBase( _RecordsIterBase&& ) = default;
+        _RecordsIterBase& operator=( const _RecordsIterBase& ) = default;
+        _RecordsIterBase& operator=( _RecordsIterBase&& ) = default;
+        ~_RecordsIterBase() = default;
+        /* ====================  OPERATORS     ======================================= */
+          inline TInfix
+        operator*() const {
+#ifndef NDEBUG
+          if ( at_end( *this ) ) {
+            throw std::range_error( "Iterator has already reached at the end." );
+          }
+#endif  /* ----- #ifndef NDEBUG  ----- */
+          return infixWithLength(
+              ( *this->records )[ this->current_pos.i1 ],
+              this->current_pos.i2,
+              this->infix_len );
+        }
+        /* ====================  INTERFACE FUNCTIONS  ================================ */
+        friend bool
+          at_end< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+        friend const TId&
+          get_id< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+        friend const TTextPosition&
+          get_offset< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+        friend const TStringSetPosition&
+          get_position< TRecords, TSpec >( const _RecordsIterBase< TRecords, TSpec >& );
+      protected:
+        const TRecords* records;
+        TStringSetPosition current_pos;
+        TTextPosition infix_len;
+    };
+
+  template< typename TRecords, typename TSpec >
+      inline bool
+    at_end( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      if ( iter.current_pos.i1 >= length( *iter.records ) ) return true;
+      return false;
+    }
+
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TId const&
+    get_id( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      return iter.current_pos.i1;
+    }
+
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TTextPosition const&
+    get_offset( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      return iter.current_pos.i2;
+    }
+
+  template< typename TRecords, typename TSpec >
+      inline typename _RecordsIterBase< TRecords, TSpec >::TStringSetPosition const&
+    get_position( const _RecordsIterBase< TRecords, TSpec >& iter )
+    {
+      return iter.current_pos;
+    }
+
+  template< typename TRecords, typename TSpec >
+    class RecordsIter : public _RecordsIterBase< TRecords, TSpec > {};
+
+  template< typename TRecords >
+    class RecordsIter< TRecords, NonOverlapping >
+    : public _RecordsIterBase< TRecords, NonOverlapping > {
+      private:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef _RecordsIterBase< TRecords, NonOverlapping > TBase;
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename TRecords::TStringSet TStringSet;
+        typedef typename TBase::TStringSetPosition TStringSetPosition;
+        typedef typename TBase::TText TText;
+        typedef typename TBase::TId TId;
+        typedef typename TBase::TTextPosition TTextPosition;
+        typedef typename TBase::TInfix TInfix;
+        /* ====================  LIFECYCLE     ======================================= */
+        RecordsIter( const TRecords* recs, TTextPosition len ) : TBase( recs, len ) { }
+        /* ====================  OPERATORS     ======================================= */
+          inline RecordsIter&
+        operator++()
+        {
+#ifndef NDEBUG
+          if ( at_end( *this ) ) {
+            throw std::range_error( "Iterator has already reached at the end." );
+          }
+#endif  /* ----- #ifndef NDEBUG  ----- */
+          auto&& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
+          if ( this->current_pos.i2 + 2 * this->infix_len < current_strlen + 1 ) {
+            this->current_pos.i2 += this->infix_len;
+          }
+          else {
+            this->current_pos.i2 = 0;
+            ++this->current_pos.i1;
+          }
+          return *this;
+        }
+    };
+
+  template< typename TRecords >
+    class RecordsIter< TRecords, GreedyOverlapping >
+    : public _RecordsIterBase< TRecords, GreedyOverlapping > {
+      private:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef _RecordsIterBase< TRecords, GreedyOverlapping > TBase;
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename TRecords::TStringSet TStringSet;
+        typedef typename TBase::TStringSetPosition TStringSetPosition;
+        typedef typename TBase::TText TText;
+        typedef typename TBase::TId TId;
+        typedef typename TBase::TTextPosition TTextPosition;
+        typedef typename TBase::TInfix TInfix;
+        /* ====================  LIFECYCLE     ======================================= */
+        RecordsIter( const TRecords* recs, TTextPosition len ) : TBase( recs, len ) { }
+        /* ====================  OPERATORS     ======================================= */
+          inline RecordsIter&
+        operator++()
+        {
+#ifndef NDEBUG
+          if ( at_end( *this ) ) {
+            throw std::range_error( "Iterator has already reached at the end." );
+          }
+#endif  /* ----- #ifndef NDEBUG  ----- */
+          auto&& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
+          if ( this->current_pos.i2 + this->infix_len < current_strlen ) {
+            ++this->current_pos.i2;
+          }
+          else {
+            this->current_pos.i2 = 0;
+            ++this->current_pos.i1;
+          }
+          return *this;
+        }
+    };
+
+  /**
+   *  @overload postfix increment operator.
+   */
+  template< typename TRecords, typename TSpec >
+      inline RecordsIter< TRecords, TSpec >
+    operator++( RecordsIter< TRecords, TSpec >& iter, int )
+    {
+      RecordsIter< TRecords, TSpec > tmp = iter;
+      iter.operator++();
+      return tmp;
+    }
 
   /* END OF Data structures  ----------------------------------------------------- */
 
@@ -321,16 +578,6 @@ namespace grem {
       for( unsigned int i = 0; i < length( str ); ++i ) str[i] = max_value;
       return -1;
     }
-
-  /* Seeding strategies */
-  struct GreedyOverlapStrategy;
-  struct NonOverlapStrategy;
-  struct GreedyNonOverlapStrategy;
-
-  /* Seeding strategy tags */
-  typedef seqan::Tag< GreedyOverlapStrategy > GreedyOverlapping;
-  typedef seqan::Tag< NonOverlapStrategy > NonOverlapping;
-  typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
 
   /**
    *  @brief  Add any k-mers from the given string set with `step` distance to seed set.
@@ -437,5 +684,12 @@ namespace grem {
 
   /* END OF Interface functions  ------------------------------------------------- */
 }  /* -----  end of namespace grem  ----- */
+
+namespace seqan {
+  template< typename TStringSet, typename TSpec >
+    struct Iterator< grem::Records< TStringSet >, TSpec > {
+      typedef grem::RecordsIter< grem::Records< TStringSet >, TSpec > Type;
+    };
+}  /* -----  end of namespace seqan  ----- */
 
 #endif  /* ----- #ifndef SEQUENCE_H__  ----- */

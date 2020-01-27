@@ -63,17 +63,17 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
   GIVEN( "Given two small string set -- set 1" )
   {
-    Dna5QStringSet<> str1;
-    appendValue(str1, "GATAGACTAGCCA");
-    appendValue(str1, "GGGCGTAGCCA");
-    Dna5QStringSet<> str2;
-    appendValue(str2, "GGGCGTAGCCA");
+    Records< Dna5QStringSet<> > rec1;
+    appendValue(rec1.str, "GATAGACTAGCCA");
+    appendValue(rec1.str, "GGGCGTAGCCA");
+    Records< Dna5QStringSet<> > rec2;
+    appendValue(rec2.str, "GGGCGTAGCCA");
 
     using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
     using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
 
-    TIndex1 index1(str1);
-    TIndex2 index2(str2);
+    TIndex1 index1(rec1.str);
+    TIndex2 index2(rec2.str);
     TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
     TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
 
@@ -81,19 +81,19 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, str1, 4, 1, callback );
+      kmer_exact_matches( index2, &rec2.str, &rec1, 4, GreedyOverlapping(), callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, str2, 4, 1, callback );
+      kmer_exact_matches( index1, &rec1.str, &rec2, 4, GreedyOverlapping(), callback );
       auto seeds2 = seeds;
       seeds.clear();
 
       AND_WHEN( "Traverse both index suffix tree to find all k-mers" )
       {
-        kmer_exact_matches( index1, index2, &str2, 4, callback );
+        kmer_exact_matches( index1, index2, &rec1.str, &rec2, 4, callback );
         auto seeds3 = seeds;
         seeds.clear();
-        kmer_exact_matches( itr1, itr2, &str2, 4, callback );
+        kmer_exact_matches( itr1, itr2, &rec1.str, &rec2, 4, callback );
         THEN( "Both found all 4-mer exact matches" )
         {
           REQUIRE( seeds.size() == 11 );
@@ -107,16 +107,16 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
   GIVEN( "Given two small string set -- set 2" )
   {
-    Dna5QStringSet<> str1;
-    appendValue(str1, "CATATA");
-    Dna5QStringSet<> str2;
-    appendValue(str2, "ATATAC");
+    Records< Dna5QStringSet<> > rec1;
+    appendValue(rec1.str, "CATATA");
+    Records< Dna5QStringSet<> > rec2;
+    appendValue(rec2.str, "ATATAC");
 
     using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
     using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
 
-    TIndex1 index1(str1);
-    TIndex2 index2(str2);
+    TIndex1 index1(rec1.str);
+    TIndex2 index2(rec2.str);
     TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
     TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
 
@@ -124,10 +124,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, str1, 3, 1, callback );
+      kmer_exact_matches( index2, &rec2.str, &rec1, 3, GreedyOverlapping(), callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, str2, 3, 1, callback );
+      kmer_exact_matches( index1, &rec1.str, &rec2, 3, GreedyOverlapping(), callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -135,10 +135,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
       {
         THEN( "Both found all 3-mer exact matches" )
         {
-          kmer_exact_matches( index1, index2, &str2, 3, callback );
+          kmer_exact_matches( index1, index2, &rec1.str, &rec2, 3, callback );
           auto seeds3 = seeds;
           seeds.clear();
-          kmer_exact_matches( itr1, itr2, &str2, 3, callback );
+          kmer_exact_matches( itr1, itr2, &rec1.str, &rec2, 3, callback );
           REQUIRE( seeds.size() == 5 );
           REQUIRE( seeds1.size() == 5 );
           REQUIRE( seeds2.size() == 5 );
@@ -150,20 +150,20 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
   GIVEN( "Given two small string set -- set 3" )
   {
-    Dna5QStringSet<> str1;
-    appendValue(str1, "TAGGCTACCGATTTAAATAGGCACAC");
-    appendValue(str1, "TAGGCTACGGATTTAAATCGGCACAC");
-    Dna5QStringSet<> str2;
-    appendValue(str2, "GGATTTAAATA");
-    appendValue(str2, "CGATTTAAATC");
-    appendValue(str2, "GGATTTAAATC");
-    appendValue(str2, "CGATTTAAATA");
+    Records< Dna5QStringSet<> > rec1;
+    appendValue(rec1.str, "TAGGCTACCGATTTAAATAGGCACAC");
+    appendValue(rec1.str, "TAGGCTACGGATTTAAATCGGCACAC");
+    Records< Dna5QStringSet<> > rec2;
+    appendValue(rec2.str, "GGATTTAAATA");
+    appendValue(rec2.str, "CGATTTAAATC");
+    appendValue(rec2.str, "GGATTTAAATC");
+    appendValue(rec2.str, "CGATTTAAATA");
 
     using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
     using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
 
-    TIndex1 index1(str1);
-    TIndex2 index2(str2);
+    TIndex1 index1(rec1.str);
+    TIndex2 index2(rec2.str);
     TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
     TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
 
@@ -171,10 +171,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, str1, 10, 1, callback );
+      kmer_exact_matches( index2, &rec2.str, &rec1, 10, GreedyOverlapping(), callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, str2, 10, 1, callback );
+      kmer_exact_matches( index1, &rec1.str, &rec2, 10, GreedyOverlapping(), callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -182,10 +182,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
       {
         THEN( "Both found all 10-mer exact matches" )
         {
-          kmer_exact_matches( index1, index2, &str2, 10, callback );
+          kmer_exact_matches( index1, index2, &rec1.str, &rec2, 10, callback );
           auto seeds3 = seeds;
           seeds.clear();
-          kmer_exact_matches( itr1, itr2, &str2, 10, callback );
+          kmer_exact_matches( itr1, itr2, &rec1.str, &rec2, 10, callback );
           REQUIRE( seeds.size() == 8 );
           REQUIRE( seeds1.size() == 8 );
           REQUIRE( seeds2.size() == 8 );
@@ -197,20 +197,20 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
   GIVEN( "Given two small string set with Ns -- set 4" )
   {
-    Dna5QStringSet<> str1;
-    appendValue(str1, "TAGGCTACCGATTNAAATAGGCACAC");
-    appendValue(str1, "TAGGCTACGGATTNAAATCGGCACAC");
-    Dna5QStringSet<> str2;
-    appendValue(str2, "GGATTNAAATA");
-    appendValue(str2, "CGATTNAAATC");
-    appendValue(str2, "GGATTNAAATC");
-    appendValue(str2, "CGATTNAAATA");
+    Records< Dna5QStringSet<> > rec1;
+    appendValue(rec1.str, "TAGGCTACCGATTNAAATAGGCACAC");
+    appendValue(rec1.str, "TAGGCTACGGATTNAAATCGGCACAC");
+    Records< Dna5QStringSet<> > rec2;
+    appendValue(rec2.str, "GGATTNAAATA");
+    appendValue(rec2.str, "CGATTNAAATC");
+    appendValue(rec2.str, "GGATTNAAATC");
+    appendValue(rec2.str, "CGATTNAAATA");
 
     using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
     using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
 
-    TIndex1 index1(str1);
-    TIndex2 index2(str2);
+    TIndex1 index1(rec1.str);
+    TIndex2 index2(rec2.str);
     TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
     TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
 
@@ -218,10 +218,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, str1, 10, 1, callback );
+      kmer_exact_matches( index2, &rec2.str, &rec1, 10, GreedyOverlapping(), callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, str2, 10, 1, callback );
+      kmer_exact_matches( index1, &rec1.str, &rec2, 10, GreedyOverlapping(), callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -229,10 +229,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
       {
         THEN( "Both found all 10-mer exact matches" )
         {
-          kmer_exact_matches( index1, index2, &str2, 10, callback );
+          kmer_exact_matches( index1, index2, &rec1.str, &rec2, 10, callback );
           auto seeds3 = seeds;
           seeds.clear();
-          kmer_exact_matches( itr1, itr2, &str2, 10, callback );
+          kmer_exact_matches( itr1, itr2, &rec1.str, &rec2, 10, callback );
 
           REQUIRE( seeds.size() == 0 );
           REQUIRE( seeds1.size() == 8 );
@@ -245,27 +245,27 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
   GIVEN( "Given two small string set -- set 5" )
   {
-    Dna5QStringSet<> str1;
-    appendValue(str1, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGT"
+    Records< Dna5QStringSet<> > rec1;
+    appendValue(rec1.str, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGT"
         "GTAGGGCCCTCTTGCTCCCGGTGTGACGGCTGGCGTGCAGCTGGCTCCCCCGCTGGCAGCTGGGGACACTGACGGGCCC"
         "TCTTGCTCCCCTACTGGCCGCCTCCTGCACCAATTAAAGTCGGAGCACCGGTTACGC");
-    appendValue(str1, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGT"
+    appendValue(rec1.str, "TGCAGTATAGTCGTCGCACGCCTTCTGGCCGCTGGCGGCAGTACAGGATCCTCTTGCTCACAGT"
         "GTAGGGCCCTCTTGCTCCCGGTGTGACGGCTGGCGTGCAGCTGGCTCCCCCGCTCGCAGGTGGCGACACAAACGGGCCC"
         "TCTTGCTCCCCTACTGGCCGCCTCCTGCACCAATTAAAGTCGGAGCACCGGTTACGC");
 
-    Dna5QStringSet<> str2;
-    appendValue(str2, "CATTGCAGAGCCCTCTTGCTCACAGTGTAGTGGCAGCACGCCCGCCTCCTGGCAGCTAGGGACA"
+    Records< Dna5QStringSet<> > rec2;
+    appendValue(rec2.str, "CATTGCAGAGCCCTCTTGCTCACAGTGTAGTGGCAGCACGCCCGCCTCCTGGCAGCTAGGGACA"
         "GTGCCAGGCCCTCTTGCTCCAAGTGTAGTGGCAGCTGGCTCCCCCGCTGGCAGCTGGGGACACTGACGGGCCCTCTTGC"
         "TTGCAGT");
-    appendValue(str2, "TAGGGCAACTGCAGGGCTATCTTGCTTACAGTGGTGTCCAGCGCCCTCTGCTGGCGTCGGAGCA"
+    appendValue(rec2.str, "TAGGGCAACTGCAGGGCTATCTTGCTTACAGTGGTGTCCAGCGCCCTCTGCTGGCGTCGGAGCA"
         "TTGCAGGGCTCTCTTGCTCGCAGTGTAGTGGCGGCACGCCGCCTGCTGGCAGCTAGGGACATTGCAGAGCCCTCTTGCT"
         "CACAGTG");
 
     using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
     using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
 
-    TIndex1 index1(str1);
-    TIndex2 index2(str2);
+    TIndex1 index1(rec1.str);
+    TIndex2 index2(rec2.str);
     TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
     TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
 
@@ -273,10 +273,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, str1, 30, 1, callback );
+      kmer_exact_matches( index2, &rec2.str, &rec1, 30, GreedyOverlapping(), callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, str2, 30, 1, callback );
+      kmer_exact_matches( index1, &rec1.str, &rec2, 30, GreedyOverlapping(), callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -284,10 +284,10 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
       {
         THEN( "Both found all 30-mer exact matches" )
         {
-          kmer_exact_matches( index1, index2, &str2, 30, callback );
+          kmer_exact_matches( index1, index2, &rec1.str, &rec2, 30, callback );
           auto seeds3 = seeds;
           seeds.clear();
-          kmer_exact_matches( itr1, itr2, &str2, 30, callback );
+          kmer_exact_matches( itr1, itr2, &rec1.str, &rec2, 30, callback );
           REQUIRE( seeds.size() == 21 );
           REQUIRE( seeds1.size() == 21 );
           REQUIRE( seeds2.size() == 21 );

@@ -76,3 +76,59 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
     }
   }
 }
+
+SCENARIO( "Compress a PathSet", "[pathset]" )
+{
+  GIVEN( "A Vargraph and a PathSet containing sparse patches" )
+  {
+    typedef seqan::IndexEsa<> TIndexSpec;
+
+    std::string vgpath = _testdir + "/data/small/x.xg";
+    std::ifstream gifs( vgpath.c_str() );
+    if ( !gifs ) {
+      throw std::runtime_error( "cannot open file " + vgpath );
+    }
+    VarGraph vargraph( gifs );
+
+    Dna5QPathSet< VarGraph, TIndexSpec > paths_set;
+    Path< VarGraph > path( &vargraph, { 1, 2, 4, 6, 112, 123, 135, 200 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 1, 2, 4 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 123, 135, 200 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 3, 7, 12, 39 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 38, 45, 47, 87, 99 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 100, 190, 200, 205, 210 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 29, 100, 120, 130, 140 } );
+    paths_set.add_path( std::move( path ) );
+    path = Path< VarGraph >( &vargraph, { 150, 160 } );
+    paths_set.add_path( std::move( path ) );
+
+    std::vector< Path< VarGraph > > truth;
+    truth.push_back( Path< VarGraph >( &vargraph, { 1, 2, 4, 6, 112, 123, 135, 200 } ) );
+    truth.push_back( Path< VarGraph >( &vargraph, { 1, 2, 4, 123, 135, 200 } ) );
+    truth.push_back( Path< VarGraph >( &vargraph, { 3, 7, 12, 39 } ) );
+    truth.push_back( Path< VarGraph >( &vargraph, { 38, 45, 47, 87, 99, 100, 190, 200, 205, 210 } ) );
+    truth.push_back( Path< VarGraph >( &vargraph, { 29, 100, 120, 130, 140, 150, 160 } ) );
+
+    WHEN( "It is compressed" )
+    {
+      std::vector< Path< VarGraph > > compressed;
+      compress( paths_set, compressed );
+
+      THEN( "The non-overlapping patches with non-decreasing node IDs should be combined" )
+      {
+        REQUIRE( compressed.size() == 5 );
+        for ( unsigned int i = 0; i < truth.size(); ++i ) {
+          for ( unsigned int j = 0; j < truth[i].get_nodes().size(); ++j ) {
+            REQUIRE( compressed[i].get_nodes()[j] == truth[i].get_nodes()[j] );
+          }
+        }
+      }
+    }
+  }
+}

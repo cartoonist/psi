@@ -21,9 +21,9 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include <type_traits>
 
-#include <seqan/index.h>
-
+#include "index.h"
 #include "seed.h"
 
 namespace grem {
@@ -547,26 +547,41 @@ namespace grem {
       return repLength( itr );
     }
 
-  template< typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
+  template< typename TOccurrence1, typename TOccurrence2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
-    _add_seed( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
+    _add_seed( TOccurrence1 oc1, TOccurrence2 oc2,
+        const TRecords1* rec1, const TRecords2* rec2, TCallback callback )
     {
       Seed<> hit;
-      // :TODO:Wed Oct 11 23:34:\@cartoonist: convert path position to node ID.
-      hit.node_id = oc1.i1;
-      hit.node_offset = oc1.i2;
-      auto id = position_to_id( *rec2, oc2.i1 );
-      hit.read_id = id;
+      hit.node_id = position_to_id( *rec1, oc1 );
+      hit.node_offset = position_to_offset( *rec1, oc1 );
+      hit.read_id = position_to_id( *rec2, oc2.i1 );
       hit.read_offset = oc2.i2;
 
       callback( hit );
     }
 
-  template< typename TIter1, typename TIter2, typename TRecords2, typename TCallback >
+  template< typename TOccurrence >
       inline void
-    _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords2* rec2,
-        TCallback callback, bool swapped = false )
+    _map_occurrences( TOccurrence& oc, unsigned int k, Forward )
     {
+      /* NOOP */
+    }
+
+  template< typename TOccurrence >
+      inline void
+    _map_occurrences( TOccurrence& oc, unsigned int k, Reversed )
+    {
+      oc.i2 += k - 1;    /**< @brief End position of the occurrence. */
+    }
+
+  template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
+      inline void
+    _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords1* rec1,
+        const TRecords2* rec2, unsigned int k, TCallback callback, bool swapped = false )
+    {
+      typedef typename Direction< TRecords1 >::Type TPathDir;
+
       auto&& occurrences1 = get_occurrences_stree( itr1 );
       auto&& occurrences2 = get_occurrences_stree( itr2 );
       auto&& occur_size1 = length( occurrences1 );
@@ -575,38 +590,47 @@ namespace grem {
       for ( unsigned int i = 0; i < occur_size1; ++i ) {
         for ( unsigned int j = 0; j < occur_size2; ++j ) {
           if ( !swapped ) {
-            _add_seed( occurrences1[i], occurrences2[j], rec2, callback );
+            _map_occurrences( occurrences1[i], k, TPathDir() );
+            _add_seed( occurrences1[i], occurrences2[j], rec1, rec2, callback );
           }
           else {
-            _add_seed( occurrences2[j], occurrences1[i], rec2, callback );
+            _map_occurrences( occurrences2[j], k, TPathDir() );
+            _add_seed( occurrences2[j], occurrences1[i], rec1, rec2, callback );
           }
         }
       }
     }
 
-  template< typename TIter1, typename TIter2, typename TRecords2, typename TCallback >
+  template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
-    _kmer_exact_match_impl( TIter1& fst_itr, TIter2& snd_itr, const TRecords2* rec2,
-        unsigned int k, bool swapped, TCallback callback )
+    _kmer_exact_match_impl( TIter1& fst_itr, TIter2& snd_itr, const TRecords1* rec1,
+        const TRecords2* rec2, unsigned int k, bool swapped, TCallback callback )
     {
       unsigned int cp_len;
       while ( next_kmer( fst_itr, cp_len, k ) ) {
         auto&& s = upto_prefix( snd_itr, cp_len );
 
         if ( go_down_stree( snd_itr, infix( representative( fst_itr ), s, k ) ) ) {
-          _add_occurrences( fst_itr, snd_itr, rec2, callback, swapped );
+          _add_occurrences( fst_itr, snd_itr, rec1, rec2, k, callback, swapped );
         }
       }
     }
 
-  template< typename TText, typename TIndexSpec1, typename TIndexSpec2, typename TRecords2, typename TCallback >
+  template< typename TText, typename TIndexSpec1, typename TIndexSpec2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     kmer_exact_matches( seqan::Index< TText, TIndexSpec1 >& fst,
         seqan::Index< TText, TIndexSpec2 >& snd,
+        const TRecords1* rec1,
         const TRecords2* rec2,
         unsigned int k,
         TCallback callback )
     {
+      static_assert( ( std::is_same< TIndexSpec1, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
+          ( !std::is_same< TIndexSpec1, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
+          "The paths direction and the path index used are not compatible." );
+
       if ( k == 0 ) return;
 
       auto fst_len = length( indexRawText( fst ) );
@@ -619,10 +643,10 @@ namespace grem {
       TIndexIter< TIndex2, TIterSpec > snd_itr( snd );
 
       if ( fst_len <= snd_len ) {
-        _kmer_exact_match_impl( fst_itr, snd_itr, rec2, k, false, callback );
+        _kmer_exact_match_impl( fst_itr, snd_itr, rec1, rec2, k, false, callback );
       }
       else {
-        _kmer_exact_match_impl( snd_itr, fst_itr, rec2, k, true, callback );
+        _kmer_exact_match_impl( snd_itr, fst_itr, rec1, rec2, k, true, callback );
       }
     }
 
@@ -635,14 +659,21 @@ namespace grem {
       return rep_length( itr );
     }
 
-  template< typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
+  template< typename TIndex1, typename TIndex2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     kmer_exact_matches( IndexIter< TIndex1, TopDownFine< seqan::ParentLinks<> > >& fst_itr,
         IndexIter< TIndex2, TopDownFine< seqan::ParentLinks<> > >& snd_itr,
+        const TRecords1* rec1,
         const TRecords2* rec2,
         unsigned int k,
         TCallback callback )
     {
+      static_assert( ( std::is_same< typename seqan::Spec< TIndex1 >::Type, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
+          ( !std::is_same< typename seqan::Spec< TIndex1 >::Type, grem::CFMIndex >::value &&
+            std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
+          "The paths direction and the path index used are not compatible." );
+
       if ( k == 0 ) return;
 
       seqan::DnaString seed;                   // seed = A..(k)..A
@@ -661,36 +692,33 @@ namespace grem {
           snd_agreed = go_down( snd_itr, seed[plen] );
         }
         if ( fst_agreed && snd_agreed ) {
-          _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec2, callback );
+          _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
           plen = 0;
         }
         s = increment_kmer( seed, plen );
       } while ( s >= 0 );
     }
 
-  // :TODO:Sat Oct 28 03:17:\@cartoonist: implement an iterator over string set to get
-  //       seeds using different strategy tags instead of passing `step` parameter.
-  template< typename TIndex, typename TRecords2, typename TCallback >
+  template< typename TIndex, typename TRecords1, typename TRecords2, typename TSeedingStrategy, typename TCallback >
       inline void
-    kmer_exact_matches( TIndex& paths_index, const TRecords2& reads, unsigned int k,
-        unsigned int step, TCallback callback )
+    kmer_exact_matches( TIndex& paths_index, const TRecords1* pathset,
+        const TRecords2* reads, unsigned int k, TSeedingStrategy, TCallback callback )
     {
-      typedef typename seqan::SAValue< TIndex >::Type TSAValue;
+      typedef typename seqan::Iterator< TRecords2, TSeedingStrategy >::Type TSeedsIterator;
 
-      if ( k == 0 || step == 0 ) return;
+      static_assert( std::is_same< typename Direction< TRecords1 >::Type, Forward >::value,
+          "The paths should be forward sequences." );
+
+      if ( k == 0 ) return;
 
       seqan::Finder< TIndex > paths_finder( paths_index );
-      TSAValue read_occurrence;
-      for ( std::size_t idx = 0; idx < length( reads ); ++idx ) {
-        read_occurrence.i1 = idx;
-        for ( std::size_t off = 0; off < length( reads[idx] ) - k + 1; off += step ) {
-          auto&& seed = infixWithLength( reads[idx], off, k );
-          read_occurrence.i2 = off;
-          while ( find( paths_finder, seed ) ) {
-            _add_seed( beginPosition( paths_finder ), read_occurrence, &reads, callback );
-          }
-          clear( paths_finder );
+      TSeedsIterator seeds_itr( reads, k );
+      while ( !at_end( seeds_itr ) ) {
+        while ( find( paths_finder, *seeds_itr ) ) {
+          _add_seed( beginPosition( paths_finder ), get_position( seeds_itr ), pathset, reads, callback );
         }
+        ++seeds_itr;
+        clear( paths_finder );
       }
     }
 }  /* -----  end of namespace grem  ----- */

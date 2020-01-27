@@ -495,9 +495,6 @@ namespace grem{
       inline void
     extend( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
     {
-      if ( path.get_vargraph() != other.get_vargraph() ) {
-        throw std::runtime_error( "Mismatching variation graphs" );
-      }
       for ( const auto& node_id : other.get_nodes() ) {
         add_node( path, node_id );
       }
@@ -617,16 +614,16 @@ namespace grem{
     }
 
   /**
-   *  @brief  Compute sequence from the nodes queue.
+   *  @brief  Compute forward sequence from the nodes queue.
    *
    *  @param  path The path.
-   *  @return Sequence represented by the path.
+   *  @return Forward sequence represented by the path.
    *
-   *  Compute the sequence of the path from nodes queue.
+   *  Compute the forward sequence of the path from nodes queue.
    */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path )
+    sequence( const Path< TGraph, TSpec >& path, Forward )
     {
       assert( path.get_vargraph() != nullptr );
 
@@ -637,6 +634,30 @@ namespace grem{
       }
       return repr_str;
     }  /* -----  end of template function sequence  ----- */
+
+  /**
+   *  @brief  Compute reversed sequence from the nodes queue.
+   *
+   *  @param  path The path.
+   *  @return Reversed sequence represented by the path.
+   *
+   *  Compute the reversed sequence of the path from nodes queue.
+   */
+  template< typename TGraph, typename TSpec >
+      inline typename Path< TGraph, TSpec >::string_type
+    sequence( const Path< TGraph, TSpec >& path, Reversed )
+    {
+      typename Path< TGraph, TSpec >::string_type repr_str = sequence( path, Forward() );
+      std::reverse( repr_str.begin(), repr_str.end() );
+      return repr_str;
+    }  /* -----  end of template function sequence  ----- */
+
+  template< typename TGraph, typename TSpec >
+      inline typename Path< TGraph, TSpec >::string_type
+    sequence( const Path< TGraph, TSpec >& path )
+    {
+      return sequence( path, Forward() );
+    }
 
   /**
    *  @brief  Clear the path.
@@ -867,6 +888,24 @@ namespace grem{
         {
           this->set_nodes( p );
         }
+
+        template< typename TSpec >
+          Path( const Path< TGraph, TSpec >& other )
+          {
+            this->set_nodes( other.get_nodes() );
+          }
+
+        template< typename TSpec >
+          Path& operator=( const Path< TGraph, TSpec >& other )
+          {
+            this->set_nodes( other.get_nodes() );
+          }
+
+        Path( const Path& ) = default;
+        Path( Path&& ) = default;
+        Path& operator=( const Path& ) = default;
+        Path& operator=( Path&& ) = default;
+        ~Path() = default;
         /* ====================  MUTATORS      ======================================= */
         /**
          *  @brief  Set the nodes in the path (clear the previous state).
