@@ -99,7 +99,7 @@ namespace grem {
   drop_logger( const std::string& name )
   {
     spdlog::drop( name );
-  }  /* -----  end of function drop_all_loggers  ----- */
+  }  /* -----  end of function drop_loggers  ----- */
 
   /**
    *  @brief  Release and close all loggers.

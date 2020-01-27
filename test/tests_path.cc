@@ -35,10 +35,23 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
     = { 29, 32, 34, 28, 21, 23, 26, 25, 37, 35, 30, 20 };
   std::vector< VarGraph::nodeid_type > other_nodes
     = { 56, 123, 9, 10, 27, 9, 10 };
+  std::vector< VarGraph::nodeid_type > other_nodes_sorted
+    = { 9, 10, 27, 56, 123 };
   std::vector< VarGraph::nodeid_type > invld_nodes = { 0 };
   std::vector< VarGraph::nodeid_type > empty;
   std::string nodes_str = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTATTTGA"
     "AGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
+
+  auto non_micro_tests =
+    [&nodes]
+    ( const auto& path ) {
+      for ( std::size_t i = 0; i < nodes.size(); ++i ) {
+        REQUIRE( path[ i ] == nodes[ i ] );
+      }
+      REQUIRE( path.back() == nodes.back() );
+      REQUIRE( path.front() == nodes.front() );
+    };
+
   auto common_path_basic_test =
     [&nodes, &other_nodes, &invld_nodes, &empty, &nodes_shuff]
     ( const auto& path ) {
@@ -51,6 +64,12 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( !contains( path, on ) );
       }
       REQUIRE( contains( path, nodes.begin(), nodes.end() ) );
+      REQUIRE( path.size() == nodes.size() );
+      REQUIRE( !path.empty() );
+      std::size_t i = 0;
+      for ( const auto& nid : path ) {
+        REQUIRE( nid == nodes[ i++ ] );
+      }
       REQUIRE( !contains( path, other_nodes.begin(), other_nodes.end() ) );
       REQUIRE( !contains( path, empty.begin(), empty.end() ) );
       REQUIRE( !contains( path, invld_nodes.begin(), invld_nodes.end() ) );
@@ -67,9 +86,10 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
     };
 
   auto path_basic_test =
-    [&common_path_basic_test, &nodes_str]
+    [&common_path_basic_test, &non_micro_tests, &nodes_str]
     ( const auto& path ) {
       common_path_basic_test( path );
+      non_micro_tests( path );
       REQUIRE( sequence( path ) == nodes_str );
       REQUIRE( path.get_sequence_len() == 119 );
       REQUIRE( position_to_id( path, 0 ) == 20 );
@@ -92,15 +112,18 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       Path< VarGraph > path( &vargraph );
       Path< VarGraph, Dynamic > dyn_path( &vargraph );
       Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
       initialize( path );
       initialize( dyn_path );
       initialize( cmp_path );
+      initialize( hap_path );
 
       THEN( "It has no effect on its state" )
       {
         REQUIRE( !path.is_initialized() );
         REQUIRE( !dyn_path.is_initialized() );
         REQUIRE( !cmp_path.is_initialized() );
+        REQUIRE( hap_path.is_initialized() );
       }
     }
 
@@ -126,7 +149,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( path.get_sequence_len() == 0 );
         REQUIRE( path.is_initialized() == false );
 
-        load( path, tmp_fpath );
+        open( path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -171,7 +194,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( dyn_path.get_sequence_len() == 0 );
         REQUIRE( dyn_path.is_initialized() == false );
 
-        load( dyn_path, tmp_fpath );
+        open( dyn_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -219,7 +242,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
         REQUIRE( cmp_path.get_sequence_len() == 0 );
         REQUIRE( cmp_path.is_initialized() == false );
 
-        load( cmp_path, tmp_fpath );
+        open( cmp_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -246,7 +269,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
 
         REQUIRE( length( mcr_path ) == 0 );
 
-        load( mcr_path, tmp_fpath );
+        open( mcr_path, tmp_fpath );
 
         THEN( "It should pass basic tests" )
         {
@@ -268,6 +291,51 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       }
     }
 
+    WHEN( "A Haplotype path in the graph constructed at once" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      hap_path.set_nodes( nodes );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+
+      WHEN( "It is saved to file and loaded again" )
+      {
+        std::string tmp_fpath = SEQAN_TEMP_FILENAME();
+        save( hap_path, tmp_fpath );
+        clear( hap_path );
+
+        REQUIRE( length( hap_path ) == 0 );
+        REQUIRE( hap_path.is_initialized() == true );
+
+        open( hap_path, tmp_fpath );
+
+        THEN( "It should pass basic tests" )
+        {
+          common_path_basic_test( hap_path );
+          non_micro_tests( hap_path );
+        }
+      }
+    }
+
+    WHEN( "A Haplotype path in the graph constructed incrementally" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( hap_path, n );
+      }
+      initialize( hap_path );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+    }
+
     WHEN( "An existing path in the graph reset by another set of nodes" )
     {
       Path< VarGraph > path( &vargraph );
@@ -279,6 +347,19 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         path_basic_test( path );
+      }
+    }
+
+    WHEN( "An existing Haplotype path in the graph reset by another set of nodes" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      hap_path.set_nodes( other_nodes_sorted );
+      hap_path.set_nodes( nodes );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -491,6 +572,59 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       }
     }
 
+    WHEN( "A Haplotype path constructed by a Default path using assignment" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph > path( &vargraph );
+      path.set_nodes( nodes );
+      initialize( path );
+
+      hap_path = path;
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+    }
+
+    WHEN( "A Haplotype path constructed by a Dynamic path using assignment" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( dyn_path, n );
+      }
+      initialize( dyn_path );
+
+      hap_path = dyn_path;
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+    }
+
+    WHEN( "A Haplotype path constructed by a Compact path using assignment" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph, Compact > cmp_path( &vargraph );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+      cmp_path.set_nodes( nodes );
+#pragma GCC diagnostic pop
+      initialize( cmp_path );
+
+      hap_path = cmp_path;
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+    }
+
     WHEN( "A Dynamic path constructed by a Dynamic path using assignment" )
     {
       Path< VarGraph, Dynamic > dyn_path2( &vargraph );
@@ -621,6 +755,24 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       }
     }
 
+    WHEN( "A Haplotype path constructed by a Haplotype path using assignment" )
+    {
+      Path< VarGraph, Haplotype > hap_path2( &vargraph );
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      for ( const auto& n: nodes ) {
+        add_node( hap_path, n );
+      }
+      initialize( hap_path );
+
+      hap_path2 = hap_path;
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path2 );
+        non_micro_tests( hap_path2 );
+      }
+    }
+
     WHEN( "A Default path is extended by another Default path" )
     {
       Path< VarGraph > path1( &vargraph );
@@ -638,6 +790,96 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         path_basic_test( path1 );
+      }
+    }
+
+    WHEN( "A Haplotype path is extended by another Haplotype path" )
+    {
+      Path< VarGraph, Haplotype > hap_path1( &vargraph );
+      Path< VarGraph, Haplotype > hap_path2( &vargraph );
+      Path< VarGraph, Haplotype >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( hap_path1, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( hap_path2, nodes[ i ] );
+      }
+      initialize( hap_path2 );
+      hap_path1 += hap_path2;
+      initialize( hap_path1 );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path1 );
+        non_micro_tests( hap_path1 );
+      }
+    }
+
+    WHEN( "A Haplotype path is extended by a Default path" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph > path( &vargraph );
+      Path< VarGraph, Haplotype >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( hap_path, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( path, nodes[ i ] );
+      }
+      hap_path += path;
+      initialize( hap_path );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+    }
+
+    WHEN( "A Haplotype path is extended by a Dynamic path" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< VarGraph, Haplotype >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( hap_path, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( dyn_path, nodes[ i ] );
+      }
+      hap_path += dyn_path;
+      initialize( hap_path );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
+      }
+    }
+
+    WHEN( "A Haplotype path is extended by a Compact path" )
+    {
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< VarGraph, Haplotype >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( hap_path, nodes[ i ] );
+      }
+      std::vector< VarGraph::nodeid_type > subset;
+      for ( ; i < nodes.size(); ++i ) {
+        subset.push_back( nodes[i] );
+      }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+      cmp_path.set_nodes( subset );
+#pragma GCC diagnostic pop
+      hap_path += cmp_path;
+      initialize( hap_path );
+
+      THEN( "It should pass basic tests" )
+      {
+        common_path_basic_test( hap_path );
+        non_micro_tests( hap_path );
       }
     }
 
@@ -661,6 +903,27 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       }
     }
 
+    WHEN( "A Dynamic path is extended by a Haplotype path" )
+    {
+      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph, Dynamic >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( dyn_path, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( hap_path, nodes[ i ] );
+      }
+      initialize( hap_path );
+      dyn_path += hap_path;
+      initialize( dyn_path );
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( dyn_path );
+      }
+    }
+
     WHEN( "A Default path is extended by a Dynamic Path" )
     {
       Path< VarGraph > path1( &vargraph );
@@ -678,6 +941,27 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       THEN( "It should pass basic tests" )
       {
         path_basic_test( path1 );
+      }
+    }
+
+    WHEN( "A Default path is extended by a Haplotype path" )
+    {
+      Path< VarGraph > path( &vargraph );
+      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< VarGraph >::size_type i = 0;
+      for ( ; i < nodes.size() - 3; ++i ) {
+        add_node( path, nodes[ i ] );
+      }
+      for ( ; i < nodes.size(); ++i ) {
+        add_node( hap_path, nodes[ i ] );
+      }
+      initialize( hap_path );
+      path += hap_path;
+      initialize( path );
+
+      THEN( "It should pass basic tests" )
+      {
+        path_basic_test( path );
       }
     }
 

@@ -463,7 +463,7 @@ namespace grem {
     GraphIter< VarGraph, BFS >::operator[]( const TId& id )
     {
       return this->visited.find( std::make_pair( id, 0 ) ) != this->visited.end();
-    }  /* -----  end of method GraphIter< VarGraph, Haplotyper >::operator[]  ----- */
+    }  /* -----  end of method GraphIter< VarGraph, BFS >::operator[]  ----- */
 
   /* END OF BFS template specialization  ----------------------------------------- */
 

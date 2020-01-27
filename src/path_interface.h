@@ -18,6 +18,8 @@
 #ifndef  PATH_INTERFACE_H__
 #define  PATH_INTERFACE_H__
 
+#include <functional>
+
 #include "path_base.h"
 
 
@@ -25,177 +27,18 @@ namespace grem {
   /* Default Path interface functions  ----------------------------------------- */
 
   /**
-   *  @brief  Initialize node breaks bitvector.
+   *  @brief  Initialize the internal data structure of the path.
    *
    *  @param  path The path.
    *
-   *  The node breaks bit vector is a bit vector of sequence length. A bit at position
-   *  `i` is set if a node ends at that position in the sequence. For example for this
-   *  path:
-   *
-   *  (GCAAT) -> (A) -> (TTAGCC) -> (GCA)
-   *
-   *  the corresponding path is:
-   *
-   *  GCAATATTAGCCGCA
-   *
-   *  and its bit vector is:
-   *
-   *  000011000001001
-   *
-   *  which has a set bit at the first position of each node in the path.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    init_bv_node_breaks( Path< TGraph, TSpec >& path )
-    {
-      assert( length( path ) != 0 );
-      sdsl::util::assign( path.bv_node_breaks, sdsl::bit_vector( path.seqlen, 0 ) );
-      typename Path< TGraph, TSpec >::seqsize_type cursor = 0;
-      for ( auto it = path.nodes.begin(); it != path.nodes.end(); ++it ) {
-        cursor += path.vargraph->node_length( *it );
-        path.bv_node_breaks[ cursor - 1 ] = 1;
-      }
-    }
-
-  /**
-   *  @brief  Initialize data structures for efficient rank and select queries.
-   *
-   *  @param  path The path.
-   *
-   *  It constructs node breaks bit vector and corresponding rank and select supports.
+   *  See Path `initialize` member function.
    */
   template< typename TGraph, typename TSpec >
       inline void
     initialize( Path< TGraph, TSpec >& path )
     {
-      if ( path.is_initialized() || length( path ) == 0 ) return;
-
-      assert( path.vargraph != nullptr );
-
-      init_bv_node_breaks( path );
-      sdsl::util::init_support( path.rs_node_breaks, &path.bv_node_breaks );
-      sdsl::util::init_support( path.ss_node_breaks, &path.bv_node_breaks );
-      path.initialized = true;
+      path.initialize();
     }
-
-  /**
-   *  @brief  Save the path to an output stream.
-   *
-   *  @param  path The path.
-   *  @param  out The output stream.
-   *
-   *  It saves the sequence of the node IDs into the given output stream.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    save( const Path< TGraph, TSpec >& path, std::ostream& out )
-    {
-      assert( path.is_initialized() );
-      serialize( out, path.nodes );
-      serialize( path.bv_node_breaks, out );
-    }  /* -----  end of function save  ----- */
-
-  /**
-   *  @brief  Save the path to an output stream.
-   *
-   *  @param  path The path.
-   *  @param  out The output stream.
-   *
-   *  It saves the sequence of the node IDs into the given output stream.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    save( Path< TGraph, TSpec >& path, std::ostream& out )
-    {
-      initialize( path );
-      Path< TGraph, TSpec > const& path_cr = path;
-      save( path_cr, out );
-    }  /* -----  end of function save  ----- */
-
-  /**
-   *  @brief  Save the path to file.
-   *
-   *  @param  path The path.
-   *  @param  file_name The name of the file to be written.
-   *
-   *  It saves the sequence of the node IDs into the file.
-   *
-   *  @overload for `std::string` as file name.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    save( const Path< TGraph, TSpec >& path, const std::string& file_name )
-    {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( path, ofs );
-    }  /* -----  end of function save  ----- */
-
-  /**
-   *  @brief  Save the path to file.
-   *
-   *  @param  path The path.
-   *  @param  file_name The name of the file to be written.
-   *
-   *  It saves the sequence of the node IDs into the file.
-   *
-   *  @overload for non-const Path instance.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    save( Path< TGraph, TSpec >& path, const std::string& file_name )
-    {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( path, ofs );
-    }  /* -----  end of function save  ----- */
-
-  /**
-   *  @brief  Load the path from an input stream.
-   *
-   *  @param  path The path.
-   *  @param  in The input stream.
-   *
-   *  It loads the sequence of the node IDs from the given input stream.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    load( Path< TGraph, TSpec >& path, std::istream& in )
-    {
-      typename Path< TGraph, TSpec >::nodes_type nodes;
-      deserialize( in, nodes );
-      path.set_nodes( std::move( nodes ) );
-      load( path.bv_node_breaks, in );
-      sdsl::util::init_support( path.rs_node_breaks, &path.bv_node_breaks );
-      sdsl::util::init_support( path.ss_node_breaks, &path.bv_node_breaks );
-      path.initialized = true;
-    }  /* -----  end of template function load  ----- */
-
-  /**
-   *  @brief  Load the path from file.
-   *
-   *  @param  path The path.
-   *  @param  file_name The name of the file to be read.
-   *
-   *  It loads the sequence of the node IDs from the file.
-   *
-   *  @overload for `std::string` as file name.
-   */
-  template< typename TGraph, typename TSpec >
-      inline void
-    load( Path< TGraph, TSpec >& path, const std::string& file_name )
-    {
-      std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-      if( !ifs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      load( path, ifs );
-    }  /* -----  end of template function load  ----- */
 
   /**
    *  @brief  Extend the path forward.
@@ -209,13 +52,7 @@ namespace grem {
       inline void
     add_node( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type const& node_id )
     {
-      assert( path.vargraph != nullptr );
-      path.nodes.push_back( node_id );
-      path.seqlen += path.vargraph->node_length( node_id );
-      if ( path.seq.length() != 0 ) {
-        path.seq += path.vargraph->node_sequence( node_id );
-      }
-      path.initialized = false;
+      path.push_back( node_id );
     }  /* -----  end of template function add_node  ----- */
 
   /**
@@ -268,50 +105,20 @@ namespace grem {
       return path;
     }
 
-  /**
-   *  @brief  Get the node rank (0-based) in the path by a position in its sequence.
-   *
-   *  @param  path The path.
-   *  @param  pos The position in the path (0-based).
-   *  @return The node rank in the nodes queue (0-based) on whose label the position
-   *          `pos` in the path sequence relies.
-   *
-   *  The value of `rank(pos)` is the node rank in the path's nodes queue.
-   */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::size_type
     rank( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
-      assert( path.is_initialized() );
-      if ( pos < 0 || pos >= path.seqlen ) {
-        throw std::runtime_error( "Position out of range." );
-      }
-      return path.rs_node_breaks( pos );
+      return path.rank( pos );
     }
 
-  /**
-   *  @brief  Get the position in the sequence from which the node with rank `rank` starts.
-   *
-   *  @param  path The path.
-   *  @return The position in the path sequence from which the node with rank `rank`
-   *          starts.
-   *
-   *  Since the position corresponding to the last base in the node label is set in the
-   *  bit vector, the value of `select(rank)` is one base before the actual position to
-   *  be returned. So, `select(rank) + 1` would be the desired position.
-   */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::seqsize_type
     select( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::size_type rank )
     {
-      assert( path.is_initialized() );
-      if ( rank < 0 || rank >= length( path ) ) {
-        throw std::runtime_error( "Rank out of range." );
-      }
-      if ( rank == 0 ) return 0;
-      return path.ss_node_breaks( rank ) + 1;
+      return path.select( rank );
     }
 
   /**
@@ -430,13 +237,7 @@ namespace grem {
       inline void
     clear( Path< TGraph, TSpec >& path )
     {
-      clear( path.nodes );
-      path.seqlen = 0;
-      path.seq.clear();
-      sdsl::util::clear( path.bv_node_breaks );
-      sdsl::util::clear( path.rs_node_breaks );
-      sdsl::util::clear( path.ss_node_breaks );
-      path.initialized = false;
+      path.clear();
     }  /* -----  end of template function clear  ----- */
 
   /**
@@ -452,7 +253,7 @@ namespace grem {
     reserve( Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::size_type size )
     {
-      grem::reserve( path.nodes, size );        /* defined in `utils.h` */
+      path.reserve( size );
     }  /* -----  end of template function reserve  ----- */
 
   /**
@@ -467,7 +268,7 @@ namespace grem {
       inline typename Path< TGraph, TSpec >::size_type
     length( const Path< TGraph, TSpec >& path )
     {
-      return path.get_nodes().size();
+      return path.size();
     }  /* -----  end of template function length  ----- */
 
   /**
@@ -477,21 +278,11 @@ namespace grem {
       inline void
     pop_back( Path< TGraph, TSpec >& path )
     {
-      assert( path.vargraph != nullptr );
-
-      if ( path.nodes.empty() ) return;
-
-      auto&& last_node_len = path.vargraph->node_length( path.nodes.back() );
-      assert( path.seqlen >= last_node_len );
-      path.seqlen -= last_node_len;
-      path.nodes.pop_back();
-      path.initialized = false;
-
-      if ( path.seq.length() != 0 ) path.seq.resize( path.seqlen );
+      path.pop_back();
     }  /* -----  end of method pop_back  ----- */
 
   /**
-   * @brief  pop the last node from the path.
+   * @brief  pop the first node from the path.
    *
    * NOTE: only implemented for Dynamic Path.
    */
@@ -499,17 +290,7 @@ namespace grem {
       inline void
     pop_front( Path< TGraph, Dynamic >& path )
     {
-      assert( path.vargraph != nullptr );
-
-      if ( path.nodes.empty() ) return;
-
-      auto&& first_node_len = path.vargraph->node_length( path.nodes.front() );
-      assert( path.seqlen >= first_node_len );
-      path.seqlen -= first_node_len;
-      path.nodes.pop_front();
-      path.initialized = false;
-
-      if ( path.seq.length() != 0 ) path.seq = path.seq.substr( first_node_len );
+      path.pop_front();
     }
 
   /**
@@ -549,7 +330,7 @@ namespace grem {
     trim_back_by_len( Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type k )
     {
-      while ( path.get_sequence_len() -
+      while ( length( path ) != 0 && path.get_sequence_len() -
           path.get_vargraph()->node_length( path.get_nodes().back() ) >= k ) {
         pop_back( path );
       }
@@ -594,124 +375,13 @@ namespace grem {
     trim_front_by_len( Path< TGraph, Dynamic >& path,
         typename Path< TGraph, Dynamic >::seqsize_type k )
     {
-      while ( path.get_sequence_len() -
+      while ( length( path ) != 0 && path.get_sequence_len() -
           path.get_vargraph()->node_length( path.get_nodes().front() ) >= k ) {
         pop_front( path );
       }
     }  /* -----  end of template function trim_front_by_len  ----- */
 
   /* END OF Default Path interface functions  ---------------------------------- */
-
-  /* Micro Path interface functions definitions  ------------------------------- */
-
-  /**
-   *  @brief  Save the path to an output stream -- Micro specialization.
-   *
-   *  @param  path The path.
-   *  @param  out The output stream.
-   *
-   *  It saves the sequence of the node IDs into the given output stream.
-   */
-  template< typename TGraph >
-      inline void
-    save( const Path< TGraph, Micro >& path, std::ostream& out )
-    {
-      serialize( out, path.nodes_set, path.nodes_set.begin(), path.nodes_set.end() );
-    }  /* -----  end of function save  ----- */
-
-  /**
-   *  @brief  Save the path to an output stream -- Micro specialization.
-   *
-   *  @param  path The path.
-   *  @param  out The output stream.
-   *
-   *  It saves the sequence of the node IDs into the given output stream.
-   */
-  template< typename TGraph >
-      inline void
-    save( Path< TGraph, Micro >& path, std::ostream& out )
-    {
-      Path< TGraph, Micro > const& path_cr = path;
-      save( path_cr, out );
-    }  /* -----  end of function save  ----- */
-
-  /**
-   *  @brief  Extend the path.
-   *
-   *  @param  path The path.
-   *  @param  node_id The new node ID to be added into the path node set.
-   */
-  template< typename TGraph >
-      inline void
-    add_node( Path< TGraph, Micro >& path,
-        typename TGraph::nodeid_type const& node_id )
-    {
-      path.nodes_set.insert( node_id );
-    }
-
-  /**
-   *  @brief  Clear the path.
-   *
-   *  @param  path The path.
-   */
-  template< typename TGraph >
-      inline void
-    clear( Path< TGraph, Micro >& path )
-    {
-      path.nodes_set.clear();
-    }
-
-  /**
-   *  @brief  Reserve memory for the path.
-   *
-   *  @param  path The path.
-   *  @param  size The target capacity.
-   *
-   *  It reserves memory for nodes set.
-   */
-  template< typename TGraph >
-      inline void
-    reserve( Path< TGraph, Micro >& path,
-        typename Path< TGraph, Micro >::size_type size )
-    {
-      grem::reserve( path.nodes_set, size );
-    }
-
-  /**
-   *  @brief  Get path length.
-   *
-   *  @param  path The path.
-   *  @return The path length.
-   *
-   *  It gets the length of the path.
-   */
-  template< typename TGraph >
-      inline typename Path< TGraph, Micro >::size_type
-    length( const Path< TGraph, Micro >& path )
-    {
-      return path.nodes_set.size();
-    }  /* -----  end of function length  ----- */
-
-  /**
-   *  @brief  Load a Micro Path from an input stream.
-   *
-   *  @param  path The path.
-   *  @param  in The input stream.
-   *
-   *  It loads the sequence of the node IDs from the given input stream.
-   *
-   *  Specialized for Micro Path.
-   */
-  template< typename TGraph >
-      inline void
-    load( Path< TGraph, Micro >& path, std::istream& in )
-    {
-      std::vector< typename TGraph::nodeid_type > nodes;
-      deserialize( in, nodes, std::back_inserter( nodes ) );
-      path.set_nodes( std::move( nodes ) );
-    }
-
-  /* END OF Micro Path interface functions  ------------------------------------ */
 
   /* Path interface functions  ------------------------------------------------- */
 
@@ -728,30 +398,7 @@ namespace grem {
       inline bool
     contains( const Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id )
     {
-      const auto& nodes = path.get_nodes();
-      if ( std::find( nodes.begin(), nodes.end(), node_id ) != nodes.end() )
-      {
-        return true;
-      }
-      return false;
-    }  /* -----  end of template function contains  ----- */
-
-  /**
-   *  @brief  Check whether the given node ID is on the path or not.
-   *
-   *  @param  path The path.
-   *  @param  node_id The ID of the node.
-   *  @return `true` if the node ID is on the path.
-   *
-   *  Check if the given node ID presents in the path.
-   *
-   *  @overload for Micro path.
-   */
-  template< typename TGraph >
-      inline bool
-    contains( const Path< TGraph, Micro >& path, typename TGraph::nodeid_type node_id )
-    {
-      return path.nodes_set.find( node_id ) != path.nodes_set.end();
+      return path.contains( node_id );
     }  /* -----  end of template function contains  ----- */
 
   /**
@@ -777,6 +424,26 @@ namespace grem {
 
       if ( begin != end && std::all_of( begin, end, on_path ) ) return true;
       return false;
+    }
+
+  /**
+   *  @brief  Check whether this path contains a set of node IDs.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set to be checked.
+   *  @param  end The end iterator of node IDs set to be checked.
+   *  @return `true` if this path contains all node IDs in the range `[begin, end)`;
+   *          otherwise `false` -- including the case that the range `[begin, end)` is
+   *          empty; i.e. `begin == end`.
+   *
+   *  It checks if the nodes of the given path is present in the node set. It DOES check
+   *  the order of the nodes.
+   */
+  template< typename TGraph, typename TIter >
+      inline bool
+    contains( const Path< TGraph, Haplotype >& path, TIter begin, TIter end )
+    {
+      return path.contains( begin, end );
     }
 
   /**
@@ -839,7 +506,8 @@ namespace grem {
     rcontains( const Path< TGraph, Compact >& path, TIter rbegin, TIter rend )
     {
       const auto& nodes = path.get_nodes();
-      if ( rbegin != rend && nodes.size() >= rend - rbegin ) {
+      std::size_t qlen = rend - rbegin;
+      if ( rbegin != rend && nodes.size() >= qlen ) {
         auto lc = rfind( nodes, *rbegin );
         if ( lc == nodes.begin() || lc - nodes.begin() < rend - rbegin ) return false;
         if ( requal( rbegin, rend, lc, nodes.begin() ) ) return true;
@@ -853,6 +521,13 @@ namespace grem {
     rcontains( const Path< TGraph, Micro >& path, TIter rbegin, TIter rend )
     {
       return contains( path, rbegin, rend );
+    }
+
+  template< typename TGraph, typename TIter >
+      inline bool
+    rcontains( const Path< TGraph, Haplotype >& path, TIter rbegin, TIter rend )
+    {
+      return path.rcontains( rbegin, rend );
     }
 
   /**

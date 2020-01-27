@@ -247,7 +247,7 @@ template< typename TIndexSpec  >
         log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
       }
     }
-    log->info( "found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );
+    log->info( "Found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );
     report( mapper, covered_reads, found );
   }
 
