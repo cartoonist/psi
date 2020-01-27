@@ -48,13 +48,15 @@ namespace grem
    *  Collect statistics from a `Mapper` class instance(s) in running time.
    */
   template< typename TSpec = void >
-    class MapperStat : public Timer
+    class MapperStat : public Timer<>
     {
       public:
         /* ====================  MEMBER TYPES  ======================================= */
         struct Coordinates {
           VarGraph::nodeid_type node_id;
           VarGraph::offset_type offset;
+          Coordinates( VarGraph::nodeid_type nid, VarGraph::offset_type noff )
+            : node_id( nid ), offset( noff ) { }
         };
         /* ====================  LIFECYCLE     ======================================= */
         /**
@@ -119,7 +121,7 @@ namespace grem
           static inline void
         set_lastproc_locus( const vg::Position& value )
         {
-          get_lastproc_locus().store( { value.node_id(), value.offset() } );
+          get_lastproc_locus().store( Coordinates( value.node_id(), value.offset() ) );
         }  /* -----  end of method set_lastproc_locus  ----- */
 
         /**
@@ -158,6 +160,7 @@ namespace grem
     {
       public:
         /* ====================  MEMBER TYPES  ======================================= */
+        typedef Timer<> timer_type;
         struct Coordinates {
           VarGraph::nodeid_type node_id;
           VarGraph::offset_type offset;
@@ -166,15 +169,29 @@ namespace grem
         MapperStat( const std::string& ) { }
         ~MapperStat() { }
         /* ====================  METHODS       ======================================= */
-        static inline std::chrono::microseconds get_duration( const std::string& )
+        constexpr static inline timer_type::duration_type get_duration( const std::string& )
         {
-          return std::chrono::duration_cast< std::chrono::microseconds >(
-              Timer::clock_type::duration::zero() );
+          return timer_type::zero_duration;
         }
-        static inline std::chrono::microseconds get_lap( const std::string& )
+        constexpr static inline timer_type::rep_type get_duration_rep( const std::string& )
         {
-          return std::chrono::duration_cast< std::chrono::microseconds >(
-              Timer::clock_type::duration::zero() );
+          return timer_type::zero_duration_rep;
+        }
+        constexpr static inline const char* get_duration_str( const std::string& )
+        {
+          return "0";
+        }
+        constexpr static inline timer_type::duration_type get_lap( const std::string& )
+        {
+          return timer_type::zero_duration;
+        }
+        constexpr static inline timer_type::rep_type get_lap_rep( const std::string& )
+        {
+          return timer_type::zero_duration_rep;
+        }
+        constexpr static inline const char* get_lap_str( const std::string& )
+        {
+          return "0";
         }
         /* ====================  ACCESSORS     ======================================= */
           static inline std::atomic< Coordinates >&
@@ -391,13 +408,14 @@ namespace grem
 
             paths.reserve( n * this->vargraph->path_count );
             seqan::Iterator< VarGraph, Haplotyper<> >::Type hap_itr( this->vargraph );
+            auto context = paths.get_context();
             for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
               go_begin( hap_itr, s );
               for ( int i = 0; i < n; ++i ) {
                 if ( callback ) callback( path_name, i + 1 );
-                if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
+                if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, context );
                 else get_uniq_full_haplotype( paths, hap_itr );
               }
             }
@@ -419,11 +437,18 @@ namespace grem
           seeds_on_paths( PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
               std::function< void(typename TTraverser::output_type const &) > callback )
           {
+            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
+            typedef typename PathIndex< TGraph, TText, TIndexSpec, TSequenceDirection >::index_type TPIndex;
+            typedef typename seqan::Iterator< TPIndex, TIterSpec >::Type TPIterator;
+            typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
+
             if ( length( indexText( paths.index ) ) == 0 ) return;
 
             auto timer = stats_type( "paths-seed-find" );
 
-            kmer_exact_matches( paths.index, &paths, &(this->reads), this->seed_len, NonOverlapping(), callback );
+            TPIterator piter( paths.index );
+            TRIterator riter( this->reads_index );
+            kmer_exact_matches( piter, riter, &paths, &(this->reads), this->seed_len, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
         template< typename TPath, typename TSpec >
@@ -522,6 +547,55 @@ namespace grem
             ++itr;
           }
         }
+
+        template< typename TPath, typename TSpec >
+            inline unsigned long long int
+          nof_uncovered_kmers( PathSet< TPath, TSpec >& paths, unsigned int k )
+          {
+            if ( this->starting_loci.size() == 0 ) return 0;
+            auto timer = stats_type( "count-uncovered-kmer" );
+
+            seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
+            Path< VarGraph > trav_path( this->vargraph );
+            Path< VarGraph > current_path( this->vargraph );
+            unsigned long long int uncovered = 0;
+
+            long long int prev_id = 0;
+            for ( const vg::Position& l : this->starting_loci ) {
+              if ( prev_id == l.node_id() ) continue;
+              prev_id = l.node_id();
+              auto label_len = this->vargraph->node_length( l.node_id() );
+
+              go_begin( bt_itr, l.node_id() );
+              while ( !at_end( bt_itr ) ) {
+                std::make_unsigned< VarGraph::offset_type >::type offset = label_len;
+                extend_to_k( trav_path, bt_itr, offset - 1 + k );
+                if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
+                while ( current_path.get_sequence_len() != 0 &&
+                    !covered_by( current_path, paths ) ) {
+                  auto trimmed_len = current_path.get_sequence_len()
+                    - this->vargraph->node_length( current_path.get_nodes().back() );
+                  if ( trimmed_len <= k - 1 ) {
+                    offset = 0;
+                    break;
+                  }
+                  offset = trimmed_len - k + 1;
+                  trim_back( current_path );
+                }
+                uncovered += label_len - offset;
+                auto ub = trav_path.get_sequence_len() + 1 - k;
+                if ( offset < ub && ub < label_len ) uncovered -= ub - offset;
+
+                --bt_itr;
+                trim_back( trav_path, *bt_itr );
+                clear( current_path );
+              }
+
+              clear( trav_path );
+            }
+
+            return uncovered;
+          }
 
           inline bool
         open_starts( const std::string& prefix, unsigned int seed_len,

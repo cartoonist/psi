@@ -623,6 +623,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
       REQUIRE( isRoot( it ) );
       REQUIRE( !goUp( it ) );
       REQUIRE( !goRight( it ) );
+      REQUIRE( parentEdgeLength( it ) == 0 );
+      REQUIRE( parentEdgeLabel( it ) == "" );
 
       WHEN( "Get occurrences for root node" )
       {
@@ -642,6 +644,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
           REQUIRE( !isRoot( it ) );
           REQUIRE( repLength( it ) == 1 );
           REQUIRE( representative( it ) == "i" );
+          REQUIRE( parentEdgeLength( it ) == 1 );
+          REQUIRE( parentEdgeLabel( it ) == "i" );
         }
 
         WHEN( "Getting occurrences of the iterator" )
@@ -668,6 +672,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             REQUIRE( !isRoot( it ) );
             REQUIRE( repLength( it ) == 3 );
             REQUIRE( representative( it ) == "ssi" );
+            REQUIRE( parentEdgeLength( it ) == 1 );
+            REQUIRE( parentEdgeLabel( it ) == "s" );
           }
 
           WHEN( "Getting occurrences of the iterator" )
@@ -689,6 +695,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             THEN( "It cannot go right" )
             {
               REQUIRE( !goRight( it ) );
+              REQUIRE( representative( it ) == "ssi" );
             }
           }
 
@@ -701,6 +708,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             {
               REQUIRE( repLength( it ) == 3 );
               REQUIRE( representative( it ) == "-si" );
+              REQUIRE( parentEdgeLength( it ) == 1 );
+              REQUIRE( parentEdgeLabel( it ) == "-" );
             }
 
             WHEN( "Getting occurrences of the iterator" )
@@ -722,6 +731,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
               {
                 REQUIRE( repLength( it ) == 3 );
                 REQUIRE( representative( it ) == "ssi" );
+                REQUIRE( parentEdgeLength( it ) == 1 );
+                REQUIRE( parentEdgeLabel( it ) == "s" );
               }
 
               WHEN( "Getting occurrences of the iterator" )
@@ -749,6 +760,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
               REQUIRE( isRoot( it ) );
               REQUIRE( !goUp( it ) );
               REQUIRE( !goRight( it ) );
+              REQUIRE( parentEdgeLength( it ) == 0 );
+              REQUIRE( parentEdgeLabel( it ) == "" );
             }
           }
 
@@ -763,6 +776,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
               REQUIRE( isRoot( it ) );
               REQUIRE( !goUp( it ) );
               REQUIRE( !goRight( it ) );
+              REQUIRE( parentEdgeLength( it ) == 0 );
+              REQUIRE( parentEdgeLabel( it ) == "" );
             }
           }
         }
@@ -787,6 +802,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
       REQUIRE( isRoot( it ) );
       REQUIRE( !goUp( it ) );
       REQUIRE( !goRight( it ) );
+      REQUIRE( parentEdgeLength( it ) == 0 );
+      REQUIRE( parentEdgeLabel( it ) == "" );
 
       WHEN( "Get occurrences for root node" )
       {
@@ -806,6 +823,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
           REQUIRE( !isRoot( it ) );
           REQUIRE( repLength( it ) == 1 );
           REQUIRE( representative( it ) == "i" );
+          REQUIRE( parentEdgeLength( it ) == 1 );
+          REQUIRE( parentEdgeLabel( it ) == "i" );
         }
 
         WHEN( "Getting occurrences of the iterator" )
@@ -832,6 +851,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             REQUIRE( !isRoot( it ) );
             REQUIRE( repLength( it ) == 3 );
             REQUIRE( representative( it ) == "ssi" );
+            REQUIRE( parentEdgeLength( it ) == 1 );
+            REQUIRE( parentEdgeLabel( it ) == "s" );
           }
 
           WHEN( "Getting occurrences of the iterator" )
@@ -853,6 +874,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             THEN( "It cannot go right" )
             {
               REQUIRE( !goRight( it ) );
+              REQUIRE( representative( it ) == "ssi" );
             }
           }
 
@@ -865,6 +887,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
             {
               REQUIRE( repLength( it ) == 3 );
               REQUIRE( representative( it ) == "-si" );
+              REQUIRE( parentEdgeLength( it ) == 1 );
+              REQUIRE( parentEdgeLabel( it ) == "-" );
             }
 
             WHEN( "Getting occurrences of the iterator" )
@@ -886,6 +910,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
               {
                 REQUIRE( repLength( it ) == 3 );
                 REQUIRE( representative( it ) == "ssi" );
+                REQUIRE( parentEdgeLength( it ) == 1 );
+                REQUIRE( parentEdgeLabel( it ) == "s" );
               }
 
               WHEN( "Getting occurrences of the iterator" )
@@ -913,6 +939,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
               REQUIRE( isRoot( it ) );
               REQUIRE( !goUp( it ) );
               REQUIRE( !goRight( it ) );
+              REQUIRE( parentEdgeLength( it ) == 0 );
+              REQUIRE( parentEdgeLabel( it ) == "" );
             }
           }
 
@@ -927,6 +955,8 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
               REQUIRE( isRoot( it ) );
               REQUIRE( !goUp( it ) );
               REQUIRE( !goRight( it ) );
+              REQUIRE( parentEdgeLength( it ) == 0 );
+              REQUIRE( parentEdgeLabel( it ) == "" );
             }
           }
         }
@@ -968,6 +998,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
         REQUIRE( isRoot( it ) );
         REQUIRE( !goUp( it ) );
         REQUIRE( !goRight( it ) );
+        REQUIRE( parentEdgeLength( it ) == 0 );
+        REQUIRE( parentEdgeLabel( it ) == "" );
 
         WHEN( "Get occurrences for root node" )
         {
@@ -987,11 +1019,13 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
             REQUIRE( !isRoot( it ) );
             REQUIRE( repLength( it ) == 1 );
             REQUIRE( representative( it ) == "n" );
+            REQUIRE( parentEdgeLength( it ) == 1 );
+            REQUIRE( parentEdgeLabel( it ) == "n" );
           }
 
           WHEN( "Getting occurrences of the iterator" )
           {
-            std::set< index_type::savalue_type > truth = { 14, 31, 40, 55, 93, 115, 117 };
+            std::set< index_type::pos_type > truth = { { 0, 14 }, { 0, 31 }, { 1, 1 }, { 1, 16 }, { 2, 11 }, { 2, 33 }, { 2, 35 } };
             auto occs = getOccurrences( it );
 
             THEN( "It should report all occurrences indicated by the iterator" )
@@ -1013,6 +1047,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               REQUIRE( !isRoot( it ) );
               REQUIRE( repLength( it ) == 3 );
               REQUIRE( representative( it ) == "nan" );
+              REQUIRE( parentEdgeLength( it ) == 1 );
+              REQUIRE( parentEdgeLabel( it ) == "n" );
             }
 
             WHEN( "Getting occurrences of the iterator" )
@@ -1022,7 +1058,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               THEN( "It should report all occurrences indicated by the iterator" )
               {
                 REQUIRE( occs.size() == 1 );
-                REQUIRE( *occs.begin() == 115 );
+                REQUIRE( (*occs.begin()).i1 == 2 );
+                REQUIRE( (*occs.begin()).i2 == 33 );
               }
             }
 
@@ -1031,6 +1068,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               THEN( "It cannot go right" )
               {
                 REQUIRE( !goRight( it ) );
+                REQUIRE( representative( it ) == "nan" );
               }
             }
 
@@ -1043,6 +1081,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               {
                 REQUIRE( repLength( it ) == 3 );
                 REQUIRE( representative( it ) == "can" );
+                REQUIRE( parentEdgeLength( it ) == 1 );
+                REQUIRE( parentEdgeLabel( it ) == "c" );
               }
 
               WHEN( "Getting occurrences of the iterator" )
@@ -1052,7 +1092,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 THEN( "It should report all occurrences indicated by the iterator" )
                 {
                   REQUIRE( occs.size() == 1 );
-                  REQUIRE( *occs.begin() == 91 );
+                  REQUIRE( (*occs.begin()).i1 == 2 );
+                  REQUIRE( (*occs.begin()).i2 == 9 );
                 }
               }
 
@@ -1064,11 +1105,13 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 {
                   REQUIRE( repLength( it ) == 3 );
                   REQUIRE( representative( it ) == "ian" );
+                  REQUIRE( parentEdgeLength( it ) == 1 );
+                  REQUIRE( parentEdgeLabel( it ) == "i" );
                 }
 
                 WHEN( "Getting occurrences of the iterator" )
                 {
-                  std::set< index_type::savalue_type > truth = { 12, 53 };
+                  std::set< index_type::pos_type > truth = { { 0, 12 }, { 1, 14 } };
                   auto occs = getOccurrences( it );
 
                   THEN( "It should report all occurrences indicated by the iterator" )
@@ -1091,6 +1134,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 REQUIRE( isRoot( it ) );
                 REQUIRE( !goUp( it ) );
                 REQUIRE( !goRight( it ) );
+                REQUIRE( parentEdgeLength( it ) == 0 );
+                REQUIRE( parentEdgeLabel( it ) == "" );
               }
             }
 
@@ -1105,6 +1150,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 REQUIRE( isRoot( it ) );
                 REQUIRE( !goUp( it ) );
                 REQUIRE( !goRight( it ) );
+                REQUIRE( parentEdgeLength( it ) == 0 );
+                REQUIRE( parentEdgeLabel( it ) == "" );
               }
             }
           }
@@ -1144,6 +1191,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
         REQUIRE( isRoot( it ) );
         REQUIRE( !goUp( it ) );
         REQUIRE( !goRight( it ) );
+        REQUIRE( parentEdgeLength( it ) == 0 );
+        REQUIRE( parentEdgeLabel( it ) == "" );
 
         WHEN( "Get occurrences for root node" )
         {
@@ -1163,11 +1212,13 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
             REQUIRE( !isRoot( it ) );
             REQUIRE( repLength( it ) == 1 );
             REQUIRE( representative( it ) == "n" );
+            REQUIRE( parentEdgeLength( it ) == 1 );
+            REQUIRE( parentEdgeLabel( it ) == "n" );
           }
 
           WHEN( "Getting occurrences of the iterator" )
           {
-            std::set< index_type::savalue_type > truth = { 14, 31, 40, 55, 93, 115, 117 };
+            std::set< index_type::pos_type > truth = { { 0, 14 }, { 0, 31 }, { 1, 1 }, { 1, 16 }, { 2, 11 }, { 2, 33 }, { 2, 35 } };
             auto occs = getOccurrences( it );
 
             THEN( "It should report all occurrences indicated by the iterator" )
@@ -1189,6 +1240,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               REQUIRE( !isRoot( it ) );
               REQUIRE( repLength( it ) == 3 );
               REQUIRE( representative( it ) == "nan" );
+              REQUIRE( parentEdgeLength( it ) == 1 );
+              REQUIRE( parentEdgeLabel( it ) == "n" );
             }
 
             WHEN( "Getting occurrences of the iterator" )
@@ -1198,7 +1251,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               THEN( "It should report all occurrences indicated by the iterator" )
               {
                 REQUIRE( occs.size() == 1 );
-                REQUIRE( *occs.begin() == 115 );
+                REQUIRE( (*occs.begin()).i1 == 2 );
+                REQUIRE( (*occs.begin()).i2 == 33 );
               }
             }
 
@@ -1207,6 +1261,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               THEN( "It cannot go right" )
               {
                 REQUIRE( !goRight( it ) );
+                REQUIRE( representative( it ) == "nan" );
               }
             }
 
@@ -1219,6 +1274,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
               {
                 REQUIRE( repLength( it ) == 3 );
                 REQUIRE( representative( it ) == "can" );
+                REQUIRE( parentEdgeLength( it ) == 1 );
+                REQUIRE( parentEdgeLabel( it ) == "c" );
               }
 
               WHEN( "Getting occurrences of the iterator" )
@@ -1228,7 +1285,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 THEN( "It should report all occurrences indicated by the iterator" )
                 {
                   REQUIRE( occs.size() == 1 );
-                  REQUIRE( *occs.begin() == 91 );
+                  REQUIRE( (*occs.begin()).i1 == 2 );
+                  REQUIRE( (*occs.begin()).i2 == 9 );
                 }
               }
 
@@ -1240,11 +1298,13 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 {
                   REQUIRE( repLength( it ) == 3 );
                   REQUIRE( representative( it ) == "ian" );
+                  REQUIRE( parentEdgeLength( it ) == 1 );
+                  REQUIRE( parentEdgeLabel( it ) == "i" );
                 }
 
                 WHEN( "Getting occurrences of the iterator" )
                 {
-                  std::set< index_type::savalue_type > truth = { 12, 53 };
+                  std::set< index_type::pos_type > truth = { { 0, 12 }, { 1, 14 } };
                   auto occs = getOccurrences( it );
 
                   THEN( "It should report all occurrences indicated by the iterator" )
@@ -1267,6 +1327,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 REQUIRE( isRoot( it ) );
                 REQUIRE( !goUp( it ) );
                 REQUIRE( !goRight( it ) );
+                REQUIRE( parentEdgeLength( it ) == 0 );
+                REQUIRE( parentEdgeLabel( it ) == "" );
               }
             }
 
@@ -1281,6 +1343,8 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
                 REQUIRE( isRoot( it ) );
                 REQUIRE( !goUp( it ) );
                 REQUIRE( !goRight( it ) );
+                REQUIRE( parentEdgeLength( it ) == 0 );
+                REQUIRE( parentEdgeLabel( it ) == "" );
               }
             }
           }

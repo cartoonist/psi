@@ -29,14 +29,6 @@
 using namespace grem;
 
 
-Options opt = {0, 0, 0, 0, 0, IndexType::Esa, "", "", "",
-/*log_path  = */ "", "", false, false, false,
-/*nologfile = */ true,
-/*nolog     = */ false,
-/*quiet     = */ false,
-/*nocolor   = */ false,
-/*verbose   = */ true };
-
 SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
 {
   unsigned int reads_num = 10;
@@ -122,6 +114,13 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
 
 SCENARIO( "Constructing a DiskString", "[sequence]" )
 {
+  Options opt;
+  opt.log_path = "";
+  opt.nologfile = true;
+  opt.nolog = false;
+  opt.quiet = false;
+  opt.nocolor = false;
+  opt.verbose = true;
   if ( get_logger( "main" ) == nullptr ) config_logger( opt );
 
   auto check_content =
@@ -974,6 +973,106 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
   }
 }
 
+SCENARIO( "Constructing a mutable YaPair", "[sequence]" )
+{
+  GIVEN( "A YaPair object" )
+  {
+    YaPair< int, int > a( 3, 4 );
+
+    WHEN( "The `first` and `second` member are modified" )
+    {
+      a.first = 2;
+      a.second = 5;
+
+      THEN( "The `i1` and `i2` should get the updated value" )
+      {
+        REQUIRE( a.i1 == 2 );
+        REQUIRE( a.i2 == 5 );
+        REQUIRE( a.first == a.i1 );
+        REQUIRE( a.second == a.i2 );
+      }
+    }
+
+    WHEN( "The `i1` and `i2` member are modified" )
+    {
+      a.i1 = 2;
+      a.i2 = 5;
+
+      THEN( "The `i1` and `i2` should get the updated value" )
+      {
+        REQUIRE( a.first == 2 );
+        REQUIRE( a.second == 5 );
+        REQUIRE( a.first == a.i1 );
+        REQUIRE( a.second == a.i2 );
+      }
+    }
+
+    WHEN( "It is assigned to another YaPair object" )
+    {
+      YaPair< int, int > b;
+      REQUIRE( b.first == 0 );
+      REQUIRE( b.second == 0 );
+      REQUIRE( b.i1 == 0 );
+      REQUIRE( b.i2 == 0 );
+
+      b = a;
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+
+    WHEN( "It is assigned to another moved YaPair object" )
+    {
+      YaPair< int, int > b;
+      REQUIRE( b.first == 0 );
+      REQUIRE( b.second == 0 );
+      REQUIRE( b.i1 == 0 );
+      REQUIRE( b.i2 == 0 );
+
+      b = std::move( a );
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+
+    WHEN( "A YaPair object constructed by another YaPair object" )
+    {
+      YaPair< int, int > b( a );
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+
+    WHEN( "A YaPair object constructed by another moved YaPair object" )
+    {
+      YaPair< int, int > b( std::move( a ) );
+
+      THEN( "It should get the assigned value" )
+      {
+        REQUIRE( b.i1 == 3 );
+        REQUIRE( b.i2 == 4 );
+        REQUIRE( b.first == b.i1 );
+        REQUIRE( b.second == b.i2 );
+      }
+    }
+  }
+}
+
 SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" )
 {
   GIVEN( "A records containing four sequences with different lengths" )
@@ -1048,6 +1147,52 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
         REQUIRE( *iter++ == "gtttac" );
         REQUIRE( *iter++ == "tttacg" );
         REQUIRE( at_end( iter ) == true );
+      }
+    }
+  }
+
+  unsigned int reads_num = 10;
+  GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
+  {
+    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    klibpp::SeqStreamIn iss( fqpath.c_str() );
+    if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
+
+    typedef seqan::StringSet< seqan::DnaQString > TStringSet;
+    typedef Records< TStringSet > TRecords;
+
+    TRecords reads;
+    readRecords( reads, iss );
+    unsigned int k = 4;
+
+    unsigned int step = 2;
+    WHEN( "Seeding by non-greedy overlapping strategy with length "
+        + std::to_string( k ) + " and step size " + std::to_string( step ) )
+    {
+      typedef typename seqan::Iterator< TRecords, Overlapping >::Type TIter;
+      TIter reads_itr( &reads, k, step );
+
+      THEN( "Seed should be correct" )
+      {
+        std::string truth[70] =
+        { "CAAA", "AATA", "TAAG", "AGAT",
+          "AAAT", "ATAA", "AAGA", "GACT",
+          "TTTC", "TCTG", "TGGA", "GAGT",
+          "ATAA", "AATA", "TATT", "TTCC",
+          "TTCC", "CCTG", "TGGT", "GTTG",
+          "GTCC", "CCTG", "TGGT", "GTTG",
+          "TGCT", "CTAT", "ATGT", "GTGT",
+          "TGTT", "TTGG", "GGGC", "GCTT",
+          "CTTT", "TTTT", "TTTC", "TCTT",
+          "CTTC", "TCTT", "TTCC", "CCTT" };
+        unsigned int i = 0;
+        while ( !at_end( reads_itr ) ) {
+          REQUIRE( *reads_itr == truth[i] );
+          REQUIRE( get_position( reads_itr ).i1 == i/4 );
+          REQUIRE( get_position( reads_itr ).i2 == i%4*step );
+          ++i;
+          ++reads_itr;
+        }
       }
     }
   }
@@ -1203,6 +1348,75 @@ SCENARIO( "Seeding", "[seeding][sequence]" )
           "CTTC", "TTCT", "TCTT", "CTTC", "TTCC", "TCCT", "CCTT" };
         for ( unsigned int i = 0; i < length( seeds ); ++i ) {
           REQUIRE( seeds[i] == truth[i] );
+        }
+      }
+    }
+  }
+
+  GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
+  {
+    std::string fqpath = _testdir + "/data/small/reads_n10l10e0i0.fastq";
+    klibpp::SeqStreamIn iss( fqpath.c_str() );
+    if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
+
+    typedef seqan::StringSet< std::string > TStringSet;
+
+    Records< TStringSet > reads;
+    readRecords( reads, iss );
+    unsigned int k = 4;
+
+    WHEN( "Seeding by non-overlapping strategy with length " + std::to_string( k ) )
+    {
+      Records< TStringSet > seeds;
+      seeding( seeds, reads, k, NonOverlapping() );
+
+      THEN( "Seed should be correct" )
+      {
+        std::string truth[20] =
+        { "CAAA", "TAAG",
+          "AAAT", "AAGA",
+          "TTTC", "TGGA",
+          "ATAA", "TATT",
+          "TTCC", "TGGT",
+          "GTCC", "TGGT",
+          "TGCT", "ATGT",
+          "TGTT", "GGGC",
+          "CTTT", "TTTC",
+          "CTTC", "TTCC" };
+        for ( unsigned int i = 0; i < length( seeds ); ++i ) {
+          REQUIRE( seeds.str[i] == truth[i] );
+          for ( unsigned int j = 0; j < k; ++j ) {
+            REQUIRE( position_to_id( seeds, { i, j } ) == i/2 );
+            REQUIRE( position_to_offset( seeds, { i, j } ) == (i%2)*k+j );
+          }
+        }
+      }
+    }
+
+    WHEN( "Seeding by overlapping strategy with length " + std::to_string( k ) )
+    {
+      Records< TStringSet > seeds;
+      seeding( seeds, reads, k, GreedyOverlapping() );
+
+      THEN( "Seed should be correct" )
+      {
+        std::string truth[70] =
+        { "CAAA", "AAAT", "AATA", "ATAA", "TAAG", "AAGA", "AGAT",
+          "AAAT", "AATA", "ATAA", "TAAG", "AAGA", "AGAC", "GACT",
+          "TTTC", "TTCT", "TCTG", "CTGG", "TGGA", "GGAG", "GAGT",
+          "ATAA", "TAAT", "AATA", "ATAT", "TATT", "ATTC", "TTCC",
+          "TTCC", "TCCT", "CCTG", "CTGG", "TGGT", "GGTT", "GTTG",
+          "GTCC", "TCCT", "CCTG", "CTGG", "TGGT", "GGTT", "GTTG",
+          "TGCT", "GCTA", "CTAT", "TATG", "ATGT", "TGTG", "GTGT",
+          "TGTT", "GTTG", "TTGG", "TGGG", "GGGC", "GGCT", "GCTT",
+          "CTTT", "TTTT", "TTTT", "TTTT", "TTTC", "TTCT", "TCTT",
+          "CTTC", "TTCT", "TCTT", "CTTC", "TTCC", "TCCT", "CCTT" };
+        for ( unsigned int i = 0; i < length( seeds ); ++i ) {
+          REQUIRE( seeds.str[i] == truth[i] );
+          for ( unsigned int j = 0; j < k; ++j ) {
+            REQUIRE( position_to_id( seeds, { i, j } ) == i/7 );
+            REQUIRE( position_to_offset( seeds, { i, j } ) == (i%7)+j );
+          }
         }
       }
     }

@@ -89,7 +89,7 @@ main( int argc, char* argv[] )
   try {
     auto res = parse_opts( options, argc, argv );
 
-    typedef seqan::Index< Dna5QStringSet< grem::Dependent >, seqan::IndexWotd<> > TIndex;
+    typedef seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> > TIndex;
     typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
     typedef Mapper< TTraverser > TMapper;
     unsigned int seedlen = res["seed-length"].as< unsigned int >();

@@ -61,8 +61,7 @@ signal_handler( int signal )
   std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
             << "---------------------------" << std::endl;
   std::cout << "Elapsed time in traversal phase: "
-            << Stat< TMapper >::Type::get_lap( "traverse" ).count() << " us"
-            << std::endl;
+            << Stat< TMapper >::Type::get_lap_str( "traverse" ) << std::endl;
   auto pos = Stat< TMapper >::Type::get_lastproc_locus().load();
   std::cout << "Current node: (" << pos.node_id << ", " << pos.offset << ")"
             << std::endl;
@@ -81,6 +80,7 @@ template< typename TMapper, typename TSet >
     void
   report( TMapper& mapper, TSet& covered_reads, unsigned long long int found )
   {
+    /* Get the main logger. */
     auto log = get_logger( "main" );
     log->info( "Total number of starting loci: {}", mapper.get_starting_loci().size() );
     log->info( "Total number of seeds found: {}", found );
@@ -90,18 +90,20 @@ template< typename TMapper, typename TSet >
 
     log->info( "All Timers" );
     log->info( "----------" );
-    for ( const auto& timer : Timer::get_timers() ) {
-      log->info( "{}: {} us", timer.first, Timer::get_duration( timer.first ).count() );
+    for ( const auto& timer : Timer<>::get_timers() ) {
+      log->info( "{}: {}", timer.first, Timer<>::get_duration_str( timer.first ) );
     }
   }
 
 template< typename TPathIndex, typename TMapper >
     void
-  prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index, bool patched,
-      const std::string& paths_index_file, unsigned int path_num )
+  prepare_paths_index( TPathIndex& pindex, TMapper& mapper, bool paths_index,
+      bool patched, const std::string& paths_index_file, unsigned int path_num,
+      unsigned int context, unsigned int seed_len )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
+    if ( !patched && context != 0 ) pindex.set_context( 0 );
     log->info( "Loading path index..." );
     /* Load the genome-wide path index for the variation graph if available. */
     if ( paths_index && pindex.load( paths_index_file, mapper.get_vargraph() ) ) {
@@ -115,21 +117,28 @@ template< typename TPathIndex, typename TMapper >
     else {
       log->info( "No valid path index found. Picking paths..." );
       log->info( "Picking {} different path(s) on the graph...", path_num );
+      /* REQUIRED: the value might has been changed in an unsuccessful loading above. */
+      pindex.set_context( context );
       /* Generate the requested number of genome-wide paths. */
+      if ( patched && context == 0 ) {
+        log->warn( "Context cannot be zero for patching. "
+            "Assuming seed length as context size..." );
+        pindex.set_context( seed_len );
+      }
       auto progress = [&log]( std::string const& name, int i ) {
         log->info( "Selecting path {} of region {}...", i, name );
       };
       mapper.pick_paths( pindex, path_num, patched, progress );
-      log->info( "Picked paths in {} us.", Timer::get_duration( "pick-paths" ).count() );
+      log->info( "Picked paths in {}.", Timer<>::get_duration_str( "pick-paths" ) );
       {
-        auto timer = Timer( "index-paths" );
+        auto timer = Timer<>( "index-paths" );
         log->info( "Indexing the paths..." );
         /* Index the paths. */
         pindex.create_index();
       }
-      log->info( "Indexed paths in {} us.", Timer::get_duration( "index-paths" ).count() );
+      log->info( "Indexed paths in {}.", Timer<>::get_duration_str( "index-paths" ) );
       {
-        auto timer = Timer( "save-paths" );
+        auto timer = Timer<>( "save-paths" );
         log->info( "Saving path index..." );
         /* Serialize the indexed paths. */
         if ( !paths_index ) {
@@ -138,32 +147,41 @@ template< typename TPathIndex, typename TMapper >
           log->warn( "Specified path index file is not writable. Skipping..." );
         }
       }
-      log->info( "Saved path index in {} us.", Timer::get_duration( "save-paths" ).count() );
+      log->info( "Saved path index in {}.", Timer<>::get_duration_str( "save-paths" ) );
     }
   }
 
 
-template< typename TIndexSpec  >
+template< typename TReadsIndexSpec >
     void
   find_seeds( VarGraph& vargraph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
-      unsigned int path_num, unsigned int context, bool paths_index, bool patched,
-      const std::string& paths_index_file, bool nomapping, TIndexSpec const /* Tag */ )
+      unsigned int distance, unsigned int path_num, unsigned int context,
+      bool paths_index, bool patched, const std::string& paths_index_file,
+      bool nomapping, TReadsIndexSpec const )
   {
+    /* typedefs */
+    typedef Dna5QStringSet<> TReadsStringSet;
+    typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
+    typedef typename Traverser< TReadsIndex, BFS, ExactMatching >::Type TTraverser;
+    typedef Mapper< TTraverser > TMapper;
+
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    /* Method typedefs. */
-    typedef seqan::Index< Dna5QStringSet< >, TIndexSpec > TIndex;
-    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
-    typedef Mapper< TTraverser > TMapper;
     /* The mapper for input variation graph. */
     TMapper mapper( &vargraph, seed_len );
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide path index in lazy mode. */
-    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Forward > pindex( context, true );
+    PathIndex< VarGraph, DiskString, grem::FMIndex<>, Reversed > pindex( context, true );
     /* Prepare (load or create) genome-wide paths. */
-    prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file, path_num );
+    prepare_paths_index( pindex, mapper, paths_index, patched, paths_index_file,
+        path_num, context, seed_len );
+    if ( patched && pindex.get_context() < seed_len ) {
+      std::string msg = "Seed length cannot be larger than context size";
+      log->error( msg );
+      throw std::runtime_error( msg );
+    }
 
     log->info( "Loading starting loci..." );
     /* Loading starting loci. */
@@ -174,16 +192,18 @@ template< typename TIndexSpec  >
       log->info( "Selecting starting loci..." );
       /* Locate starting loci. */
       mapper.add_all_loci( pindex.get_paths_set(), seed_len, step_size );
-      log->info( "Selected starting loci in {} us.",
-          Timer::get_duration( "add-starts" ).count() );
+      log->info( "Selected starting loci in {}.",
+          Timer<>::get_duration_str( "add-starts" ) );
       log->info( "Saving starting loci..." );
       /* Saving starting loci. */
       if ( ! mapper.save_starts( paths_index_file, seed_len, step_size ) ) {
-        log->warn( "The specified path for saving starting loci is not writable. Skipping..." );
+        log->warn( "The specified path for saving starting loci is not writable. "
+            "Skipping..." );
       }
     }
     log->info( "Number of starting loci selected (in {} nodes of total {}): {}",
-        mapper.get_nof_uniq_nodes(), mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
+        mapper.get_nof_uniq_nodes(), mapper.get_vargraph()->node_count,
+        mapper.get_starting_loci().size() );
 
     if ( nomapping ) {
       log->info( "Skipping mapping as requested..." );
@@ -191,10 +211,10 @@ template< typename TIndexSpec  >
     }
 
     unsigned long long int found = 0;
-    std::unordered_set< Records< Dna5QStringSet<> >::TPosition > covered_reads;
+    std::unordered_set< Records< TReadsStringSet >::TPosition > covered_reads;
     std::function< void(typename TTraverser::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
-      (typename TTraverser::output_type const & seed_hit){
+      (typename TTraverser::output_type const & seed_hit) {
       ++found;
       write( output_file, &seed_hit.node_id, 1 );
       write( output_file, &seed_hit.node_offset, 1 );
@@ -204,39 +224,45 @@ template< typename TIndexSpec  >
     };
 
     /* Reads are mapped in chunks. */
-    Records< Dna5QStringSet< > > reads_chunk;
+    Records< TReadsStringSet > reads_chunk;
+    Records< TReadsStringSet > seeds_chunk;
     log->info( "Finding seeds..." );
     {
-      auto timer = Timer( "seed-finding" );
-      while (true)
-      {
+      auto timer = Timer<>( "seed-finding" );
+      while (true) {
         log->info( "Loading the next reads chunk..." );
         {
-          auto timer = Timer( "load-chunk" );
+          auto timer = Timer<>( "load-chunk" );
           /* Load a chunk from reads set. */
           readRecords( reads_chunk, reads_iss, chunk_size );
           if ( length( reads_chunk ) == 0 ) break;
         }
-        log->info( "Fetched {} reads in {} us.", length( reads_chunk ),
-            Timer::get_duration( "load-chunk" ).count() );
+        log->info( "Fetched {} reads in {}.", length( reads_chunk ),
+            Timer<>::get_duration_str( "load-chunk" ) );
+        /* Seed current chunk. */
+        {
+          auto timer = Timer<>( "seeding" );
+          seeding( seeds_chunk, reads_chunk, seed_len, distance );
+        }
+        log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         /* Give the current chunk to the mapper. */
-        mapper.set_reads( std::move( reads_chunk ) );
+        mapper.set_reads( std::move( seeds_chunk ) );
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */
-        if ( path_num != 0 ){
+        if ( path_num != 0 ) {
           mapper.seeds_on_paths( pindex, write_callback );
-          log->info( "Found seed on paths in {} us.",
-              Timer::get_duration( "paths-seed-find" ).count() );
+          log->info( "Found seed on paths in {}.",
+              Timer<>::get_duration_str( "paths-seed-find" ) );
           log->info( "Total number of seeds found on paths: {}", found - pre_found );
         }
         log->info( "Traversing..." );
         /* Find seeds on variation graph by traversing starting loci. */
-        mapper.traverse ( write_callback );
-        log->info( "Traversed in {} us.", Timer::get_duration( "traverse" ).count() );
+        mapper.traverse( write_callback );
+        log->info( "Traversed in {}.", Timer<>::get_duration_str( "traverse" ) );
       }
     }
-    log->info( "Found seed in {} us.", Timer::get_duration( "seed-finding" ).count() );
+    log->info( "Found seed in {}.", Timer<>::get_duration_str( "seed-finding" ) );
     report( mapper, covered_reads, found );
   }
 
@@ -247,6 +273,7 @@ startup( const Options & options )
   auto log = get_logger( "main" );
   log->info( "Parameters:" );
   log->info( "- Seed length: {}", options.seed_len );
+  log->info( "- Seed distance: {}", options.distance );
   log->info( "- Number of paths: {}", options.path_num );
   log->info( "- Context length (used in patching): {}", options.context );
   log->info( "- Patched: {}", ( options.patched ? "yes" : "no" ) );
@@ -255,11 +282,11 @@ startup( const Options & options )
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
+  log->info( "- Output file: '{}'", options.output_path );
 
   log->info( "Opening file '{}'...", options.fq_path );
   SeqStreamIn reads_iss( options.fq_path.c_str() );
-  if ( !reads_iss )
-  {
+  if ( !reads_iss ) {
     std::string msg = "could not open file '" + options.fq_path + "'!";
     log->error( msg );
     throw std::runtime_error( msg );
@@ -267,8 +294,7 @@ startup( const Options & options )
 
   log->info( "Loading the graph from file '{}'...", options.rf_path );
   std::ifstream ifs( options.rf_path, std::ifstream::in | std::ifstream::binary );
-  if( !ifs )
-  {
+  if( !ifs ) {
     std::string msg = "could not open file '" + options.rf_path + "'!";
     log->error( msg );
     throw std::runtime_error( msg );
@@ -291,12 +317,13 @@ startup( const Options & options )
   }
 
   switch ( options.index ) {
-    case IndexType::Wotd: find_seeds ( vargraph,
+    case IndexType::Wotd: find_seeds( vargraph,
                               reads_iss,
                               output_file,
                               options.seed_len,
                               options.chunk_size,
                               options.step_size,
+                              options.distance,
                               options.path_num,
                               options.context,
                               options.paths_index,
@@ -305,12 +332,13 @@ startup( const Options & options )
                               options.nomapping,
                               UsingIndexWotd() );
                           break;
-    case IndexType::Esa: find_seeds ( vargraph,
+    case IndexType::Esa: find_seeds( vargraph,
                              reads_iss,
                              output_file,
                              options.seed_len,
                              options.chunk_size,
                              options.step_size,
+                              options.distance,
                              options.path_num,
                              options.context,
                              options.paths_index,
@@ -330,103 +358,116 @@ setup_argparser( seqan::ArgumentParser& parser )
 {
   // positional arguments.
   std::string POSARG1 = "VG_FILE";
-
   // add usage line.
-  addUsageLine(parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"");
+  addUsageLine( parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"" );
 
   // graph file -- positional argument.
-  seqan::ArgParseArgument vgfile_arg(seqan::ArgParseArgument::INPUT_FILE, POSARG1);
-  setValidValues(vgfile_arg, "vg xg");
-  addArgument(parser, vgfile_arg);
+  seqan::ArgParseArgument vgfile_arg( seqan::ArgParseArgument::INPUT_FILE, POSARG1 );
+  setValidValues( vgfile_arg, "vg xg" );
+  addArgument( parser, vgfile_arg );
 
+  // Options
   // reads in FASTQ format -- **required** option.
-  seqan::ArgParseOption fqfile_arg("f", "fastq", "Reads in FASTQ format.",
-                                   seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE");
-  setValidValues(fqfile_arg, "fq fastq");
-  addOption(parser, fqfile_arg);
-  setRequired(parser, "f");
-
+  addOption( parser,
+      seqan::ArgParseOption( "f", "fastq",
+        "Reads in FASTQ format.",
+        seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE" ) );
+  setValidValues( parser, "f", "fq fastq" );
+  setRequired( parser, "f" );
   // output file
   // :TODO:Sat Oct 21 00:06:\@cartoonist: output should be alignment in the GAM format.
-  seqan::ArgParseOption outfile_arg( "o", "output", "Output file.",
-      seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" );
-  addOption( parser, outfile_arg );
+  addOption( parser,
+      seqan::ArgParseOption( "o", "output",
+        "Output file.",
+        seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" ) );
   setDefaultValue( parser, "o", "out.gam" );
-
   // paths index file
-  seqan::ArgParseOption paths_index_arg ( "I", "paths-index", "Paths index file.",
-      seqan::ArgParseArgument::STRING, "PATHS_INDEX_FILE" );
-  addOption ( parser, paths_index_arg );
-
+  addOption( parser,
+      seqan::ArgParseOption( "I", "paths-index",
+        "Paths index file.",
+        seqan::ArgParseArgument::STRING, "PATHS_INDEX_FILE" ) );
   // seed length -- **required** option.
-  addOption(parser, seqan::ArgParseOption("l", "seed-length", "Seed length.",
-                                          seqan::ArgParseArgument::INTEGER, "INT"));
-  setRequired(parser, "l");
-
+  addOption( parser,
+      seqan::ArgParseOption( "l", "seed-length",
+        "Seed length.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setRequired( parser, "l" );
   // chunk size -- **required** option.
-  addOption(parser, seqan::ArgParseOption("c", "chunk-size",
-        "Reads chunk size. Set it to zero to consider all reads as one chunk (default).",
-        seqan::ArgParseArgument::INTEGER, "INT"));
-  setDefaultValue(parser, "c", 0);
-
-  // starting loci interval
-  addOption(parser, seqan::ArgParseOption("e", "step-size", "Start from every given "
-                                          "number of loci in all nodes. If it is set to"
-                                          " 1, it means start from all positions in a "
-                                          "node.", seqan::ArgParseArgument::INTEGER,
-                                          "INT"));
-  setDefaultValue(parser, "e", 1);
-
+  addOption( parser,
+      seqan::ArgParseOption( "c", "chunk-size",
+        "Reads chunk size. Set it to 0 to consider all reads as one chunk (default).",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "c", 0 );
+  // step size
+  addOption( parser,
+      seqan::ArgParseOption( "e", "step-size",
+        "Minimum approximate distance allowed between two consecutive loci.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "e", 1 );
+  // seed distance
+  addOption( parser,
+      seqan::ArgParseOption( "d", "distance",
+        "Distance between seeds",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "d", 0 );  /* Default value is seed length. */
   // number of paths
-  addOption( parser, seqan::ArgParseOption( "n", "path-num", "Number of paths from "
-        "the variation graph in hybrid approach.", seqan::ArgParseArgument::INTEGER,
-        "INT" ) );
-  setDefaultValue(parser, "n", 0);
-
+  addOption( parser,
+      seqan::ArgParseOption( "n", "path-num",
+        "Number of paths from the variation graph in hybrid approach.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "n", 0 );
   // whether use patched paths or full genome-wide paths
-  addOption(parser, seqan::ArgParseOption("P", "no-patched", "Use full genome-wide paths."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "P", "no-patched",
+        "Use full genome-wide paths." ) );
   // context in patching the paths
-  addOption( parser, seqan::ArgParseOption( "t", "context", "Context length in patching.",
+  addOption( parser,
+      seqan::ArgParseOption( "t", "context",
+        "Context length in patching.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "t", 0 );
-
   // index
-  addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
-                                          seqan::ArgParseArgument::STRING, "INDEX"));
-  setValidValues(parser, "i", "SA ESA WOTD DFI QGRAM FM");
-  setDefaultValue(parser, "i", "WOTD");
-
+  addOption( parser,
+      seqan::ArgParseOption( "i", "index",
+        "Index type for indexing reads.",
+        seqan::ArgParseArgument::STRING, "INDEX" ) );
+  setValidValues( parser, "i", "SA ESA WOTD DFI QGRAM FM" );
+  setDefaultValue( parser, "i", "WOTD" );
   // no map -- just do the paths indexing phase
-  addOption(parser, seqan::ArgParseOption("x", "only-index", "Only build paths index and skip mapping."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "x", "only-index",
+        "Only build paths index and skip mapping." ) );
   // log file
-  seqan::ArgParseOption logfile_arg("L", "log-file",
-                                    "Sets default log file for existing and future loggers.",
-                                    seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE");
-  addOption(parser, logfile_arg);
-  setDefaultValue(parser, "L", "grem.log");
-
+  addOption( parser,
+      seqan::ArgParseOption( "L", "log-file",
+        "Sets default log file for existing and future loggers.",
+        seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE" ) );
+  setDefaultValue( parser, "L", "grem.log" );
   // no log to file
-  addOption(parser, seqan::ArgParseOption("Q", "no-log-file", "Disable writing logs to file (overrides \\fB-L\\fP)."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "Q", "no-log-file",
+        "Disable writing logs to file (overrides \\fB-L\\fP)." ) );
   // quiet -- no output to console
-  addOption(parser, seqan::ArgParseOption("q", "quiet", "Quiet mode. No output will be printed to console."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "q", "quiet",
+        "Quiet mode. No output will be printed to console." ) );
   // no colored output
-  addOption(parser, seqan::ArgParseOption("C", "no-color", "Do not use a colored output."));
-
+  addOption( parser,
+      seqan::ArgParseOption( "C", "no-color",
+        "Do not use a colored output." ) );
   // disable logging
-  addOption(parser, seqan::ArgParseOption("D", "disable-log", "Disable logging completely."));
-
-  // verbosity options
-  addOption(parser, seqan::ArgParseOption("v", "verbose",
-                                          "Activates maximum verbosity."));
+  addOption( parser,
+      seqan::ArgParseOption( "D", "disable-log",
+        "Disable logging completely." ) );
+  // verbosity option
+  addOption( parser,
+      seqan::ArgParseOption( "v", "verbose",
+        "Activates maximum verbosity." ) );
 }
 
 
   inline void
-get_option_values ( Options & options, seqan::ArgumentParser & parser )
+get_option_values( Options & options, seqan::ArgumentParser & parser )
 {
   std::string indexname;
 
@@ -435,6 +476,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.seed_len, parser, "seed-length" );
   getOptionValue( options.chunk_size, parser, "chunk-size" );
   getOptionValue( options.step_size, parser, "step-size" );
+  getOptionValue( options.distance, parser, "distance" );
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   options.paths_index = isSet( parser, "paths-index" );
@@ -451,6 +493,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getArgumentValue( options.rf_path, parser, 0 );
 
   options.index = index_from_str( indexname );
+  if ( options.distance == 0 ) options.distance = options.seed_len;
 }
 
 
@@ -463,9 +506,8 @@ parse_args( Options& options, int argc, char* argv[] )
 
   // Embedding program's meta data and build information.
   setShortDescription( parser, SHORT_DESC );
-  setVersion( parser, VERSION );
-  // :TODO:Thu Apr 06 02:06:\@cartoonist: date should be specified by autoconf.
-  setDate( parser, __DATE__ );
+  setVersion( parser, GIT_VERSION );
+  setDate( parser, UPDATE_DATE );
   addDescription( parser, LONG_DESC );
 
   std::ostringstream hold_buf_stdout;
@@ -474,8 +516,7 @@ parse_args( Options& options, int argc, char* argv[] )
   auto res = seqan::parse( parser, argc, argv, hold_buf_stdout, hold_buf_stderr );
   // print the banner in help or version messages.
   if ( res == seqan::ArgumentParser::PARSE_HELP ||
-      res == seqan::ArgumentParser::PARSE_VERSION )
-  {
+      res == seqan::ArgumentParser::PARSE_VERSION ) {
     std::cout << BANNER << std::endl;
   }
   // print the buffer.
@@ -485,7 +526,7 @@ parse_args( Options& options, int argc, char* argv[] )
   // only extract options if the program will continue after parse_args()
   if ( res != seqan::ArgumentParser::PARSE_OK ) return res;
 
-  get_option_values ( options, parser );
+  get_option_values( options, parser );
 
   return seqan::ArgumentParser::PARSE_OK;
 }
@@ -500,8 +541,9 @@ main( int argc, char *argv[] )
   /* If parsing was not successful then exit with code 1 if there were errors.
    * Otherwise, exit with code 0 (e.g. help was printed).
    */
-  if ( res != seqan::ArgumentParser::PARSE_OK )
+  if ( res != seqan::ArgumentParser::PARSE_OK ) {
     return res == seqan::ArgumentParser::PARSE_ERROR;
+  }
 
   /* Verify that the version of the library that we linked against is
    * compatible with the version of the headers we compiled against.

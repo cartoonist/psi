@@ -79,12 +79,19 @@ namespace grem
 
         State( TIndex* index, unsigned char mm,
             vg::Position sp, vg::Position cp, size_t d )
-          : State( index, mm, sp.node_id(), sp.offset(), cp.node_id(), cp.offset(), d )
+          : iter( *index ), mismatches( mm ),
+          spos( sp ), cpos( cp ), depth( d ), end( false )
         { }
 
         State( TIndex* index, unsigned char mm, vg::Position sp, size_t d )
-          : State( index, mm, sp.node_id(), sp.offset(), sp.node_id(), sp.offset(), d )
+          : State( index, mm, sp, sp, d )
         { }
+
+        State( State const& ) = default;
+        State( State&& ) = delete;
+        State& operator=( State const& ) = default;
+        State& operator=( State&& ) = delete;
+        ~State( ) = default;
       } TState;
     };
 

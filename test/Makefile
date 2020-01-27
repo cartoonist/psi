@@ -50,7 +50,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGETS       := ${BINDIR}/ggsim ${BINDIR}/pathindex_stats ${BINDIR}/loci_stats ${BINDIR}/tests_pathset ${BINDIR}/tests_path ${BINDIR}/tests_fmindex ${BINDIR}/tests_sequence ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathindex ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
+TARGETS       := ${BINDIR}/count_kmers ${BINDIR}/ggsim ${BINDIR}/pathindex_stats ${BINDIR}/loci_stats ${BINDIR}/tests_pathset ${BINDIR}/tests_path ${BINDIR}/tests_fmindex ${BINDIR}/tests_sequence ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathindex ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -73,6 +73,9 @@ ${BINDIR}/pathindex_stats: pathindex_stats.o
 	${LINK}
 
 ${BINDIR}/ggsim: ggsim.o
+	${LINK}
+
+${BINDIR}/count_kmers: count_kmers.o
 	${LINK}
 
 ${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o

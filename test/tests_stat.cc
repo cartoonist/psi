@@ -29,22 +29,60 @@ using namespace std::chrono_literals;
 
 SCENARIO ( "Test the Timer", "[stat]" )
 {
-  GIVEN( "A Timer" )
+  GIVEN( "A CPU clock Timer" )
   {
-    WHEN( "It measures a time period" )
+    WHEN( "It measures a short time period" )
     {
-      Timer::clock_type::time_point start, end;
       {
-        auto timer = Timer( "test-timer" );
-        start = Timer::clock_type::now();
+        auto timer = Timer< >( "test-timer" );
         std::this_thread::sleep_for( 678912us );
       }
-      end = Timer::clock_type::now();
-      THEN( "It should get the correct duration in microseconds" )
+      THEN( "It should get the correct duration" )
       {
-        auto d1 = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
-        auto d2 = Timer::get_duration( "test-timer" );
-        REQUIRE( d2.count() - d1.count() < 100 );
+        auto d = Timer< >::get_duration_rep( "test-timer" );
+        REQUIRE( d == Approx( 0 ).margin( 0.0001 ) );
+      }
+    }
+
+    WHEN( "It measures longer time period" )
+    {
+      {
+        auto timer = Timer< >( "test-timer" );
+        std::this_thread::sleep_for( 1278912us );
+      }
+      THEN( "It should get the correct duration" )
+      {
+        auto d = Timer< >::get_duration_rep( "test-timer" );
+        REQUIRE( d == Approx( 0 ).margin( 0.0001 ) );
+      }
+    }
+  }
+
+  GIVEN( "A wall clock Timer" )
+  {
+    WHEN( "It measures a short time period" )
+    {
+      {
+        auto timer = Timer< SteadyClock >( "test-timer" );
+        std::this_thread::sleep_for( 678912us );
+      }
+      THEN( "It should get the correct duration" )
+      {
+        auto d = Timer< SteadyClock >::get_duration_rep( "test-timer" );
+        REQUIRE( static_cast< float >( d ) == Approx( 678912 ).epsilon( 0.001 ) );
+      }
+    }
+
+    WHEN( "It measures longer time period" )
+    {
+      {
+        auto timer = Timer< SteadyClock >( "test-timer" );
+        std::this_thread::sleep_for( 1278912us );
+      }
+      THEN( "It should get the correct duration" )
+      {
+        auto d = Timer< SteadyClock >::get_duration_rep( "test-timer" );
+        REQUIRE( static_cast< float >( d ) == Approx( 1278912 ).epsilon( 0.001 ) );
       }
     }
   }

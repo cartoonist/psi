@@ -154,10 +154,10 @@ int main(int argc, char *argv[])
   Dna5QString ref_seq;
 
   {
-    auto timer = Timer( "load-ref" );
+    auto timer = Timer<>( "load-ref" );
     readRecord( ref_id, ref_seq, refInFile );
   }
-  log->info( "Reference loaded in {} us.", Timer::get_duration( "load-ref" ).count() );
+  log->info( "Reference loaded in {}.", Timer<>::get_duration_str( "load-ref" ) );
   log->info( "Reference sequence length: {}.", length( ref_seq ) );
 
   SeqFileIn readsInFile;
@@ -174,11 +174,11 @@ int main(int argc, char *argv[])
   uint64_t nof_godowns = 0;
   log->info("Seed finding...");
   {
-    auto timer = Timer( "seed-finding" );
+    auto timer = Timer<>( "seed-finding" );
     while ( true )  // chunks
     {
       {
-        auto timer = Timer( "load-reads" );
+        auto timer = Timer<>( "load-reads" );
         readRecords( reads, readsInFile, options.chunk_size );
       }
       if ( length( reads.name ) == 0 )
@@ -186,9 +186,10 @@ int main(int argc, char *argv[])
         log->info( "All reads are processed." );
         break;
       }
-      log->info( "Loaded {} reads in {} us.", length( reads.str ), Timer::get_duration("load-reads").count() );
+      log->info( "Loaded {} reads in {}.", length( reads.str ),
+          Timer<>::get_duration_str( "load-reads" ) );
       {
-        auto timer = Timer( "traverse" );
+        auto timer = Timer<>( "traverse" );
 
         unsigned int i;
         IterState::TIndex reads_index( reads.str );
@@ -225,12 +226,12 @@ int main(int argc, char *argv[])
           }
         }
       }
-      log->info("Traversed in {} us.", Timer::get_duration("traverse").count());
+      log->info("Traversed in {}.", Timer<>::get_duration_str( "traverse" ) );
       clear(reads.name);
       clear(reads.str);
     }
   }
-  log->info("Seed finding was done in {} us.", Timer::get_duration("seed-finding").count());
+  log->info("Seed finding was done in {}.", Timer<>::get_duration_str( "seed-finding" ) );
   log->info("Total number of godown operations: {}", nof_godowns);
   log->info("Total number of seed hits: {}", seeds.size());
 

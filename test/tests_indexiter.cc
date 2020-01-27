@@ -30,11 +30,16 @@ using namespace grem;
 
 SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]" )
 {
-  GIVEN( "A sample small path" )
+  GIVEN( "A sample small path and ESA index" )
   {
-    seqan::Dna5QString str = "GATAGACTAGCCA";
-    seqan::Index< seqan::Dna5QString, seqan::IndexEsa<> > index(str);
-    TFineIndexIter< seqan::Index< seqan::Dna5QString, seqan::IndexEsa<> >, seqan::ParentLinks<> > itr(index);
+    typedef seqan::Dna5QString TString;
+    typedef seqan::IndexEsa<> TIndexSpec;
+    typedef seqan::Index< TString, TIndexSpec > TIndex;
+    typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
+
+    TString str = "GATAGACTAGCCA";
+    TIndex index( str );
+    TIter itr( index );
 
     REQUIRE( go_down( itr, 'A' ) );
     REQUIRE( go_down( itr, 'G' ) );
@@ -50,6 +55,33 @@ SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterato
     REQUIRE( go_up( itr ) );
     REQUIRE( go_right( itr ) );
     REQUIRE( representative( itr.get_iter_() ) == "AG" );
+  }
+
+  GIVEN( "A sample small path and FM-index" )
+  {
+    typedef grem::MemString TString;
+    typedef grem::FMIndex<> TIndexSpec;
+    typedef seqan::Index< TString, TIndexSpec > TIndex;
+    typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
+
+    TString str = "ACCGATCAGATAG";
+    TIndex index( str );
+    TIter itr( index );
+
+    REQUIRE( go_down( itr, 'A' ) );
+    REQUIRE( go_down( itr, 'G' ) );
+    REQUIRE( representative( itr.get_iter_() ) == "GA" );
+    REQUIRE( go_right( itr ) );
+    REQUIRE( representative( itr.get_iter_() ) == "TA" );
+    REQUIRE( go_down( itr, 'A' ) );
+    REQUIRE( go_up( itr ) );
+    REQUIRE( go_up( itr ) );
+    REQUIRE( go_down( itr, 'C' ) );
+    REQUIRE( go_down( itr, 'T' ) );
+    REQUIRE( !go_right( itr ) );
+    REQUIRE( go_up( itr ) );
+    REQUIRE( go_right( itr ) );
+    REQUIRE( representative( itr.get_iter_() ) == "GA" );
   }
 }
 
@@ -81,10 +113,15 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, &rec2.str, &rec1, 4, GreedyOverlapping(), callback );
+      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+
+      TSeedsIterator1 seeds_itr1( &rec1, 4 );
+      kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, &rec1.str, &rec2, 4, GreedyOverlapping(), callback );
+      TSeedsIterator2 seeds_itr2( &rec2, 4 );
+      kmer_exact_matches( index1, &rec1.str, seeds_itr2, callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -124,10 +161,15 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, &rec2.str, &rec1, 3, GreedyOverlapping(), callback );
+      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+
+      TSeedsIterator1 seeds_itr1( &rec1, 3 );
+      kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, &rec1.str, &rec2, 3, GreedyOverlapping(), callback );
+      TSeedsIterator2 seeds_itr2( &rec2, 3 );
+      kmer_exact_matches( index1, &rec1.str, seeds_itr2, callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -171,10 +213,15 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, &rec2.str, &rec1, 10, GreedyOverlapping(), callback );
+      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+
+      TSeedsIterator1 seeds_itr1( &rec1, 10 );
+      kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, &rec1.str, &rec2, 10, GreedyOverlapping(), callback );
+      TSeedsIterator2 seeds_itr2( &rec2, 10 );
+      kmer_exact_matches( index1, &rec1.str, seeds_itr2, callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -218,10 +265,15 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, &rec2.str, &rec1, 10, GreedyOverlapping(), callback );
+      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+
+      TSeedsIterator1 seeds_itr1( &rec1, 10 );
+      kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, &rec1.str, &rec2, 10, GreedyOverlapping(), callback );
+      TSeedsIterator2 seeds_itr2( &rec2, 10 );
+      kmer_exact_matches( index1, &rec1.str, seeds_itr2, callback );
       auto seeds2 = seeds;
       seeds.clear();
 
@@ -273,10 +325,15 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      kmer_exact_matches( index2, &rec2.str, &rec1, 30, GreedyOverlapping(), callback );
+      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+
+      TSeedsIterator1 seeds_itr1( &rec1, 30 );
+      kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
       auto seeds1 = seeds;
       seeds.clear();
-      kmer_exact_matches( index1, &rec1.str, &rec2, 30, GreedyOverlapping(), callback );
+      TSeedsIterator2 seeds_itr2( &rec2, 30 );
+      kmer_exact_matches( index1, &rec1.str, seeds_itr2, callback );
       auto seeds2 = seeds;
       seeds.clear();
 

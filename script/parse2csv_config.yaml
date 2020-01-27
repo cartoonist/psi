@@ -2,6 +2,7 @@
 fields:
   - 'dataset_region'
   - 'seedlen'
+  - 'distance'
   - 'pathno'
   - 'patched'
   - 'context'
@@ -36,6 +37,7 @@ reduce:
   pindexsize: 'filesize_glob'
 patterns:
   - 'Seed length:{:s}{seedlen:d}'
+  - 'Seed distance:{:s}{distance:d}'
   - 'Number of paths:{:s}{pathno:d}'
   - 'Context length (used in patching):{:s}{context:d}'
   - 'Patched:{:s}{patched:w}'
@@ -44,18 +46,18 @@ patterns:
   - 'Reads index type:{:s}{readsindex:w}'
   - 'Step size:{:s}{stepsize:d}'
   - "Loading the graph from file '{dataset_region}'..."
-  - 'Picked paths in {pathpicktime:d} us.'
-  - 'Indexed paths in {pathindextime:d} us.'
-  - 'Saved path index in {pathsavetime:d} us.'
+  - 'Picked paths in {pathpicktime:f} s.'
+  - 'Indexed paths in {pathindextime:f} s.'
+  - 'Saved path index in {pathsavetime:f} s.'
   - 'Number of starting loci selected (in {uniqnodes:d} nodes of total {totalnodes:d}): {locino:d}'
-  - 'Found seed on paths in {pathquerytimeperchunk:d} us.'
+  - 'Found seed on paths in {pathquerytimeperchunk:f} s.'
   - 'Total number of seeds found on paths:{:s}{seedsonpaths:d}'
-  - 'Traversed in {traversetimeperchunk:d} us.'
-  - 'Traversed in {nofdonechunks:d} us.'
+  - 'Traversed in {traversetimeperchunk:f} s.'
+  - 'Traversed in {nofdonechunks:f} s.'
   - 'Total number of seeds found:{:s}{totalhits:d}'
   - 'Total number of reads covered:{:s}{coveredreads:d}'
   - "Total number of 'godown' operations:{:s}{nofgodowns:d}"
-#  - 'traverse:{:s}{traversetime:d} us'
-#  - 'paths-seed-find:{:s}{pathquerytime:d} us'
-  - 'seed-finding:{:s}{seedfindingtime:d} us'
+#  - 'traverse:{:s}{traversetime:f} s'
+#  - 'paths-seed-find:{:s}{pathquerytime:f} s'
+  - 'seed-finding:{:s}{seedfindingtime:f} s'
 ...

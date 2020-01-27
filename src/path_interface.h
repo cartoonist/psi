@@ -58,6 +58,22 @@ namespace grem {
     }  /* -----  end of template function add_node  ----- */
 
   /**
+   *  @brief  Extend the path forward.
+   *
+   *  @param  path The path.
+   *  @param  node_id The new node ID.
+   *
+   *  Internal function to add the `node_id` to the end of the current path.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    add_node( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type const& node_id,
+        typename TGraph::offset_type const& node_offset )
+    {
+      path.push_back( node_id, node_offset );
+    }  /* -----  end of template function add_node  ----- */
+
+  /**
    *  @brief  Extend a path with another one (interface function).
    *
    *  @param  path The path to be extended.
@@ -66,12 +82,34 @@ namespace grem {
    *  @note It does not prevent self-extension. Use `operator+=` if this functionality
    *        is desired.
    */
-  template< typename TGraph, typename TSpec1, typename TSpec2 >
+  template< typename TGraph, typename TSpec1, typename TSpec2,
+    typename=std::enable_if_t< !is_generic_path< TSpec1 >::value || !is_generic_path< TSpec2 >::value > >
       inline void
     extend( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
     {
       for ( const auto& node_id : other.get_nodes() ) {
         add_node( path, node_id );
+      }
+    }
+
+  template< typename TGraph, typename TSpec1, typename TSpec2,
+    typename=std::enable_if_t< is_generic_path< TSpec1 >::value >,
+    typename=std::enable_if_t< is_generic_path< TSpec2 >::value > >
+      inline void
+    extend( Path< TGraph, TSpec1 >& path, const Path< TGraph, TSpec2 >& other )
+    {
+      if ( other.empty() ) return;
+      if ( path.empty() ) {
+        add_node( path, other.front(), other.get_head_offset() );
+      }
+      else {
+        add_node( path, other.front() );
+      }
+      if ( other.size() > 1 ) {
+        for ( auto it = other.begin()+1; it != other.end()-1; ++it ) {
+          add_node( path, *it );
+        }
+        add_node( path, other.back(), other.get_seqlen_tail() );
       }
     }
 
@@ -153,9 +191,10 @@ namespace grem {
     position_to_offset( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
-      auto&& sel = select( path, rank( path, pos ) );
+      auto rnk = rank( path, pos );
+      auto sel = select( path, rnk );
       assert( pos >= sel );
-      return pos - sel;
+      return pos - sel + ( rnk ? 0 : path.get_head_offset() );
     }
 
   /**
@@ -168,39 +207,30 @@ namespace grem {
    */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path, Forward, unsigned int context=0 )
+    sequence( const Path< TGraph, TSpec >& path, Forward )
     {
-      assert( path.get_vargraph() != nullptr );
+      TGraph const* vargraph = path.get_vargraph();
+      assert( vargraph != nullptr );
 
-      if ( length( path ) == 0 ) return "";
+      if ( path.empty() ) return "";
 
-      typename Path< TGraph, TSpec >::string_type repr_str;
-      repr_str.reserve( path.get_sequence_len() );
+      typename Path< TGraph, TSpec >::string_type repr;
+      repr.reserve( path.get_sequence_len() );
 
-      /* If context is set (not zero) the first node is trimmed by length `context`. */
-      auto iter = path.get_nodes().begin();
-      if ( context != 0 ){
-        unsigned int off = ( path.get_vargraph()->node_length( *iter ) + 1 > context ?
-            path.get_vargraph()->node_length( *iter ) - context + 1 :
-            0 );
-        repr_str += path.get_vargraph()->node_sequence( *iter )
-          .substr( off );
-        ++iter;
+      /* Add sequence of the head node. */
+      auto off = path.get_head_offset();
+      repr += vargraph->node_sequence( path.front() ).substr( off, path.get_sequence_len() );
+      if ( path.size() > 1 ) {
+        /* Add sequence of intermediate nodes. */
+        for ( auto itr = path.begin()+1; itr != path.end()-1; ++itr ) {
+          repr += vargraph->node_sequence( *itr );
+        }
+        /* Add sequence of the tail node. */
+        auto len = path.get_seqlen_tail();
+        repr += vargraph->node_sequence( path.back() ).substr( 0, len );
       }
 
-      /* Add sequence of intermediate nodes. */
-      while ( ( context != 0 && iter != path.get_nodes().end() - 1 ) ||
-          ( context == 0 && iter != path.get_nodes().end() ) ) {
-        repr_str += path.get_vargraph()->node_sequence( *iter );
-        ++iter;
-      }
-
-      /* If context is set (not zero) the last node is trimmed by length `context`. */
-      if ( context != 0 ) {
-        repr_str += path.get_vargraph()->node_sequence( *iter ).substr( 0, context - 1 );
-      }
-
-      return repr_str;
+      return repr;
     }  /* -----  end of template function sequence  ----- */
 
   /**
@@ -213,19 +243,19 @@ namespace grem {
    */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path, Reversed, unsigned int context=0 )
+    sequence( const Path< TGraph, TSpec >& path, Reversed )
     {
       typename Path< TGraph, TSpec >::string_type repr_str =
-        sequence( path, Forward(), context );
+        sequence( path, Forward() );
       std::reverse( repr_str.begin(), repr_str.end() );
       return repr_str;
     }  /* -----  end of template function sequence  ----- */
 
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path, unsigned int context=0 )
+    sequence( const Path< TGraph, TSpec >& path )
     {
-      return sequence( path, Forward(), context );
+      return sequence( path, Forward() );
     }
 
   /**
@@ -308,12 +338,13 @@ namespace grem {
    */
   template< typename TGraph, typename TSpec >
       inline void
-    trim_back( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id=0 )
+    trim_back( Path< TGraph, TSpec >& path, typename TGraph::nodeid_type node_id=0,
+        bool exclusive=false )
     {
       bool found = false;
-      while ( !found && length( path ) != 0 ) {
-        auto&& last_node = path.get_nodes().back();
-        if ( node_id == 0 || last_node == node_id ) found = true;
+      while ( !found && !path.empty() ) {
+        if ( node_id == 0 || path.back() == node_id ) found = true;
+        if ( exclusive && found ) break;
         pop_back( path );
       }
     }  /* -----  end of template function trim_back  ----- */
@@ -326,17 +357,51 @@ namespace grem {
    *
    *  The nodes from back will be dropped from the path until to the point that further
    *  trimming leads its length to be less than k.
+   *
+   *  We have called it "ltrim" because this trimming preserve inclusion of the left-most
+   *  k-mer in the resulting path.
    */
   template< typename TGraph, typename TSpec >
       inline void
-    trim_back_by_len( Path< TGraph, TSpec >& path,
-        typename Path< TGraph, TSpec >::seqsize_type k )
+    ltrim_back_by_len( Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type k, bool hard=false )
     {
-      while ( length( path ) != 0 && path.get_sequence_len() -
-          path.get_vargraph()->node_length( path.get_nodes().back() ) >= k ) {
+      while ( !path.empty() && path.get_sequence_len() - path.get_seqlen_tail() >= k ) {
         pop_back( path );
       }
-    }  /* -----  end of template function trim_back_by_len  ----- */
+      if ( !path.empty() && hard ) {
+        path.set_right_by_len( k + path.get_seqlen_tail() - path.get_sequence_len() );
+      }
+    }  /* -----  end of template function ltrim_back_by_len  ----- */
+
+  /**
+   *  @brief  Trim the path from the back until further trimming would lead length of
+   *          less than `k + <length of first node> - 1`.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  k The value of k.
+   *
+   *  The nodes from back will be dropped from the path until to the point that further
+   *  trimming leads its length to be less than `k + <length of first node> - 1`.
+   *
+   *  We have called it "rtrim" because this trimming preserve inclusion of the right-most
+   *  k-mer of the first node in the resulting path.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    rtrim_back_by_len( Path< TGraph, TSpec >& path,
+        typename Path< TGraph, TSpec >::seqsize_type k, bool hard=false )
+    {
+      if ( path.size() < 2 ) return;
+      while ( !path.empty() && path.get_sequence_len() -
+          path.get_seqlen_head() - path.get_seqlen_tail() >= k-1 ) {
+        pop_back( path );
+      }
+      if ( !path.empty() && hard ) {
+        path.set_right_by_len( k - 1 + path.get_seqlen_tail() + path.get_seqlen_head()
+            - path.get_sequence_len() );
+      }
+    }  /* -----  end of template function rtrim_back_by_len  ----- */
 
   /**
    *  @brief  Trim the path from the node whose ID matches the given ID from front.
@@ -353,12 +418,13 @@ namespace grem {
    */
   template< typename TGraph >
       inline void
-    trim_front( Path< TGraph, Dynamic >& path, typename TGraph::nodeid_type node_id=0 )
+    trim_front( Path< TGraph, Dynamic >& path, typename TGraph::nodeid_type node_id=0,
+        bool exclusive=false )
     {
       bool found = false;
-      while ( !found && length( path ) != 0 ) {
-        auto&& first_node = path.get_nodes().front();
-        if ( node_id == 0 || first_node == node_id ) found = true;
+      while ( !found && !path.empty() ) {
+        if ( node_id == 0 || path.front() == node_id ) found = true;
+        if ( exclusive && found ) break;
         pop_front( path );
       }
     }  /* -----  end of template function trim_front  ----- */
@@ -371,17 +437,88 @@ namespace grem {
    *
    *  The nodes from front will be dropped from the path until to the point that further
    *  trimming leads its length to be less than k.
+   *
+   *  We have called it "ltrim" because this trimming preserve inclusion of the left-most
+   *  k-mer of the last node in the resulting path.
    */
   template< typename TGraph >
       inline void
-    trim_front_by_len( Path< TGraph, Dynamic >& path,
-        typename Path< TGraph, Dynamic >::seqsize_type k )
+    ltrim_front_by_len( Path< TGraph, Dynamic >& path,
+        typename Path< TGraph, Dynamic >::seqsize_type k, bool hard=false )
     {
-      while ( length( path ) != 0 && path.get_sequence_len() -
-          path.get_vargraph()->node_length( path.get_nodes().front() ) >= k ) {
+      if ( path.size() < 2 ) return;
+      while ( !path.empty() && path.get_sequence_len() -
+          path.get_seqlen_head() - path.get_seqlen_tail() >= k-1 ) {
         pop_front( path );
       }
-    }  /* -----  end of template function trim_front_by_len  ----- */
+      if ( !path.empty() && hard ) {
+        path.set_left_by_len( k - 1 + path.get_seqlen_tail() + path.get_seqlen_head()
+            - path.get_sequence_len() );
+      }
+    }  /* -----  end of template function ltrim_front_by_len  ----- */
+
+  /**
+   *  @brief  Trim the path from the front until further trimming would lead length of < k.
+   *
+   *  @param  path The path to be trimmed.
+   *  @param  k The length of k.
+   *
+   *  The nodes from front will be dropped from the path until to the point that further
+   *  trimming leads its length to be less than k.
+   *
+   *  We have called it "rtrim" because this trimming preserve inclusion of the right-most
+   *  k-mer in the resulting path.
+   */
+  template< typename TGraph >
+      inline void
+    rtrim_front_by_len( Path< TGraph, Dynamic >& path,
+        typename Path< TGraph, Dynamic >::seqsize_type k, bool hard=false )
+    {
+      while ( !path.empty() && path.get_sequence_len() - path.get_seqlen_head() >= k ) {
+        pop_front( path );
+      }
+      if ( !path.empty() && hard ) {
+        path.set_left_by_len( k + path.get_seqlen_head() - path.get_sequence_len() );
+      }
+    }  /* -----  end of template function rtrim_front_by_len  ----- */
+
+  template< typename TGraph, typename TSpec >
+      inline YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type >
+    leftmost_kmer_pos( Path< TGraph, TSpec > const& path,
+        typename Path< TGraph, TSpec >::seqsize_type k )
+    {
+      YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type > endpos;
+      TGraph const* vargraph = path.get_vargraph();
+      typename Path< TGraph, TSpec >::seqsize_type len = 0;
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        len += vargraph->node_length( *it );
+        if ( len >= k ) {
+          endpos.first = *it;
+          endpos.second = k + vargraph->node_length( *it ) - len - 1;
+          break;
+        }
+      }
+      return endpos;
+    }
+
+  template< typename TGraph, typename TSpec >
+      inline YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type >
+    rightmost_kmer_pos( Path< TGraph, TSpec > const& path,
+        typename Path< TGraph, TSpec >::seqsize_type k )
+    {
+      YaPair< typename TGraph::nodeid_type, typename TGraph::offset_type > startpos;
+      TGraph const* vargraph = path.get_vargraph();
+      typename Path< TGraph, TSpec >::seqsize_type len = 0;
+      for ( auto it = path.end(); it != path.begin(); --it ) {
+        len += vargraph->node_length( *(it - 1) );
+        if ( len >= k ) {
+          startpos.first = *(it - 1);
+          startpos.second = len - k;
+          break;
+        }
+      }
+      return startpos;
+    }
 
   /* END OF Default Path interface functions  ---------------------------------- */
 
@@ -709,11 +846,18 @@ namespace grem {
     {
       TGraph const* vargraph = path.get_vargraph();
       typename TGraph::rank_type rank = 1;
-      for ( const auto& node_id : path.get_nodes() ) {
-        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        typename TGraph::offset_type label_len;
+        typename TGraph::offset_type noff = 0;
+        if ( it == path.begin() ) {
+          label_len = path.get_seqlen_head();
+          noff = path.get_head_offset();
+        }
+        else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
+        else label_len = vargraph->node_length( *it );
         vg::Mapping* mapping = vgpath->add_mapping();
-        mapping->mutable_position()->set_node_id( node_id );
-        mapping->mutable_position()->set_offset( 0 );
+        mapping->mutable_position()->set_node_id( *it );
+        mapping->mutable_position()->set_offset( noff );
         vg::Edit* edit = mapping->add_edit();
         edit->set_from_length( label_len );
         edit->set_to_length( label_len );
@@ -729,20 +873,39 @@ namespace grem {
       TGraph const* vargraph = path.get_vargraph();
       typename TGraph::rank_type rank = 1;
 
-      auto comp =
-        [vargraph]( const auto& elem, const auto& value ) {
+      auto comp_id =
+        [vargraph]( vg::Position const& elem, vg::Position const& value ) {
           return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value );
         };
 
-      for ( const auto& node_id : path.get_nodes() ) {
-        typename TGraph::offset_type label_len = vargraph->node_length( node_id );
-        vg::Mapping* mapping = vgpath->add_mapping();
-        mapping->mutable_position()->set_node_id( node_id );
-        mapping->mutable_position()->set_offset( 0 );
+      auto comp_both =
+        [vargraph]( vg::Position const& elem, vg::Position const& value ) {
+          return vargraph->id_to_rank( elem ) < vargraph->id_to_rank( value ) ||
+            ( vargraph->id_to_rank( elem ) == vargraph->id_to_rank( value ) &&
+              elem.offset() < value.offset() );
+        };
 
-        auto nextedit = std::lower_bound( loci.begin(), loci.end(), node_id, comp );
-        auto lastedit = std::upper_bound( loci.begin(), loci.end(), node_id, comp );
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        typename TGraph::offset_type label_len = vargraph->node_length( *it );
         typename TGraph::offset_type coffset = 0;
+        if ( it == path.begin() ) coffset = path.get_head_offset();
+        else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
+        vg::Mapping* mapping = vgpath->add_mapping();
+        mapping->mutable_position()->set_node_id( *it );
+        mapping->mutable_position()->set_offset( coffset );
+
+        vg::Position cpos;
+        cpos.set_node_id( *it );
+        cpos.set_offset( coffset );
+        std::vector< vg::Position>::const_iterator nextedit, lastedit;
+        if ( it == path.end()-1 ) {
+          nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_id );
+          lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_both );
+        }
+        else {
+          nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_both );
+          lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_id );
+        }
         typename TGraph::offset_type toffset =
               nextedit != lastedit ?
               (*nextedit).offset() :
@@ -771,6 +934,70 @@ namespace grem {
         mapping->set_rank( rank++ );
       }
     }
+
+  template< typename TGraph, typename TSpec, typename TNodeID,
+    typename=std::enable_if_t< std::is_same< typename TGraph::nodeid_type, TNodeID >::value, void > >
+      inline void
+    _induced_graph_impl( Path< TGraph, TSpec > const& path,
+        std::vector< TNodeID >& nodes,
+        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+    {
+      TGraph const* graph = path.get_vargraph();
+      TNodeID prev = 0;
+      for ( auto it = path.begin(); it != path.end(); ++it ) {
+        nodes.push_back( *it );
+        if ( prev != 0 ) {
+          // :TODO:Sun Apr 14 17:48:\@cartoonist: Path should consider the edge orientation.
+          char type = graph->edge_type( false, false );
+          edges.push_back( std::make_tuple( prev, *it, type ) );
+        }
+        prev = *it;
+      }
+    }  /* -----  end of template function induced_graph  ----- */
+
+  /**
+   *  @brief  Get a path induced graph as a set of unique nodes and edges.
+   *
+   *  @param[in]  path The input path.
+   *  @param[in,out]  nodes The set of unique nodes in the input path.
+   *  @param[in,out]  edges The set of unique edges in the input path.
+   */
+  template< typename TGraph, typename TSpec, typename TNodeID,
+    typename=std::enable_if_t< std::is_same< typename TGraph::nodeid_type, TNodeID >::value, void > >
+      inline void
+    induced_graph( Path< TGraph, TSpec > const& path,
+        std::vector< TNodeID >& nodes,
+        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+    {
+      _induced_graph_impl( path, nodes, edges );
+      // Erase duplicate items.
+      std::sort( nodes.begin(), nodes.end() );
+      nodes.erase( std::unique( nodes.begin(), nodes.end() ), nodes.end() );
+      std::sort( edges.begin(), edges.end() );
+      edges.erase( std::unique( edges.begin(), edges.end() ), edges.end() );
+    }
+
+  /**
+   *  @brief  Get the induced graph of a set of path as a set of unique nodes and edges.
+   *
+   *  @param[in]  pbegin The iterator pointing to the first path in the set.
+   *  @param[in]  pend The iterator pointing to the end of paths set.
+   *  @param[in,out]  nodes The set of unique nodes in the input path.
+   *  @param[in,out]  edges The set of unique edges in the input path.
+   */
+  template< typename TIter, typename TNodeID >
+      inline void
+    induced_graph( TIter pbegin, TIter pend,
+        std::vector< TNodeID >& nodes,
+        std::vector< std::tuple< TNodeID, TNodeID, char > >& edges )
+    {
+      for ( ; pbegin != pend; ++pbegin ) _induced_graph_impl( *pbegin, nodes, edges );
+      // Erase duplicate items.
+      std::sort( nodes.begin(), nodes.end() );
+      nodes.erase( std::unique( nodes.begin(), nodes.end() ), nodes.end() );
+      std::sort( edges.begin(), edges.end() );
+      edges.erase( std::unique( edges.begin(), edges.end() ), edges.end() );
+    }  /* -----  end of template function induced_graph  ----- */
   /* END OF Path interface functions  ------------------------------------------ */
 }  /* -----  end of namespace grem  ----- */
 

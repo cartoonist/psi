@@ -17,11 +17,16 @@ $(shell mkdir -p ${DPMDIR} >/dev/null)
 ##  Build variables:
 # Compiler.
 CXX          ?= g++
+# Last commit date.
+UPDATE_DATE  := $(shell git log -n 1 --pretty='format:%cd' --date='format:%b %d %Y')
+# Git version tag.
+GIT_VERSION  := $(shell git describe)
 # Compiler flags.
 ifeq ($(BUILD),debug)
 MACROS       ?= -DGREM_DEBUG=1
 endif
 MACROS       ?= -DGREM_DEBUG=0
+MACROS       += -DGREM_UPDATE_DATE="\"${UPDATE_DATE}\"" -DGREM_GIT_VERSION="\"${GIT_VERSION}\""
 
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
 CXXFLAGS     ?= -g -O3

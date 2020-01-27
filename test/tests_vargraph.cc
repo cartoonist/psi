@@ -332,7 +332,7 @@ SCENARIO( "Get unique patched haplotypes using Haplotyper graph iterator", "[gra
       THEN( "The number of patches should be in correct range" )
       {
         REQUIRE( pathset.size() >= 69 );
-        REQUIRE( pathset.size() <= 75 );
+        REQUIRE( pathset.size() <= 76 );
       }
     }
   }

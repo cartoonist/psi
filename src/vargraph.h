@@ -52,10 +52,10 @@ namespace grem
   {
     public:
       // typedefs
-      typedef vg::Node node_type;                               /**< @brief Node type. */
-      typedef decltype( vg::Node().id() ) nodeid_type;          /**< @brief Node ID type. */
-      typedef std::size_t rank_type;                            /**< @brief Node ID type. */
-      typedef decltype( vg::Position().offset() ) offset_type;  /**< @brief Node offset type. */
+      typedef vg::Node node_type;                                               /**< @brief Node type. */
+      typedef std::make_unsigned_t< decltype( vg::Node().id() ) > nodeid_type;  /**< @brief Node ID type. */
+      typedef std::size_t rank_type;                                            /**< @brief Node ID type. */
+      typedef decltype( vg::Position().offset() ) offset_type;                  /**< @brief Node offset type. */
 
       using xg::XG::XG;
 
@@ -98,6 +98,27 @@ namespace grem
         return this->edges_to_count( node_id ) != 0;
       }
 
+        inline vg::Edge
+      get_edge( nodeid_type from, bool from_start, nodeid_type to, bool to_end ) const
+      {
+        auto type = this->edge_type( from_start, to_end );
+        return this->edge_from_encoding( from, to, type );
+      }
+
+        static inline constexpr int
+      get_overlap( nodeid_type from, bool from_start, nodeid_type to, bool to_end )
+      {
+        // :TODO:Fri Apr 19 13:57:\@cartoonist: Need overlap?
+        return 0;
+      }
+
+        static inline constexpr int
+      get_overlap( nodeid_type from, nodeid_type to, int type )
+      {
+        // :TODO:Fri Apr 19 13:57:\@cartoonist: Need overlap?
+        return 0;
+      }
+
         inline int
       edges_count_by_id( nodeid_type id, bool is_reverse=false, bool go_left=false ) const
       {
@@ -132,6 +153,76 @@ namespace grem
         }
         return max;
       }
+
+        inline std::make_unsigned_t< offset_type >
+      get_total_nof_loci( ) const
+      {
+        std::make_unsigned_t< offset_type > total = 0;
+        for ( std::size_t rank = 1; rank <= this->max_node_rank(); ++rank ) {
+          auto id = this->rank_to_id( rank );
+          total += this->node_length( id );
+        }
+        return total;
+      }
+
+      template< typename TNodesIter, typename TEdgesIter >
+          inline void
+        induced_graph( TNodesIter nbegin, TNodesIter nend,
+            TEdgesIter ebegin, TEdgesIter eend,
+            vg::Graph* graph ) const
+        {
+          for ( ; nbegin != nend; ++nbegin ) {
+            vg::Node* new_node = graph->add_node();
+            new_node->set_id( *nbegin );
+            new_node->set_sequence( this->node_sequence( *nbegin ) );
+          }
+
+          for ( ; ebegin != eend; ++ebegin ) {
+            vg::Edge* new_edge = graph->add_edge();
+            new_edge->set_from( std::get< 0 >( *ebegin ) );
+            new_edge->set_to( std::get< 1 >( *ebegin ) );
+            new_edge->set_from_start( std::get< 2 >( *ebegin ) > 2 );
+            new_edge->set_to_end( !( std::get< 2 >( *ebegin ) % 2 ) );
+            new_edge->set_overlap( this->get_overlap( std::get< 0 >( *ebegin ),
+                  std::get< 1 >( *ebegin ), std::get< 2 >( *ebegin ) ) );
+          }
+        }
+
+      /**
+       *  @brief  Get the induced graph of a set of nodes and edges in `vg::Graph` objects.
+       *
+       *  @param  nbegin The begin iterator of the nodes set.
+       *  @param  nend The end iterator of the nodes set.
+       *  @param  ebegin The begin iterator of the edges set.
+       *  @param  eend The end iterator of the edges set.
+       *  @param  callback The callback function passing each generated `vg::Graph` messages.
+       *  @param  chunk_size The maximum number of nodes allowed in a `vg::Graph` message.
+       *
+       *  :TODO:Sat Apr 20 12:29:\@cartoonist: add ability of including path in the
+       *  `vg::Graph`.
+       */
+      template< typename TNodesIter, typename TEdgesIter >
+          inline void
+        induced_graph( TNodesIter nbegin, TNodesIter nend,
+            TEdgesIter ebegin, TEdgesIter eend,
+            std::function< void( vg::Graph& ) > callback, std::ptrdiff_t chunk_size ) const
+        {
+          auto nodes_l = nbegin;
+          auto nodes_r = nodes_l + 1;
+          auto edges_l = ebegin;
+          auto edges_r = edges_l + 1;
+          auto nofmsg = ( nend - nbegin ) / chunk_size + 1;
+          for ( unsigned int i = 0; i < nofmsg && nodes_r != nend; ++i ) {
+            nodes_r = nodes_l + std::min( chunk_size, nend - nodes_l );
+            auto maxid = *( nodes_r - 1 );
+            while ( edges_r != eend && std::get< 0 >( *edges_r ) <= maxid ) ++edges_r;
+            vg::Graph g;
+            this->induced_graph( nodes_l, nodes_r, edges_l, edges_r, &g );
+            callback( g );
+            nodes_l = nodes_r;
+            edges_l = edges_r;
+          }
+        }
   };
 
   /* Graph interface functions  ------------------------------------------------ */
@@ -851,6 +942,9 @@ namespace grem {
         typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
     {
       if ( start == 0 ) start = g->rank_to_id( 1 );
+      if ( p == 0 ) {
+        throw std::runtime_error( "Parameter value of Local Haplotyper cannot be zero" );
+      }
 
       it.vargraph_ptr = g;
       it.itr_value = start;
@@ -870,6 +964,7 @@ namespace grem {
         typename GraphIter< VarGraph, Haplotyper< Local > >::parameter_type p )
     {
       if ( start == 0 ) start = it.state.start;  // Re-use start node.
+      if ( p == 0 ) p = it.param;  // Re-use parameter value.
 
       it.itr_value = start;
       it.state.start = start;
@@ -879,7 +974,7 @@ namespace grem {
       it.state.current_path->clear();
       it.state.current_path->push_back( it.itr_value );
       it.state.setback = 0;
-      it.param = 0;
+      it.param = p;
     }  /* -----  end of template function go_begin  ----- */
 
   template< >
@@ -927,7 +1022,7 @@ namespace grem {
       }
 
       if ( this->state.setback != 0 ) {
-        trim_front_by_len( *this->visiting_buffer, this->param - 1 );
+        rtrim_front_by_len( *this->visiting_buffer, this->param - 1 );
       }
 
       TValue next_candidate = 0;
@@ -1198,37 +1293,39 @@ namespace grem {
       try {
         while ( true ) {
           marked = 0;
-          if ( 0 < length( frontier ) ) marked = frontier.get_nodes().back();
+          if ( !frontier.empty() ) marked = frontier.get_nodes().back();
           // Bootstrap.
-          extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
+          if ( !marked ) extend_to_k( frontier, iter, k );
+          else extend_to_k( frontier, iter,
+              2*k + frontier.get_sequence_len() - frontier.get_seqlen_tail() );
           // Check the next patch distance to merge with previous patch if is less than k.
-          if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
+          if ( !patch.empty() && iter[ frontier.get_nodes() ] ) {
+            patch.set_right_by_len( k - 1 );
             paths.push_back( std::move( patch ) );
             clear( patch );
-            trim_front_by_len( frontier, k );
+            rtrim_front_by_len( frontier, k, true );
           }
-          else if ( length( patch ) > 0 ) {
+          else if ( !patch.empty() ) {
             // Nodes from first to the `marked` are already added.
             trim_front( frontier, marked );
             marked = 0;
             extend_to_k( frontier, iter, k );
           }
-          if ( length( patch ) == 0 ) {
+          if ( patch.empty() ) {
             // Search for a patch of length k that is not covered by visited paths of `iter`.
-            while ( iter[ frontier.get_nodes() ] )
-            {
+            while ( iter[ frontier.get_nodes() ] ) {
               add_node( frontier, *iter );
-              trim_front_by_len( frontier, k );
+              ltrim_front_by_len( frontier, k, true );
               ++iter;
             }
           }
           // Extend the patch.
           patch += frontier;
-          trim_front_by_len( frontier, k );
+          rtrim_front_by_len( frontier, k );
           while ( !iter[ frontier.get_nodes() ] ) {
             add_node( frontier, *iter );
             add_node( patch, *iter );
-            trim_front_by_len( frontier, k );
+            rtrim_front_by_len( frontier, k );
             ++iter;
           }
         }
@@ -1254,6 +1351,7 @@ namespace grem {
         GraphIter< VarGraph, Haplotyper< TSpec > >& iter,
         unsigned int context_len )
     {
+      assert( context_len != 0 );
       if ( level( iter ) == 0 ) {
         get_uniq_full_haplotype( paths, iter );
         return true;
@@ -1274,6 +1372,51 @@ namespace grem {
         ++iter;
       }
       --iter;
+    }
+
+  template< typename TGraph >
+    inline std::size_t
+    count_kmers( TGraph const& vargraph, unsigned int k, bool forward=false )
+    {
+      typedef typename TGraph::nodeid_type rank_type;
+      typedef typename TGraph::rank_type nodeid_type;
+      typedef typename seqan::Iterator< TGraph, Backtracker >::Type bter_type;
+
+      if ( !k ) return 0;
+
+      if ( !forward ) {
+        throw std::runtime_error( "Counting k-mers on both strands is not implemented" );
+      }
+
+      bter_type bt_itr( vargraph );
+      Path< TGraph > trav_path( &vargraph );
+
+      std::size_t counter = 0;
+      for ( rank_type rank = 1; rank <= vargraph.max_node_rank(); ++rank ) {
+        nodeid_type id = vargraph.rank_to_id( rank );
+        auto label_len = vargraph.node_length( id );
+
+        // Count k-mers in the node
+        std::size_t precontext = k - 1;  // precontext = max( label_len, k - 1 )
+        if ( label_len >= k ) {
+          counter += label_len - k + 1;
+          precontext = label_len;
+        }
+
+        // Count k-mers across the node
+        go_begin( bt_itr, id );
+        while ( !at_end( bt_itr ) ) {
+          extend_to_k( trav_path, bt_itr, label_len - 1 + k );
+          if ( trav_path.get_sequence_len() >= k ) {
+            // Number of k-mers across the node: min( |trav_path| - precontext, k - 1 )
+            counter += std::min( trav_path.get_sequence_len() - precontext,
+                static_cast< std::size_t >( k - 1 ) );
+          }
+          --bt_itr;
+          trim_back( trav_path, *bt_itr );
+        }
+      }
+      return counter;
     }
 
   /* END OF Haplotyper iterator interface functions  ----------------------------- */

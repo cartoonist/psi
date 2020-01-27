@@ -35,6 +35,10 @@ namespace grem {
   using CFMIndex = seqan::FMIndex< void, TFMIndexConfig >;
   using CBiFMIndex = seqan::BidirectionalIndex< grem::CFMIndex >;
 
+  template< >
+    class is_fmindex< CFMIndex > : public std::true_type {
+    };
+
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   template< typename TText >

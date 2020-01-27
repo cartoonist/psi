@@ -23,9 +23,9 @@
 
 #include <sdsl/bit_vectors.hpp>
 
-#include "path.h"
 #include "sequence.h"
 #include "index.h"
+#include "path.h"
 #include "utils.h"
 
 

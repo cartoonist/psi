@@ -140,11 +140,11 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     {
       uint64_t context = 10;
       Dna5QPathIndex< VarGraph, TIndexSpec, Forward > pindex( context, true );
-      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
+      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 });
+      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 });
+      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
       pindex.add_path( ( path ) );
 
       pindex.create_index();  /**< @brief Paths are added with this call. */
@@ -161,11 +161,11 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     {
       uint64_t context = 10;
       Dna5QPathIndex< VarGraph, TIndexSpec, Forward > pindex( context );
-      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
+      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 });
+      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 });
+      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
       pindex.add_path( ( path ) );
 
       THEN( "The paths sequence set should be trimmed according to context" )
@@ -236,11 +236,11 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     {
       uint64_t context = 10;
       Dna5QPathIndex< VarGraph, TIndexSpec, Reversed > pindex( context );
-      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
+      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 });
+      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 });
+      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
       pindex.add_path( ( path ) );
 
       THEN( "The paths sequence set should be trimmed according to context" )

@@ -93,7 +93,7 @@ namespace grem {
               hit.node_id = state.spos.node_id();
               hit.node_offset = state.spos.offset();
               hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
-              hit.read_offset = saPositions[i].i2;  // Position in the read.
+              hit.read_offset = position_to_offset( *(this->reads), saPositions[i] );  // Position in the read.
               callback( hit );
             }
           }
@@ -140,7 +140,7 @@ namespace grem {
 
           for ( ; it != edges.end(); ++it )
           {
-            this->states.emplace_back( state );
+            this->states.push_back( state );
             this->states.back().cpos.set_node_id( (*it).to() );
             this->states.back().cpos.set_offset( 0 );
           }

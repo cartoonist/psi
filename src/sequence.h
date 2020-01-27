@@ -22,6 +22,7 @@
 
 #include <fstream>
 #include <stdexcept>
+#include <memory>
 
 #include <seqan/seq_io.h>
 #include <kseq++/seqio.h>
@@ -75,6 +76,21 @@ namespace grem {
     class MakeDependent< seqan::StringSet< TText, grem::Dependent > > {
       public:
         typedef seqan::StringSet< TText, grem::Dependent > Type;
+    };
+
+  template< typename TContainer >
+    class Ownership;
+
+  template< typename TText, typename TSpec >
+    class Ownership< seqan::StringSet< TText, TSpec > > {
+      public:
+        typedef grem::Dependent Type;
+    };
+
+  template< typename TText >
+    class Ownership< seqan::StringSet< TText, seqan::Owner<> > > {
+      public:
+        typedef seqan::Owner<> Type;
     };
 
   /* END OF Meta-functions  ------------------------------------------------------ */
@@ -323,11 +339,69 @@ namespace grem {
         typedef std::pair< T1, T2 > base_type;
         /* ====================  LIFECYCLE     ======================================= */
         YaPair( T1 t1, T2 t2 )
-          : base_type( t1, t2 ), i1( t1 ), i2( t2 )
+          : base_type( t1, t2 ), i1( this->first ), i2( this->second )
         { }
+
+        YaPair( )
+          : base_type( ), i1( this->first ), i2( this->second )
+        { }
+
+        YaPair( YaPair const& other )
+          : base_type( other ), i1( this->first ), i2( this->second )
+        { }
+
+        YaPair( YaPair&& other )
+          : base_type( std::move( other ) ), i1( this->first ), i2( this->second )
+        { }
+
+        template< typename TSpec >
+          YaPair( seqan::Pair< T1, T2, TSpec > const& other )
+            : base_type( other.i1, other.i2 ), i1( this->first ), i2( this->second )
+          { }
+
+        template< typename TSpec >
+          YaPair( seqan::Pair< T1, T2, TSpec >&& other )
+            : base_type( other.i1, other.i2 ), i1( this->first ), i2( this->second )
+          { }
+
+        ~YaPair( ) = default;
+
+          inline YaPair&
+        operator=( YaPair const& other )
+        {
+          this->first = other.first;
+          this->second = other.second;
+          return *this;
+        }
+
+          inline YaPair&
+        operator=( YaPair&& other )
+        {
+          this->first = other.first;
+          this->second = other.second;
+          return *this;
+        }
+
+        template< typename TSpec >
+            inline YaPair&
+          operator=( seqan::Pair< T1, T2, TSpec > const& other )
+          {
+            this->first = other.i1;
+            this->second = other.i2;
+            return *this;
+          }
+
+        template< typename TSpec >
+            inline YaPair&
+          operator=( seqan::Pair< T1, T2, TSpec >&& other )
+          {
+            this->first = other.i1;
+            this->second = other.i2;
+            return *this;
+          }
         /* ====================  DATA MEMBERS  ======================================= */
-        const T1 i1;
-        const T2 i2;
+        T1& i1;
+        T2& i2;
     };
 }  /* -----  end of namespace grem  ----- */
 
@@ -359,21 +433,21 @@ namespace seqan {
           : grem::DiskString( std::move( other ) )
         {
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
+          sdsl::util::clear( other.rs_str_breaks );
+          sdsl::util::clear( other.ss_str_breaks );
         }
 
         StringSet& operator=( StringSet&& other )
         {
           grem::DiskString::operator=( std::move( other ) );
           this->count = other.count;
-          this->initialized = other.initialized;
           sdsl::util::clear( this->bv_str_breaks );
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          sdsl::util::clear( this->rs_str_breaks );
+          sdsl::util::clear( this->ss_str_breaks );
+          this->initialize();
           sdsl::util::clear( other.rs_str_breaks );
           sdsl::util::clear( other.ss_str_breaks );
           return *this;
@@ -384,13 +458,21 @@ namespace seqan {
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
           inline grem::YaInfix< StringSet >
-        operator[]( size_type idx )
+        operator[]( size_type idx ) const
         {
+          ASSERT( this->is_initialized() );
           grem::YaInfix< StringSet > retval;
-          if ( !this->is_initialized() ) this->initialize();
           retval.first = this->select( idx );
           retval.second = this->select( idx + 1 ) - 1;
           return retval;
+        }
+
+          inline grem::YaInfix< StringSet >
+        operator[]( size_type idx )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          const StringSet* _this = this;
+          return _this->operator[]( idx );
         }
         /* ====================  METHODS       ======================================= */
         void push_back( const string_type& str );
@@ -465,22 +547,17 @@ namespace seqan {
           this->shrink_bv_str_breaks();
           grem::DiskString::serialize( out );
           grem::serialize( out, this->count );
-          grem::serialize( out, static_cast< size_type >( this->initialized ) );
           this->bv_str_breaks.serialize( out );
         }
 
           inline void
         load( std::istream& in )
         {
-          size_type i;
           this->clear();
           grem::DiskString::load( in );
           grem::deserialize( in, this->count );
-          grem::deserialize( in, i );
-          this->initialized = bool( i );
           this->bv_str_breaks.load( in );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
@@ -491,7 +568,7 @@ namespace seqan {
         sdsl::bit_vector::select_1_type ss_str_breaks;
         /* ====================  METHODS       ======================================= */
           inline size_type
-        rank( stringsize_type strpos )
+        rank( stringsize_type strpos ) const
         {
           assert( this->is_initialized() );
           assert( this->bv_str_breaks[ strpos ] != 1 );
@@ -499,7 +576,7 @@ namespace seqan {
         }
 
           inline stringsize_type
-        select( size_type r )
+        select( size_type r ) const
         {
           assert( this->is_initialized() );
           if ( r == 0 ) return 0;
@@ -597,30 +674,26 @@ namespace seqan {
           : grem::MemString( other )
         {
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks = other.bv_str_breaks;
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
         }
 
         StringSet( StringSet&& other )
           : grem::MemString( std::move( other ) )
         {
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
+          sdsl::util::clear( other.rs_str_breaks );
+          sdsl::util::clear( other.ss_str_breaks );
         }
 
         StringSet& operator=( const StringSet& other )
         {
           grem::MemString::operator=( other );
           this->count = other.count;
-          this->initialized = other.initialized;
           this->bv_str_breaks = other.bv_str_breaks;
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
           return *this;
         }
 
@@ -628,11 +701,11 @@ namespace seqan {
         {
           grem::MemString::operator=( std::move( other ) );
           this->count = other.count;
-          this->initialized = other.initialized;
           sdsl::util::clear( this->bv_str_breaks );
           this->bv_str_breaks.swap( other.bv_str_breaks );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          sdsl::util::clear( this->rs_str_breaks );
+          sdsl::util::clear( this->ss_str_breaks );
+          this->initialize();
           sdsl::util::clear( other.rs_str_breaks );
           sdsl::util::clear( other.ss_str_breaks );
           return *this;
@@ -643,13 +716,21 @@ namespace seqan {
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
           inline grem::YaInfix< StringSet >
-        operator[]( size_type idx )
+        operator[]( size_type idx ) const
         {
+          ASSERT( this->is_initialized() );
           grem::YaInfix< StringSet > retval;
-          if ( !this->is_initialized() ) this->initialize();
           retval.first = this->select( idx );
           retval.second = this->select( idx + 1 ) - 1;
           return retval;
+        }
+
+          inline grem::YaInfix< StringSet >
+        operator[]( size_type idx )
+        {
+          if ( !this->is_initialized() ) this->initialize();
+          const StringSet* _this = this;
+          return _this->operator[]( idx );
         }
         /* ====================  METHODS       ======================================= */
         void push_back( const string_type& str );
@@ -724,22 +805,17 @@ namespace seqan {
           this->shrink_bv_str_breaks( );
           grem::MemString::serialize( out );
           grem::serialize( out, this->count );
-          grem::serialize( out, static_cast< size_type >( this->initialized ) );
           this->bv_str_breaks.serialize( out );
         }
 
           inline void
         load( std::istream& in )
         {
-          size_type i;
           this->clear();
           grem::MemString::load( in );
           grem::deserialize( in, this->count );
-          grem::deserialize( in, i );
-          this->initialized = bool( i );
           this->bv_str_breaks.load( in );
-          sdsl::util::init_support( this->rs_str_breaks, &this->bv_str_breaks );
-          sdsl::util::init_support( this->ss_str_breaks, &this->bv_str_breaks );
+          this->initialize();
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
@@ -750,7 +826,7 @@ namespace seqan {
         sdsl::bit_vector::select_1_type ss_str_breaks;
         /* ====================  METHODS       ======================================= */
           inline size_type
-        rank( stringsize_type strpos )
+        rank( stringsize_type strpos ) const
         {
           assert( this->is_initialized() );
           assert( this->bv_str_breaks[ strpos ] != 1 );
@@ -758,7 +834,7 @@ namespace seqan {
         }
 
           inline stringsize_type
-        select( size_type r )
+        select( size_type r ) const
         {
           assert( this->is_initialized() );
           if ( r == 0 ) return 0;
@@ -843,12 +919,12 @@ namespace grem {
   template< typename TText >
       inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
     position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
-        typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type pos )
+        typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type rel_id )
     {
-      if ( pos >= length( strset ) || pos < 0 ) {
+      if ( rel_id >= length( strset ) || rel_id < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
-      return pos;
+      return rel_id;  /* Relative id is the absolute one in Owner string set */
     }
 
   template< typename TText >
@@ -864,6 +940,7 @@ namespace grem {
     position_to_offset( const seqan::StringSet< TText, seqan::Owner<> >& strset,
         typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
     {
+      using seqan::length;
       if ( pos.i2 >= length( strset[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -874,28 +951,40 @@ namespace grem {
   template< typename TStringSet >
     class Records;
 
+  template< typename TText, typename TSpec >
+    class Ownership< Records< seqan::StringSet< TText, TSpec > > > {
+      public:
+        typedef grem::Dependent Type;
+    };
+
+  template< typename TText >
+    class Ownership< Records< seqan::StringSet< TText, seqan::Owner<> > > > {
+      public:
+        typedef seqan::Owner<> Type;
+    };
+
   /* Records interface functions */
   template< typename TText >
       inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
     position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition pos )
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId rec_id )
     {
-      if ( pos >= length( records.str ) || pos < 0 ) {
+      if ( rec_id >= length( records.str ) || rec_id < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
-      return records.offset + pos;
+      return records.position_to_id( rec_id );
     }
 
   template< typename TText >
       inline typename Records< seqan::StringSet< TText, grem::Dependent > >::TId
     position_to_id( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
-        typename Records< seqan::StringSet< TText, grem::Dependent > >::TPosition pos )
+        typename Records< seqan::StringSet< TText, grem::Dependent > >::TId rec_id )
     {
-      if ( pos >= length( records.str ) || pos < 0 ) {
+      if ( rec_id >= length( records.str ) || rec_id < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
       assert( records.o_str != nullptr );
-      return records.offset + pos;
+      return records.rec_offset + rec_id;
     }
 
   template< typename TText, typename TSpec >
@@ -906,35 +995,43 @@ namespace grem {
       return position_to_id( records, pos.i1 );
     }
 
-  template< typename TText, typename TSpec >
-      inline typename Records< seqan::StringSet< TText, TSpec > >::TPosition
-    position_to_offset( const Records< seqan::StringSet< TText, TSpec > >& records,
-        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+  template< typename TText >
+      inline typename Records< seqan::StringSet< TText, grem::Dependent > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, grem::Dependent > >& records,
+        typename Records< seqan::StringSet< TText, grem::Dependent > >::TStringSetPosition const& pos )
     {
+      using seqan::length;
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
       return pos.i2;
     }
 
-
   template< typename TText >
-      inline void
-    clear( Records< seqan::StringSet< TText, seqan::Owner<> > >&records )
+      inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition
+    position_to_offset( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TStringSetPosition const& pos )
     {
-      clear( records.name );
-      //clear( records.comment );
-      clear( records.str );
-      //clear( records.qual );
-      records.set_offset( 0 );
+      using seqan::length;
+      if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return records.position_to_offset( pos );
     }
 
   template< typename TText >
       inline void
-    clear( Records< seqan::StringSet< TText, grem::Dependent > >&records )
+    clear( Records< seqan::StringSet< TText, seqan::Owner<> > >& records )
+    {
+      records.clear();
+    }
+
+  template< typename TText >
+      inline void
+    clear( Records< seqan::StringSet< TText, grem::Dependent > >& records )
     {
       clear( records.str );
-      records.offset = 0;
+      records.rec_offset = 0;
       records.o_str = nullptr;
     }
 
@@ -971,7 +1068,7 @@ namespace grem {
       if ( start_pos >= length( ref.str ) || start_pos < 0 ) return false;
 
       clear( records.str );
-      records.offset = start_pos;
+      records.rec_offset = start_pos;
       records.o_str = &ref.str;
       auto i = start_pos;
       for ( ; i < n + start_pos && i < length( ref.str ); ++i ) {
@@ -984,47 +1081,174 @@ namespace grem {
     class Records< seqan::StringSet< TText, seqan::Owner<> > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
+        typedef seqan::Owner<> TSpec;
+        typedef seqan::StringSet< TText, TSpec > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
         typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Position< TStringSet >::Type TPosition;
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
+        /* ====================  CLASSES       ======================================= */
+        /**
+         *  @brief  Map seeds to their location in the reads set.
+         *
+         *  This class contains some data structure to map a position in the seeds set
+         *  to its original position in the reads set.
+         */
+        class SeedMap {
+          public:
+            /* ====================  TYPEDEFS      =================================== */
+            using bv_type = sdsl::bit_vector;
+            using rank_type = bv_type::rank_1_type;
+            using select_type = bv_type::select_1_type;
+            using id_type = Records::TId;
+            using offset_type = Records::TPosition;
+            using pos_type = Records::TStringSetPosition;
+            /* ====================  LIFECYCLE     =================================== */
+            SeedMap( bv_type _bv, unsigned int st )
+              : step( st )
+            {
+              this->bv.swap( _bv );
+              this->initialize();
+            }
+
+            SeedMap( const SeedMap& other )
+              : bv( other.bv ), step( other.step )
+            {
+              this->initialize();
+            }
+
+            SeedMap( SeedMap&& other ) noexcept
+              : step( other.step )
+            {
+              this->bv.swap( other.bv );
+              this->initialize();
+            }
+
+            SeedMap& operator=( const SeedMap& other )
+            {
+              this->bv = other.bv;
+              this->step = other.step;
+              this->initialize();
+            }
+
+            SeedMap& operator=( SeedMap&& other ) noexcept
+            {
+              this->bv.swap( other.bv );
+              this->step = other.step;
+              this->initialize();
+            }
+
+            ~SeedMap( ) = default;
+            /* ====================  METHODS       =================================== */
+              inline void
+            initialize( )
+            {
+              sdsl::util::init_support( this->rs, &this->bv );
+              sdsl::util::init_support( this->ss, &this->bv );
+            }
+
+              inline id_type
+            get_reads_id( id_type seeds_id ) const
+            {
+              return this->rs( seeds_id );
+            }
+
+              inline offset_type
+            get_reads_offset( pos_type seeds_pos ) const
+            {
+              id_type rid = this->get_reads_id( seeds_pos.i1 );
+              id_type first_seed_id = rid ? this->ss( rid )+1 : 0;
+              return ( seeds_pos.i1 - first_seed_id ) * this->step + seeds_pos.i2;
+            }
+          private:
+            /* ====================  DATA MEMBERS  =================================== */
+            bv_type bv;
+            rank_type rs;
+            select_type ss;
+            unsigned int step;
+        };
         /* ====================  DATA MEMBERS  ======================================= */
         CharStringSet<> name;
         //TStringSet2 comment;
         TStringSet str;
         //TStringSet2 qual;
         /* ====================  LIFECYCLE     ======================================= */
-        Records( ) : offset( 0 ) { }
+        Records( TId roff=0 ) : rec_offset( roff ) { }
         /* ====================  OPERATORS     ======================================= */
           inline typename seqan::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
           inline typename seqan::Reference< TStringSet >::Type
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
+        /* ====================  ACCESSORS     ======================================= */
+          inline bool
+        has_seedmap( ) const
+        {
+          return this->sm_ptr != nullptr;
+        }
+
+          inline TId
+        get_record_offset( ) const
+        {
+          return this->rec_offset;
+        }
         /* ====================  MUTATORS      ======================================= */
           inline void
-        set_offset( std::size_t value ) {
-          this->offset = value;
+        set_record_offset( TId value )
+        {
+          this->rec_offset = value;
         }
 
           inline void
-        add_offset( std::size_t value ) {
-          this->offset += value;
+        add_record_offset( TId value )
+        {
+          this->rec_offset += value;
+        }
+
+          inline void
+        set_seedmap( typename SeedMap::bv_type bv, unsigned int step )
+        {
+          this->sm_ptr = std::make_unique< SeedMap >( std::move( bv ), step );
+        }
+        /* ====================  METHODS       ======================================= */
+          inline void
+        clear( )
+        {
+          using seqan::clear;
+          using grem::clear;
+          clear( this->name );
+          //clear( records.comment );
+          clear( this->str );
+          //clear( records.qual );
+          this->set_record_offset( 0 );
+          this->sm_ptr.reset( nullptr );
+        }
+
+          inline TId
+        position_to_id( TId rec_id ) const
+        {
+          if ( this->has_seedmap( ) ) rec_id = this->sm_ptr->get_reads_id( rec_id );
+          return this->rec_offset + rec_id;
+        }
+
+          inline TPosition
+        position_to_offset( TStringSetPosition pos ) const
+        {
+          if ( this->has_seedmap( ) ) pos.i2 = this->sm_ptr->get_reads_offset( pos );
+          return pos.i2;
         }
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
-        std::size_t offset;
-        /* ====================  INTERFACE FUNCTIONS  ================================ */
-          friend TId
-        position_to_id< TText >( const Records& records, TPosition pos );
+        TId rec_offset;
+        std::unique_ptr< SeedMap > sm_ptr;
     };
 
   template< typename TText >
     class Records< seqan::StringSet< TText, grem::Dependent > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef seqan::StringSet< TText, grem::Dependent > TStringSet;
+        typedef grem::Dependent TSpec;
+        typedef seqan::StringSet< TText, TSpec > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
         typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
         typedef typename seqan::Position< TStringSet >::Type TPosition;
@@ -1033,7 +1257,7 @@ namespace grem {
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet str;
         /* ====================  LIFECYCLE     ======================================= */
-        Records( ) : offset( 0 ), o_str( nullptr ) { }
+        Records( TId roff=0 ) : rec_offset( roff ), o_str( nullptr ) { }
         /* ====================  METHODS       ======================================= */
           inline typename seqan::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
@@ -1041,7 +1265,7 @@ namespace grem {
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend TId
-        position_to_id< TText >( const Records& records, TPosition pos );
+        position_to_id< TText >( const Records& records, TId pos );
 
           friend void
         clear< TText >( Records& records );
@@ -1053,7 +1277,7 @@ namespace grem {
             typename Records< TRefStringSet >::TPosition start_pos );
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
-        std::size_t offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
+        TId rec_offset;  /**< @brief First string ID: id(i) = offset + pos(i). */
         const TRefStringSet* o_str;  /**< @brief original string set. */
     };
 
@@ -1080,11 +1304,13 @@ namespace grem {
     };
 
   /* Seeding strategies */
+  struct OverlapStrategy;
   struct GreedyOverlapStrategy;
   struct NonOverlapStrategy;
   struct GreedyNonOverlapStrategy;
 
   /* Seeding strategy tags */
+  typedef seqan::Tag< OverlapStrategy > Overlapping;
   typedef seqan::Tag< GreedyOverlapStrategy > GreedyOverlapping;
   typedef seqan::Tag< NonOverlapStrategy > NonOverlapping;
   typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
@@ -1128,6 +1354,12 @@ namespace grem {
         _RecordsIterBase& operator=( const _RecordsIterBase& ) = default;
         _RecordsIterBase& operator=( _RecordsIterBase&& ) = default;
         ~_RecordsIterBase() = default;
+        /* ====================  ACCESSORS     ======================================= */
+          inline const TRecords*
+        get_records_ptr( ) const
+        {
+          return this->records;
+        }
         /* ====================  OPERATORS     ======================================= */
           inline TInfix
         operator*() const {
@@ -1186,14 +1418,14 @@ namespace grem {
     }
 
   template< typename TRecords, typename TSpec >
-    class RecordsIter : public _RecordsIterBase< TRecords, TSpec > {};
+    class RecordsIter;
 
   template< typename TRecords >
-    class RecordsIter< TRecords, NonOverlapping >
-    : public _RecordsIterBase< TRecords, NonOverlapping > {
+    class RecordsIter< TRecords, Overlapping >
+    : public _RecordsIterBase< TRecords, Overlapping > {
       private:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef _RecordsIterBase< TRecords, NonOverlapping > TBase;
+        typedef _RecordsIterBase< TRecords, Overlapping > TBase;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename TRecords::TStringSet TStringSet;
@@ -1202,8 +1434,13 @@ namespace grem {
         typedef typename TBase::TId TId;
         typedef typename TBase::TTextPosition TTextPosition;
         typedef typename TBase::TInfix TInfix;
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        TTextPosition step;
+      public:
         /* ====================  LIFECYCLE     ======================================= */
-        RecordsIter( const TRecords* recs, TTextPosition len ) : TBase( recs, len ) { }
+        RecordsIter( const TRecords* recs, TTextPosition len, TTextPosition stp )
+          : TBase( recs, len ), step( stp ) { }
         /* ====================  OPERATORS     ======================================= */
           inline RecordsIter&
         operator++()
@@ -1213,9 +1450,9 @@ namespace grem {
             throw std::range_error( "Iterator has already reached at the end." );
           }
 #endif  /* ----- #ifndef NDEBUG  ----- */
-          auto&& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
-          if ( this->current_pos.i2 + 2 * this->infix_len < current_strlen + 1 ) {
-            this->current_pos.i2 += this->infix_len;
+          const auto& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
+          if ( this->current_pos.i2 + this->infix_len + this->step <= current_strlen ) {
+            this->current_pos.i2 += this->step;
           }
           else {
             this->current_pos.i2 = 0;
@@ -1225,12 +1462,17 @@ namespace grem {
         }
     };
 
+  /**
+   *  @brief  NonOverlapping Records iterator.
+   *
+   *  It is defined as "Overlapping" with step size equals to infix length.
+   */
   template< typename TRecords >
-    class RecordsIter< TRecords, GreedyOverlapping >
-    : public _RecordsIterBase< TRecords, GreedyOverlapping > {
+    class RecordsIter< TRecords, NonOverlapping >
+    : public RecordsIter< TRecords, Overlapping > {
       private:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef _RecordsIterBase< TRecords, GreedyOverlapping > TBase;
+        typedef RecordsIter< TRecords, Overlapping > TBase;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename TRecords::TStringSet TStringSet;
@@ -1240,26 +1482,32 @@ namespace grem {
         typedef typename TBase::TTextPosition TTextPosition;
         typedef typename TBase::TInfix TInfix;
         /* ====================  LIFECYCLE     ======================================= */
-        RecordsIter( const TRecords* recs, TTextPosition len ) : TBase( recs, len ) { }
-        /* ====================  OPERATORS     ======================================= */
-          inline RecordsIter&
-        operator++()
-        {
-#ifndef NDEBUG
-          if ( at_end( *this ) ) {
-            throw std::range_error( "Iterator has already reached at the end." );
-          }
-#endif  /* ----- #ifndef NDEBUG  ----- */
-          auto&& current_strlen = length( ( *this->records )[ this->current_pos.i1 ] );
-          if ( this->current_pos.i2 + this->infix_len < current_strlen ) {
-            ++this->current_pos.i2;
-          }
-          else {
-            this->current_pos.i2 = 0;
-            ++this->current_pos.i1;
-          }
-          return *this;
-        }
+        RecordsIter( const TRecords* recs, TTextPosition len )
+          : TBase( recs, len, len ) { }
+    };
+
+  /**
+   *  @brief  GreedyOverlapping Records iterator.
+   *
+   *  It is defined as "Overlapping" with step size equals to 1.
+   */
+  template< typename TRecords >
+    class RecordsIter< TRecords, GreedyOverlapping >
+    : public RecordsIter< TRecords, Overlapping > {
+      private:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef RecordsIter< TRecords, Overlapping > TBase;
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename TRecords::TStringSet TStringSet;
+        typedef typename TBase::TStringSetPosition TStringSetPosition;
+        typedef typename TBase::TText TText;
+        typedef typename TBase::TId TId;
+        typedef typename TBase::TTextPosition TTextPosition;
+        typedef typename TBase::TInfix TInfix;
+        /* ====================  LIFECYCLE     ======================================= */
+        RecordsIter( const TRecords* recs, TTextPosition len )
+          : TBase( recs, len, 1 ) { }
     };
 
   /**
@@ -1313,7 +1561,7 @@ namespace grem {
     {
       klibpp::KSeq rec;
       clear( records );
-      records.set_offset( iss.counts() );
+      records.set_record_offset( iss.counts() );
       unsigned int i = 0;
       while ( iss >> rec ) {
         appendValue( records.name, rec.name );
@@ -1370,17 +1618,62 @@ namespace grem {
    */
   template< typename TText, typename TStringSetSpec >
       inline void
-    _seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
+    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
         const seqan::StringSet< TText, TStringSetSpec >& string_set,
+        unsigned int k,
+        unsigned int step,
+        sdsl::bit_vector* bv_ptr=nullptr )
+    {
+      typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
+      typedef typename seqan::Position< TText >::Type pos_type;
+
+      using seqan::length;
+      clear( seeds );
+      // The total number of seeds is always less than: (len(R) - |R|k)/s + |R|;
+      // where len(R) is the total sequence length of reads set R, and |R| is the number
+      // of reads in R, k is seed length, and s is step size.
+      auto lensum = lengthSum( string_set );
+      auto nofreads = length( string_set );
+      assert( lensum >= nofreads*k );
+      auto est_nofseeds = static_cast<int>( ( lensum - nofreads*k ) / step ) + nofreads;
+      reserve( seeds, est_nofseeds );
+      if ( bv_ptr ) sdsl::util::assign( *bv_ptr, sdsl::bit_vector( est_nofseeds, 0 ) );
+
+      for ( size_type idx = 0; idx < length( string_set ); ++idx ) {
+        for ( pos_type i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
+          appendValue( seeds, seqan::infixWithLength( string_set[idx], i, k ) );
+        }
+        if ( bv_ptr ) ( *bv_ptr )[ length( seeds ) - 1 ] = 1;
+      }
+      if ( bv_ptr ) ( *bv_ptr ).resize( length( seeds ) );
+    }  /* -----  end of template function seeding  ----- */
+
+  /**
+   *  @brief  Add any k-mers from the given records with `step` distance to seeds record.
+   *
+   *  @param  seeds The seeds record.
+   *  @param  reads The string set from which seeds are extracted.
+   *  @param  k The length of the seeds.
+   *  @param  step The step size.
+   *
+   *  For each string in reads record, it add all substring of length `k` starting from
+   *  0 to end of string with `step` distance with each other. If `step` is equal to
+   *  `k`, it gets non-overlapping substrings of length k.
+   */
+  template< typename TRecords1, typename TRecords2,
+    typename = std::enable_if_t< std::is_same< typename TRecords1::TSpec, seqan::Owner<> >::value, void > >
+      inline void
+    seeding( TRecords1& seeds,
+        TRecords2 const& reads,
         unsigned int k,
         unsigned int step )
     {
-      for ( unsigned int idx = 0; idx < length( string_set ); ++idx ) {
-        for ( unsigned int i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
-          appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
-        }
-      }
-    }  /* -----  end of template function _seeding  ----- */
+      clear( seeds );
+      sdsl::bit_vector bv;
+      seeding( seeds.str, reads.str, k, step, &bv );
+      seeds.set_seedmap( std::move( bv ), step );
+      seeds.set_record_offset( reads.get_record_offset() );
+    }
 
   /**
    *  @brief  Seeding a set of sequence by reporting overlapping k-mers.
@@ -1392,17 +1685,12 @@ namespace grem {
    *
    *  Extract a set of overlapping seeds of length k.
    */
-  template< typename TText, typename TStringSetSpec >
+  template< typename T1, typename T2,
+    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan::Owner<> >::value, void > >
       inline void
-    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
-        const seqan::StringSet< TText, TStringSetSpec >& string_set,
-        unsigned int k,
-        GreedyOverlapping )
+    seeding( T1& seeds, const T2& string_set, unsigned int k, GreedyOverlapping )
     {
-      clear( seeds );
-      unsigned int avg_read_len = lengthSum( string_set ) / length( string_set );
-      reserve( seeds, static_cast<int>( length( string_set ) * ( avg_read_len - k ) ) );
-      _seeding( seeds, string_set, k, 1 );
+      seeding( seeds, string_set, k, 1 );
     }  /* -----  end of template function seeding  ----- */
 
   /**
@@ -1415,16 +1703,12 @@ namespace grem {
    *
    *  Extract a set of non-overlapping seeds of length k.
    */
-  template< typename TText, typename TStringSetSpec >
+  template< typename T1, typename T2,
+    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan::Owner<> >::value, void > >
       inline void
-    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
-        const seqan::StringSet< TText, TStringSetSpec >& string_set,
-        unsigned int k,
-        NonOverlapping )
+    seeding( T1& seeds, const T2& string_set, unsigned int k, NonOverlapping )
     {
-      clear( seeds );
-      reserve( seeds, static_cast<int>( lengthSum( string_set ) / k ) );
-      _seeding( seeds, string_set, k, k );
+      seeding( seeds, string_set, k, k );
     }  /* -----  end of function seeding  ----- */
 
   /**
@@ -1447,14 +1731,17 @@ namespace grem {
         unsigned int k,
         GreedyNonOverlapping )
     {
+      typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
+      typedef typename seqan::Position< TText >::Type pos_type;
+
       clear( seeds );
       reserve( seeds, static_cast<int>( lengthSum( string_set ) / k ) );
 
-      for ( unsigned int idx = 0; idx < length( string_set ); ++idx ) {
-        for ( unsigned int i = 0; i < length( string_set[idx] ) - k; i += k ) {
+      for ( size_type idx = 0; idx < length( string_set ); ++idx ) {
+        for ( pos_type i = 0; i < length( string_set[idx] ) - k; i += k ) {
           appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
         }
-        unsigned int last = length( string_set[idx] ) - k;
+        pos_type last = length( string_set[idx] ) - k;
         appendValue( seeds, infixWithLength( string_set[idx], last, k ) );
       }
     }  /* -----  end of function seeding  ----- */
