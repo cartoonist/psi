@@ -647,7 +647,7 @@ namespace grem {
     for ( unsigned int i = 0; i < size; ++i ) {
       typename TContainer::value_type item;
       deserialize( in, item );
-      *itr++ = item;
+      *itr++ = std::move( item );
     }
   }  /* -----  end of template function deserialize  ----- */
 
