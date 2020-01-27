@@ -206,8 +206,6 @@ namespace grem
         typedef TTraverser traverser_type;
         typedef Records< typename TTraverser::stringset_type > readsrecord_type;
         typedef typename TTraverser::index_type readsindex_type;
-        typedef typename MakeOwner< typename TTraverser::stringset_type >::Type seedsrecord_type;
-        typedef seqan::Index< seedsrecord_type, typename TTraverser::indexspec_type > seedsindex_type;
         /* ====================  LIFECYCLE      ====================================== */
         Mapper( const VarGraph* graph,
             readsrecord_type&& r,
@@ -418,9 +416,7 @@ namespace grem
 
             auto timer = stats_type( "paths-seed-find" );
 
-            // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
-            //                                      Check `index_iter.h`.
-            kmer_exact_matches( paths.index, this->seeds_index, &(this->reads), this->seed_len, callback );
+            kmer_exact_matches( paths.index, this->reads, this->seed_len, this->seed_len, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
         template< typename TText, typename TIndexSpec >
@@ -542,25 +538,12 @@ namespace grem
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         readsindex_type reads_index;
-        seedsrecord_type seeds;
-        seedsindex_type seeds_index;
         /* ====================  METHODS       ======================================= */
           inline void
         index_reads( )
         {
-          {
-            auto timer = stats_type( "index-reads" );
-            this->reads_index = readsindex_type( this->reads.str );
-          }
-          {
-            auto timer = stats_type( "seeding" );
-            seeding( this->seeds, this->reads.str, this->seed_len,
-                GreedyNonOverlapping() );
-          }
-          {
-            auto timer = stats_type( "index-seeds" );
-            this->seeds_index = seedsindex_type( this->seeds );
-          }
+          auto timer = stats_type( "index-reads" );
+          this->reads_index = readsindex_type( this->reads.str );
         }
     };
 

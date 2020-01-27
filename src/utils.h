@@ -36,16 +36,96 @@ namespace grem {
    *
    *  It checks the first string whether the second one is one of its suffixes or not.
    */
-    inline bool
-  ends_with( std::string str, std::string suf )
-  {
-    if ( suf.length() <= str.length() ) {
-      if ( std::equal( suf.rbegin(), suf.rend(), str.rbegin() ) ) {
-        return true;
+  template< typename TText >
+      inline bool
+    ends_with( const TText& str, const TText& suf )
+    {
+      typedef typename seqan::Size< TText >::Type TSize;
+      bool retval = false;
+      if( length( suf ) <= length( str ) ) {
+        retval = true;
+        for ( TSize i = 1; i <= length( suf ); ++i ) {
+          if ( suf[ length(suf) - i ] != str[ length(str) - i ] ) {
+            retval = false;
+            break;
+          }
+        }
       }
+      return retval;
+    }  /* -----  end of template function ends_with  ----- */
+
+  /**
+   *  @brief  Check whether a string ends with another string.
+   *
+   *  @param  str The first string.
+   *  @param  suf The second string.
+   *  @return `true` if `suf` is a suffix of `str`; otherwise `false`.
+   *
+   *  It checks the first string whether the second one is one of its suffixes or not.
+   *
+   *  Specialized for `std::string` and `std::string`.
+   *
+   *  NOTE: `suf` is passed by VALUE!
+   */
+    inline bool
+  ends_with( const std::string& str, std::string suf )
+  {
+    if ( suf.length() <= str.length() &&
+        std::equal( suf.rbegin(), suf.rend(), str.rbegin() ) ) {
+      return true;
     }
     return false;
   }  /* -----  end of function ends_with  ----- */
+
+  /**
+   *  @brief  Check whether a string starts with another string.
+   *
+   *  @param  str The first string.
+   *  @param  pre The second string.
+   *  @return `true` if `pre` is a prefix of `str`; otherwise `false`.
+   *
+   *  It checks the first string whether the second one is one of its prefixes or not.
+   */
+  template< typename TText >
+      inline bool
+    starts_with( const TText& str, const TText& pre )
+    {
+      typedef typename seqan::Size< TText >::Type TSize;
+      bool retval = false;
+      if( length( pre ) <= length( str ) ) {
+        retval = true;
+        for ( TSize i = 0; i < length( pre ); ++i ) {
+          if ( pre[ i ] != str[ i ] ) {
+            retval = false;
+            break;
+          }
+        }
+      }
+      return retval;
+    }  /* -----  end of template function starts_with  ----- */
+
+  /**
+   *  @brief  Check whether a string starts with another string.
+   *
+   *  @param  str The first string.
+   *  @param  pre The second string.
+   *  @return `true` if `pre` is a prefix of `str`; otherwise `false`.
+   *
+   *  It checks the first string whether the second one is one of its prefixes or not.
+   *
+   *  Specialized for `std::string` and `std::string`.
+   *
+   *  NOTE: `pre` is passed by VALUE!
+   */
+    inline bool
+  starts_with( const std::string& str, std::string pre )
+  {
+    if ( pre.length() <= str.length() &&
+        std::equal( pre.begin(), pre.end(), str.begin() ) ) {
+      return true;
+    }
+    return false;
+  }  /* -----  end of function starts_with  ----- */
 
 
   /**

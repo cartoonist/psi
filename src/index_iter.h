@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <functional>
+#include <algorithm>
 
 #include <seqan/index.h>
 
@@ -424,150 +425,131 @@ namespace grem {
       typename seqan::Iterator < TIndex, TopDownFine < TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
-  /* Top-down fine interator interface function declarations  -------------------- */
+  /* Index interator interface functions  ---------------------------------------- */
 
-  /**
-   *  @brief  Find k-mer exact matches between two texts.
-   *
-   *  @param[out]  seeds The list of k-mer exact matches found as a set of seeds.
-   *  @param[in,out]  first First text's top-down fine index iterator.
-   *  @param[in,out]  second Second text's top-down fine index iterator.
-   *  @param[in]  k The length of k-mers; i.e. `k`.
-   *
-   *  This function finds the exact k-mer matches in the given two texts by using top-
-   *  down fine index iterator. It traverses the index iterator in DFS approach, and
-   *  reports representative sequence of nodes in level k which are supported by both
-   *  texts' indexes.
-   */
-  template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( std::vector < Seed<> > &seeds,
-        TFineIndexIter < TIndex1, seqan::ParentLinks<> > &first,
-        TFineIndexIter < TIndex2, seqan::ParentLinks<> > &second,
-        unsigned int k)
+  template< typename TIndex, typename TIterSpec >
+      inline bool
+    go_right_stree( seqan::Iter< TIndex, TIterSpec >& iter )
     {
-      if ( k == 0 ) return;
-
-      unsigned int level = 0;
-      bool second_agrees = true;
-
-      do {
-        if ( level == k ) {
-          typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
-          typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
-          seqan::String<TSAValue1> saPositions1 = getOccurrences( first.get_iter_() );
-          seqan::String<TSAValue2> saPositions2 = getOccurrences( second.get_iter_() );
-          unsigned int len1 = length(saPositions1);
-          unsigned int len2 = length(saPositions2);
-          seeds.reserve ( seeds.size() + len1 * len2 );
-          for (unsigned i = 0; i < len1; ++i) {
-            for (unsigned j = 0; j < len2; ++j) {
-              Seed<> hit;
-              hit.node_id = saPositions1[i].i1;
-              hit.node_offset = saPositions1[i].i2;
-              hit.read_id = saPositions2[j].i1;
-              hit.read_offset = saPositions2[j].i2;
-
-              seeds.push_back ( std::move (hit) );
-            }
-          }
-        }
-
-        bool right = false;
-        bool down = false;
-        if ( ( level == k || !second_agrees || !(down = go_down ( first )) )
-            && !(right = go_right ( first )) ) {
-          do {
-            go_up ( second );
-            --level;
-          } while ( go_up ( first ) && !(right = go_right ( first )) );
-        }
-
-        if ( right && second_agrees ) {
-          go_up ( second );
-          --level;
-        }
-
-        second_agrees = true;
-        if ( right || down ) {
-          if ( parent_edge_label ( first ) == 'N' ) {
-            second_agrees = false;
-          }
-          else {
-            second_agrees = go_down ( second, parent_edge_label ( first ) );
-          }
-          if ( second_agrees ) ++level;
-        }
-      } while ( !is_root( first ) );
-    }  /* -----  end of template function kmer_exact_matches  ----- */
-
-  template < typename TIndex1, typename TIndex2 >
-    void kmer_exact_matches ( std::vector < Seed<> > &seeds,
-        TIndexIter < TIndex1, seqan::TopDown < seqan::ParentLinks<> > > &first,
-        TIndexIter < TIndex2, seqan::TopDown < seqan::ParentLinks<> > > &second,
-        unsigned int k)
-    {
-      if ( k == 0 ) return;
-
-      do {
-        while ( repLength ( first ) < k && goDown ( first ) );
-
-        goRoot ( second );
-        bool second_agrees = goDown ( second, prefix ( representative ( first ), k ) );
-        if ( repLength ( first ) >= k && second_agrees ) {
-          typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
-          typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
-          seqan::String<TSAValue1> saPositions1 = getOccurrences( first );
-          seqan::String<TSAValue2> saPositions2 = getOccurrences( second );
-          unsigned int len1 = length(saPositions1);
-          unsigned int len2 = length(saPositions2);
-          seeds.reserve ( seeds.size() + len1 * len2 );
-          for (unsigned i = 0; i < len1; ++i) {
-            for (unsigned j = 0; j < len2; ++j) {
-              Seed<> hit;
-              hit.node_id = saPositions1[i].i1;
-              hit.node_offset = saPositions1[i].i2;
-              hit.read_id = saPositions2[j].i1;
-              hit.read_offset = saPositions2[j].i2;
-
-              seeds.push_back ( std::move (hit) );
-            }
-          }
-        }
-
-        while (repLength( first ) - parentEdgeLength( first ) > repLength( second ) &&
-            goUp ( first ))
-          /* EMPTY */;
-
-        while ( !goRight ( first ) && goUp ( first ) );
-
-      } while ( !isRoot ( first ) );
-    }  /* -----  end of template function kmer_exact_matches  ----- */
-  /* END OF Top-down fine interator interface function declarations  ------------- */
-
-  template < typename TIter >
-    TIterRawText < TIter >
-    next_kmer ( TIter &itr, unsigned int k )
-    {
-      do {
-        if ( repLength ( itr ) >= k ||
-            !goDown ( itr ) ||
-            parentEdgeLabel ( itr )[0] == 'N' ) {
-            if ( !goRight ( itr ) ) {
-              while ( goUp ( itr ) && !goRight ( itr ) );
-            }
-        }
-
-        if ( repLength ( itr ) >= k ) {
-          return prefix ( representative ( itr ), k );
-        }
-      } while ( !isRoot ( itr ) );        /* -----  end do-while  ----- */
-
-      return "";
+      return goRight( iter );
     }
 
-  template < typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
-    void
-    _add_seed ( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
+  template< typename TText, typename TIterSpec >
+      inline bool
+    go_right_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return goRight( iter, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline bool
+    go_down_stree( seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return goDown( iter );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline bool
+    go_down_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return goDown( iter, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec, typename TPattern >
+      inline bool
+    go_down_stree( seqan::Iter< TIndex, TIterSpec >& iter, TPattern&& p )
+    {
+      return goDown( iter, p );
+    }
+
+  template< typename TText, typename TIterSpec, typename TPattern >
+      inline bool
+    go_down_stree( seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter,
+        TPattern&& p )
+    {
+      return goDown( iter, p, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline auto
+    parent_edge_char_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return parentEdgeLabel( iter )[0];
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline auto
+    parent_edge_char_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return parentEdgeLabel( iter, seqan::Rev() );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline unsigned int
+    parent_edge_len_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return length( parentEdgeLabel( iter ) );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline unsigned int
+    parent_edge_len_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      if ( isRoot( iter ) ) return 0;
+      return length( parentEdgeLabel( iter, seqan::Rev() ) );
+    }
+
+  template< typename TIndex, typename TIterSpec >
+      inline auto
+    get_occurrences_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    {
+      return getOccurrences( iter );
+    }
+
+  template< typename TText, typename TIterSpec >
+      inline auto
+    get_occurrences_stree( const seqan::Iter< seqan::Index< TText, grem::CBiFMIndex >, TIterSpec >& iter )
+    {
+      return getOccurrences( iter, seqan::Rev() );
+    }
+
+  /* END OF Index interator interface functions  --------------------------------- */
+
+  template< typename TIter >
+      inline bool
+    next_kmer( TIter& itr, unsigned int& cp_len, unsigned int k )
+    {
+      cp_len = repLength( itr );
+      do {
+        if ( repLength( itr ) >= k ||
+            !go_down_stree( itr ) ||
+            parent_edge_char_stree( itr ) == 'N' ) {
+          if ( !go_right_stree( itr ) ) {
+            while ( goUp( itr ) && !go_right_stree( itr ) );
+          }
+          cp_len = std::min( cp_len,
+              static_cast< unsigned int >( repLength( itr ) - parent_edge_len_stree( itr ) ) );
+        }
+
+        if ( repLength( itr ) >= k ) {
+          return true;
+        }
+      } while ( !isRoot( itr ) );        /* -----  end do-while  ----- */
+
+      return false;
+    }
+
+  template< typename TIter >
+      inline typename seqan::Size< TIter >::Type
+    upto_prefix( TIter& itr, const unsigned int& cp_len )
+    {
+      while( repLength( itr ) > cp_len ) goUp( itr );
+      return repLength( itr );
+    }
+
+  template< typename TOccurrence1, typename TOccurrence2, typename TRecords2, typename TCallback >
+      inline void
+    _add_seed( TOccurrence1 oc1, TOccurrence2 oc2, const TRecords2* rec2, TCallback callback )
     {
       Seed<> hit;
       // :TODO:Wed Oct 11 23:34:\@cartoonist: convert path position to node ID.
@@ -577,88 +559,83 @@ namespace grem {
       hit.read_id = id;
       hit.read_offset = oc2.i2;
 
-      callback ( hit );
+      callback( hit );
     }
 
-  template < typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
-    void
-    _kmer_exact_match_impl ( TIndex1 &smaller, TIndex2 &bigger, const TRecords2* rec2,
-        unsigned int k, bool rev_params, TCallback callback )
+  template< typename TIter1, typename TIter2, typename TRecords2, typename TCallback >
+      inline void
+    _kmer_exact_match_impl( TIter1& fst_itr, TIter2& snd_itr, const TRecords2* rec2,
+        unsigned int k, bool swapped, TCallback callback )
     {
-      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
-      typedef typename seqan::SAValue< TIndex1 >::Type TSAValue1;
-      typedef typename seqan::SAValue< TIndex2 >::Type TSAValue2;
+      unsigned int cp_len;
+      while ( next_kmer( fst_itr, cp_len, k ) ) {
+        auto&& s = upto_prefix( snd_itr, cp_len );
 
-      seqan::String< TSAValue1 > occurrences1;
-      seqan::String< TSAValue2 > occurrences2;
-
-      TIndexIter< TIndex1, TIterSpec > smaller_itr ( smaller );
-      TIndexIter< TIndex2, TIterSpec > bigger_itr ( bigger );
-      // :TODO:Sat Oct 14 02:21:\@cartoonist: Both TIndex1 and TIndex2 should have the same text type.
-      TIterRawText< TIndexIter< TIndex1, TIterSpec > > kmer;
-      while ( length( kmer = next_kmer ( smaller_itr, k ) ) != 0 ) {
-        if ( goDown ( bigger_itr, kmer ) ) {
-          occurrences1 = getOccurrences ( smaller_itr );
-          occurrences2 = getOccurrences ( bigger_itr );
-          auto occur_size1 = length ( occurrences1 );
-          auto occur_size2 = length ( occurrences2 );
+        if ( go_down_stree( snd_itr, infix( representative( fst_itr ), s, k ) ) ) {
+          auto&& occurrences1 = get_occurrences_stree( fst_itr );
+          auto&& occurrences2 = get_occurrences_stree( snd_itr );
+          auto&& occur_size1 = length( occurrences1 );
+          auto&& occur_size2 = length( occurrences2 );
 
           for ( unsigned int i = 0; i < occur_size1; ++i ) {
             for ( unsigned int j = 0; j < occur_size2; ++j ) {
-
-              if ( !rev_params ) {
-                _add_seed ( occurrences1[i], occurrences2[j], rec2, callback );
+              if ( !swapped ) {
+                _add_seed( occurrences1[i], occurrences2[j], rec2, callback );
               }
               else {
-                _add_seed ( occurrences2[j], occurrences1[i], rec2, callback );
+                _add_seed( occurrences2[j], occurrences1[i], rec2, callback );
               }
-
             }
           }
-
-          clear ( occurrences1 );
-          clear ( occurrences2 );
         }
-
-        goRoot ( bigger_itr );
       }
     }
 
-  template < typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
+  template< typename TIndex1, typename TIndex2, typename TRecords2, typename TCallback >
     void
-    kmer_exact_matches ( TIndex1 &fst, TIndex2 &snd, const TRecords2* rec2, unsigned int k,
+    kmer_exact_matches( TIndex1& fst, TIndex2& snd, const TRecords2* rec2, unsigned int k,
         TCallback callback )
     {
-      auto fst_len = length ( indexRawText ( fst ) );
-      auto snd_len = length ( indexRawText ( snd ) );
+      if ( k == 0 ) return;
+
+      auto fst_len = length( indexRawText( fst ) );
+      auto snd_len = length( indexRawText( snd ) );
+
+      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
+      TIndexIter< TIndex1, TIterSpec > fst_itr( fst );
+      TIndexIter< TIndex2, TIterSpec > snd_itr( snd );
 
       if ( fst_len <= snd_len ) {
-        _kmer_exact_match_impl ( fst, snd, rec2, k, false, callback );
+        _kmer_exact_match_impl( fst_itr, snd_itr, rec2, k, false, callback );
       }
       else {
-        _kmer_exact_match_impl ( snd, fst, rec2, k, true, callback );
+        _kmer_exact_match_impl( snd_itr, fst_itr, rec2, k, true, callback );
       }
     }
 
-  template < typename TIndex, typename TStringSet, typename TCallback >
-    void
-    kmer_exact_matches ( TIndex &paths_index, TStringSet &seeds, TCallback callback )
+  // :TODO:Sat Oct 28 03:17:\@cartoonist: implement an iterator over string set to get
+  //       seeds using different strategy tags instead of passing `step` parameter.
+  template< typename TIndex, typename TRecords2, typename TCallback >
+      inline void
+    kmer_exact_matches( TIndex& paths_index, const TRecords2& reads, unsigned int k,
+        unsigned int step, TCallback callback )
     {
-      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
       typedef typename seqan::SAValue< TIndex >::Type TSAValue;
 
-      seqan::String< TSAValue > paths_occurrences;
-      TIndexIter< TIndex, TIterSpec > paths_itr ( paths_index );
-      for ( unsigned int idx = 0; idx < length ( seeds ); ++idx ) {
-        if ( goDown ( paths_itr, seeds[idx] ) ) {
-          paths_occurrences = getOccurrences ( paths_itr );
-          for ( unsigned int i; i < length ( paths_occurrences ); ++i ) {
-            // :FIXME:Mon Aug 14 21:32:\@cartoonist: seed occurrences should not be 0.
-            _add_seed ( paths_occurrences[i], 0, callback );
+      if ( k == 0 || step == 0 ) return;
+
+      seqan::Finder< TIndex > paths_finder( paths_index );
+      TSAValue read_occurrence;
+      for ( std::size_t idx = 0; idx < length( reads ); ++idx ) {
+        read_occurrence.i1 = idx;
+        for ( std::size_t off = 0; off < length( reads[idx] ) - k + 1; off += step ) {
+          auto&& seed = infixWithLength( reads[idx], off, k );
+          read_occurrence.i2 = off;
+          while ( find( paths_finder, seed ) ) {
+            _add_seed( beginPosition( paths_finder ), read_occurrence, &reads, callback );
           }
-          clear ( paths_occurrences );
+          clear( paths_finder );
         }
-        goRoot ( paths_itr );
       }
     }
 }  /* -----  end of namespace grem  ----- */

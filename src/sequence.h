@@ -89,6 +89,17 @@ namespace grem {
 
   /* Records interface functions */
   template< typename TText >
+      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
+    position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
+        typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type pos )
+    {
+      if ( pos >= length( strset ) || pos < 0 ) {
+        throw std::runtime_error( "position out of range" );
+      }
+      return pos;
+    }
+
+  template< typename TText >
       inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
     position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
         typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition pos )
@@ -136,6 +147,14 @@ namespace grem {
       return length( records.str );
     }
 
+  template< typename TText, typename TStringSetSpec, typename TPosition >
+      inline auto
+    get_value( const Records< seqan::StringSet< TText, TStringSetSpec > >& records,
+        TPosition pos )
+    {
+      return records.str[pos];
+    }
+
   template< typename TText >
       inline bool
     load_chunk( Records< seqan::StringSet< TText, grem::Dependent > >& records,
@@ -181,6 +200,8 @@ namespace grem {
         typedef typename seqan::Id< TStringSet >::Type TId;
         typedef typename seqan::Size< TStringSet >::Type TSize;
         typedef typename seqan::Value< TStringSet >::Type TValue;
+        /* ====================  METHODS       ======================================= */
+        inline auto operator[]( TPosition pos ) const { return get_value( *this, pos ); }
     };
 
   template< typename TText >
@@ -197,6 +218,8 @@ namespace grem {
         TStringSet str;
         /* ====================  LIFECYCLE     ======================================= */
         Records( ) : offset( 0 ), o_str( nullptr ) { }
+        /* ====================  METHODS       ======================================= */
+        inline auto operator[]( TPosition pos ) const { return get_value( *this, pos ); }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend TId
         position_to_id< TText >( const Records& records, TPosition pos );
