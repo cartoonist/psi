@@ -1,10 +1,8 @@
-# cgrem
-Graph REad Mapper (C++ implementation)
+# PSI -- Pan-genome Seed Index
 
 ## Requirements
 
-- [Google protocol buffer](https://github.com/google/protobuf) >= v3.0.0
-- [Seqan 2](https://github.com/seqan/seqan) >= 2.2.0
+- [GUM](https://github.com/cartoonist/gum)
 
 ## Development
 In order to build from git repository, make sure that the git submodules are
@@ -14,6 +12,6 @@ already initialised and updated. Either clone the repository recursively:
 
 or if it is already cloned, run:
 
-    git submodule init && git submodule update
+    git submodule update --init
 
 to (re)initialise and update the submodules.
