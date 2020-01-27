@@ -133,7 +133,7 @@ namespace grem {
          *  It returns the size of the vector of `Path` objects.
          */
           inline size_type
-        size( )
+        size( ) const
         {
           return this->paths_set.size();
         }  /* -----  end of method size  ----- */

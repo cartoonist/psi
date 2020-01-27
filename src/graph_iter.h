@@ -48,17 +48,17 @@ namespace grem {
   /* Graph iterator interface functions. */
   template< typename TGraph, typename TSpec >                      // at_end
       bool
-    at_end( GraphIter<TGraph, TSpec> &it );
+    at_end( GraphIter<TGraph, TSpec>& it );
   template< typename TGraph, typename TSpec >                      // begin
       GraphIter< TGraph, TSpec >
-    begin( const TGraph &g, typename GraphIter< TGraph, TSpec >::value_type start=0 );
+    begin( const TGraph& g, typename GraphIter< TGraph, TSpec >::value_type start=0 );
   template< typename TGraph, typename TSpec >
       void
-    go_begin( GraphIter<TGraph, TSpec> &it,
+    go_begin( GraphIter<TGraph, TSpec>& it,
         typename GraphIter< TGraph, TSpec >::value_type start=0 );
   template< typename TGraph, typename TSpec >    // level
       typename GraphIter< TGraph, TSpec >::level_type
-    level( GraphIter< TGraph, TSpec > &it );
+    level( GraphIter< TGraph, TSpec >& it );
 
   /* END OF FORWARDS  ------------------------------------------------------------ */
 
@@ -73,7 +73,7 @@ namespace grem {
    *  type). They can be initialized and check if it reached to the end by `begin` and
    *  `end` interface functions, respectively.
    */
-  template < typename TGraph, typename TSpec >
+  template< typename TGraph, typename TSpec >
     class GraphIter
     {
       public:
@@ -84,25 +84,28 @@ namespace grem {
         typedef typename TTraits::TContainer container_type;
         typedef typename TTraits::TSet set_type;
         typedef typename TTraits::TState state_type;
-
-        /* ====================  FRIENDSHIP    ======================================= */
-
+        /* ====================  DATA MEMBERS  ======================================= */
+        bool raise_on_end;          /**< @brief Throw an exception if it hits the end. */
+        /* ====================  ACCESSORS     ======================================= */
+          inline const TGraph*
+        get_vargraph( ) const
+        {
+          return this->vargraph_ptr;
+        }
+        /* ====================  INTERFACE FUNCTIONS  ================================ */
         /* Common interface functions. */
         friend bool
-          at_end < TGraph, TSpec > ( GraphIter < TGraph, TSpec > &it );
+          at_end< TGraph, TSpec >( GraphIter< TGraph, TSpec >& it );
         friend GraphIter<TGraph, TSpec>
-          begin < TGraph, TSpec > ( const TGraph &g, value_type start );
+          begin< TGraph, TSpec >( const TGraph& g, value_type start );
         friend void
-          go_begin < TGraph, TSpec >
-          ( GraphIter<TGraph, TSpec> &it, value_type start );
-
-        /* Interface functions specific for BFS graph iterator. */
+          go_begin< TGraph, TSpec >
+          ( GraphIter<TGraph, TSpec>& it, value_type start );
+        /* Interface functions specific for BFS graph iterator and Haplotyper. */
         friend level_type
-          level < TGraph, TSpec > ( GraphIter< TGraph, TSpec > &it );
-
+          level< TGraph, TSpec >( GraphIter< TGraph, TSpec >& it );
         /* ====================  LIFECYCLE     ======================================= */
-
-        GraphIter ( const TGraph *graph, value_type start=0 )  // constructor
+        GraphIter( const TGraph* graph, value_type start=0 )  // constructor
         {
           // Use [implicit] move assignment operator for initializing the iterator.
           *this = begin<TGraph, TSpec>(*graph, start);
@@ -111,28 +114,24 @@ namespace grem {
         /**
          *  @overload
          */
-        GraphIter ( const TGraph &vargraph, value_type start=0 ) :
-          GraphIter ( &vargraph, start ) { }
-
+        GraphIter( const TGraph& vargraph, value_type start=0 ) :
+          GraphIter( &vargraph, start ) { }
         /* ====================  OPERATORS     ======================================= */
-        value_type operator* ( ) { return this->itr_value; }
-        GraphIter &operator++ ( );  // prefix: go forward.
-        GraphIter &operator-- ( );  // prefix: go backward (reset) considering last traverse as history.
-        GraphIter &operator-- ( int );  // postfix: go backward (reset) without side effects.
-        template < typename T >     // traversal history query.
-          bool operator[] ( const T &param );
-
+        value_type operator*( ) { return this->itr_value; }
+        GraphIter& operator++( );  // prefix: go forward.
+        GraphIter& operator--( );  // prefix: go backward (reset) considering last traverse as history.
+        GraphIter& operator--( int );  // postfix: go backward (reset) without side effects.
+        template< typename T >      // traversal history query.
+          bool operator[]( const T& param );
       private:
         /* ====================  METHODS       ======================================= */
         /* Private constructor. */
-        GraphIter() : vargraph_ptr(nullptr) {}
+        GraphIter() : raise_on_end( false ), vargraph_ptr( nullptr ) { }
         /* Internal methods. */
         value_type next_unvisited( );
         void set_setback( );
-
         /* ====================  DATA MEMBERS  ======================================= */
-
-        const TGraph *vargraph_ptr;      /**< @brief Pointer to graph. */
+        const TGraph* vargraph_ptr;      /**< @brief Pointer to graph. */
         value_type itr_value;            /**< @brief Iter. current value. */
         container_type visiting_buffer;  /**< @brief Visiting buffer. */
         set_type visited;                /**< @brief Visited set. */

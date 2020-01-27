@@ -388,11 +388,7 @@ namespace grem
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
               seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
-              for ( int i = 0; i < n; ++i ) {
-                Path<> new_path( this->vargraph );
-                get_uniq_haplotype( new_path, hap_itr );
-                paths.add_path( std::move( new_path ) );
-              }
+              for ( int i = 0; i < n; ++i ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
             }
           }  /* -----  end of template function pick_paths  ----- */
 
@@ -428,7 +424,7 @@ namespace grem
             auto timer = stats_type( "add-starts" );
 
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
-            Path< Full > trav_path( this->vargraph );
+            Path< > trav_path( this->vargraph );
 
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
@@ -443,23 +439,23 @@ namespace grem
                   //     breaks when `bt_itr` is at end but below condition is not met,
                   //     a few unnecessary loci would be added. Bring `add_start` in the
                   //     outer loop and add neccessary loci in the loop; not outside it.
-                  if ( trav_path.get_sequence().length() < offset - 1 + k ) ++bt_itr;
+                  if ( trav_path.get_sequence_len() < offset - 1 + k ) ++bt_itr;
                   else break;
                 }
 
-                Path< Full > current_path = trav_path;
+                Path< > current_path = trav_path;
                 while ( !covered_by( current_path.get_nodes(), paths.paths_set ) ) {
-                  auto trimmed_len = current_path.get_sequence().length()
+                  auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {
                     offset = 0;
                     break;
                   }
                   offset = trimmed_len - k + 1;
-                  trim( current_path );
+                  trim_back( current_path );
                 }
                 --bt_itr;
-                trim( trav_path, *bt_itr );
+                trim_back( trav_path, *bt_itr );
               }
 
               for ( auto f = offset; f < label_len; f += step ) {
@@ -511,7 +507,7 @@ namespace grem
             ++itr;
           }
         }
-        /* ====================  METHODS       ======================================= */
+
           inline void
         traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {

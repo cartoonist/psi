@@ -2,7 +2,7 @@
  *    @file  grem.cc
  *   @brief  grem main program.
  *
- *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.de>
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
  *  @internal
  *       Created:  Tue Nov 08, 2016  16:48

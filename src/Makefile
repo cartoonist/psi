@@ -55,10 +55,10 @@ MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MG -MF $@
 # building target.
 all: ${TARGET}
 
-${BINDIR}/release/grem: grem.o vargraph.o
+${BINDIR}/release/grem: grem.o
 	${LINK}
 
-${BINDIR}/debug/grem: grem.g.o vargraph.g.o
+${BINDIR}/debug/grem: grem.g.o
 	${LINK}
 
 # general rule for compiling cc files.
