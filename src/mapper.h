@@ -376,9 +376,9 @@ namespace grem
          *  XXX: We assume that each connect component in the graph has one and only one
          *  path indicating a sample haplotype in that region.
          */
-        template< typename TText, typename TIndexSpec >
+        template< typename TGraph, typename TText, typename TIndexSpec >
             void
-          pick_paths( PathSet< TText, TIndexSpec >& paths, int n )
+          pick_paths( PathSet< TGraph, TText, TIndexSpec >& paths, int n )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -403,9 +403,9 @@ namespace grem
          *  both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-        template< typename TText, typename TIndexSpec >
+        template< typename TGraph, typename TText, typename TIndexSpec >
             inline void
-          seeds_on_paths( PathSet< TText, TIndexSpec >& paths,
+          seeds_on_paths( PathSet< TGraph, TText, TIndexSpec >& paths,
               std::function< void(typename TTraverser::output_type const &) >& callback )
           {
             if ( length( paths.string_set ) == 0 ) return;
@@ -415,16 +415,16 @@ namespace grem
             kmer_exact_matches( paths.index, this->reads, this->seed_len, this->seed_len, callback );
           }  /* -----  end of method template Mapper::seeds_on_paths  ----- */
 
-        template< typename TText, typename TIndexSpec >
+        template< typename TGraph, typename TText, typename TIndexSpec >
             inline void
-          add_all_loci( PathSet< TText, TIndexSpec >& paths, unsigned int k,
+          add_all_loci( PathSet< TGraph, TText, TIndexSpec >& paths, unsigned int k,
               unsigned int step=1)
           {
             if ( paths.size() == 0 ) return this->add_all_loci( step );
             auto timer = stats_type( "add-starts" );
 
             seqan::Iterator< VarGraph, Backtracker >::Type bt_itr( this->vargraph );
-            Path< > trav_path( this->vargraph );
+            Path< VarGraph > trav_path( this->vargraph );
 
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
@@ -443,8 +443,8 @@ namespace grem
                   else break;
                 }
 
-                Path< > current_path = trav_path;
-                while ( !covered_by( current_path.get_nodes(), paths.paths_set ) ) {
+                Path< VarGraph > current_path = trav_path;
+                while ( !covered_by( current_path, paths.paths_set ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {

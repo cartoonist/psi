@@ -50,6 +50,7 @@ using namespace grem;
 // TODO: comments' first letter?
 // TODO: fix code style: spacing.
 // TODO: inconsistency: some public methods are interface functions, some are members.
+// TODO: Add value_t< T > typedef as typename seqan::Value< T >::Type
 
 
 template< typename TMapper >
@@ -157,7 +158,7 @@ template< typename TIndexSpec  >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide paths set. */
-    PathSet< seqan::Dna5QString, grem::CFMIndex > paths;
+    Dna5QPathSet< VarGraph, grem::CFMIndex > paths;
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, paths_index_file, path_num );
 

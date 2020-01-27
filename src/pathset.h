@@ -34,7 +34,7 @@ namespace grem {
    *  This class encapsulate the data structures to represent a set of path, its strings
    *  set, and its index. It also provides load/save functionalities.
    */
-  template< typename TText, typename TIndexSpec >
+  template< typename TGraph, typename TText, typename TIndexSpec >
     class PathSet {
       public:
         /* ====================  TYPEDEFS      ======================================= */
@@ -44,7 +44,7 @@ namespace grem {
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet string_set;
         TIndex index;
-        std::vector< Path<> > paths_set;
+        std::vector< Path< TGraph > > paths_set;
         /* ====================  LIFECYCLE     ======================================= */
         PathSet( ) = default;
         /* ====================  METHODS       ======================================= */
@@ -60,7 +60,7 @@ namespace grem {
          *  be loaded.
          */
           inline bool
-        load( const std::string& filepath_prefix, const VarGraph* vargraph )
+        load( const std::string& filepath_prefix, const TGraph* vargraph )
         {
           clear( this->string_set );
           clear( this->index );
@@ -101,7 +101,7 @@ namespace grem {
          *  to the string set, and creates string set index.
          */
           inline void
-        add_path( Path<>&& new_path )
+        add_path( Path< TGraph >&& new_path )
         {
           TText path_str( sequence( new_path ) );
           // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
@@ -120,9 +120,9 @@ namespace grem {
          *  Overloaded.
          */
           inline void
-        add_path( const Path<>& new_path )
+        add_path( const Path< TGraph >& new_path )
         {
-          this->add_path( Path<>( new_path ) );
+          this->add_path( Path< TGraph >( new_path ) );
         }
 
         /**
@@ -176,7 +176,7 @@ namespace grem {
          *  It deserializes the paths set. The paths are prefixed by the number of paths.
          */
           inline bool
-        load_paths_set( const std::string& filepath, const VarGraph* vargraph )
+        load_paths_set( const std::string& filepath, const TGraph* vargraph )
         {
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
@@ -187,7 +187,7 @@ namespace grem {
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
             for ( unsigned int i = 0; i < path_num; ++i ) {
-              Path<> path( vargraph );
+              Path< TGraph > path( vargraph );
               grem::load( path, ifs );
               this->paths_set.push_back( std::move( path ) );
             }
@@ -228,6 +228,12 @@ namespace grem {
           return true;
         }  /* -----  end of function save_paths_set  ----- */
     };  /* -----  end of template class PathSet  ----- */
+
+  /* Typedefs  ----------------------------------------------------------------- */
+
+  template< typename TGraph, typename TIndexSpec >
+    using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec >;
+
 }  /* -----  end of namespace grem  ----- */
 
 #endif  // end of PATHSET_H__

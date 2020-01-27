@@ -272,7 +272,7 @@ namespace grem {
    */
   template< typename TContainer, typename TSize >
       inline void
-    _reserve( TContainer& container, TSize size )
+    reserve( TContainer& container, TSize size )
     {
       container.reserve( size );
     }
@@ -288,7 +288,7 @@ namespace grem {
    */
   template< typename TObject, typename TSize >
       inline void
-    _reserve( std::deque< TObject >& container, TSize size )
+    reserve( std::deque< TObject >& container, TSize size )
     {
       /* NOOP */
     }
@@ -310,7 +310,7 @@ namespace grem {
   {
     TSize size;
     deserialize( in, size );
-    _reserve( container, size );
+    reserve( container, size );
     for ( unsigned int i = 0; i < size; ++i ) {
       typename TContainer::value_type item;
       deserialize( in, item );
