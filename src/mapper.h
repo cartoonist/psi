@@ -22,6 +22,7 @@
 #include <type_traits>
 #include <atomic>
 #include <vector>
+#include <unordered_set>
 #include <iterator>
 #include <functional>
 #include <algorithm>
@@ -562,6 +563,14 @@ namespace grem
           }
 
           return true;
+        }
+
+          inline std::size_t
+        get_nof_uniq_nodes( )
+        {
+          std::unordered_set< VarGraph::nodeid_type > set;
+          for ( const auto& l : this->starting_loci ) set.insert( l.node_id() );
+          return set.size();
         }
 
           inline void

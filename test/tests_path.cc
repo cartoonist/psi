@@ -59,6 +59,10 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[graph][path]" )
       }
       else {
         REQUIRE( !contains( path, nodes_shuff.begin(), nodes_shuff.end() ) );
+        REQUIRE( rcontains( path, nodes.rbegin(), nodes.rend() ) );
+        REQUIRE( !rcontains( path, other_nodes.rbegin(), other_nodes.rend() ) );
+        REQUIRE( !rcontains( path, empty.rbegin(), empty.rend() ) );
+        REQUIRE( !rcontains( path, invld_nodes.rbegin(), invld_nodes.rend() ) );
       }
     };
 

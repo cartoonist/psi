@@ -172,14 +172,14 @@ template< typename TIndexSpec  >
       mapper.add_all_loci( pindex.get_paths_set(), seed_len, step_size );
       log->info( "Selected starting loci in {} us.",
           Timer::get_duration( "add-starts" ).count() );
-      log->info( "Number of starting loci selected (in {} nodes): {}",
-          mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
       log->info( "Saving starting loci..." );
       /* Saving starting loci. */
       if ( ! mapper.save_starts( paths_index_file, seed_len, step_size ) ) {
         log->warn( "The specified path for saving starting loci is not writable. Skipping..." );
       }
     }
+    log->info( "Number of starting loci selected (in {} nodes of total {}): {}",
+        mapper.get_nof_uniq_nodes(), mapper.get_vargraph()->node_count, mapper.get_starting_loci().size() );
 
     if ( nomapping ) {
       log->info( "Skipping mapping as requested..." );

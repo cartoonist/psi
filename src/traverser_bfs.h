@@ -101,7 +101,8 @@ namespace grem {
             state.mismatches = 0;
             // Process the seed hit.
             seqan::String< TSAValue > saPositions = getOccurrences( state.iter.get_iter_() );
-            for ( unsigned i = 0; i < length( saPositions ); ++i )
+            typename seqan::Size< decltype( saPositions ) >::Type i;
+            for ( i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;
               hit.node_id = this->start_locus.node_id();
@@ -119,28 +120,24 @@ namespace grem {
         {
           assert( state_idx < this->frontier_states.size() );
           auto& state = this->frontier_states[ state_idx ];
-          if ( state.mismatches == 0 )
-          {
-            return false;
-          }
+
+          if ( state.mismatches == 0 ) return false;
+
           const auto& sequence = this->vargraph->node_sequence( state.pos.node_id() );
           const auto& itr_replen = rep_length( state.iter );
-
           assert( itr_replen < this->seed_len );
-          auto remainder = this->seed_len - itr_replen;
-          TIterRawText< typename iterator_type::base_type > partseq;
-          partseq = sequence.substr( state.pos.offset(), remainder );
-
-          typename seqan::Size< decltype( partseq ) >::Type i = 0;
-          for ( ; i < seqan::length( partseq ); ++i ) {
-            if ( partseq[i] == 'N' || !go_down( state.iter, partseq[i] ) ) {
+          VarGraph::offset_type end_idx =
+            std::min( state.pos.offset() + this->seed_len - itr_replen, sequence.size() );
+          VarGraph::offset_type i;
+          for ( i = state.pos.offset(); i < end_idx; ++i ) {
+            if ( sequence[i] == 'N' || !go_down( state.iter, sequence[i] ) ) {
               state.mismatches--;
               break;
             }
             stats_type::inc_total_nof_godowns();
           }
 
-          state.pos.set_offset( state.pos.offset() + i );
+          state.pos.set_offset( i );
           return true;
         }
 
@@ -170,7 +167,7 @@ namespace grem {
             typename traits_type::TState new_state = state;
             new_state.pos.set_node_id( (*it).to() );
             new_state.pos.set_offset( 0 );
-            this->frontier_states.push_back( new_state );
+            this->frontier_states.push_back( std::move( new_state ) );
           }
         }
     };  /* ----------  end of template class TraverserBFS  ---------- */

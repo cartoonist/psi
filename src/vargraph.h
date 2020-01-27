@@ -920,7 +920,7 @@ namespace grem {
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
           if ( !iter[ frontier.get_nodes() ] &&
-              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end() ) )
+              !rcontains( patch, frontier.get_nodes().rbegin(), frontier.get_nodes().rend() ) )
           {
             if ( marked != 0 ) trim_front( frontier, marked );
             patch += frontier;
