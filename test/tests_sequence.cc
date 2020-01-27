@@ -22,10 +22,20 @@
 
 #include "tests_base.h"
 #include "sequence.h"
+#include "options.h"
 #include "logger.h"
 
 
 using namespace grem;
+
+
+Options opt = {0, 0, 0, 0, 0, IndexType::Esa, "", "", "",
+/*log_path  = */ "", "", "", false, false, false, false,
+/*nologfile = */ true,
+/*nolog     = */ false,
+/*quiet     = */ false,
+/*nocolor   = */ false,
+/*verbose   = */ true };
 
 SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
 {
@@ -91,6 +101,860 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
               auto read_id = position_to_id( reads_chunk, i );
               REQUIRE( reads_chunk.str[ i ] == reads.str[ read_id ] );
             }
+          }
+        }
+      }
+    }
+  }
+}
+
+SCENARIO( "Constructing a DiskString", "[sequence]" )
+{
+  if ( get_logger( "main" ) == nullptr ) config_logger( opt );
+
+  auto check_content =
+    []( DiskString& d, const std::string& data ) {
+      std::ifstream in( d.get_file_path() );
+      std::string content;
+      std::string buffer;
+      while ( std::getline( in, buffer ) ) content += buffer;
+      REQUIRE( data == content );
+    };
+
+  GIVEN( "A simple text" )
+  {
+    std::string text( "a mississippian lazy fox sits on a pie" );
+
+    WHEN( "DiskString is constructed by providing data to constructor" )
+    {
+      DiskString dstr( text );
+
+      THEN( "It should contain the data" )
+      {
+        check_content( dstr, text );
+        REQUIRE( length( dstr ) == 38 );
+      }
+    }
+
+    WHEN( "DiskString is constructed by providing data to constructor with C-style string" )
+    {
+      DiskString dstr( text.c_str() );
+
+      THEN( "It should contain the data" )
+      {
+        check_content( dstr, text );
+        REQUIRE( dstr.length() == 38 );
+      }
+    }
+
+    WHEN( "Some strings are appended to DiskString (random file)")
+    {
+      DiskString dstr;
+      dstr.reserve( 38 );
+      dstr = text.substr( 0, 15 );
+      dstr += text.substr( 15, 10 );
+      dstr += text.substr( 25 ).c_str();
+
+      THEN( "The value should be the concatenation of the strings" )
+      {
+        check_content( dstr, text );
+        REQUIRE( dstr.length() == 38 );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstr, another_tmpfile );
+        clear( dstr );
+        open( dstr, another_tmpfile );
+
+        THEN( "The value should be the concatenation of the strings" )
+        {
+          check_content( dstr, text );
+          REQUIRE( dstr.length() == 38 );
+          REQUIRE( readable( another_tmpfile ) );
+        }
+      }
+    }
+
+    WHEN( "Some strings are appended to DiskString (specific file)")
+    {
+      std::string tmpfile = SEQAN_TEMP_FILENAME();
+      DiskString dstr( "", tmpfile );
+      dstr.reserve( 38 );
+      dstr = text.substr( 0, 15 );
+      dstr += text.substr( 15, 10 );
+      dstr += text.substr( 25 ).c_str();
+
+      THEN( "The value should be the concatenation of the strings" )
+      {
+        check_content( dstr, text );
+        REQUIRE( dstr.length() == 38 );
+        REQUIRE( readable( tmpfile ) );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstr, another_tmpfile );
+        clear( dstr );
+        open( dstr, another_tmpfile );
+
+        THEN( "The value should be the concatenation of the strings" )
+        {
+          check_content( dstr, text );
+          REQUIRE( dstr.length() == 38 );
+          REQUIRE( readable( another_tmpfile ) );
+        }
+      }
+    }
+
+    WHEN( "Some strings are appended to DiskString (specific file with C-Style string)")
+    {
+      std::string tmpfile = SEQAN_TEMP_FILENAME();
+      DiskString dstr( text, tmpfile.c_str() );
+
+      THEN( "The value should be the concatenation of the strings" )
+      {
+        check_content( dstr, text );
+        REQUIRE( dstr.length() == 38 );
+        REQUIRE( readable( tmpfile ) );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstr, another_tmpfile );
+        clear( dstr );
+        open( dstr, another_tmpfile );
+
+        THEN( "The value should be the concatenation of the strings" )
+        {
+          check_content( dstr, text );
+          REQUIRE( dstr.length() == 38 );
+          REQUIRE( readable( another_tmpfile ) );
+        }
+      }
+    }
+
+    GIVEN( "An open DiskString containing the text" )
+    {
+      DiskString dstr( text );
+
+      WHEN( "It is moved to another DiskString" )
+      {
+        DiskString another = std::move( dstr );
+
+        THEN( "The new owner should get the same content" )
+        {
+          check_content( another, text );
+          REQUIRE( length( dstr ) == 38 );
+        }
+
+        AND_WHEN( "It is appended by another string after move" )
+        {
+          std::string appending_text = " suddenly!";
+          another += appending_text;
+
+          THEN( "The new owner should get the same content appended by that string" )
+          {
+            auto new_text = text + appending_text;
+            check_content( another, new_text );
+            REQUIRE( length( another ) == 48 );
+          }
+
+          AND_WHEN( "It is written to file and loaded again" )
+          {
+            std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+            save( another, another_tmpfile );
+            clear( another );
+            open( another, another_tmpfile );
+
+            THEN( "The value should be the concatenation of the strings" )
+            {
+              auto new_text = text + appending_text;
+              check_content( another, new_text );
+              REQUIRE( another.length() == 48 );
+              REQUIRE( readable( another_tmpfile ) );
+            }
+          }
+        }
+      }
+
+      WHEN( "It is closed by getting the file path" )
+      {
+        REQUIRE( dstr.is_open() );
+        auto fpath = dstr.get_file_path();
+        REQUIRE( !dstr.is_open() );
+
+        THEN( "Adding another string raises an exception" )
+        {
+          REQUIRE_THROWS_AS( dstr.operator+=( text ), std::runtime_error );
+        }
+      }
+
+      WHEN( "It is cleared then new text is added" )
+      {
+        std::string new_text = "another brazilian cute beaver builds a dam";
+        clear( dstr );
+        REQUIRE( length( dstr ) == 0 );
+        dstr += new_text;
+
+        THEN( "It should hold the new text (overwriting the old one)" )
+        {
+          check_content( dstr, new_text );
+          REQUIRE( dstr.length() == 42 );
+        }
+      }
+    }
+  }
+}
+
+SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
+{
+  auto check_content =
+    []( seqan::StringSet< DiskString >& d, const std::string& data ) {
+      std::ifstream in( d.get_file_path() );
+      std::string content;
+      std::string buffer;
+      while ( std::getline( in, buffer ) ) content += buffer;
+      REQUIRE( data == content );
+    };
+
+  GIVEN( "A set of strings" )
+  {
+    std::string str1 = "a mississippian lazy fox sits on a pie";
+    std::string str2 = "another brazilian cute beaver builds a dam";
+    std::string str3 = "some african stupid chimps eat banana";
+    std::string raw_total =
+      str1 + std::string( 1, SEQUENCE_DEFAULT_SENTINEL_CHAR ) +
+      str2 + std::string( 1, SEQUENCE_DEFAULT_SENTINEL_CHAR ) + str3;
+
+    WHEN( "The strings are added to string set by const reference" )
+    {
+      seqan::StringSet< DiskString, seqan::Owner<> > dstrset;
+      dstrset.reserve( 3 );
+      appendValue( dstrset, str1 );
+      push_back( dstrset, str2 );
+      dstrset.push_back( str3 );
+
+      THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+      {
+        check_content( dstrset, raw_total );
+        REQUIRE( dstrset.length() == 3 );
+        REQUIRE( length( dstrset[ 0 ] ) == 38 );
+        REQUIRE( length( dstrset[ 1 ] ) == 42 );
+        REQUIRE( length( dstrset[ 2 ] ) == 37 );
+        REQUIRE( dstrset.get_id( 0 ) == 0 );
+        REQUIRE( dstrset.get_offset( 0 ) == 0 );
+        REQUIRE( dstrset.get_id( 25 ) == 0 );
+        REQUIRE( dstrset.get_offset( 25 ) == 25 );
+        REQUIRE( dstrset.get_id( 37 ) == 0 );
+        REQUIRE( dstrset.get_offset( 37 ) == 37 );
+        REQUIRE( dstrset.get_id( 39 ) == 1 );
+        REQUIRE( dstrset.get_offset( 39 ) == 0 );
+        REQUIRE( dstrset.get_id( 51 ) == 1 );
+        REQUIRE( dstrset.get_offset( 51 ) == 12 );
+        REQUIRE( dstrset.get_id( 80 ) == 1 );
+        REQUIRE( dstrset.get_offset( 80 ) == 41 );
+        REQUIRE( dstrset.get_id( 82 ) == 2 );
+        REQUIRE( dstrset.get_offset( 82 ) == 0 );
+        REQUIRE( dstrset.get_id( 100 ) == 2 );
+        REQUIRE( dstrset.get_offset( 100 ) == 18 );
+        REQUIRE( dstrset.get_id( 118 ) == 2 );
+        REQUIRE( dstrset.get_offset( 118 ) == 36 );
+      }
+    }
+
+    WHEN( "The strings are added to string set by const reference (specific file)" )
+    {
+      std::string tmpfile = SEQAN_TEMP_FILENAME();
+      seqan::StringSet< DiskString, seqan::Owner<> > dstrset( tmpfile );
+      dstrset.reserve( 3 );
+      appendValue( dstrset, str1 );
+      push_back( dstrset, str2 );
+      dstrset.push_back( str3 );
+
+      THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+      {
+        check_content( dstrset, raw_total );
+        REQUIRE( dstrset.length() == 3 );
+        REQUIRE( length( dstrset[ 0 ] ) == 38 );
+        REQUIRE( length( dstrset[ 1 ] ) == 42 );
+        REQUIRE( length( dstrset[ 2 ] ) == 37 );
+        REQUIRE( dstrset.get_id( 0 ) == 0 );
+        REQUIRE( dstrset.get_offset( 0 ) == 0 );
+        REQUIRE( dstrset.get_id( 25 ) == 0 );
+        REQUIRE( dstrset.get_offset( 25 ) == 25 );
+        REQUIRE( dstrset.get_id( 37 ) == 0 );
+        REQUIRE( dstrset.get_offset( 37 ) == 37 );
+        REQUIRE( dstrset.get_id( 39 ) == 1 );
+        REQUIRE( dstrset.get_offset( 39 ) == 0 );
+        REQUIRE( dstrset.get_id( 51 ) == 1 );
+        REQUIRE( dstrset.get_offset( 51 ) == 12 );
+        REQUIRE( dstrset.get_id( 80 ) == 1 );
+        REQUIRE( dstrset.get_offset( 80 ) == 41 );
+        REQUIRE( dstrset.get_id( 82 ) == 2 );
+        REQUIRE( dstrset.get_offset( 82 ) == 0 );
+        REQUIRE( dstrset.get_id( 100 ) == 2 );
+        REQUIRE( dstrset.get_offset( 100 ) == 18 );
+        REQUIRE( dstrset.get_id( 118 ) == 2 );
+        REQUIRE( dstrset.get_offset( 118 ) == 36 );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstrset, another_tmpfile );
+        clear( dstrset );
+        open( dstrset, another_tmpfile );
+
+        THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+        {
+          check_content( dstrset, raw_total );
+          REQUIRE( dstrset.length() == 3 );
+          REQUIRE( length( dstrset[ 0 ] ) == 38 );
+          REQUIRE( length( dstrset[ 1 ] ) == 42 );
+          REQUIRE( length( dstrset[ 2 ] ) == 37 );
+          REQUIRE( dstrset.get_id( 0 ) == 0 );
+          REQUIRE( dstrset.get_offset( 0 ) == 0 );
+          REQUIRE( dstrset.get_id( 25 ) == 0 );
+          REQUIRE( dstrset.get_offset( 25 ) == 25 );
+          REQUIRE( dstrset.get_id( 37 ) == 0 );
+          REQUIRE( dstrset.get_offset( 37 ) == 37 );
+          REQUIRE( dstrset.get_id( 39 ) == 1 );
+          REQUIRE( dstrset.get_offset( 39 ) == 0 );
+          REQUIRE( dstrset.get_id( 51 ) == 1 );
+          REQUIRE( dstrset.get_offset( 51 ) == 12 );
+          REQUIRE( dstrset.get_id( 80 ) == 1 );
+          REQUIRE( dstrset.get_offset( 80 ) == 41 );
+          REQUIRE( dstrset.get_id( 82 ) == 2 );
+          REQUIRE( dstrset.get_offset( 82 ) == 0 );
+          REQUIRE( dstrset.get_id( 100 ) == 2 );
+          REQUIRE( dstrset.get_offset( 100 ) == 18 );
+          REQUIRE( dstrset.get_id( 118 ) == 2 );
+          REQUIRE( dstrset.get_offset( 118 ) == 36 );
+        }
+      }
+    }
+
+    WHEN( "The strings are added to string set by const reference (specific file with C-Style string)" )
+    {
+      std::string tmpfile = SEQAN_TEMP_FILENAME();
+      seqan::StringSet< DiskString, seqan::Owner<> > dstrset( tmpfile.c_str() );
+      dstrset.reserve( 3 );
+      appendValue( dstrset, str1 );
+      push_back( dstrset, str2 );
+      dstrset.push_back( str3 );
+
+      THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+      {
+        check_content( dstrset, raw_total );
+        REQUIRE( dstrset.length() == 3 );
+        REQUIRE( length( dstrset[ 0 ] ) == 38 );
+        REQUIRE( length( dstrset[ 1 ] ) == 42 );
+        REQUIRE( length( dstrset[ 2 ] ) == 37 );
+        REQUIRE( dstrset.get_id( 0 ) == 0 );
+        REQUIRE( dstrset.get_offset( 0 ) == 0 );
+        REQUIRE( dstrset.get_id( 25 ) == 0 );
+        REQUIRE( dstrset.get_offset( 25 ) == 25 );
+        REQUIRE( dstrset.get_id( 37 ) == 0 );
+        REQUIRE( dstrset.get_offset( 37 ) == 37 );
+        REQUIRE( dstrset.get_id( 39 ) == 1 );
+        REQUIRE( dstrset.get_offset( 39 ) == 0 );
+        REQUIRE( dstrset.get_id( 51 ) == 1 );
+        REQUIRE( dstrset.get_offset( 51 ) == 12 );
+        REQUIRE( dstrset.get_id( 80 ) == 1 );
+        REQUIRE( dstrset.get_offset( 80 ) == 41 );
+        REQUIRE( dstrset.get_id( 82 ) == 2 );
+        REQUIRE( dstrset.get_offset( 82 ) == 0 );
+        REQUIRE( dstrset.get_id( 100 ) == 2 );
+        REQUIRE( dstrset.get_offset( 100 ) == 18 );
+        REQUIRE( dstrset.get_id( 118 ) == 2 );
+        REQUIRE( dstrset.get_offset( 118 ) == 36 );
+      }
+    }
+
+    WHEN( "The strings are added to string set by r-value reference" )
+    {
+      seqan::StringSet< DiskString, seqan::Owner<> > dstrset;
+      reserve( dstrset, 3 );
+      appendValue( dstrset, std::move( str1 ) );
+      push_back( dstrset, std::move( str2 ) );
+      dstrset.push_back( std::move( str3 ) );
+
+      THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+      {
+        check_content( dstrset, raw_total );
+        REQUIRE( length( dstrset ) == 3 );
+        REQUIRE( length( dstrset[ 0 ] ) == 38 );
+        REQUIRE( length( dstrset[ 1 ] ) == 42 );
+        REQUIRE( length( dstrset[ 2 ] ) == 37 );
+        REQUIRE( dstrset.get_id( 0 ) == 0 );
+        REQUIRE( dstrset.get_offset( 0 ) == 0 );
+        REQUIRE( dstrset.get_id( 25 ) == 0 );
+        REQUIRE( dstrset.get_offset( 25 ) == 25 );
+        REQUIRE( dstrset.get_id( 37 ) == 0 );
+        REQUIRE( dstrset.get_offset( 37 ) == 37 );
+        REQUIRE( dstrset.get_id( 39 ) == 1 );
+        REQUIRE( dstrset.get_offset( 39 ) == 0 );
+        REQUIRE( dstrset.get_id( 51 ) == 1 );
+        REQUIRE( dstrset.get_offset( 51 ) == 12 );
+        REQUIRE( dstrset.get_id( 80 ) == 1 );
+        REQUIRE( dstrset.get_offset( 80 ) == 41 );
+        REQUIRE( dstrset.get_id( 82 ) == 2 );
+        REQUIRE( dstrset.get_offset( 82 ) == 0 );
+        REQUIRE( dstrset.get_id( 100 ) == 2 );
+        REQUIRE( dstrset.get_offset( 100 ) == 18 );
+        REQUIRE( dstrset.get_id( 118 ) == 2 );
+        REQUIRE( dstrset.get_offset( 118 ) == 36 );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstrset, another_tmpfile );
+        clear( dstrset );
+        open( dstrset, another_tmpfile );
+
+        THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+        {
+          check_content( dstrset, raw_total );
+          REQUIRE( dstrset.length() == 3 );
+          REQUIRE( length( dstrset[ 0 ] ) == 38 );
+          REQUIRE( length( dstrset[ 1 ] ) == 42 );
+          REQUIRE( length( dstrset[ 2 ] ) == 37 );
+          REQUIRE( dstrset.get_id( 0 ) == 0 );
+          REQUIRE( dstrset.get_offset( 0 ) == 0 );
+          REQUIRE( dstrset.get_id( 25 ) == 0 );
+          REQUIRE( dstrset.get_offset( 25 ) == 25 );
+          REQUIRE( dstrset.get_id( 37 ) == 0 );
+          REQUIRE( dstrset.get_offset( 37 ) == 37 );
+          REQUIRE( dstrset.get_id( 39 ) == 1 );
+          REQUIRE( dstrset.get_offset( 39 ) == 0 );
+          REQUIRE( dstrset.get_id( 51 ) == 1 );
+          REQUIRE( dstrset.get_offset( 51 ) == 12 );
+          REQUIRE( dstrset.get_id( 80 ) == 1 );
+          REQUIRE( dstrset.get_offset( 80 ) == 41 );
+          REQUIRE( dstrset.get_id( 82 ) == 2 );
+          REQUIRE( dstrset.get_offset( 82 ) == 0 );
+          REQUIRE( dstrset.get_id( 100 ) == 2 );
+          REQUIRE( dstrset.get_offset( 100 ) == 18 );
+          REQUIRE( dstrset.get_id( 118 ) == 2 );
+          REQUIRE( dstrset.get_offset( 118 ) == 36 );
+        }
+      }
+    }
+
+    GIVEN( "A disk-based string set containing two of those strings" )
+    {
+      seqan::StringSet< DiskString > dstrset;
+      dstrset.push_back( str1 );
+      push_back( dstrset, str2 );
+
+      WHEN( "It is moved to another string set" )
+      {
+        seqan::StringSet< DiskString > another_strset = std::move( dstrset );
+
+        THEN( "It should contains the same strings" )
+        {
+          check_content( another_strset, raw_total.substr( 0, 81 ) );
+          REQUIRE( another_strset.length() == 2 );
+          REQUIRE( length( another_strset[ 0 ] ) == 38 );
+          REQUIRE( length( another_strset[ 1 ] ) == 42 );
+          REQUIRE( another_strset.get_id( 0 ) == 0 );
+          REQUIRE( another_strset.get_offset( 0 ) == 0 );
+          REQUIRE( another_strset.get_id( 25 ) == 0 );
+          REQUIRE( another_strset.get_offset( 25 ) == 25 );
+          REQUIRE( another_strset.get_id( 37 ) == 0 );
+          REQUIRE( another_strset.get_offset( 37 ) == 37 );
+          REQUIRE( another_strset.get_id( 39 ) == 1 );
+          REQUIRE( another_strset.get_offset( 39 ) == 0 );
+          REQUIRE( another_strset.get_id( 51 ) == 1 );
+          REQUIRE( another_strset.get_offset( 51 ) == 12 );
+          REQUIRE( another_strset.get_id( 80 ) == 1 );
+          REQUIRE( another_strset.get_offset( 80 ) == 41 );
+        }
+
+        AND_WHEN( "Another string is added" )
+        {
+          another_strset.push_back( str3 );
+
+          THEN( "It should contains all strings" )
+          {
+            check_content( another_strset, raw_total );
+            REQUIRE( another_strset.length() == 3 );
+            REQUIRE( length( another_strset[ 0 ] ) == 38 );
+            REQUIRE( length( another_strset[ 1 ] ) == 42 );
+            REQUIRE( length( another_strset[ 2 ] ) == 37 );
+            REQUIRE( another_strset.get_id( 0 ) == 0 );
+            REQUIRE( another_strset.get_offset( 0 ) == 0 );
+            REQUIRE( another_strset.get_id( 25 ) == 0 );
+            REQUIRE( another_strset.get_offset( 25 ) == 25 );
+            REQUIRE( another_strset.get_id( 37 ) == 0 );
+            REQUIRE( another_strset.get_offset( 37 ) == 37 );
+            REQUIRE( another_strset.get_id( 39 ) == 1 );
+            REQUIRE( another_strset.get_offset( 39 ) == 0 );
+            REQUIRE( another_strset.get_id( 51 ) == 1 );
+            REQUIRE( another_strset.get_offset( 51 ) == 12 );
+            REQUIRE( another_strset.get_id( 80 ) == 1 );
+            REQUIRE( another_strset.get_offset( 80 ) == 41 );
+            REQUIRE( another_strset.get_id( 82 ) == 2 );
+            REQUIRE( another_strset.get_offset( 82 ) == 0 );
+            REQUIRE( another_strset.get_id( 100 ) == 2 );
+            REQUIRE( another_strset.get_offset( 100 ) == 18 );
+            REQUIRE( another_strset.get_id( 118 ) == 2 );
+            REQUIRE( another_strset.get_offset( 118 ) == 36 );
+          }
+
+          AND_WHEN( "It is written to file and loaded again" )
+          {
+            std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+            save( another_strset, another_tmpfile );
+            clear( another_strset );
+            open( another_strset, another_tmpfile );
+
+            THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+            {
+              check_content( another_strset, raw_total );
+              REQUIRE( another_strset.length() == 3 );
+              REQUIRE( length( another_strset[ 0 ] ) == 38 );
+              REQUIRE( length( another_strset[ 1 ] ) == 42 );
+              REQUIRE( length( another_strset[ 2 ] ) == 37 );
+              REQUIRE( another_strset.get_id( 0 ) == 0 );
+              REQUIRE( another_strset.get_offset( 0 ) == 0 );
+              REQUIRE( another_strset.get_id( 25 ) == 0 );
+              REQUIRE( another_strset.get_offset( 25 ) == 25 );
+              REQUIRE( another_strset.get_id( 37 ) == 0 );
+              REQUIRE( another_strset.get_offset( 37 ) == 37 );
+              REQUIRE( another_strset.get_id( 39 ) == 1 );
+              REQUIRE( another_strset.get_offset( 39 ) == 0 );
+              REQUIRE( another_strset.get_id( 51 ) == 1 );
+              REQUIRE( another_strset.get_offset( 51 ) == 12 );
+              REQUIRE( another_strset.get_id( 80 ) == 1 );
+              REQUIRE( another_strset.get_offset( 80 ) == 41 );
+              REQUIRE( another_strset.get_id( 82 ) == 2 );
+              REQUIRE( another_strset.get_offset( 82 ) == 0 );
+              REQUIRE( another_strset.get_id( 100 ) == 2 );
+              REQUIRE( another_strset.get_offset( 100 ) == 18 );
+              REQUIRE( another_strset.get_id( 118 ) == 2 );
+              REQUIRE( another_strset.get_offset( 118 ) == 36 );
+            }
+          }
+        }
+      }
+
+      WHEN( "It is cleared" )
+      {
+        clear( dstrset );
+
+        THEN( "Its length should be zero" )
+        {
+          REQUIRE( length( dstrset ) == 0 );
+        }
+
+        AND_WHEN( "A string is added after clearance" )
+        {
+          push_back( dstrset, str3 );
+
+          THEN( "It should contain that string" )
+          {
+            REQUIRE( dstrset.length() == 1 );
+            REQUIRE( length( dstrset[ 0 ] ) == 37 );
+            check_content( dstrset, str3 );
+            REQUIRE( dstrset.get_id( 0 ) == 0 );
+            REQUIRE( dstrset.get_offset( 0 ) == 0 );
+            REQUIRE( dstrset.get_id( 25 ) == 0 );
+            REQUIRE( dstrset.get_offset( 25 ) == 25 );
+            REQUIRE( dstrset.get_id( 36 ) == 0 );
+            REQUIRE( dstrset.get_offset( 36 ) == 36 );
+          }
+        }
+      }
+    }
+  }
+}
+
+SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
+{
+  auto check_content =
+    []( seqan::StringSet< MemString >& d, const std::string& data ) {
+      REQUIRE( data == d );
+    };
+
+  GIVEN( "A set of strings" )
+  {
+    std::string str1 = "a mississippian lazy fox sits on a pie";
+    std::string str2 = "another brazilian cute beaver builds a dam";
+    std::string str3 = "some african stupid chimps eat banana";
+    std::string raw_total =
+      str1 + std::string( 1, SEQUENCE_DEFAULT_SENTINEL_CHAR ) +
+      str2 + std::string( 1, SEQUENCE_DEFAULT_SENTINEL_CHAR ) + str3;
+
+    WHEN( "The strings are added to string set by const reference" )
+    {
+      seqan::StringSet< MemString, seqan::Owner<> > dstrset;
+      dstrset.reserve( 3 );
+      appendValue( dstrset, str1 );
+      push_back( dstrset, str2 );
+      dstrset.push_back( str3 );
+
+      THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+      {
+        check_content( dstrset, raw_total );
+        REQUIRE( dstrset.length() == 3 );
+        REQUIRE( length( dstrset[ 0 ] ) == 38 );
+        REQUIRE( length( dstrset[ 1 ] ) == 42 );
+        REQUIRE( length( dstrset[ 2 ] ) == 37 );
+        REQUIRE( dstrset.get_id( 0 ) == 0 );
+        REQUIRE( dstrset.get_offset( 0 ) == 0 );
+        REQUIRE( dstrset.get_id( 25 ) == 0 );
+        REQUIRE( dstrset.get_offset( 25 ) == 25 );
+        REQUIRE( dstrset.get_id( 37 ) == 0 );
+        REQUIRE( dstrset.get_offset( 37 ) == 37 );
+        REQUIRE( dstrset.get_id( 39 ) == 1 );
+        REQUIRE( dstrset.get_offset( 39 ) == 0 );
+        REQUIRE( dstrset.get_id( 51 ) == 1 );
+        REQUIRE( dstrset.get_offset( 51 ) == 12 );
+        REQUIRE( dstrset.get_id( 80 ) == 1 );
+        REQUIRE( dstrset.get_offset( 80 ) == 41 );
+        REQUIRE( dstrset.get_id( 82 ) == 2 );
+        REQUIRE( dstrset.get_offset( 82 ) == 0 );
+        REQUIRE( dstrset.get_id( 100 ) == 2 );
+        REQUIRE( dstrset.get_offset( 100 ) == 18 );
+        REQUIRE( dstrset.get_id( 118 ) == 2 );
+        REQUIRE( dstrset.get_offset( 118 ) == 36 );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstrset, another_tmpfile );
+        clear( dstrset );
+        open( dstrset, another_tmpfile );
+
+        THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+        {
+          check_content( dstrset, raw_total );
+          REQUIRE( dstrset.length() == 3 );
+          REQUIRE( length( dstrset[ 0 ] ) == 38 );
+          REQUIRE( length( dstrset[ 1 ] ) == 42 );
+          REQUIRE( length( dstrset[ 2 ] ) == 37 );
+          REQUIRE( dstrset.get_id( 0 ) == 0 );
+          REQUIRE( dstrset.get_offset( 0 ) == 0 );
+          REQUIRE( dstrset.get_id( 25 ) == 0 );
+          REQUIRE( dstrset.get_offset( 25 ) == 25 );
+          REQUIRE( dstrset.get_id( 37 ) == 0 );
+          REQUIRE( dstrset.get_offset( 37 ) == 37 );
+          REQUIRE( dstrset.get_id( 39 ) == 1 );
+          REQUIRE( dstrset.get_offset( 39 ) == 0 );
+          REQUIRE( dstrset.get_id( 51 ) == 1 );
+          REQUIRE( dstrset.get_offset( 51 ) == 12 );
+          REQUIRE( dstrset.get_id( 80 ) == 1 );
+          REQUIRE( dstrset.get_offset( 80 ) == 41 );
+          REQUIRE( dstrset.get_id( 82 ) == 2 );
+          REQUIRE( dstrset.get_offset( 82 ) == 0 );
+          REQUIRE( dstrset.get_id( 100 ) == 2 );
+          REQUIRE( dstrset.get_offset( 100 ) == 18 );
+          REQUIRE( dstrset.get_id( 118 ) == 2 );
+          REQUIRE( dstrset.get_offset( 118 ) == 36 );
+        }
+      }
+    }
+
+    WHEN( "The strings are added to string set by r-value reference" )
+    {
+      seqan::StringSet< MemString, seqan::Owner<> > dstrset;
+      reserve( dstrset, 3 );
+      appendValue( dstrset, std::move( str1 ) );
+      push_back( dstrset, std::move( str2 ) );
+      dstrset.push_back( std::move( str3 ) );
+
+      THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+      {
+        check_content( dstrset, raw_total );
+        REQUIRE( length( dstrset ) == 3 );
+        REQUIRE( length( dstrset[ 0 ] ) == 38 );
+        REQUIRE( length( dstrset[ 1 ] ) == 42 );
+        REQUIRE( length( dstrset[ 2 ] ) == 37 );
+        REQUIRE( dstrset.get_id( 0 ) == 0 );
+        REQUIRE( dstrset.get_offset( 0 ) == 0 );
+        REQUIRE( dstrset.get_id( 25 ) == 0 );
+        REQUIRE( dstrset.get_offset( 25 ) == 25 );
+        REQUIRE( dstrset.get_id( 37 ) == 0 );
+        REQUIRE( dstrset.get_offset( 37 ) == 37 );
+        REQUIRE( dstrset.get_id( 39 ) == 1 );
+        REQUIRE( dstrset.get_offset( 39 ) == 0 );
+        REQUIRE( dstrset.get_id( 51 ) == 1 );
+        REQUIRE( dstrset.get_offset( 51 ) == 12 );
+        REQUIRE( dstrset.get_id( 80 ) == 1 );
+        REQUIRE( dstrset.get_offset( 80 ) == 41 );
+        REQUIRE( dstrset.get_id( 82 ) == 2 );
+        REQUIRE( dstrset.get_offset( 82 ) == 0 );
+        REQUIRE( dstrset.get_id( 100 ) == 2 );
+        REQUIRE( dstrset.get_offset( 100 ) == 18 );
+        REQUIRE( dstrset.get_id( 118 ) == 2 );
+        REQUIRE( dstrset.get_offset( 118 ) == 36 );
+      }
+
+      AND_WHEN( "It is written to file and loaded again" )
+      {
+        std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+        save( dstrset, another_tmpfile );
+        clear( dstrset );
+        open( dstrset, another_tmpfile );
+
+        THEN( "It should contain the concatenation of all strings delimited by SENTINEL" )
+        {
+          check_content( dstrset, raw_total );
+          REQUIRE( dstrset.length() == 3 );
+          REQUIRE( length( dstrset[ 0 ] ) == 38 );
+          REQUIRE( length( dstrset[ 1 ] ) == 42 );
+          REQUIRE( length( dstrset[ 2 ] ) == 37 );
+          REQUIRE( dstrset.get_id( 0 ) == 0 );
+          REQUIRE( dstrset.get_offset( 0 ) == 0 );
+          REQUIRE( dstrset.get_id( 25 ) == 0 );
+          REQUIRE( dstrset.get_offset( 25 ) == 25 );
+          REQUIRE( dstrset.get_id( 37 ) == 0 );
+          REQUIRE( dstrset.get_offset( 37 ) == 37 );
+          REQUIRE( dstrset.get_id( 39 ) == 1 );
+          REQUIRE( dstrset.get_offset( 39 ) == 0 );
+          REQUIRE( dstrset.get_id( 51 ) == 1 );
+          REQUIRE( dstrset.get_offset( 51 ) == 12 );
+          REQUIRE( dstrset.get_id( 80 ) == 1 );
+          REQUIRE( dstrset.get_offset( 80 ) == 41 );
+          REQUIRE( dstrset.get_id( 82 ) == 2 );
+          REQUIRE( dstrset.get_offset( 82 ) == 0 );
+          REQUIRE( dstrset.get_id( 100 ) == 2 );
+          REQUIRE( dstrset.get_offset( 100 ) == 18 );
+          REQUIRE( dstrset.get_id( 118 ) == 2 );
+          REQUIRE( dstrset.get_offset( 118 ) == 36 );
+        }
+      }
+    }
+
+    GIVEN( "A in-memory string set containing two of those strings" )
+    {
+      seqan::StringSet< MemString > dstrset;
+      dstrset.push_back( str1 );
+      push_back( dstrset, str2 );
+
+      WHEN( "It is moved to another string set" )
+      {
+        seqan::StringSet< MemString > another_strset = std::move( dstrset );
+
+        THEN( "It should contains the same strings" )
+        {
+          check_content( another_strset, raw_total.substr( 0, 81 ) );
+          REQUIRE( another_strset.length() == 2 );
+          REQUIRE( length( another_strset[ 0 ] ) == 38 );
+          REQUIRE( length( another_strset[ 1 ] ) == 42 );
+          REQUIRE( another_strset.get_id( 0 ) == 0 );
+          REQUIRE( another_strset.get_offset( 0 ) == 0 );
+          REQUIRE( another_strset.get_id( 25 ) == 0 );
+          REQUIRE( another_strset.get_offset( 25 ) == 25 );
+          REQUIRE( another_strset.get_id( 37 ) == 0 );
+          REQUIRE( another_strset.get_offset( 37 ) == 37 );
+          REQUIRE( another_strset.get_id( 39 ) == 1 );
+          REQUIRE( another_strset.get_offset( 39 ) == 0 );
+          REQUIRE( another_strset.get_id( 51 ) == 1 );
+          REQUIRE( another_strset.get_offset( 51 ) == 12 );
+          REQUIRE( another_strset.get_id( 80 ) == 1 );
+          REQUIRE( another_strset.get_offset( 80 ) == 41 );
+        }
+
+        AND_WHEN( "Another string is added" )
+        {
+          another_strset.push_back( str3 );
+
+          THEN( "It should contains all strings" )
+          {
+            check_content( another_strset, raw_total );
+            REQUIRE( another_strset.length() == 3 );
+            REQUIRE( length( another_strset[ 0 ] ) == 38 );
+            REQUIRE( length( another_strset[ 1 ] ) == 42 );
+            REQUIRE( length( another_strset[ 2 ] ) == 37 );
+            REQUIRE( another_strset.get_id( 0 ) == 0 );
+            REQUIRE( another_strset.get_offset( 0 ) == 0 );
+            REQUIRE( another_strset.get_id( 25 ) == 0 );
+            REQUIRE( another_strset.get_offset( 25 ) == 25 );
+            REQUIRE( another_strset.get_id( 37 ) == 0 );
+            REQUIRE( another_strset.get_offset( 37 ) == 37 );
+            REQUIRE( another_strset.get_id( 39 ) == 1 );
+            REQUIRE( another_strset.get_offset( 39 ) == 0 );
+            REQUIRE( another_strset.get_id( 51 ) == 1 );
+            REQUIRE( another_strset.get_offset( 51 ) == 12 );
+            REQUIRE( another_strset.get_id( 80 ) == 1 );
+            REQUIRE( another_strset.get_offset( 80 ) == 41 );
+            REQUIRE( another_strset.get_id( 82 ) == 2 );
+            REQUIRE( another_strset.get_offset( 82 ) == 0 );
+            REQUIRE( another_strset.get_id( 100 ) == 2 );
+            REQUIRE( another_strset.get_offset( 100 ) == 18 );
+            REQUIRE( another_strset.get_id( 118 ) == 2 );
+            REQUIRE( another_strset.get_offset( 118 ) == 36 );
+          }
+
+          AND_WHEN( "It is written to file and loaded again" )
+          {
+            std::string another_tmpfile = SEQAN_TEMP_FILENAME();
+            save( another_strset, another_tmpfile );
+            clear( another_strset );
+            open( another_strset, another_tmpfile );
+
+            THEN( "It should contains all strings" )
+            {
+              check_content( another_strset, raw_total );
+              REQUIRE( another_strset.length() == 3 );
+              REQUIRE( length( another_strset[ 0 ] ) == 38 );
+              REQUIRE( length( another_strset[ 1 ] ) == 42 );
+              REQUIRE( length( another_strset[ 2 ] ) == 37 );
+              REQUIRE( another_strset.get_id( 0 ) == 0 );
+              REQUIRE( another_strset.get_offset( 0 ) == 0 );
+              REQUIRE( another_strset.get_id( 25 ) == 0 );
+              REQUIRE( another_strset.get_offset( 25 ) == 25 );
+              REQUIRE( another_strset.get_id( 37 ) == 0 );
+              REQUIRE( another_strset.get_offset( 37 ) == 37 );
+              REQUIRE( another_strset.get_id( 39 ) == 1 );
+              REQUIRE( another_strset.get_offset( 39 ) == 0 );
+              REQUIRE( another_strset.get_id( 51 ) == 1 );
+              REQUIRE( another_strset.get_offset( 51 ) == 12 );
+              REQUIRE( another_strset.get_id( 80 ) == 1 );
+              REQUIRE( another_strset.get_offset( 80 ) == 41 );
+              REQUIRE( another_strset.get_id( 82 ) == 2 );
+              REQUIRE( another_strset.get_offset( 82 ) == 0 );
+              REQUIRE( another_strset.get_id( 100 ) == 2 );
+              REQUIRE( another_strset.get_offset( 100 ) == 18 );
+              REQUIRE( another_strset.get_id( 118 ) == 2 );
+              REQUIRE( another_strset.get_offset( 118 ) == 36 );
+            }
+          }
+        }
+      }
+
+      WHEN( "It is cleared" )
+      {
+        clear( dstrset );
+
+        THEN( "Its length should be zero" )
+        {
+          REQUIRE( length( dstrset ) == 0 );
+        }
+
+        AND_WHEN( "A string is added after clearance" )
+        {
+          push_back( dstrset, str3 );
+
+          THEN( "It should contain that string" )
+          {
+            REQUIRE( dstrset.length() == 1 );
+            check_content( dstrset, str3 );
+            REQUIRE( length( dstrset[ 0 ] ) == 37 );
+            REQUIRE( dstrset.get_id( 0 ) == 0 );
+            REQUIRE( dstrset.get_offset( 0 ) == 0 );
+            REQUIRE( dstrset.get_id( 25 ) == 0 );
+            REQUIRE( dstrset.get_offset( 25 ) == 25 );
+            REQUIRE( dstrset.get_id( 36 ) == 0 );
+            REQUIRE( dstrset.get_offset( 36 ) == 36 );
           }
         }
       }

@@ -32,6 +32,7 @@
 #include <seqan/basic.h>
 #include <sdsl/bit_vectors.hpp>
 
+#include "sequence.h"
 #include "utils.h"
 
 
@@ -39,10 +40,12 @@ namespace grem{
   /* Path specialization tags. */
   struct DefaultStrategy;
   struct DynamicStrategy;
+  struct MicroStrategy;
   struct CompactStrategy;
   typedef seqan::Tag< DefaultStrategy > Default;
   typedef seqan::Tag< DynamicStrategy > Dynamic;
   typedef seqan::Tag< CompactStrategy > Compact;
+  typedef seqan::Tag< MicroStrategy > Micro;
 
   /* Path node existence query strategies */
   struct OrderedStrategy;
@@ -56,11 +59,19 @@ namespace grem{
   template< typename TGraph >
     struct PathTraits< TGraph, Default > {
       typedef std::vector< typename TGraph::nodeid_type > TNodeSequence;
+      typedef std::set< typename TGraph::nodeid_type > TNodeSet;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Dynamic > {
       typedef std::deque< typename TGraph::nodeid_type > TNodeSequence;
+      typedef std::set< typename TGraph::nodeid_type > TNodeSet;
+    };
+
+  template< typename TGraph >
+    struct PathTraits< TGraph, Compact > {
+      typedef sdsl::enc_vector< sdsl::coder::elias_delta > TNodeSequence;
+      typedef std::set< typename TGraph::nodeid_type > TNodeSet;
     };
 
   /* Path interface functions forwards  ---------------------------------------- */
@@ -68,6 +79,9 @@ namespace grem{
   template< typename TGraph, typename TSpec >
     class Path;
 
+  template< typename TGraph, typename TSpec >
+      void
+    init_bv_node_breaks( Path< TGraph, TSpec >& path );
   template< typename TGraph, typename TSpec >
       void
     initialize( Path< TGraph, TSpec >& path );
@@ -125,10 +139,12 @@ namespace grem{
         typedef PathTraits< TGraph, TSpec > TTraits;
       public:
         /* ====================  TYPEDEFS      ======================================= */
+        typedef TSpec spec_type;
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
-        typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
+        typedef typename TTraits::TNodeSet nodes_set_type;
+        typedef typename nodes_type::size_type size_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const TGraph* vargraph;
@@ -143,8 +159,6 @@ namespace grem{
         sdsl::bit_vector::rank_1_type rs_node_breaks;
         sdsl::bit_vector::select_1_type ss_node_breaks;
       public:
-        /* ====================  TYPEDEFS      ======================================= */
-        typedef typename decltype( nodes )::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
         Path( const TGraph* g )
           : vargraph( g ), seqlen( 0 ), initialized( false )
@@ -162,12 +176,31 @@ namespace grem{
 
         Path( const Path& other )
         {
-          *this = other;  /**< @brief re-use copy assignment operator. */
+          this->vargraph = other.vargraph;
+          this->nodes = other.nodes;
+          this->nodes_set = other.nodes_set;
+          this->seqlen = other.seqlen;
+          this->seq = other.seq;
+          this->initialized = other.initialized;
+          this->bv_node_breaks = other.bv_node_breaks;
+          sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
+          sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
         }
 
         Path( Path&& other )
         {
-          *this = std::move( other );  /**< @brief re-use move assignment operator. */
+          this->vargraph = other.vargraph;
+          this->nodes = std::move( other.nodes );
+          this->nodes_set = std::move( other.nodes_set );
+          this->seqlen = other.seqlen;
+          this->seq = std::move( other.seq );
+          this->initialized = other.initialized;
+          this->bv_node_breaks.swap( other.bv_node_breaks );
+          sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
+          sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
+          // Free up memory first of `other`.
+          sdsl::util::clear( other.rs_node_breaks );
+          sdsl::util::clear( other.ss_node_breaks );
         }
 
         Path& operator=( const Path& other )
@@ -178,11 +211,9 @@ namespace grem{
           this->seqlen = other.seqlen;
           this->seq = other.seq;
           this->initialized = other.initialized;
-
-          sdsl::util::assign( this->bv_node_breaks, other.bv_node_breaks );
+          this->bv_node_breaks = other.bv_node_breaks;
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
           sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
-
           return *this;
         }
 
@@ -194,36 +225,26 @@ namespace grem{
           this->seqlen = other.seqlen;
           this->seq = std::move( other.seq );
           this->initialized = other.initialized;
+          // Free up memory of `this` first.
+          sdsl::util::clear( this->bv_node_breaks );
+          sdsl::util::clear( this->rs_node_breaks );
+          sdsl::util::clear( this->ss_node_breaks );
 
           this->bv_node_breaks.swap( other.bv_node_breaks );
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
           sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
-
+          // Free up memory first of `other`.
+          sdsl::util::clear( other.rs_node_breaks );
+          sdsl::util::clear( other.ss_node_breaks );
           return *this;
         }
 
         ~Path() = default;
         /* ====================  OPERATORS     ======================================= */
-        /**
-         *  @brief  Assign the path with another type of path.
-         *
-         *  @param  other The other path to use for assignment.
-         *  @return The reference to this instance after assignment.
-         *
-         *  @note If the type of the `other` path is the same as this path, the copy
-         *        assignment operator would be used.
-         */
         template< typename TSpec2 >
-            inline Path&
-          operator=( const Path< TGraph, TSpec2 >& other ) {
-            if ( this->vargraph != other.get_vargraph() ) {
-              throw std::runtime_error( "Mismatching variation graphs" );
-            }
-            nodes_type d;
-            std::copy( other.get_nodes().begin(), other.get_nodes().end(), std::back_inserter( d ) );
-            this->set_nodes( std::move( d ) );
-            return *this;
-          }
+            inline Path& operator=( Path< TGraph, TSpec2 >&& other );
+        template< typename TSpec2 >
+            inline Path& operator=( const Path< TGraph, TSpec2 >& other );
         /* ====================  ACCESSORS     ======================================= */
         /**
          *  @brief  getter function for vargraph.
@@ -295,25 +316,8 @@ namespace grem{
           this->vargraph = value;
         }  /* -----  end of method set_vargraph  ----- */
 
-        /**
-         *  @brief  setter function for nodes.
-         */
           inline void
-        set_nodes( nodes_type&& value )
-        {
-          assert( path.vargraph != nullptr );
-
-          this->nodes = std::move( value );
-          this->nodes_set.clear();
-          grem::reserve( this->nodes_set, this->nodes.size() );
-          this->seqlen = 0;
-          for ( const auto& node_id : this->nodes ) {
-            this->nodes_set.insert( node_id );
-            this->seqlen += this->vargraph->node_length( node_id );
-          }
-          this->seq.clear();
-          this->initialized = false;
-        }  /* -----  end of method set_nodes  ----- */
+        set_nodes( nodes_type&& value );
 
         /**
          *  @brief  setter function for nodes.
@@ -323,7 +327,22 @@ namespace grem{
         {
           this->set_nodes( nodes_type( value ) );
         }  /* -----  end of method set_nodes  ----- */
+
+        template< typename TIter >
+            inline void
+          set_nodes( TIter begin, TIter end )
+          {
+            nodes_type nd( end - begin );
+            std::copy( begin, end, nd.begin() );
+            this->set_nodes( std::move( nd ) );
+          }
+        /* ====================  FRIENDSHIPS   ======================================= */
+        friend class Path< TGraph, Default >;
+        friend class Path< TGraph, Dynamic >;
+        friend class Path< TGraph, Compact >;
         /* ====================  INTERFACE FUNCTIONS  ================================ */
+          friend void
+        init_bv_node_breaks< TGraph, TSpec >( Path< TGraph, TSpec >& path );
           friend void
         initialize< TGraph, TSpec >( Path< TGraph, TSpec >& path );
           friend void
@@ -350,17 +369,16 @@ namespace grem{
         pop_front< TGraph >( Path< TGraph, Dynamic >& path );
     };  /* -----  end of template class Path  ----- */
 
-  /* Normal Path interface functions  ------------------------------------------ */
+  /* Default Path interface functions  ----------------------------------------- */
 
   /**
-   *  @brief  Initialize data structure for efficient rank and select queries.
+   *  @brief  Initialize node breaks bitvector.
    *
    *  @param  path The path.
    *
-   *  It constructs node breaks bit vector and corresponding rank and select supports.
    *  The node breaks bit vector is a bit vector of sequence length. A bit at position
-   *  `i` is set if a node starts from that position in the sequence except for the
-   *  first node. For example for this path:
+   *  `i` is set if a node ends at that position in the sequence. For example for this
+   *  path:
    *
    *  (GCAAT) -> (A) -> (TTAGCC) -> (GCA)
    *
@@ -370,25 +388,39 @@ namespace grem{
    *
    *  and its bit vector is:
    *
-   *  000001100000100
+   *  000011000001001
    *
    *  which has a set bit at the first position of each node in the path.
    */
   template< typename TGraph, typename TSpec >
       inline void
+    init_bv_node_breaks( Path< TGraph, TSpec >& path )
+    {
+      assert( length( path ) != 0 );
+      sdsl::util::assign( path.bv_node_breaks, sdsl::bit_vector( path.seqlen, 0 ) );
+      typename Path< TGraph, TSpec >::seqsize_type cursor = 0;
+      for ( auto it = path.nodes.begin(); it != path.nodes.end(); ++it ) {
+        cursor += path.vargraph->node_length( *it );
+        path.bv_node_breaks[ cursor - 1 ] = 1;
+      }
+    }
+
+  /**
+   *  @brief  Initialize data structures for efficient rank and select queries.
+   *
+   *  @param  path The path.
+   *
+   *  It constructs node breaks bit vector and corresponding rank and select supports.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
     initialize( Path< TGraph, TSpec >& path )
     {
-      if ( path.is_initialized() ) return;
+      if ( path.is_initialized() || length( path ) == 0 ) return;
 
       assert( path.vargraph != nullptr );
 
-      sdsl::util::assign( path.bv_node_breaks,
-          sdsl::bit_vector( path.get_sequence_len(), 0 ) );
-      typename Path< TGraph, TSpec >::seqsize_type cursor = 0;
-      for ( const auto& node_id : path.nodes ) {
-        cursor += path.vargraph->node_length( node_id );
-        path.bv_node_breaks[ cursor - 1 ] = 1;
-      }
+      init_bv_node_breaks( path );
       sdsl::util::init_support( path.rs_node_breaks, &path.bv_node_breaks );
       sdsl::util::init_support( path.ss_node_breaks, &path.bv_node_breaks );
       path.initialized = true;
@@ -407,7 +439,7 @@ namespace grem{
     save( const Path< TGraph, TSpec >& path, std::ostream& out )
     {
       assert( path.is_initialized() );
-      serialize( out, path.nodes, path.nodes.begin(), path.nodes.end() );
+      serialize( out, path.nodes );
       serialize( path.bv_node_breaks, out );
     }  /* -----  end of function save  ----- */
 
@@ -424,7 +456,8 @@ namespace grem{
     save( Path< TGraph, TSpec >& path, std::ostream& out )
     {
       initialize( path );
-      save( std::add_const_t< Path< TGraph, TSpec >& >( path ), out );
+      Path< TGraph, TSpec > const& path_cr = path;
+      save( path_cr, out );
     }  /* -----  end of function save  ----- */
 
   /**
@@ -482,7 +515,7 @@ namespace grem{
     load( Path< TGraph, TSpec >& path, std::istream& in )
     {
       typename Path< TGraph, TSpec >::nodes_type nodes;
-      deserialize( in, nodes, std::back_inserter( nodes ) );
+      deserialize( in, nodes );
       path.set_nodes( std::move( nodes ) );
       load( path.bv_node_breaks, in );
       sdsl::util::init_support( path.rs_node_breaks, &path.bv_node_breaks );
@@ -599,7 +632,7 @@ namespace grem{
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
       assert( path.is_initialized() );
-      if ( pos < 0 || pos >= path.get_sequence_len() ) {
+      if ( pos < 0 || pos >= path.seqlen ) {
         throw std::runtime_error( "Position out of range." );
       }
       return path.rs_node_breaks( pos );
@@ -643,7 +676,7 @@ namespace grem{
     position_to_id( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::seqsize_type pos )
     {
-      return path.get_nodes().at( rank( path, pos ) );
+      return path.get_nodes()[ rank( path, pos ) ];
     }
 
   /**
@@ -745,7 +778,7 @@ namespace grem{
       inline void
     clear( Path< TGraph, TSpec >& path )
     {
-      path.nodes.clear();
+      clear( path.nodes );
       path.nodes_set.clear();
       path.seqlen = 0;
       path.seq.clear();
@@ -806,7 +839,7 @@ namespace grem{
       path.nodes.pop_back();
       path.initialized = false;
 
-      if ( path.seq.length() != 0 ) path.seq.resize( path.get_sequence_len() );
+      if ( path.seq.length() != 0 ) path.seq.resize( path.seqlen );
     }  /* -----  end of method pop_back  ----- */
 
   /**
@@ -921,39 +954,118 @@ namespace grem{
       }
     }  /* -----  end of template function trim_front_by_len  ----- */
 
-  /* END OF Normal Path interface functions  ----------------------------------- */
+  /* END OF Default Path interface functions  ---------------------------------- */
 
-  /* Compact Path interface functions forwards  -------------------------------- */
-
-  template< typename TGraph >
-      inline void
-    save( const Path< TGraph, Compact >& path, std::ostream& out );
-  template< typename TGraph >
-      inline void
-    add_node( Path< TGraph, Compact >& path, typename TGraph::nodeid_type const& node_id );
-  template< typename TGraph >
-      inline void
-    clear( Path< TGraph, Compact >& path );
-  template< typename TGraph >
-      inline void
-    reserve( Path< TGraph, Compact >& path,
-        typename Path< TGraph, Compact >::size_type size );
-  template< typename TGraph >
-      inline typename Path< TGraph, Compact >::size_type
-    length( const Path< TGraph, Compact >& path );
-
-  /* END OF Compact Path interface functions forwards  ------------------------- */
+  /* Path member functions  ---------------------------------------------------- */
 
   /**
-   *  @brief  Path template class Compact specialization.
+   *  @brief  Move assignment from other type of path.
+   *
+   *  @param  other The other path.
+   *  @return The reference to this instance after move.
+   */
+  template< typename TGraph, typename TSpec1 >
+    template< typename TSpec2 >
+        inline Path< TGraph, TSpec1 >&
+      Path< TGraph, TSpec1 >::operator=( Path< TGraph, TSpec2 >&& other )
+      {
+        using namespace sdsl::util;
+
+        this->vargraph = other.vargraph;
+
+        assign( this->nodes, other.nodes );
+        clear( other.nodes );
+
+        this->nodes_set = std::move( other.nodes_set );
+        this->seqlen = other.seqlen;
+        this->seq = std::move( other.seq );
+        this->initialized = other.initialized;
+        sdsl::util::clear( this->bv_node_breaks );
+        this->bv_node_breaks.swap( other.bv_node_breaks );
+        init_support( this->rs_node_breaks, &this->bv_node_breaks );
+        init_support( this->ss_node_breaks, &this->bv_node_breaks );
+        sdsl::util::clear( other.rs_node_breaks );
+        sdsl::util::clear( other.ss_node_breaks );
+        return *this;
+      }
+
+  /**
+   *  @brief  Assign a path with another type of path.
+   *
+   *  @param  other The Dynamic path.
+   *  @return The reference to this instance after assignment.
+   */
+  template< typename TGraph, typename TSpec1 >
+    template< typename TSpec2 >
+        inline Path< TGraph, TSpec1 >&
+      Path< TGraph, TSpec1 >::operator=( const Path< TGraph, TSpec2 >& other )
+      {
+        using namespace sdsl::util;
+
+        this->vargraph = other.vargraph;
+        assign( this->nodes, other.nodes );
+        this->nodes_set = other.nodes_set;
+        this->seqlen = other.seqlen;
+        this->seq = other.seq;
+        this->initialized = other.initialized;
+        this->bv_node_breaks = other.bv_node_breaks;
+        init_support( this->rs_node_breaks, &this->bv_node_breaks );
+        init_support( this->ss_node_breaks, &this->bv_node_breaks );
+        return *this;
+      }
+
+  /**
+   *  @brief  setter function for nodes.
+   */
+  template< typename TGraph, typename TSpec >
+      inline void
+    Path< TGraph, TSpec >::set_nodes( nodes_type&& value )
+    {
+      clear( *this );
+      if ( value.empty() ) return;
+
+      assert( this->vargraph != nullptr );
+
+      this->nodes = std::move( value );
+      std::copy( this->nodes.begin(), this->nodes.end(),
+          std::inserter( this->nodes_set, this->nodes_set.end() ) );
+      for ( auto&& n : this->nodes ) this->seqlen += this->vargraph->node_length( n );
+    }  /* -----  end of method set_nodes  ----- */
+
+  /* END OF Path member functions  --------------------------------------------- */
+
+  /* Micro Path interface functions forwards  ---------------------------------- */
+
+  template< typename TGraph >
+      inline void
+    save( const Path< TGraph, Micro >& path, std::ostream& out );
+  template< typename TGraph >
+      inline void
+    add_node( Path< TGraph, Micro >& path, typename TGraph::nodeid_type const& node_id );
+  template< typename TGraph >
+      inline void
+    clear( Path< TGraph, Micro >& path );
+  template< typename TGraph >
+      inline void
+    reserve( Path< TGraph, Micro >& path,
+        typename Path< TGraph, Micro >::size_type size );
+  template< typename TGraph >
+      inline typename Path< TGraph, Micro >::size_type
+    length( const Path< TGraph, Micro >& path );
+
+  /* END OF Micro Path interface functions forwards  --------------------------- */
+
+  /**
+   *  @brief  Path template class Micro specialization.
    *
    *  Represent a path in the variation graph with efficient node ID query.
    */
   template< typename TGraph >
-    class Path< TGraph, Compact >
+    class Path< TGraph, Micro >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
+        typedef Micro spec_type;
         typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
         /* ====================  DATA MEMBERS  ======================================= */
         nodes_set_type nodes_set;
@@ -1006,25 +1118,25 @@ namespace grem{
         }  /* -----  end of method set_nodes  ----- */
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        save< TGraph >( const Path< TGraph, Compact >& path, std::ostream& out );
+        save< TGraph >( const Path< TGraph, Micro >& path, std::ostream& out );
           friend void
-        add_node< TGraph >( Path< TGraph, Compact >& path,
+        add_node< TGraph >( Path< TGraph, Micro >& path,
             typename TGraph::nodeid_type const& node_id );
           friend void
-        clear< TGraph >( Path< TGraph, Compact >& path );
+        clear< TGraph >( Path< TGraph, Micro >& path );
           friend void
-        reserve< TGraph >( Path< TGraph, Compact >& path, size_type size );
+        reserve< TGraph >( Path< TGraph, Micro >& path, size_type size );
           friend size_type
-        length< TGraph >( const Path< TGraph, Compact >& path );
+        length< TGraph >( const Path< TGraph, Micro >& path );
           friend bool
-        contains< TGraph, Compact >( const Path< TGraph, Compact >& path,
+        contains< TGraph, Micro >( const Path< TGraph, Micro >& path,
             typename TGraph::nodeid_type node_id );
     };  /* -----  end of specialized template class Path  ----- */
 
-  /* Compact Path interface functions definitions  ----------------------------- */
+  /* Micro Path interface functions definitions  ------------------------------- */
 
   /**
-   *  @brief  Save the path to an output stream -- Compact specialization.
+   *  @brief  Save the path to an output stream -- Micro specialization.
    *
    *  @param  path The path.
    *  @param  out The output stream.
@@ -1033,28 +1145,25 @@ namespace grem{
    */
   template< typename TGraph >
       inline void
-    save( const Path< TGraph, Compact >& path, std::ostream& out )
+    save( const Path< TGraph, Micro >& path, std::ostream& out )
     {
       serialize( out, path.nodes_set, path.nodes_set.begin(), path.nodes_set.end() );
     }  /* -----  end of function save  ----- */
 
   /**
-   *  @brief  Save the path to file -- Compact specialization.
+   *  @brief  Save the path to an output stream -- Micro specialization.
    *
    *  @param  path The path.
-   *  @param  file_name The name of the file to be written.
+   *  @param  out The output stream.
    *
-   *  It saves the sequence of the node IDs into the file.
+   *  It saves the sequence of the node IDs into the given output stream.
    */
   template< typename TGraph >
       inline void
-    save( const Path< TGraph, Compact >& path, const std::string& file_name )
+    save( Path< TGraph, Micro >& path, std::ostream& out )
     {
-      std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
-      if( !ofs ) {
-        throw std::runtime_error( "cannot open file '" + file_name + "'" );
-      }
-      save( path, ofs );
+      Path< TGraph, Micro > const& path_cr = path;
+      save( path_cr, out );
     }  /* -----  end of function save  ----- */
 
   /**
@@ -1065,7 +1174,7 @@ namespace grem{
    */
   template< typename TGraph >
       inline void
-    add_node( Path< TGraph, Compact >& path,
+    add_node( Path< TGraph, Micro >& path,
         typename TGraph::nodeid_type const& node_id )
     {
       path.nodes_set.insert( node_id );
@@ -1078,7 +1187,7 @@ namespace grem{
    */
   template< typename TGraph >
       inline void
-    clear( Path< TGraph, Compact >& path )
+    clear( Path< TGraph, Micro >& path )
     {
       path.nodes_set.clear();
     }
@@ -1093,8 +1202,8 @@ namespace grem{
    */
   template< typename TGraph >
       inline void
-    reserve( Path< TGraph, Compact >& path,
-        typename Path< TGraph, Compact >::size_type size )
+    reserve( Path< TGraph, Micro >& path,
+        typename Path< TGraph, Micro >::size_type size )
     {
       grem::reserve( path.nodes_set, size );
     }
@@ -1108,32 +1217,32 @@ namespace grem{
    *  It gets the length of the path.
    */
   template< typename TGraph >
-      inline typename Path< TGraph, Compact >::size_type
-    length( const Path< TGraph, Compact >& path )
+      inline typename Path< TGraph, Micro >::size_type
+    length( const Path< TGraph, Micro >& path )
     {
       return path.nodes_set.size();
     }  /* -----  end of function length  ----- */
 
   /**
-   *  @brief  Load a Compact Path from an input stream.
+   *  @brief  Load a Micro Path from an input stream.
    *
    *  @param  path The path.
    *  @param  in The input stream.
    *
    *  It loads the sequence of the node IDs from the given input stream.
    *
-   *  Specialized for Compact Path.
+   *  Specialized for Micro Path.
    */
-  template< typename TGraph, typename TSpec >
+  template< typename TGraph >
       inline void
-    load( Path< TGraph, Compact >& path, std::istream& in )
+    load( Path< TGraph, Micro >& path, std::istream& in )
     {
       std::vector< typename TGraph::nodeid_type > nodes;
       deserialize( in, nodes, std::back_inserter( nodes ) );
       path.set_nodes( std::move( nodes ) );
     }
 
-  /* END OF Compact Path interface functions  ---------------------------------- */
+  /* END OF Micro Path interface functions  ------------------------------------ */
 
   /* Path interface functions  ------------------------------------------------- */
 
@@ -1206,9 +1315,40 @@ namespace grem{
     }  /* -----  end of template function contains  ----- */
 
   /**
-   *  @brief  Check whether this Compact path contains another path.
+   *  @brief  Check whether this path contains another path.
    *
-   *  @param  path The Compact path.
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  The input path should be smaller than the path. It checks if the nodes of the
+   *  given path is present in the node set. It DOES check the order of the nodes.
+   *
+   *  @overload it uses some candidate locations in the path SEQUENCE as hint to find
+   *            the location of the first node in the path nodes list.
+   */
+  template< typename TGraph, typename TSpec, typename TIter1, typename TIter2 >
+      inline bool
+    contains( const Path< TGraph, TSpec >& path, TIter1 begin, TIter1 end,
+        TIter2 loc_begin, TIter2 loc_end, Ordered )
+    {
+      if ( begin != end && contains( path, *begin ) ) {
+        for ( ; loc_begin != loc_end; ++loc_begin ) {
+          auto l = path.get_nodes().begin() + rank( path, *loc_begin );
+          if ( std::equal( begin, end, l ) ) return true;
+        }
+      }
+
+      return false;
+    }  /* -----  end of template function contains  ----- */
+
+  /**
+   *  @brief  Check whether this Micro path contains another path.
+   *
+   *  @param  path The Micro path.
    *  @param  begin The begin iterator of node IDs set of the path to be checked.
    *  @param  end The end iterator of node IDs set of the path to be checked.
    *  @return `true` if this path is a superset of the given path; otherwise `false`
@@ -1221,7 +1361,7 @@ namespace grem{
    */
   template< typename TGraph, typename TIter >
       inline bool
-    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end, Default )
+    contains( const Path< TGraph, Micro >& path, TIter begin, TIter end, Default )
     {
       return contains( path, begin, end, Unordered() );
     }  /* -----  end of template function contains  ----- */
@@ -1236,7 +1376,7 @@ namespace grem{
    *          -- including the case that the given path is empty; i.e.
    *          `end == begin`.
    *
-   *  Overloaded Defaut behaviour for non-Compact paths.
+   *  Overloaded Defaut behaviour for non-Micro paths.
    */
   template< typename TGraph, typename TSpec, typename TIter >
       inline bool

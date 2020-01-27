@@ -23,6 +23,7 @@
 #include <seqan/index.h>
 
 #include "sequence.h"
+#include "fmindex.h"
 
 namespace grem {
   /* Typedefs  ------------------------------------------------------------------- */
@@ -65,6 +66,26 @@ namespace grem {
       _create_fm_index( index );
     }
 
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline void
+    create_index( seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >& index )
+    {
+      _create_fm_index( index );
+    }
+
+  template< typename TText, typename TIndexSpec >
+      inline bool
+    open( seqan::Index< TText, TIndexSpec >& index, const std::string& file_name )
+    {
+      return seqan::open( index, file_name.c_str() );
+    }
+
+  template< typename TText, typename TIndexSpec >
+      inline bool
+    save( seqan::Index< TText, TIndexSpec >& index, const std::string& file_name )
+    {
+      return seqan::save( index, file_name.c_str() );
+    }
 }  /* -----  end of namespace grem  ----- */
 
 namespace seqan {

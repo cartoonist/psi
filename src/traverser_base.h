@@ -213,7 +213,7 @@ namespace grem
         typedef typename seqan::Fibre< TIndex, seqan::FibreText >::Type stringset_type;
         typedef typename seqan::Value< stringset_type >::Type text_type;
         typedef Records< stringset_type > records_type;
-        typedef TopDownFine< seqan::ParentLinks<> > iterspec_type;
+        typedef TopDownFine< > iterspec_type;
         typedef TIndexIter< TIndex, iterspec_type > iterator_type;
         typedef TMatchingTraits< iterator_type > traits_type;
         typedef typename seqan::SAValue< TIndex >::Type TSAValue;

@@ -37,7 +37,7 @@ namespace grem {
    *  NOTE: The logger are multi-threaded.
    */
     inline void
-  config_logger ( const Options& options )
+  config_logger( const Options& options )
   {
     // Set to asynchronous mode.
     spdlog::set_async_mode(8192);

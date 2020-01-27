@@ -25,7 +25,8 @@
 #include <set>
 #include <memory>
 
-#include "sequence.h"
+#include <seqan/basic.h>
+#include <sdsl/enc_vector.hpp>
 
 namespace grem {
   /**
@@ -248,6 +249,60 @@ namespace grem {
 
 
   /**
+   *  @brief  Serialize an `deque` to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  v The `deque`.
+   *  @param[in]  begin The begin input iterator [unused].
+   *  @param[in]  end The end input iterator [unused].
+   *
+   *  A wraper to `serialize` member function of `deque`.
+   */
+  template< typename T >
+    inline void
+  serialize( std::ostream& out, const std::deque< T >& v )
+  {
+    serialize( out, v.begin(), v.end() );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Serialize an `vector` to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  v The `vector`.
+   *  @param[in]  begin The begin input iterator [unused].
+   *  @param[in]  end The end input iterator [unused].
+   *
+   *  A wraper to `serialize` member function of `vector`.
+   */
+  template< typename T >
+    inline void
+  serialize( std::ostream& out, const std::vector< T >& v )
+  {
+    serialize( out, v.begin(), v.end() );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Serialize an `enc_vector` to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  ev The `enc_vector`.
+   *  @param[in]  begin The begin input iterator [unused].
+   *  @param[in]  end The end input iterator [unused].
+   *
+   *  A wraper to `serialize` member function of `enc_vector`.
+   */
+  template< typename TCoder >
+    inline void
+  serialize( std::ostream& out, const sdsl::enc_vector< TCoder >& ev )
+  {
+    ev.serialize( out );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
    *  @brief  Deserialize a simple object from an input stream.
    *
    *  @param[in,out]  in The input stream.
@@ -263,17 +318,164 @@ namespace grem {
     }
 
 
+  template< typename TObject >
+      inline void
+    open( TObject& obj, std::istream& in )
+    {
+      obj.load( in );
+    }
+
+
+  template< typename TObject >
+      inline void
+    save( TObject& obj, std::ostream& out )
+    {
+      obj.serialize( out );
+    }
+
+
   /**
-   *  @brief  Reserve the required memory for the container of size `size`.
+   *  @brief  Assign a container to another one.
+   *
+   *  @param  a The container to be assigned.
+   *  @param  b The container to assign.
+   *
+   *  Provide an interface function for assignment.
+   */
+  template< typename TContainer1, typename TContainer2 >
+      inline void
+    _assign( TContainer1& a, const TContainer2& b )
+    {
+      a.resize( b.size() );
+      std::copy( b.begin(), b.end(), a.begin() );
+    }
+
+
+  /**
+   *  @brief  Assign a container to another one.
+   *
+   *  @param  a The container to be assigned.
+   *  @param  b The container to assign.
+   *
+   *  Provide an interface function for assignment.
+   */
+  template< typename T, typename TContainer >
+      inline void
+    assign( std::vector< T >& a, const TContainer& b )
+    {
+      _assign( a, b );
+    }
+
+
+  /**
+   *  @brief  Assign a container to another one.
+   *
+   *  @param  a The container to be assigned.
+   *  @param  b The container to assign.
+   *
+   *  Provide an interface function for assignment.
+   */
+  template< typename T, typename TContainer >
+      inline void
+    assign( std::deque< T >& a, const TContainer& b )
+    {
+      _assign( a, b );
+    }
+
+
+  /**
+   *  @brief  Assign a container to another one.
+   *
+   *  @param  a The container to be assigned.
+   *  @param  b The container to assign.
+   *
+   *  Provide an interface function for assignment.
+   *
+   *  @overload for `sdsl::enc_vector`.
+   */
+  template< typename TCoder, typename TContainer >
+      inline void
+    assign( sdsl::enc_vector< TCoder >& a, const TContainer& b )
+    {
+      sdsl::util::assign( a, b );
+    }
+
+
+  /**
+   *  @brief  Clear the given container.
+   *
+   *  @param  c The container to be cleaned.
+   *
+   *  A wrapper function to provide an interface to `clean` member function of
+   *  `std::vector`.
+   */
+  template< typename T >
+      inline void
+    clear( std::vector< T >& c )
+    {
+      c.clear();
+    }
+
+
+  /**
+   *  @brief  Clear the given container.
+   *
+   *  @param  c The container to be cleaned.
+   *
+   *  A wrapper function to provide an interface to `clean` member function of
+   *  `std::vector`.
+   */
+  template< typename T >
+      inline void
+    clear( std::deque< T >& c )
+    {
+      c.clear();
+    }
+
+
+  /**
+   *  @brief  Clear the given container.
+   *
+   *  @param  c The container to be cleaned.
+   *
+   *  A wrapper function to provide an interface to `clean` member function of
+   *  `sdsl::enc_vector`.
+   */
+  template< typename TCoder >
+      inline void
+    clear( sdsl::enc_vector< TCoder >& ev )
+    {
+      sdsl::util::clear( ev );
+    }
+}  /* -----  end of namespace grem  ----- */
+
+namespace grem {
+  /**
+   *  @brief  Reserve the required memory for the vector of size `size`.
    *
    *  @param  container The container.
    *  @param  size Size to reserve.
    *
    *  It calls reserve member function of the container.
    */
-  template< typename TContainer, typename TSize >
+  template< typename TObject, typename TSize >
       inline void
-    reserve( TContainer& container, TSize size )
+    reserve( std::vector< TObject >& container, const TSize size )
+    {
+      container.reserve( size );
+    }
+
+  /**
+   *  @brief  Reserve the required memory for the string of size `size`.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  It calls reserve member function of the container.
+   */
+  template< typename TSize >
+      inline void
+    reserve( std::string& container, const TSize size )
     {
       container.reserve( size );
     }
@@ -289,7 +491,7 @@ namespace grem {
    */
   template< typename TObject, typename TSize >
       inline void
-    reserve( std::deque< TObject >& container, TSize size )
+    reserve( std::deque< TObject >& container, const TSize size )
     {
       /* NOOP */
     }
@@ -305,7 +507,23 @@ namespace grem {
    */
   template< typename TObject, typename TSize >
       inline void
-    reserve( std::set< TObject >& container, TSize size )
+    reserve( std::set< TObject >& container, const TSize size )
+    {
+      /* NOOP */
+    }
+
+
+  /**
+   *  @overload The `sdsl::enc_vector` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  Do nothing.
+   */
+  template< typename TCoder, typename TSize >
+      inline void
+    reserve( sdsl::enc_vector< TCoder >& container, const TSize size )
     {
       /* NOOP */
     }
@@ -334,6 +552,40 @@ namespace grem {
       *itr++ = item;
     }
   }  /* -----  end of template function deserialize  ----- */
+
+  template< typename T >
+    inline void
+  deserialize( std::istream& in, std::vector< T >& container )
+  {
+    deserialize( in, container, std::back_inserter( container ) );
+  }  /* -----  end of template function deserialize  ----- */
+
+  template< typename T >
+    inline void
+  deserialize( std::istream& in, std::deque< T >& container )
+  {
+    deserialize( in, container, std::back_inserter( container ) );
+  }  /* -----  end of template function deserialize  ----- */
+
+  template< typename TCoder >
+    inline void
+  deserialize( std::istream& in, sdsl::enc_vector< TCoder >& ev )
+  {
+    ev.load( in );
+  }  /* -----  end of template function deserialize  ----- */
+
+  /* Meta-functions */
+  template< typename T1, typename T2 >
+    using enable_if_equal = std::enable_if< std::is_same< T1, T2 >::value, T2 >;
+
+  template< typename T1, typename T2 >
+    using enable_if_not_equal = std::enable_if< !std::is_same< T1, T2 >::value, T2 >;
+
+  template< typename T1, typename T2 >
+    using enable_if_equal_t = typename enable_if_equal< T1, T2 >::type;
+
+  template< typename T1, typename T2 >
+    using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef UTILS_H__  ----- */

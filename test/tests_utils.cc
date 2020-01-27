@@ -21,6 +21,8 @@
 #include <vector>
 #include <iterator>
 
+#include <seqan/sequence.h>
+
 #include "tests_base.h"
 #include "utils.h"
 

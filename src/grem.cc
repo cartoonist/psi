@@ -137,7 +137,7 @@ template< typename TPathSet, typename TMapper >
         /* Serialize the indexed paths. */
         if ( !paths_index ) {
           log->warn( "No paths index file is specified. Skipping..." );
-        } else if ( !paths.save( paths_index_file ) ) {
+        } else if ( !paths.serialize( paths_index_file ) ) {
           log->warn( "Specified paths index file is not writable. Skipping..." );
         }
       }
@@ -149,7 +149,7 @@ template< typename TPathSet, typename TMapper >
 template< typename TIndexSpec  >
     void
   find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, seqan::File<>& output_file,
-      unsigned int seed_len, unsigned int chunk_size, unsigned int start_every,
+      unsigned int seed_len, unsigned int chunk_size, unsigned int step_size,
       unsigned int path_num, unsigned int context, bool paths_index, bool patched,
       const std::string& paths_index_file, bool nomapping, bool dumpstarts,
       const std::string& starts_path, TIndexSpec const /* Tag */ )
@@ -165,13 +165,13 @@ template< typename TIndexSpec  >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide paths set in lazy mode. */
-    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths( context, true );
+    PathSet< VarGraph, DiskString, grem::FMIndex<>, Forward > paths( context, true );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, patched, paths_index_file, path_num );
 
     log->info( "Selecting starting loci..." );
     /* Locate starting loci. */
-    mapper.add_all_loci( paths, seed_len, start_every );
+    mapper.add_all_loci( paths, seed_len, step_size );
     log->info( "Selected starting loci in {} us.",
         Timer::get_duration( "add-starts" ).count() );
     log->info( "Number of starting loci selected (in {} nodes): {}",
@@ -241,10 +241,12 @@ template< typename TIndexSpec  >
         log->info( "Finding seeds on paths..." );
         auto pre_found = found;
         /* Find seeds on genome-wide paths. */
-        mapper.seeds_on_paths( paths, write_callback );
-        log->info( "Found seed on paths in {} us.",
-            Timer::get_duration( "paths-seed-find" ).count() );
-        log->info( "Total number of seeds found on paths: {}", found - pre_found );
+        if ( path_num != 0 ){
+          mapper.seeds_on_paths( paths, write_callback );
+          log->info( "Found seed on paths in {} us.",
+              Timer::get_duration( "paths-seed-find" ).count() );
+          log->info( "Total number of seeds found on paths: {}", found - pre_found );
+        }
         log->info( "Traversing..." );
         /* Find seeds on variation graph by traversing starting loci. */
         mapper.traverse ( write_callback );
@@ -268,7 +270,7 @@ startup( const Options & options )
   log->info( "- Paths index file: '{}'", options.paths_index_file );
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
-  log->info( "- Starting loci interval: {}", options.start_every );
+  log->info( "- Step size: {}", options.step_size );
 
   log->info( "Opening file '{}'...", options.fq_path );
   SeqFileIn reads_infile;
@@ -308,7 +310,7 @@ startup( const Options & options )
                               output_file,
                               options.seed_len,
                               options.chunk_size,
-                              options.start_every,
+                              options.step_size,
                               options.path_num,
                               options.context,
                               options.paths_index,
@@ -324,7 +326,7 @@ startup( const Options & options )
                              output_file,
                              options.seed_len,
                              options.chunk_size,
-                             options.start_every,
+                             options.step_size,
                              options.path_num,
                              options.context,
                              options.paths_index,
@@ -386,7 +388,7 @@ setup_argparser( seqan::ArgumentParser& parser )
   setDefaultValue(parser, "c", 0);
 
   // starting loci interval
-  addOption(parser, seqan::ArgParseOption("e", "start-every", "Start from every given "
+  addOption(parser, seqan::ArgParseOption("e", "step-size", "Start from every given "
                                           "number of loci in all nodes. If it is set to"
                                           " 1, it means start from all positions in a "
                                           "node.", seqan::ArgParseArgument::INTEGER,
@@ -455,7 +457,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.output_path, parser, "output" );
   getOptionValue( options.seed_len, parser, "seed-length" );
   getOptionValue( options.chunk_size, parser, "chunk-size" );
-  getOptionValue( options.start_every, parser, "start-every" );
+  getOptionValue( options.step_size, parser, "step-size" );
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   options.paths_index = isSet( parser, "paths-index" );

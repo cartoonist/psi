@@ -41,15 +41,16 @@ namespace grem {
         /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::StringSet< TText, seqan::Owner<> > TStringSet;
         typedef seqan::Index< TStringSet, TIndexSpec > TIndex;
-        typedef Path< TGraph > TPath;
+        typedef Path< TGraph, Compact > TPath;
         typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
         typedef uint64_t context_type;
         typedef TPath value_type;
         /* ====================  DATA MEMBERS  ======================================= */
-        TStringSet string_set;
         TIndex index;
         std::vector< TPath > paths_set;
       private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        TStringSet string_set;
         /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
         context_type context;
         bool lazy_mode;
@@ -110,9 +111,9 @@ namespace grem {
           clear( this->string_set );
           clear( this->index );
 
-          if ( open( this->index, filepath_prefix.c_str() ) &&
+          if ( open( this->index, filepath_prefix ) &&
               this->load_paths_set( filepath_prefix + "_paths", vargraph ) ) {
-            this->string_set = indexText( this->index );
+            //this->string_set = indexText( this->index );  /* XXX: Unnecessary copy. Use `FibreText` of `this->index` directly. */
             return true;
           }
           return false;
@@ -128,9 +129,9 @@ namespace grem {
          *  It first saves the index into the file. Then, the nodes sets will be written.
          */
           inline bool
-        save( const std::string& filepath_prefix )
+        serialize( const std::string& filepath_prefix )
         {
-          if ( seqan::save( this->index, filepath_prefix.c_str() ) &&
+          if ( save( this->index, filepath_prefix ) &&
               this->save_paths_set( filepath_prefix + "_paths" ) ) {
             return true;
           }
@@ -146,7 +147,7 @@ namespace grem {
          *  to the string set, and creates string set index if it is not in lazy mode.
          */
           inline void
-        add_path( TPath&& new_path )
+        add_path( TPath new_path )
         {
           this->paths_set.push_back( std::move( new_path ) );
           initialize( this->paths_set.back() );
@@ -157,23 +158,46 @@ namespace grem {
         }  /* -----  end of method add_path  ----- */
 
         /**
-         *  @brief  Add a path to the set.
+         *  @brief  Add a path of different type to the set.
          *
-         *  @param  new_path The new path to be added.
+         *  @param  new_path The new path to be added of different type.
          *
-         *  Overloaded.
+         *  It appends the new path to the paths set, adds its string representation
+         *  to the string set, and creates string set index if it is not in lazy mode.
          */
-          inline void
-        add_path( const TPath& new_path )
-        {
-          this->add_path( TPath( new_path ) );
-        }
+        template< typename TPathSpec >
+            inline void
+          add_path( const Path< VarGraph, TPathSpec >& new_path,
+              enable_if_not_equal_t< typename TPath::spec_type, TPathSpec > tag = TPathSpec() )
+          {
+            TPath native_path( new_path.get_vargraph() );
+            native_path = new_path;
+            this->add_path( std::move( native_path ) );
+          }
+
+        /**
+         *  @brief  Add a path of different type to the set.
+         *
+         *  @param  new_path The new path to be added of different type.
+         *
+         *  It appends the new path to the paths set, adds its string representation
+         *  to the string set, and creates string set index if it is not in lazy mode.
+         */
+        template< typename TPathSpec >
+            inline void
+          add_path( Path< VarGraph, TPathSpec >&& new_path,
+              enable_if_not_equal_t< typename TPath::spec_type, TPathSpec > tag = TPathSpec() )
+          {
+            TPath native_path( new_path.get_vargraph() );
+            native_path = std::move( new_path );
+            this->add_path( std::move( native_path ) );
+          }
 
         /**
          *  @brief  alias: See `add_path`.
          */
           inline void
-        push_back( TPath&& new_path )
+        push_back( TPath new_path )
         {
           this->add_path( std::move( new_path ) );
         }
@@ -181,10 +205,21 @@ namespace grem {
         /**
          *  @brief  alias: See `add_path`.
          */
+        template< typename TPathSpec >
           inline void
-        push_back( const TPath& new_path )
+        push_back( const Path< VarGraph, TPathSpec >& new_path )
         {
-          this->add_path( TPath( new_path ) );
+          this->add_path( new_path );
+        }
+
+        /**
+         *  @brief  alias: See `add_path`.
+         */
+        template< typename TPathSpec >
+          inline void
+        push_back( Path< VarGraph, TPathSpec >&& new_path )
+        {
+          this->add_path( std::move( new_path ) );
         }
 
         /**
@@ -210,7 +245,7 @@ namespace grem {
           void
         reserve( size_type size )
         {
-          seqan::reserve( this->string_set, size, seqan::Exact() );
+          seqan::reserve( this->string_set, size );
           this->paths_set.reserve( size );
         }  /* -----  end of method reserve  ----- */
 
@@ -263,10 +298,12 @@ namespace grem {
           add_path_sequence( TIter begin, TIter end )
           {
             for ( ; begin != end; ++begin ) {
-              TText path_str( sequence( *begin, TSequenceDirection(), this->context ) );
-              char fake_qual = 'I';  // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
-              assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
-              appendValue( this->string_set, path_str );
+              //TText path_str( sequence( *begin, TSequenceDirection(), this->context ) );
+              // :TODO:Mon Mar 06 13:00:\@cartoonist: quality score?
+              //char fake_qual = 'I';
+              //assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
+              appendValue( this->string_set,
+                  sequence( *begin, TSequenceDirection(), this->context ) );
             }
             this->index = TIndex( this->string_set );
           }
@@ -326,9 +363,9 @@ namespace grem {
           if( !ofs ) return false;
 
           try {
-            serialize( ofs, this->context );
-            serialize( ofs, static_cast< size_type >( this->sorted ) );
-            serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
+            grem::serialize( ofs, this->context );
+            grem::serialize( ofs, static_cast< size_type >( this->sorted ) );
+            grem::serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
             for ( const auto& path : this->paths_set ) {
               grem::save( path, ofs );
             }
@@ -390,7 +427,7 @@ namespace grem {
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
       auto context_shift = set.get_context_shift( real_pos );
       return position_to_offset( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
     }
@@ -419,7 +456,7 @@ namespace grem {
         TSAValue< typename PathSet< TGraph, TText, TIndexSpec, Reversed >::TIndex > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( set.string_set[ pos.i1 ] ) - pos.i2 - 1;
+      real_pos.i2 = length( indexText( set.index )[ pos.i1 ] ) - pos.i2 - 1;
       auto context_shift = set.get_context_shift( real_pos );
       return position_to_id( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
     }
@@ -493,13 +530,17 @@ namespace grem {
 
       auto pre_itr = set.paths_set.begin();
       auto cur_itr = pre_itr + 1;
+      auto vargraph = (*pre_itr).get_vargraph();
 
       if ( pre_itr == set.paths_set.end() ) return;
 
-      TPath path = *pre_itr;
+      Path< VarGraph > path( vargraph );
+      path = *pre_itr;
       while ( cur_itr != set.paths_set.end() ) {
-        if ( (*pre_itr).get_nodes().back() > (*cur_itr).get_nodes().front() ) {
-          out.push_back( std::move( path ) );
+        if ( *( (*pre_itr).get_nodes().end() - 1 ) > *(*cur_itr).get_nodes().begin() ) {
+          TPath final_path( vargraph );
+          final_path = std::move( path );
+          out.push_back( std::move( final_path ) );
           clear( path );
         }
         path += *cur_itr;
@@ -507,7 +548,9 @@ namespace grem {
         ++cur_itr;
       }
 
-      out.push_back( std::move( path ) );
+      TPath final_path( vargraph );
+      final_path = std::move( path );
+      out.push_back( std::move( final_path ) );
     }
 
   /* END OF PathSet interface functions  ----------------------------------------- */
