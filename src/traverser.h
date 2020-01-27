@@ -40,27 +40,27 @@ namespace grem
 {
   /* Forwards */
   template< typename TIndexSpec >
-    class PathTraverser;
+    class Traverser;
 
   /** Traverse interface functions **
-   *  @note These methods should be specialized for any other PathTraverser
+   *  @note These methods should be specialized for any other Traverser
    *        classes.
    **/
   template< typename TIndexSpec >
   void
-    move_forward(PathTraverser< TIndexSpec > &ptrav,
-                 std::vector< PathTraverser< TIndexSpec >> &new_ptravs)
+    move_forward(Traverser< TIndexSpec > &ptrav,
+                 std::vector< Traverser< TIndexSpec >> &new_ptravs)
   {
     if (ptrav.finished)
       throw std::runtime_error("cannot move forward on a finalized path.");
 
     ptrav.one_node_forward();
 
-    VarGraph::NodeID c_node_id = ptrav.c_locus.node_id();
+    VarGraph::nodeid_type c_node_id = ptrav.c_locus.node_id();
 
     if (ptrav.is_seed_hit() ||
         ptrav.iters_state.empty() ||
-        !ptrav.vargraph->has_fwd_edge(c_node_id))
+        !ptrav.vargraph->has_edges_from(c_node_id))
     {
       ptrav.finished = true;
     }
@@ -68,47 +68,47 @@ namespace grem
     if (ptrav.finished) return;
     else
     {
-      auto edges = ptrav.vargraph->fwd_edges(c_node_id);
+      auto edges = ptrav.vargraph->edges_from(c_node_id);
       auto it = edges.begin();
-      ptrav.c_locus.set_node_id((*it)->to());
+      ptrav.c_locus.set_node_id((*it).to());
       ptrav.c_locus.set_offset(0);
       ++it;
 
       for (; it != edges.end(); ++it)
       {
         vg::Position new_pos;
-        new_pos.set_node_id((*it)->to());
+        new_pos.set_node_id((*it).to());
         new_pos.set_offset(0);
-        new_ptravs.push_back(PathTraverser< TIndexSpec >(ptrav, std::move(new_pos)));
+        new_ptravs.push_back(Traverser< TIndexSpec >(ptrav, std::move(new_pos)));
       }
     }
   }
 
   template< typename TIndexSpec >
   bool
-    is_finished(PathTraverser< TIndexSpec > & ptrav)
+    is_finished(Traverser< TIndexSpec > & ptrav)
   {
     return ptrav.finished;
   }
 
   template< typename TIndexSpec >
   bool
-    is_valid(PathTraverser< TIndexSpec > & ptrav)
+    is_valid(Traverser< TIndexSpec > & ptrav)
   {
     return ptrav.is_seed_hit();
   }
 
   template< typename TIndexSpec >
   void
-    get_results(PathTraverser< TIndexSpec > &ptrav,
-                std::vector< typename PathTraverser< TIndexSpec >::Output > &results)
+    get_results(Traverser< TIndexSpec > &ptrav,
+                std::vector< typename Traverser< TIndexSpec >::Output > &results)
   {
     if (is_valid(ptrav))
       ptrav.get_results(results);
   }
 
   template< typename TIndexSpec >
-    class PathTraverser
+    class Traverser
     {
       public:
         // Member typedefs and classes
@@ -126,7 +126,7 @@ namespace grem
         // Traverse parameters
         class Param
         {
-          friend class PathTraverser;
+          friend class Traverser;
 
           public:
           // Constructors
@@ -180,26 +180,26 @@ namespace grem
         };
 
         // Constructors
-        PathTraverser(const VarGraph *graph,
-                      PathTraverser::Param *trav_params,
+        Traverser(const VarGraph *graph,
+                      Traverser::Param *trav_params,
                       vg::Position start) :
           vargraph(graph), parameters(trav_params), s_locus(start),
           c_locus(start), path_length(0), finished(false)
         {
           this->iters_state.push_back(
               IterState({
-                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, PathTraverser::IterType >(this->parameters->reads_index),
+                TIndexIter< Dna5QStringSetIndex < TIndexSpec >, Traverser::IterType >(this->parameters->reads_index),
                 0})
               );
         }
 
-        PathTraverser(const VarGraph &graph,
-                      PathTraverser::Param &trav_params,
+        Traverser(const VarGraph &graph,
+                      Traverser::Param &trav_params,
                       vg::Position start) :
-          PathTraverser(&graph, &trav_params, start)
+          Traverser(&graph, &trav_params, start)
         {}
 
-        PathTraverser(const PathTraverser & other)
+        Traverser(const Traverser & other)
         {
           this->vargraph = other.vargraph;
           this->parameters = other.parameters;
@@ -210,7 +210,7 @@ namespace grem
           this->finished = other.finished;
         }
 
-        PathTraverser(PathTraverser && other) noexcept
+        Traverser(Traverser && other) noexcept
         {
           this->vargraph = other.vargraph;
           this->parameters = other.parameters;
@@ -221,14 +221,14 @@ namespace grem
           this->finished = other.finished;
         }
 
-        PathTraverser & operator=(const PathTraverser & other)
+        Traverser & operator=(const Traverser & other)
         {
-          PathTraverser tmp(other);
+          Traverser tmp(other);
           *this = std::move(tmp);
           return *this;
         }
 
-        PathTraverser & operator=(PathTraverser && other) noexcept
+        Traverser & operator=(Traverser && other) noexcept
         {
           this->vargraph = other.vargraph;
           this->parameters = other.parameters;
@@ -241,27 +241,27 @@ namespace grem
           return *this;
         }
 
-        ~PathTraverser() noexcept {}
+        ~Traverser() noexcept {}
 
-        PathTraverser(const PathTraverser & other, vg::Position new_locus) :
-          PathTraverser(other)
+        Traverser(const Traverser & other, vg::Position new_locus) :
+          Traverser(other)
         {
           this->c_locus = new_locus;
         }
 
         // Traverse interface functions (are friends!)
-        friend void move_forward< TIndexSpec >(PathTraverser &ptrav,
-                                                      std::vector< PathTraverser > &new_ptravs);
-        friend bool is_finished< TIndexSpec >(PathTraverser &ptrav);
-        friend bool is_valid< TIndexSpec >(PathTraverser &ptrav);
-        friend void get_results< TIndexSpec >(PathTraverser &ptrav,
-                                                     std::vector< PathTraverser::Output > &results);
+        friend void move_forward< TIndexSpec >(Traverser &ptrav,
+                                                      std::vector< Traverser > &new_ptravs);
+        friend bool is_finished< TIndexSpec >(Traverser &ptrav);
+        friend bool is_valid< TIndexSpec >(Traverser &ptrav);
+        friend void get_results< TIndexSpec >(Traverser &ptrav,
+                                                     std::vector< Traverser::Output > &results);
 
         // Attributes getters and setters
         inline const VarGraph *              get_vargraph()
         { return this->vargraph; }
 
-        inline const PathTraverser< TIndexSpec >::Param *  get_paramters()
+        inline const Traverser< TIndexSpec >::Param *  get_paramters()
         { return this->parameters; }
 
         inline vg::Position                  get_s_locus()
@@ -285,13 +285,13 @@ namespace grem
       private:
         // Internal typedefs and classes
         typedef struct {
-          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, PathTraverser::IterType > iter;
+          TIndexIter< Dna5QStringSetIndex < TIndexSpec >, Traverser::IterType > iter;
           unsigned int   boffset;
         } IterState;
 
         // Attributes
         const VarGraph *         vargraph;        // pointer to variation graph.
-        PathTraverser< TIndexSpec >::Param *   parameters;      // pointer to params (shared between traversers).
+        Traverser< TIndexSpec >::Param *   parameters;      // pointer to params (shared between traversers).
         vg::Position             s_locus;         // starting locus
         vg::Position             c_locus;         // current locus
         std::vector< IterState > iters_state;
@@ -307,7 +307,7 @@ namespace grem
         inline bool go_down(IterState &its, seqan::Value< seqan::Dna5QString >::Type c)
         {
 #ifndef NDEBUG
-          PathTraverser::inc_total_go_down(1);
+          Traverser::inc_total_go_down(1);
 #endif
           // XXX: assume "N" as a mismatch.
           if (c == 'N' || c == 'n') return false;
@@ -344,8 +344,8 @@ namespace grem
 
         inline void one_node_forward()
         {
-          VarGraph::NodeID c_node_id = this->c_locus.node_id();
-          const vg::Node &c_node = this->vargraph->node_by(c_node_id);
+          VarGraph::nodeid_type c_node_id = this->c_locus.node_id();
+          const VarGraph::node_type &c_node = this->vargraph->node(c_node_id);
           seqan::Dna5QString partseq = c_node.sequence().substr(this->c_locus.offset());
 
           long unsigned int i;
@@ -359,7 +359,7 @@ namespace grem
           }
         }
 
-        inline void get_results(std::vector< PathTraverser< TIndexSpec >::Output > &results)
+        inline void get_results(std::vector< Traverser< TIndexSpec >::Output > &results)
         {
           for (auto its : this->iters_state)
           {
@@ -367,7 +367,7 @@ namespace grem
             seqan::String<TSAValue> saPositions = getOccurrences(its.iter);
             for (unsigned i = 0; i < length(saPositions); ++i)
             {
-              PathTraverser::Output hit;
+              Traverser::Output hit;
               seqan::setBeginPositionH ( hit, this->s_locus.node_id());
               seqan::setEndPositionH ( hit, this->s_locus.offset());
               seqan::setBeginPositionV ( hit, saPositions[i].i1);  // Read ID.
@@ -418,7 +418,7 @@ namespace grem
           this->starting_points.push_back(locus);
         }
 
-        inline void add_start ( const VarGraph::NodeID & node_id,
+        inline void add_start ( const VarGraph::nodeid_type & node_id,
             const unsigned long int & offset )
         {
           vg::Position locus;
@@ -448,12 +448,12 @@ namespace grem
             LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
 
             seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
-            std::vector < VarGraph::NodeID > new_path;
+            std::vector < VarGraph::nodeid_type > new_path;
             seqan::Dna5QString new_path_str;
             VarGraph::NodeCoverage covered_nodes;
 
-            new_path.reserve ( this->vargraph->nodes_size() );
-            covered_nodes.reserve ( this->vargraph->nodes_size() );
+            new_path.reserve ( this->vargraph->node_count );
+            covered_nodes.reserve ( this->vargraph->node_count );
             paths_covered_nodes.reserve ( n );
 
             for ( int i = 0; i < n; ++i ) {
@@ -544,15 +544,14 @@ namespace grem
           if ( paths_coverage.size() == 0 ) return this->add_all_loci(step);
 
           seqan::Iterator< VarGraph, Backtracker<> >::Type bt_itr ( this->vargraph );
-          std::vector< VarGraph::NodeID > trav_path;
+          std::vector< VarGraph::nodeid_type > trav_path;
           unsigned int trav_len = 0;
 
           // :TODO:Sun Jun 11 21:36:\@cartoonist: traverse the graph using BFS instead
           //   of iterating over node list would be more cache oblivious.
-          for ( unsigned long int idx = 0; idx < this->vargraph->nodes_size(); ++idx ) {
-            const VarGraph::Node &start_node = this->vargraph->node_at ( idx );
-            VarGraph::NodeID start_node_id = start_node.id();
-            unsigned int label_len = start_node.sequence().length();
+          for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
+            VarGraph::nodeid_type start_node_id = this->vargraph->rank_to_id( rank );
+            unsigned int label_len = this->vargraph->node_sequence( start_node_id ).length();
 
             bool set = false;
             unsigned int init_offset = ( label_len < k - 1 ) ? 0 : label_len - k + 1;
@@ -561,10 +560,10 @@ namespace grem
               //     the length of branch node's label is less than k.
               if ( ! this->vargraph->is_branch ( start_node_id ) &&
                   covered_by ( start_node_id, paths_coverage ) &&
-                  this->vargraph->has_fwd_edge ( start_node_id ) &&
-                    this->vargraph->node_by (
-                      this->vargraph->fwd_edges ( start_node_id ).at(0)->to() )
-                      .sequence().length() > k ) {
+                  this->vargraph->has_edges_from ( start_node_id ) &&
+                    this->vargraph->node_sequence(
+                      this->vargraph->edges_from ( start_node_id ).at(0).to() )
+                      .length() > k ) {
                   continue;
               }
 
@@ -579,7 +578,7 @@ namespace grem
                 while ( !at_end( bt_itr ) ) {
                   trav_path.push_back ( *bt_itr );
                   if ( *bt_itr != start_node_id ) {
-                    trav_len += this->vargraph->node_by ( *bt_itr ).sequence().length();
+                    trav_len += this->vargraph->node_sequence( *bt_itr ).length();
                   }
                   else {
                     trav_len = label_len - offset;
@@ -597,10 +596,10 @@ namespace grem
 
                 --bt_itr;
 
-                VarGraph::NodeID poped_id = 0;
+                VarGraph::nodeid_type poped_id = 0;
                 while ( !trav_path.empty() && poped_id != *bt_itr ) {
                   poped_id = trav_path.back();
-                  trav_len -= this->vargraph->node_by ( poped_id ).sequence().length();
+                  trav_len -= this->vargraph->node_sequence( poped_id ).length();
                   trav_path.pop_back();
                 }
               }
@@ -608,7 +607,7 @@ namespace grem
           }
 
           LOG(INFO) << "Number of starting points selected (from "
-                    << this->vargraph->nodes_size() << "): "
+                    << this->vargraph->node_count << "): "
                     << this->starting_points.size();
         }
 
@@ -627,7 +626,7 @@ namespace grem
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
-          VarGraph::NodeID prenode_level = 0;
+          VarGraph::nodeid_type prenode_level = 0;
           std::string seq;
           while (!at_end(itr))
           {
@@ -638,7 +637,7 @@ namespace grem
               prenode_level = level(itr);
             }
 
-            seq = this->vargraph->node_by(*itr).sequence();
+            seq = this->vargraph->node_sequence(*itr);
 
             unsigned long int cursor = (step - prenode_remain) % step;
             while (cursor < seq.length())
@@ -666,7 +665,7 @@ namespace grem
           }
 
           LOG(INFO) << "Number of starting points selected (from "
-                    << this->vargraph->nodes_size() << "): "
+                    << this->vargraph->node_count << "): "
                     << this->starting_points.size();
         }
 
@@ -784,7 +783,7 @@ namespace grem
           ( reinterpret_cast<char*>( &set_size ), sizeof ( uint64_t ) );
         for ( const auto &node_id : covered_nodes ) {
           file_stream.write
-            ( reinterpret_cast<const char*>( &node_id ), sizeof ( VarGraph::NodeID ) );
+            ( reinterpret_cast<const char*>( &node_id ), sizeof ( VarGraph::nodeid_type ) );
         }
 
         file_stream.close();
@@ -808,7 +807,7 @@ namespace grem
     {
       std::ifstream file_stream;
       VarGraph::NodeCoverage covered_nodes;
-      VarGraph::NodeID node_id;
+      VarGraph::nodeid_type node_id;
 
       paths_covered_nodes.reserve ( path_num );
 
@@ -825,7 +824,7 @@ namespace grem
         covered_nodes.reserve ( set_size );
         for ( unsigned int j = 0; j < set_size; ++j ) {
           file_stream.read
-            ( reinterpret_cast<char*>( &node_id ), sizeof ( VarGraph::NodeID ) );
+            ( reinterpret_cast<char*>( &node_id ), sizeof ( VarGraph::nodeid_type ) );
           covered_nodes.insert ( node_id );
         }
         paths_covered_nodes.push_back ( covered_nodes );

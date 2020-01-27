@@ -29,135 +29,84 @@
 #include <cstdint>
 #include <random>
 
-#include <seqan/index.h>
+#ifdef HAVE_MEMCPY
+#  define MACRO_STACK
+#  pragma push_macro("HAVE_MEMCPY")
+#  undef HAVE_MEMCPY
+#endif
+
+#include <xg/xg.hpp>
+
+#ifdef MACRO_STACK
+#  pragma pop_macro("HAVE_MEMCPY")
+#  undef MACRO_STACK
+#endif
+
+#include <seqan/basic.h>
 
 #include "graph_iter.h"
-#include "vg.pb.h"
 
 
 namespace grem
 {
-  class VarGraph
+  class VarGraph : public xg::XG
   {
     public:
       // typedefs
-      typedef vg::Node Node;
-      typedef uint64_t NodeID;   /**< @brief Node ID type. */
-      typedef std::unordered_set< NodeID > NodeCoverage;
+      typedef vg::Node node_type;               /**< @brief Node type. */
+      typedef size_t nodeid_type;               /**< @brief Node ID type. */
+      typedef size_t rank_type;                 /**< @brief Node ID type. */
+      typedef std::unordered_set< nodeid_type > NodeCoverage;
 
       // Constructors
-      VarGraph(std::ifstream &ifs, std::string &name_) : name(name_)
-      { this->extend_from_file(ifs); }
+      VarGraph( void ) : XG( ) { }
 
-      VarGraph(std::ifstream &ifs) : name("")
-      { this->extend_from_file(ifs); }
+      VarGraph( std::ifstream &ifs, bool fmt_xg = true )
+      {
+        if ( fmt_xg ) {
+          load( ifs );
+        }
+        else {
+          from_stream( ifs );
+        }
+      }
 
-      VarGraph(std::string &filename, std::string &name_) : name(name_)
-      { this->extend_from_file(filename); }
+      VarGraph( vg::Graph &vg_graph ) : XG( vg_graph )
+      { }
 
-      VarGraph(const char *filename, std::string &name_) : name(name_)
-      { this->extend_from_file(filename); }
-
-      VarGraph(std::string &filename) : name("")
-      { this->extend_from_file(filename); }
-
-      VarGraph(const char *filename) : name("")
-      { this->extend_from_file(filename); }
-
-      VarGraph(vg::Graph &vg_graph, std::string &name_) : name(name_)
-      { this->extend(vg_graph); }
-
-      VarGraph() : name("") {}
-
-      // TODO: Move/copy constructors.
-      // TODO: Move/copy assignment operators.
-      // TODO: Destructor.
       // Public methods
-      void                                   extend(vg::Graph &vg_graph);
-      void                                   extend_from_file(std::ifstream &ifs);
-      void                                   extend_from_file(const std::string &filename);
-      void                                   extend_from_file(const char *filename);
-      inline unsigned int                    nodes_size() const
-      { return this->vg_graph.node_size(); }
+        inline bool
+      is_branch ( nodeid_type node_id ) const
+      {
+        if ( this->edges_from( node_id ).size() > 1 ) {
+          return true;
+        }
+        return false;
+      }  /* -----  end of method is_branch  ----- */
 
-      bool                                   has_node(const vg::Node* node) const;
-      bool                                   has_node(NodeID node_id) const;
+        inline bool
+      is_merge ( nodeid_type node_id ) const
+      {
+        if ( this->edges_to( node_id ).size() > 1 ) {
+          return true;
+        }
+        return false;
+      }  /* -----  end of method is_merge  ----- */
 
-      inline const vg::Node&                 node_at(unsigned int idx) const
-      { return this->vg_graph.node(idx); }
+        inline bool
+      has_edges_from( nodeid_type node_id ) const
+      {
+        return this->edges_from( node_id ).size() != 0;
+      }
 
-      inline vg::Node*                       mutable_node_at(unsigned int idx)
-      { return this->vg_graph.mutable_node(idx); }
-
-      inline const vg::Node&                 node_by(NodeID node_id) const
-      { return *(this->nodes_by_id.at(node_id)); }
-
-      inline vg::Node*                       mutable_node_by(NodeID node_id)
-      { return this->nodes_by_id.at(node_id); }
-
-      inline unsigned int                    edges_size() const
-      { return this->vg_graph.edge_size(); }
-
-      bool                                   has_edge(vg::Edge *edge) const;
-
-      inline const vg::Edge&                 edge_at(unsigned int idx) const
-      { return this->vg_graph.edge(idx); }
-
-      inline vg::Edge*                       mutable_edge_at(unsigned int idx)
-      { return this->vg_graph.mutable_edge(idx); }
-
-      bool                                   has_fwd_edge(vg::Node *node) const;
-      bool                                   has_fwd_edge(NodeID node_id) const;
-      bool                                   is_branch(vg::Node *node) const;
-      bool                                   is_branch(NodeID node_id) const;
-
-      inline const std::vector< vg::Edge* >& fwd_edges(NodeID node_id) const
-      { return this->edges_by_id.at(node_id); }
-
-      inline std::vector< vg::Edge* >&       mutable_fwd_edges(NodeID node_id)
-      { return this->edges_by_id.at(node_id); }
-
-      bool                                   has_bwd_edge(vg::Node *node) const;
-      bool                                   has_bwd_edge(NodeID node_id) const;
-      bool                                   is_merge(vg::Node *node) const;
-      bool                                   is_merge(NodeID node_id) const;
-
-      inline const std::vector< vg::Edge* >& bwd_edges(NodeID node_id) const
-      { return this->redges_by_id.at(node_id); }
-
-      inline std::vector< vg::Edge* >&       mutable_bwd_edges(NodeID node_id)
-      { return this->redges_by_id.at(node_id); }
-
-      // TODO: incomplete methods for accessing paths in the graph.
-      inline unsigned int                    paths_size() const
-      { return this->vg_graph.path_size(); }
-
-      inline const vg::Path&                 path_at(unsigned int idx) const
-      { return this->vg_graph.path(idx); }
-
-      inline vg::Path*                       mutable_path_at(unsigned int idx)
-      { return this->vg_graph.mutable_path(idx); }
+        inline bool
+      has_edges_to( nodeid_type node_id ) const
+      {
+        return this->edges_to( node_id ).size() != 0;
+      }
 
       // Helper functions.
-      std::string get_string ( std::vector < VarGraph::NodeID > &path ) const;
-
-      // Attributes getters and setters
-      inline const std::string&              get_name() const
-      { return this->name; }
-
-      inline vg::Graph&                      get_vg_graph()
-      { return this->vg_graph; }
-    private:
-      // Attributes
-      std::string                                              name;
-      vg::Graph                                                vg_graph;
-      std::unordered_map< NodeID, vg::Node* >                    nodes_by_id;
-      std::unordered_map< NodeID, std::vector< vg::Edge* >>      edges_by_id;
-      std::unordered_map< NodeID, std::vector< vg::Edge* >>      redges_by_id;
-
-      // internal methods
-      void add_node(vg::Node *node);
-      void add_edge(vg::Edge *edge);
+      std::string get_string ( std::vector < nodeid_type > &path ) const;
   };
 
   /* Graph interface functions  ------------------------------------------------ */
@@ -166,7 +115,7 @@ namespace grem
    *  @brief  Check whether the given node is on the provided path.
    *
    *  @param  node_id The ID of the node.
-   *  @param  path The path as a container of `VarGraph::NodeID`s.
+   *  @param  path The path as a container of `VarGraph::nodeid_type`s.
    *  @return `true` if the node ID is in the path.
    *
    *  Check if the given node ID presents in the provided path. This function assumes
@@ -175,34 +124,16 @@ namespace grem
    */
   template < class TContainer >
     inline bool
-    on_path ( VarGraph::NodeID node_id, const TContainer &path )
+    on_path ( VarGraph::nodeid_type node_id, const TContainer &path )
     {
       return path.find ( node_id ) != path.end();
     }
 
   /**
-   *  @brief  Check whether the given node is on the provided path.
-   *
-   *  @param  node The node.
-   *  @param  path The path as a container of `VarGraph::NodeID`s.
-   *  @return `true` if the node is in the path.
-   *
-   *  Check if the given node presents in the provided path. This function assumes
-   *  that the `TContainer` type has `find` and `end` methods behaving just like
-   *  ordinary containers in the C++ standard library.
-   */
-  template < class TContainer >
-    inline bool
-    on_path ( VarGraph::Node node, const TContainer &path )
-    {
-      return path.find ( static_cast<VarGraph::NodeID>( node.id() ) ) != path.end();
-    }
-
-  /**
    *  @brief  Check whether a path is covered by a set of paths.
    *
-   *  @param  path_begin The begin iterator of the path as set of `VarGraph::NodeID`.
-   *  @param  path_end The end iterator of the path as set of `VarGraph::NodeID`.
+   *  @param  path_begin The begin iterator of the path as set of `VarGraph::nodeid_type`.
+   *  @param  path_end The end iterator of the path as set of `VarGraph::nodeid_type`.
    *  @param  path_set_begin The begin iterator of the paths set.
    *  @param  path_set_end The end iterator of the paths set.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
@@ -222,7 +153,7 @@ namespace grem
         for ( auto path_itr = paths_set_begin; path_itr != paths_set_end; ++path_itr ) {
           const VarGraph::NodeCoverage &coverage = *path_itr;
           auto &&on_path_wrapper =
-            [&coverage]( VarGraph::NodeID i ) { return on_path ( i, coverage ); };
+            [&coverage]( VarGraph::nodeid_type i ) { return on_path ( i, coverage ); };
 
           if ( std::all_of ( path_begin, path_end, on_path_wrapper ) ) return true;
         }
@@ -262,7 +193,7 @@ namespace grem
    */
   template < >
     inline bool
-    covered_by ( const VarGraph::NodeID & node_id,
+    covered_by ( const VarGraph::nodeid_type & node_id,
         const std::vector< VarGraph::NodeCoverage > &paths_coverage )
     {
       for ( const auto & coverage : paths_coverage ) {
@@ -270,24 +201,6 @@ namespace grem
       }
 
       return false;
-    }  /* -----  end of template function covered_by  ----- */
-
-  /**
-   *  @brief  Check whether a node is covered by a set of paths.
-   *
-   *  @param  node the given node to check
-   *  @param  paths_coverage a set of paths as a vector of `VarGraph::NodeCoverage`
-   *  @return true if the node is on one of the path in the paths set, otherwise false.
-   *
-   *  This function simply checks if a node is on any of the path in the given set of
-   *  paths.
-   */
-  template < >
-    inline bool
-    covered_by ( const VarGraph::Node & node,
-        const std::vector< VarGraph::NodeCoverage > &paths_coverage )
-    {
-      return covered_by ( static_cast<VarGraph::NodeID>( node.id() ), paths_coverage );
     }  /* -----  end of template function covered_by  ----- */
 
   /**
@@ -300,7 +213,7 @@ namespace grem
    *  This function get a node ID and return the number of paths that cover the node.
    */
     inline unsigned int
-  get_path_coverage ( const VarGraph::NodeID & node_id,
+  get_path_coverage ( const VarGraph::nodeid_type & node_id,
       const std::vector< VarGraph::NodeCoverage > &paths_coverage )
   {
     unsigned int coverage = 0;
@@ -313,23 +226,6 @@ namespace grem
   }  /* -----  end of function get_path_coverage  ----- */
 
   /**
-   *  @brief  Return the path coverage of a given node.
-   *
-   *  @param  node the given node to check
-   *  @param  paths_coverage a set of paths as a vector of `VarGraph::NodeCoverage`
-   *  @return the number of paths that cover the given node.
-   *
-   *  This function get a node and return the number of paths that cover the node.
-   */
-    inline unsigned int
-  get_path_coverage ( const VarGraph::Node & node,
-      const std::vector< VarGraph::NodeCoverage > &paths_coverage )
-  {
-    return
-      get_path_coverage ( static_cast<VarGraph::NodeID>( node.id() ), paths_coverage );
-  }  /* -----  end of function get_path_coverage  ----- */
-
-  /**
    *  @brief  Get the node ID of an ajacent node randomly.
    *
    *  @param  vargraph The variation graph.
@@ -339,20 +235,20 @@ namespace grem
    *  Picking one of the adjacent nodes by generating a pseudo-random number with
    *  uniform distribution in [0, out-degree(v)].
    */
-    inline VarGraph::NodeID
-  get_random_adjacent ( const VarGraph &vargraph, VarGraph::NodeID node_id )
+    inline VarGraph::nodeid_type
+  get_random_adjacent ( const VarGraph &vargraph, VarGraph::nodeid_type node_id )
   {
-    if ( !vargraph.has_fwd_edge ( node_id ) ) {
+    if ( !vargraph.has_edges_from( node_id ) ) {
       return 0;
     }
 
-    auto fwd_edges = vargraph.fwd_edges(node_id);
+    auto fwd_edges = vargraph.edges_from(node_id);
 
     std::random_device rd;  // Will be used to obtain a seed for the random no. engine
     std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
     std::uniform_int_distribution<> dis(0, fwd_edges.size() - 1);
 
-    return fwd_edges[dis(gen)]->to();
+    return fwd_edges.at(dis(gen)).to();
   }  /* -----  end of function get_random_adjacent  ----- */
 
   /**
@@ -367,21 +263,21 @@ namespace grem
    *
    *  Calculate coverage for all adjacent nodes and find the smallest one.
    */
-    inline VarGraph::NodeID
-  least_covered_adjacent ( const VarGraph &vargraph, VarGraph::NodeID node_id,
+    inline VarGraph::nodeid_type
+  least_covered_adjacent ( const VarGraph &vargraph, VarGraph::nodeid_type node_id,
       const std::vector< VarGraph::NodeCoverage > &paths_coverage )
   {
-    if ( vargraph.has_fwd_edge ( node_id ) ) {
-      auto fwd_edges = vargraph.fwd_edges( node_id );
+    if ( vargraph.has_edges_from ( node_id ) ) {
+      auto fwd_edges = vargraph.edges_from( node_id );
 
-      VarGraph::NodeID first_adj_id = ( *fwd_edges.begin() )->to();
+      VarGraph::nodeid_type first_adj_id = ( *fwd_edges.begin() ).to();
 
-      VarGraph::NodeID lc_node_id = first_adj_id;
+      VarGraph::nodeid_type lc_node_id = first_adj_id;
       unsigned int lc = get_path_coverage ( first_adj_id, paths_coverage );
       bool equally_covered = true;
 
       for ( auto e_itr = ++fwd_edges.begin(); e_itr != fwd_edges.end(); ++e_itr ) {
-        const VarGraph::NodeID &next_node = ( *e_itr )->to();
+        const VarGraph::nodeid_type &next_node = ( *e_itr ).to();
         unsigned int next_node_cov = get_path_coverage ( next_node, paths_coverage );
 
         if ( equally_covered && lc != next_node_cov ) {
@@ -416,7 +312,7 @@ namespace grem
   template < typename TSpec >
     struct BFSIter < VarGraph, TSpec >
     {
-      typedef VarGraph::NodeID Value;
+      typedef VarGraph::nodeid_type Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Level > > TContainer;
 
@@ -454,7 +350,7 @@ namespace grem
    */
   template < typename TSpec >
     struct BacktrackerIter < VarGraph, TSpec > {
-      typedef VarGraph::NodeID Value;
+      typedef VarGraph::nodeid_type Value;
       typedef Value Level;
       typedef std::deque< std::pair< Value, Value > > TContainer;
       typedef void* TSet;
@@ -475,7 +371,7 @@ namespace grem
    */
   template < typename TSpec >
     struct HaplotyperIter < VarGraph, TSpec > {
-      typedef VarGraph::NodeID Value;
+      typedef VarGraph::nodeid_type Value;
       typedef Value Level;
       typedef std::deque< Value > TContainer;
       /**< @brief Set of visited paths. */
@@ -514,7 +410,7 @@ namespace grem {
   /* Haplotyper iterator interface function declarations  ------------------------ */
 
   void
-    get_uniq_haplotype ( std::vector < VarGraph::NodeID > &haplotype,
+    get_uniq_haplotype ( std::vector < VarGraph::nodeid_type > &haplotype,
         typename seqan::Iterator < VarGraph, Haplotyper<> >::Type &iter,
         int tries=0 );
 
