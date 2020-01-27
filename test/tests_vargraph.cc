@@ -40,6 +40,7 @@ SCENARIO( "Loading variation graph from a vg file", "[graph][input]" )
     {
       REQUIRE( xgraph.node_count == 210 );
       REQUIRE( xgraph.edge_count == 291 );
+      REQUIRE( xgraph.get_max_node_len() == 62 );
     };
 
     WHEN( "The format is vg")

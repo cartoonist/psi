@@ -434,10 +434,10 @@ namespace grem {
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
-  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection >
+  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TStrategy >
       inline bool
     covered_by( const Path< TGraph, TPathSpec >& path,
-        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set )
+        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set, TStrategy )
     {
       typedef typename PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >::TPath TPath;
 
@@ -459,13 +459,31 @@ namespace grem {
         auto ubound = std::upper_bound( set.paths_set.begin(), set.paths_set.end(), path, mn );
 
         return lbound < ubound &&
-          covered_by( path.get_nodes().begin(), path.get_nodes().end(), lbound, ubound );
+          covered_by( path.get_nodes().begin(), path.get_nodes().end(), lbound, ubound, TStrategy() );
       }
       else {
         return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-              set.paths_set.begin(), set.paths_set.end() );
+              set.paths_set.begin(), set.paths_set.end(), TStrategy() );
       }
     }  /* -----  end of template function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a path is covered by a PathSet.
+   *
+   *  @param  path The given path as Path class instance.
+   *  @param  paths_set A set of paths as PathSet class instance.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. with no strategy specified it calls with Default strategy.
+   */
+  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection >
+      inline bool
+    covered_by( const Path< TGraph, TPathSpec >& path,
+        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set )
+    {
+      return covered_by( path, set, Default() );
+    }
 
   template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
       inline void

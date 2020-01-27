@@ -103,6 +103,17 @@ namespace grem
       {
         return this->edges_to( node_id ).size() != 0;
       }
+
+        inline std::make_unsigned_t< offset_type >
+      get_max_node_len( ) const
+      {
+        std::make_unsigned_t< offset_type > max = 1;
+        for ( std::size_t rank = 1; rank <= this->max_node_rank(); ++rank ) {
+          auto&& id = this->rank_to_id( rank );
+          if ( max < this->node_length( id ) ) max = this->node_length( id );
+        }
+        return max;
+      }
   };
 
   /* Graph interface functions  ------------------------------------------------ */

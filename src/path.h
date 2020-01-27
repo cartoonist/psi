@@ -44,6 +44,12 @@ namespace grem{
   typedef seqan::Tag< DynamicStrategy > Dynamic;
   typedef seqan::Tag< CompactStrategy > Compact;
 
+  /* Path node existence query strategies */
+  struct OrderedStrategy;
+  struct UnorderedStrategy;
+  typedef seqan::Tag< OrderedStrategy > Ordered;
+  typedef seqan::Tag< UnorderedStrategy > Unordered;
+
   template< typename TGraph, typename TSpec >
     struct PathTraits;
 
@@ -134,8 +140,8 @@ namespace grem{
         /* Loaded after calling `initialize`. */
         bool initialized;
         sdsl::bit_vector bv_node_breaks;
-        sdsl::rank_support_v<> rs_node_breaks;
-        sdsl::select_support_mcl<> ss_node_breaks;
+        sdsl::bit_vector::rank_1_type rs_node_breaks;
+        sdsl::bit_vector::select_1_type ss_node_breaks;
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes )::size_type size_type;
@@ -1148,6 +1154,31 @@ namespace grem{
     }  /* -----  end of template function contains  ----- */
 
   /**
+   *  @brief  Check whether this path contains a set of node IDs.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set to be checked.
+   *  @param  end The end iterator of node IDs set to be checked.
+   *  @return `true` if this path contains all node IDs in the range `[begin, end)`;
+   *          otherwise `false` -- including the case that the range `[begin, end)` is
+   *          empty; i.e. `begin == end`.
+   *
+   *  It checks if the nodes of the given path is present in the node set. It does not
+   *  check the order of the nodes.
+   */
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Unordered )
+    {
+      auto on_path = [&path]( typename TGraph::nodeid_type const& i ) {
+        return contains( path, i );
+      };
+
+      if ( begin != end && std::all_of( begin, end, on_path ) ) return true;
+      return false;
+    }
+
+  /**
    *  @brief  Check whether this path contains another path.
    *
    *  @param  path The path.
@@ -1158,14 +1189,15 @@ namespace grem{
    *          `end == begin`.
    *
    *  The input path should be smaller than the path. It checks if the nodes of the
-   *  given path is present in the node set. It does not check the order of the
-   *  nodes.
+   *  given path is present in the node set. It DOES check the order of the nodes.
    */
   template< typename TGraph, typename TSpec, typename TIter >
       inline bool
-    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Ordered )
     {
       if ( begin != end && contains( path, *begin ) ) {
+        // FIXME: below line is bottleneck: doesn't work for human genome scale;
+        //        e.g. use `map< nodeid, rank >` instead of `set< nodeid >` for Path.
         auto l = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
         if ( std::equal( begin, end, l ) ) return true;
       }
@@ -1189,17 +1221,47 @@ namespace grem{
    */
   template< typename TGraph, typename TIter >
       inline bool
-    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end )
+    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end, Default )
     {
-      if ( end - begin > 0 ) {
-        auto&& on_path = [&path]( typename TGraph::nodeid_type const& i ) {
-          return contains( path, i );
-        };
+      return contains( path, begin, end, Unordered() );
+    }  /* -----  end of template function contains  ----- */
 
-        if ( std::all_of( begin, end, on_path ) ) return true;
-      }
+  /**
+   *  @brief  Check whether this path contains another path.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  Overloaded Defaut behaviour for non-Compact paths.
+   */
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end, Default )
+    {
+      return contains( path, begin, end, Ordered() );
+    }
 
-      return false;
+  /**
+   *  @brief  Check whether this path contains another path.
+   *
+   *  @param  path The path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  Overloaded with no strategy specified calling the Default `contains` for each path.
+   */
+  template< typename TGraph, typename TSpec, typename TIter >
+      inline bool
+    contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
+    {
+      return contains( path, begin, end, Default() );
     }  /* -----  end of template function contains  ----- */
 
   /**
@@ -1216,12 +1278,12 @@ namespace grem{
    *  path in the given set of paths. The path set should be a container of the Path
    *  class.
    */
-  template< class TIter1, class TIter2 >
+  template< class TIter1, class TIter2, typename TStrategy >
       inline bool
-    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
+    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end, TStrategy )
     {
       for ( ; paths_set_begin != paths_set_end; ++paths_set_begin ) {
-        if ( contains( (*paths_set_begin), begin, end ) )
+        if ( contains( (*paths_set_begin), begin, end, TStrategy() ) )
         {
           return true;
         }
@@ -1234,17 +1296,54 @@ namespace grem{
    *
    *  @param  begin The begin iterator of the path as set of node IDs.
    *  @param  end The end iterator of the path as set of node IDs.
+   *  @param  path_set_begin The begin iterator of the paths set.
+   *  @param  path_set_end The end iterator of the paths set.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded with no strategy specified calling `Default` strategy.
+   */
+  template< class TIter1, class TIter2 >
+      inline bool
+    covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
+    {
+      return covered_by( begin, end, paths_set_begin, paths_set_end, Default() );
+    }
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  begin The begin iterator of the path as set of node IDs.
+   *  @param  end The end iterator of the path as set of node IDs.
    *  @param  paths_set A set of paths as a container of `Path`.
    *  @return true if the given path is a subset of a path in the paths set; otherwise
    *          false -- including the case that the path is empty.
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
+  template< class TIter1, class TIter2, class TContainer, typename TStrategy >
+      inline bool
+    covered_by( TIter1 begin, TIter2 end, const TContainer& paths_set, TStrategy )
+    {
+      return covered_by( begin, end, paths_set.begin(), paths_set.end(), TStrategy() );
+    }  /* -----  end of template function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  begin The begin iterator of the path as set of node IDs.
+   *  @param  end The end iterator of the path as set of node IDs.
+   *  @param  paths_set A set of paths as a container of `Path`.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. Default behaviour for `covered_by` when strategy is not specified.
+   */
   template< class TIter1, class TIter2, class TContainer >
       inline bool
     covered_by( TIter1 begin, TIter2 end, const TContainer& paths_set )
     {
-      return covered_by( begin, end, paths_set.begin(), paths_set.end() );
+      return covered_by( begin, end, paths_set, Default() );
     }  /* -----  end of template function covered_by  ----- */
 
   /**
@@ -1257,13 +1356,30 @@ namespace grem{
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
+  template< typename TNodeID, class TContainer, typename TStrategy >
+      inline bool
+    covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set, TStrategy )
+    {
+      return covered_by( path_nodes.begin(), path_nodes.end(),
+          paths_set.begin(), paths_set.end(), TStrategy() );
+    }  /* -----  end of template function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  path_nodes The given path to be checked as a vector of node IDs.
+   *  @param  paths_set A set of paths as a container of `Path`.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. Default behaviour for `covered_by` when strategy is not specified.
+   */
   template< typename TNodeID, class TContainer >
       inline bool
     covered_by( const std::vector< TNodeID >& path_nodes, const TContainer& paths_set )
     {
-      return covered_by( path_nodes.begin(), path_nodes.end(),
-          paths_set.begin(), paths_set.end() );
-    }  /* -----  end of template function covered_by  ----- */
+      return covered_by( path_nodes, paths_set, Default() );
+    }
 
   /**
    *  @brief  Check whether a path is covered by a set of paths.
@@ -1275,13 +1391,30 @@ namespace grem{
    *
    *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
    */
+  template< typename TGraph, typename TSpec, class TContainer, typename TStrategy >
+      inline bool
+    covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set, TStrategy )
+    {
+      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
+          paths_set.begin(), paths_set.end(), TStrategy() );
+    }  /* -----  end of template function covered_by  ----- */
+
+  /**
+   *  @brief  Check whether a path is covered by a set of paths.
+   *
+   *  @param  path The given path as Path class instance.
+   *  @param  paths_set A set of paths as a container of `Path`.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. Default behaviour for `covered_by` when strategy is not specified.
+   */
   template< typename TGraph, typename TSpec, class TContainer >
       inline bool
     covered_by( const Path< TGraph, TSpec >& path, const TContainer& paths_set )
     {
-      return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
-          paths_set.begin(), paths_set.end() );
-    }  /* -----  end of template function covered_by  ----- */
+      return covered_by( path, paths_set, Default() );
+    }
 
   /**
    *  @brief  Check whether a node is covered by a set of paths.
