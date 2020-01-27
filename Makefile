@@ -17,10 +17,10 @@ SOURCES  += $(wildcard ${TESTDIR}/*.cc)
 SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
 ##  Header-only libraries:
-HEADERONLY_LIBS = stream catch spdlog
+HEADERONLY_LIBS = catch spdlog cxxopts
 
 # Specifying phony targets.
-.PHONY: all init update-submodules release debug test test-debug doc tags install install-debug clean distclean
+.PHONY: all init release debug test test-debug doc tags install install-debug clean distclean
 
 ## Functions:
 define echotitle
@@ -48,21 +48,18 @@ endef
 
 all: release
 
-update-submodules:
-	$(call echotitle,"Installing header-only libraries...")
-	@git submodule init && git submodule update
-
-init: update-submodules $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
-
-${SRCDIR}/stream:
-	@mkdir ${SRCDIR}/stream
-	@cp -v ${EXTDIR}/stream/src/stream.hpp ${SRCDIR}/stream/stream.h
+init: $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+	$(call echotitle,"Copying header-only libraries...")
 
 ${SRCDIR}/catch:
 	@cp -rv ${EXTDIR}/Catch/single_include ${SRCDIR}/catch
 
 ${SRCDIR}/spdlog:
 	@cp -rv ${EXTDIR}/spdlog/include/spdlog ${SRCDIR}/
+
+${SRCDIR}/cxxopts:
+	@mkdir ${SRCDIR}/cxxopts
+	@cp -v ${EXTDIR}/cxxopts/include/cxxopts.hpp ${SRCDIR}/cxxopts/cxxopts.h
 
 release: init
 	$(call echotitle,"Building sources...")
