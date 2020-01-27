@@ -24,7 +24,7 @@
 #include <type_traits>
 #include <vector>
 #include <string>
-#include <unordered_set>
+#include <set>
 #include <deque>
 #include <algorithm>
 #include <utility>
@@ -122,11 +122,12 @@ namespace grem{
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
+        typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const TGraph* vargraph;
         nodes_type nodes;
-        std::unordered_set< typename TGraph::nodeid_type > nodes_set;
+        nodes_set_type nodes_set;
         seqsize_type seqlen;
         /* Loaded on demand. */
         string_type seq;
@@ -153,10 +154,48 @@ namespace grem{
           : Path( g, nodes_type( p ) )
         { }
 
-        Path( const Path& ) = default;
-        Path( Path&& ) = default;
-        Path& operator=( const Path& ) = default;
-        Path& operator=( Path&& ) = default;
+        Path( const Path& other )
+        {
+          *this = other;  /**< @brief re-use copy assignment operator. */
+        }
+
+        Path( Path&& other )
+        {
+          *this = std::move( other );  /**< @brief re-use move assignment operator. */
+        }
+
+        Path& operator=( const Path& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = other.nodes;
+          this->nodes_set = other.nodes_set;
+          this->seqlen = other.seqlen;
+          this->seq = other.seq;
+          this->initialized = other.initialized;
+
+          sdsl::util::assign( this->bv_node_breaks, other.bv_node_breaks );
+          sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
+          sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
+
+          return *this;
+        }
+
+        Path& operator=( Path&& other )
+        {
+          this->vargraph = other.vargraph;
+          this->nodes = std::move( other.nodes );
+          this->nodes_set = std::move( other.nodes_set );
+          this->seqlen = other.seqlen;
+          this->seq = std::move( other.seq );
+          this->initialized = other.initialized;
+
+          this->bv_node_breaks.swap( other.bv_node_breaks );
+          sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
+          sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
+
+          return *this;
+        }
+
         ~Path() = default;
         /* ====================  OPERATORS     ======================================= */
         /**
@@ -197,6 +236,15 @@ namespace grem{
         {
           return this->nodes;
         }  /* -----  end of method get_nodes  ----- */
+
+        /**
+         *  @brief  getter function for nodes_set.
+         */
+          inline const nodes_set_type&
+        get_nodes_set( ) const
+        {
+          return this->nodes_set;
+        }  /* -----  end of method get_nodes_set  ----- */
 
         /**
          *  @brief  getter function for seqlen.
@@ -251,7 +299,7 @@ namespace grem{
 
           this->nodes = std::move( value );
           this->nodes_set.clear();
-          this->nodes_set.reserve( this->nodes.size() );
+          grem::reserve( this->nodes_set, this->nodes.size() );
           this->seqlen = 0;
           for ( const auto& node_id : this->nodes ) {
             this->nodes_set.insert( node_id );
@@ -632,8 +680,11 @@ namespace grem{
       /* If context is set (not zero) the first node is trimmed by length `context`. */
       auto iter = path.get_nodes().begin();
       if ( context != 0 ){
+        unsigned int off = ( path.get_vargraph()->node_length( *iter ) + 1 > context ?
+            path.get_vargraph()->node_length( *iter ) - context + 1 :
+            0 );
         repr_str += path.get_vargraph()->node_sequence( *iter )
-          .substr( path.get_vargraph()->node_length( *iter ) - context + 1 );
+          .substr( off );
         ++iter;
       }
 
@@ -712,7 +763,7 @@ namespace grem{
         typename Path< TGraph, TSpec >::size_type size )
     {
       grem::reserve( path.nodes, size );        /* defined in `utils.h` */
-      path.nodes_set.reserve( size );
+      grem::reserve( path.nodes_set, size );
     }  /* -----  end of template function reserve  ----- */
 
   /**
@@ -896,8 +947,10 @@ namespace grem{
     class Path< TGraph, Compact >
     {
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef std::set< typename TGraph::nodeid_type > nodes_set_type;
         /* ====================  DATA MEMBERS  ======================================= */
-        std::unordered_set< typename TGraph::nodeid_type > nodes_set;
+        nodes_set_type nodes_set;
         /* ====================  TYPEDEFS      ======================================= */
         typedef typename decltype( nodes_set )::size_type size_type;
         /* ====================  LIFECYCLE     ======================================= */
@@ -924,6 +977,15 @@ namespace grem{
         Path& operator=( const Path& ) = default;
         Path& operator=( Path&& ) = default;
         ~Path() = default;
+        /* ====================  ACCESSORS     ======================================= */
+        /**
+         *  @brief  getter function for nodes_set.
+         */
+          inline const nodes_set_type&
+        get_nodes_set( ) const
+        {
+          return this->nodes_set;
+        }  /* -----  end of method get_nodes_set  ----- */
         /* ====================  MUTATORS      ======================================= */
         /**
          *  @brief  Set the nodes in the path (clear the previous state).
@@ -932,7 +994,7 @@ namespace grem{
         set_nodes( const std::vector< typename TGraph::nodeid_type >& value )
         {
           this->nodes_set.clear();
-          this->nodes_set.reserve( value.size() );
+          grem::reserve( this->nodes_set, value.size() );
           std::copy( value.begin(), value.end(),
               std::inserter( this->nodes_set, this->nodes_set.end() ) );
         }  /* -----  end of method set_nodes  ----- */
@@ -1028,7 +1090,7 @@ namespace grem{
     reserve( Path< TGraph, Compact >& path,
         typename Path< TGraph, Compact >::size_type size )
     {
-      path.nodes_set.reserve( size );
+      grem::reserve( path.nodes_set, size );
     }
 
   /**
@@ -1103,6 +1165,32 @@ namespace grem{
       inline bool
     contains( const Path< TGraph, TSpec >& path, TIter begin, TIter end )
     {
+      if ( begin != end && contains( path, *begin ) ) {
+        auto l = std::find( path.get_nodes().begin(), path.get_nodes().end(), *begin );
+        if ( std::equal( begin, end, l ) ) return true;
+      }
+
+      return false;
+    }  /* -----  end of template function contains  ----- */
+
+  /**
+   *  @brief  Check whether this Compact path contains another path.
+   *
+   *  @param  path The Compact path.
+   *  @param  begin The begin iterator of node IDs set of the path to be checked.
+   *  @param  end The end iterator of node IDs set of the path to be checked.
+   *  @return `true` if this path is a superset of the given path; otherwise `false`
+   *          -- including the case that the given path is empty; i.e.
+   *          `end == begin`.
+   *
+   *  The input path should be smaller than the path. It checks if the nodes of the
+   *  given path is present in the node set. It does not check the order of the
+   *  nodes.
+   */
+  template< typename TGraph, typename TIter >
+      inline bool
+    contains( const Path< TGraph, Compact >& path, TIter begin, TIter end )
+    {
       if ( end - begin > 0 ) {
         auto&& on_path = [&path]( typename TGraph::nodeid_type const& i ) {
           return contains( path, i );
@@ -1132,8 +1220,8 @@ namespace grem{
       inline bool
     covered_by( TIter1 begin, TIter1 end, TIter2 paths_set_begin, TIter2 paths_set_end )
     {
-      for ( auto itr = paths_set_begin; itr != paths_set_end; ++itr ) {
-        if ( contains( (*itr), begin, end ) )
+      for ( ; paths_set_begin != paths_set_end; ++paths_set_begin ) {
+        if ( contains( (*paths_set_begin), begin, end ) )
         {
           return true;
         }

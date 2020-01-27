@@ -22,6 +22,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <set>
 #include <memory>
 
 #include "sequence.h"
@@ -289,6 +290,22 @@ namespace grem {
   template< typename TObject, typename TSize >
       inline void
     reserve( std::deque< TObject >& container, TSize size )
+    {
+      /* NOOP */
+    }
+
+
+  /**
+   *  @overload The `std::set` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  Do nothing.
+   */
+  template< typename TObject, typename TSize >
+      inline void
+    reserve( std::set< TObject >& container, TSize size )
     {
       /* NOOP */
     }

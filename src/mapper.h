@@ -382,7 +382,8 @@ namespace grem
          */
         template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection >
             void
-          pick_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths, int n )
+          pick_paths( PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& paths,
+              int n, bool patched=true )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -392,7 +393,10 @@ namespace grem
               const auto& path_name = this->vargraph->path_name( rank );
               auto s = this->vargraph->node_at_path_position( path_name, 0 );
               seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
-              for ( int i = 0; i < n; ++i ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
+              for ( int i = 0; i < n; ++i ) {
+                if ( patched ) get_uniq_patched_haplotype( paths, hap_itr, this->seed_len );
+                else get_uniq_full_haplotype( paths, hap_itr );
+              }
             }
           }  /* -----  end of template function pick_paths  ----- */
 
@@ -432,9 +436,6 @@ namespace grem
             Path< VarGraph > current_path( this->vargraph );
             sdsl::bit_vector bv_starts( INITIAL_BITVECTOR_SIZE, 0 );
 
-            std::vector< Path< TGraph, Compact > > paths_node_set;
-            compress( paths, paths_node_set );
-
             for ( VarGraph::rank_type rank = 1; rank <= this->vargraph->max_node_rank(); ++rank ) {
               VarGraph::nodeid_type id = this->vargraph->rank_to_id( rank );
               auto label_len = this->vargraph->node_length( id );
@@ -447,7 +448,7 @@ namespace grem
                 extend_to_k( trav_path, bt_itr, offset - 1 + k );
                 if ( trav_path.get_sequence_len() >= k ) current_path = trav_path;
                 while ( current_path.get_sequence_len() != 0 &&
-                    !covered_by( current_path, paths_node_set ) ) {
+                    !covered_by( current_path, paths ) ) {
                   auto trimmed_len = current_path.get_sequence_len()
                     - this->vargraph->node_length( current_path.get_nodes().back() );
                   if ( trimmed_len <= k - 1 ) {

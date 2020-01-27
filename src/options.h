@@ -79,6 +79,7 @@ namespace grem
     std::string paths_index_file;
     std::string starts_path;
     bool paths_index;
+    bool patched;
     bool nomapping;
     bool dumpstarts;
     bool nologfile;

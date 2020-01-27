@@ -20,6 +20,7 @@
 #define  PATHSET_H__
 
 #include <vector>
+#include <algorithm>
 
 #include "vargraph.h"
 #include "sequence.h"
@@ -48,10 +49,25 @@ namespace grem {
         TStringSet string_set;
         TIndex index;
         std::vector< TPath > paths_set;
+      private:
         /**< @brief The extreme nodes' sequence will be trimmed to the length of `context-1`. */
         context_type context;
+        bool lazy_mode;
+        bool sorted;
+      public:
         /* ====================  LIFECYCLE     ======================================= */
-        PathSet( context_type _context=0 ) : context( _context ) { };
+        PathSet( context_type ct=0, bool l=false )
+          : context( ct ), lazy_mode( l ), sorted( false ) { };
+        PathSet( bool lazy ) : context( 0 ), lazy_mode( lazy ), sorted( false ) { };
+        /* ====================  ACCESSORS     ======================================= */
+        /**
+         *  @brief  return true if the paths in the set is sorted by their minimum node ID.
+         */
+          inline bool
+        is_sorted() const
+        {
+          return this->sorted;
+        }  /* -----  end of method is_sorted  ----- */
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Get the shift required to add to trimmed position to get original one.
@@ -69,13 +85,13 @@ namespace grem {
           inline unsigned int
         get_context_shift( typename seqan::SAValue< TIndex >::Type const& pos ) const
         {
-          if ( this->context != 0 ) {
-            const TGraph* vg = this->paths_set.at( pos.i1 ).get_vargraph();
-            return vg->node_length( this->paths_set.at( pos.i1 ).get_nodes()[0] )
-              - this->context + 1;
+          auto&& the_path = this->paths_set.at( pos.i1 );
+          auto flen = the_path.get_vargraph()->node_length( the_path.get_nodes()[0] );
+          if ( this->context != 0 && flen + 1 > this->context ) {
+            return flen - this->context + 1;
           }
           return 0;
-        }
+        }  /* -----  end of method get_context_shift  ----- */
 
         /**
          *  @brief  Load the set of paths and its index from file.
@@ -127,19 +143,17 @@ namespace grem {
          *  @param  new_path The new path to be added.
          *
          *  It appends the new path to the paths set, adds its string representation
-         *  to the string set, and creates string set index.
+         *  to the string set, and creates string set index if it is not in lazy mode.
          */
           inline void
         add_path( TPath&& new_path )
         {
-          TText path_str( sequence( new_path, TSequenceDirection(), this->context ) );
-          // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
-          char fake_qual = 'I';
-          assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
-          appendValue( this->string_set, path_str );
-          this->index = TIndex( this->string_set );
-          initialize( new_path );
-          paths_set.push_back( std::move( new_path ) );
+          this->paths_set.push_back( std::move( new_path ) );
+          initialize( this->paths_set.back() );
+          this->sorted = false;
+          if ( !this->lazy_mode ) {
+            this->add_path_sequence( std::prev(this->paths_set.end()), this->paths_set.end() );
+          }
         }  /* -----  end of method add_path  ----- */
 
         /**
@@ -210,9 +224,53 @@ namespace grem {
           inline void
         create_index( )
         {
+          if ( lazy_mode ) {
+            this->add_path_sequence( this->paths_set.begin(), this->paths_set.end() );
+          }
           grem::create_index( this->index );
         }  /* -----  end of method create_index  ----- */
+
+        /**
+         *  @brief  Sort the paths set by the minimum node ID in each path.
+         *
+         *  Sorting the paths in ascending order of minimum node ID in the paths. This
+         *  helps the `covered_by` query to search in the paths local to the query path.
+         */
+          inline void
+        sort()
+        {
+          auto compare = []( TPath& a, TPath& b ) {
+            return *a.get_nodes_set().begin() < *b.get_nodes_set().begin();
+          };
+
+          std::sort( this->paths_set.begin(), this->paths_set.end(), compare );
+          this->sorted = true;
+        }
       private:
+        /**
+         *  @brief  Add sequence of the paths in the set from `begin` to `end`.
+         *
+         *  @param  begin The begin iterator of the paths set to add.
+         *  @param  end The end iterator of the paths set to add.
+         *
+         *  It appends the sequence of the paths in the range `[begin, end)` to the
+         *  string set, and update string set index.
+         *
+         *  @note The quality score of the paths are considered `I`.
+         */
+        template< typename TIter >
+            inline void
+          add_path_sequence( TIter begin, TIter end )
+          {
+            for ( ; begin != end; ++begin ) {
+              TText path_str( sequence( *begin, TSequenceDirection(), this->context ) );
+              char fake_qual = 'I';  // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
+              assignQualities( path_str, std::string( length( path_str ), fake_qual ) );
+              appendValue( this->string_set, path_str );
+            }
+            this->index = TIndex( this->string_set );
+          }
+
         /**
          *  @brief  Load nodes sets of paths set from file.
          *
@@ -229,9 +287,12 @@ namespace grem {
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
           size_type path_num = 0;
+          size_type sort_int = 0;
 
           try {
             deserialize( ifs, this->context );
+            deserialize( ifs, sort_int );
+            this->sorted = static_cast< bool >( sort_int );
             deserialize( ifs, path_num );
             this->paths_set.clear();
             this->paths_set.reserve( path_num );
@@ -266,6 +327,7 @@ namespace grem {
 
           try {
             serialize( ofs, this->context );
+            serialize( ofs, static_cast< size_type >( this->sorted ) );
             serialize( ofs, static_cast< size_type >( this->paths_set.size() ) );
             for ( const auto& path : this->paths_set ) {
               grem::save( path, ofs );
@@ -361,6 +423,49 @@ namespace grem {
       auto context_shift = set.get_context_shift( real_pos );
       return position_to_id( set.paths_set.at( real_pos.i1 ), context_shift + real_pos.i2 );
     }
+
+  /**
+   *  @brief  Check whether a path is covered by a PathSet.
+   *
+   *  @param  path The given path as Path class instance.
+   *  @param  paths_set A set of paths as PathSet class instance.
+   *  @return true if the given path is a subset of a path in the paths set; otherwise
+   *          false -- including the case that the path is empty.
+   *
+   *  Overloaded. See `covered_by( TIter1, TIter1, TIter2, TIter2 )`.
+   */
+  template< typename TGraph, typename TPathSpec, typename TText, typename TIndexSpec, typename TSequenceDirection >
+      inline bool
+    covered_by( const Path< TGraph, TPathSpec >& path,
+        const PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >& set )
+    {
+      typedef typename PathSet< TGraph, TText, TIndexSpec, TSequenceDirection >::TPath TPath;
+
+      /* Return `true` if the min node ID of the query path is less than the min node ID
+       * of the element path */
+      auto mn = []( Path< TGraph, TPathSpec > const& query, TPath const& element ) {
+        return *query.get_nodes_set().begin() < *element.get_nodes_set().begin();
+      };
+      /* Return `true` if the max node ID of the element path is less than the max node
+       * ID of the query path */
+      auto mx = []( TPath const& element, Path< TGraph, TPathSpec > const& query ) {
+        return *element.get_nodes_set().rbegin() < *query.get_nodes_set().rbegin();
+      };
+
+      if ( set.is_sorted() ) {
+        /* Find the lower bound and upper bound of the search. */
+        auto lbound = set.paths_set.begin();
+        while ( lbound != set.paths_set.end() && mx( *lbound, path ) ) ++lbound;
+        auto ubound = std::upper_bound( set.paths_set.begin(), set.paths_set.end(), path, mn );
+
+        return lbound < ubound &&
+          covered_by( path.get_nodes().begin(), path.get_nodes().end(), lbound, ubound );
+      }
+      else {
+        return covered_by( path.get_nodes().begin(), path.get_nodes().end(),
+              set.paths_set.begin(), set.paths_set.end() );
+      }
+    }  /* -----  end of template function covered_by  ----- */
 
   template< typename TGraph, typename TText, typename TIndexSpec, typename TSequenceDirection, typename TPathSet >
       inline void
