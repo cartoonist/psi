@@ -28,7 +28,5 @@
 // TODO: Move to a class specifically aimed to store performance statistics.
 // Add a checkpoint for performance tracker when this number of loci is traversed.
 #define TRAVERSE_CHECKPOINT_LOCI_NO 1000000
-// Report the average path length when no. of traversed paths reach this number.
-#define NOF_PATHLEN_SAMPLES 1000000
 
 #endif  // BASE_H__

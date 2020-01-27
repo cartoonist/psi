@@ -75,6 +75,10 @@ namespace grem {
   template < typename TIndex, typename TSpec >
     typename seqan::Value < TIndex >::Type parent_edge_label (
         IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
+
+  template< typename TIndex, typename TSpec >
+      typename seqan::Size< TIndex >::Type
+    rep_length( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator );
   /* END OF Forwards  ------------------------------------------------------------ */
 
   /**
@@ -118,7 +122,13 @@ namespace grem {
         parent_edge_label < TIndex, TSpec > (
             IndexIter < TIndex, TopDownFine < TSpec > > &iterator);
 
+      friend typename seqan::Size< TIndex >::Type
+        rep_length< TIndex, TSpec >(
+            const IndexIter< TIndex, TopDownFine< TSpec > >& iterator );
+
       public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef typename seqan::Iterator< TIndex, seqan::TopDown< TSpec > >::Type base_type;
         /* ====================  LIFECYCLE     ======================================= */
         IndexIter ( TIndex &index ) :                             /* constructor */
           iter_(index), boffset(0) { }
@@ -213,12 +223,12 @@ namespace grem {
     auto const &parent_edge_str = parentEdgeLabel(iterator.iter_);
     auto const &parent_edge_len = parentEdgeLength(iterator.iter_);
     auto const &next_char = parent_edge_str [ parent_edge_len - iterator.boffset ];
-      if (c == next_char) {
-        --iterator.boffset;
-        return true;
-      } else {
-        return false;
-      }
+    if (c == next_char) {
+      --iterator.boffset;
+      return true;
+    } else {
+      return false;
+    }
   }  /* -----  end of function go_down_on_edge  ----- */
 
   /**
@@ -354,6 +364,20 @@ namespace grem {
       return parent_edge_str [ parent_edge_len - iterator.boffset - 1 ];
     }  /* -----  end of template function parent_edge_label  ----- */
 
+  /**
+   *  @brief  Get length of representative string.
+   *
+   *  @param  iterator The iterator of virtual suffix tree.
+   *  @return The length of the representative string of the given iterator.
+   *
+   *  This is a wrapper function for `seqan::repLength` method.
+   */
+  template< typename TIndex, typename TSpec >
+      typename seqan::Size< TIndex >::Type
+    rep_length( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
+    {
+      return repLength( iterator.iter_ ) - iterator.boffset;
+    }  /* -----  end of template function rep_length  ----- */
   /* Typedefs  ------------------------------------------------------------------- */
 
   /**

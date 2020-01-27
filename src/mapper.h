@@ -33,53 +33,167 @@
 
 namespace grem
 {
-  template <class TPathTraverser>
+  template <class TTraverser>
     class Mapper
     {
       public:
-        // Constructors
-        Mapper(const VarGraph *graph,
-            const std::vector< vg::Position > *start_loci) :
-          vargraph(graph)
+        /* ====================  LIFECYCLE      ====================================== */
+        Mapper( const VarGraph *graph,
+            Dna5QRecords&& reads,
+            unsigned int len,
+            unsigned char mismatches = 0 )
+          : vargraph( graph ), reads( std::move( reads ) ), seed_len( len ),
+          seed_mismatches( mismatches )
         {
-          if (start_loci != nullptr) this->starting_points = *start_loci;
+          if ( length( reads.str ) != 0 ) {
+            this->index_reads();
+          }
         }
 
-        Mapper(const VarGraph &graph,
-            const std::vector< vg::Position > *start_loci) :
-          Mapper(&graph, start_loci)
-        {}
+        Mapper( const VarGraph *graph,
+            const Dna5QRecords& reads,
+            unsigned int len,
+            unsigned char mismatches = 0 )
+          : Mapper( graph , Dna5QRecords( reads ), len, mismatches )
+        { }
 
-        Mapper(const VarGraph &graph,
-            const std::vector< vg::Position > &start_loci) :
-          Mapper(&graph, &start_loci)
-        {}
-
-        Mapper(const VarGraph *graph,
-            const std::vector< vg::Position > &start_loci) :
-          Mapper(graph, &start_loci)
-        {}
-
-        Mapper(const VarGraph *graph) : Mapper(graph, nullptr)
-        {}
-
-        Mapper(const VarGraph &graph) : Mapper(&graph)
-        {}
-
-        // Public methods
-        inline void add_start(const vg::Position &locus)
+        Mapper( const VarGraph *graph,
+            unsigned int len,
+            unsigned char mismatches = 0 )
+          : Mapper( graph , Dna5QRecords( ), len, mismatches )
+        { }
+        /* ====================  METHODS        ====================================== */
+          inline void
+        add_start( const vg::Position &locus )
         {
-          this->starting_points.push_back(locus);
+          this->starting_loci.push_back( locus );
         }
 
-        inline void add_start ( const VarGraph::nodeid_type & node_id,
-            const unsigned long int & offset )
+          inline void
+        add_start( VarGraph::nodeid_type node_id, VarGraph::offset_type offset )
         {
           vg::Position locus;
-          locus.set_node_id(node_id);
-          locus.set_offset(offset);
+          locus.set_node_id( node_id );
+          locus.set_offset( offset );
           this->add_start ( locus );
         }
+        /* ====================  ACCESSORS      ====================================== */
+        /**
+         *  @brief  getter function for vargraph.
+         */
+          inline const VarGraph*
+        get_vargraph ( ) const
+        {
+          return this->vargraph;
+        }  /* -----  end of method get_vargraph  ----- */
+
+        /**
+         *  @brief  getter function for starting_loci.
+         */
+          inline const std::vector< vg::Position >&
+        get_starting_loci( ) const
+        {
+          return this->starting_loci;
+        }  /* -----  end of method get_starting_loci  ----- */
+
+        /**
+         *  @brief  getter function for seed_len.
+         */
+          inline unsigned int
+        get_seed_len ( ) const
+        {
+          return this->seed_len;
+        }  /* -----  end of method get_seed_len  ----- */
+
+        /**
+         *  @brief  getter function for seed_mismatches.
+         */
+          inline unsigned char
+        get_seed_mismatches ( ) const
+        {
+          return this->seed_mismatches;
+        }  /* -----  end of method get_seed_mismatches  ----- */
+
+        /**
+         *  @brief  getter function for reads.
+         */
+          inline const Dna5QRecords&
+        get_reads ( ) const
+        {
+          return this->reads;
+        }  /* -----  end of method get_reads  ----- */
+        /* ====================  MUTATORS       ====================================== */
+        /**
+         *  @brief  setter function for vargraph.
+         */
+          inline void
+        set_vargraph ( const VarGraph* value )
+        {
+          this->vargraph = value;
+        }  /* -----  end of method set_vargraph  ----- */
+
+        /**
+         *  @brief  setter function for starting_loci.
+         *
+         *  Copy assignment.
+         */
+          inline void
+        set_starting_loci( const std::vector< vg::Position >& loci )
+        {
+          this->starting_loci = loci;
+        }  /* -----  end of method set_starting_loci  ----- */
+
+        /**
+         *  @brief  setter function for starting_loci.
+         *
+         *  Move assignment.
+         */
+          inline void
+        set_starting_loci( std::vector< vg::Position >&& loci )
+        {
+          this->starting_loci = std::move( loci );
+        }  /* -----  end of method set_starting_loci  ----- */
+
+        /**
+         *  @brief  setter function for seed_len.
+         */
+          inline void
+        set_seed_len ( unsigned int value )
+        {
+          this->seed_len = value;
+        }  /* -----  end of method set_seed_len  ----- */
+
+        /**
+         *  @brief  setter function for seed_mismatches.
+         */
+          inline void
+        set_seed_mismatches ( unsigned char value )
+        {
+          this->seed_mismatches = value;
+        }  /* -----  end of method set_seed_mismatches  ----- */
+
+        /**
+         *  @brief  setter function for reads.
+         *
+         *  Move assignment.
+         */
+          inline void
+        set_reads ( Dna5QRecords&& value )
+        {
+          this->reads = std::move( value );
+          this->index_reads();
+        }  /* -----  end of method set_reads  ----- */
+
+        /**
+         *  @brief  setter function for reads.
+         *
+         *  Copy assignment.
+         */
+          inline void
+        set_reads ( const Dna5QRecords& value )
+        {
+          this->set_reads( Dna5QRecords( value ) );
+        }  /* -----  end of method set_reads  ----- */
 
         /**
          *  @brief  Pick n paths from the variation graph.
@@ -91,50 +205,49 @@ namespace grem
          *  This method generates a set of (probably) unique whole-genome path from the
          *  variation graph.
          */
-        void
-          pick_paths ( Dna5QStringSet &paths,
-              std::vector< VarGraph::NodeCoverage > &paths_covered_nodes, int n )
-          {
-            if ( n == 0 ) return;
+          void
+        pick_paths ( Dna5QStringSet& paths,
+            std::vector< VarGraph::NodeCoverage >& paths_covered_nodes, int n )
+        {
+          if ( n == 0 ) return;
 
-            TIMED_SCOPE(pickPathsTimer, "pick-paths");
+          TIMED_SCOPE(pickPathsTimer, "pick-paths");
 
-            LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
+          LOG(INFO) << "Picking " << n << " different path(s) on the graph...";
 
-            seqan::Iterator < VarGraph, Haplotyper<> >::Type hap_itr ( this->vargraph );
-            std::vector < VarGraph::nodeid_type > new_path;
-            seqan::Dna5QString new_path_str;
-            VarGraph::NodeCoverage covered_nodes;
+          seqan::Iterator < VarGraph, Haplotyper >::Type hap_itr ( this->vargraph );
+          std::vector < VarGraph::nodeid_type > new_path;
+          typename seqan::Value< Dna5QStringSet >::Type new_path_str;
+          VarGraph::NodeCoverage covered_nodes;
 
-            new_path.reserve ( this->vargraph->node_count );
-            covered_nodes.reserve ( this->vargraph->node_count );
-            paths_covered_nodes.reserve ( n );
+          new_path.reserve ( this->vargraph->node_count );
+          covered_nodes.reserve ( this->vargraph->node_count );
+          paths_covered_nodes.reserve ( n );
 
-            for ( int i = 0; i < n; ++i ) {
-              get_uniq_haplotype ( new_path, hap_itr );
+          for ( int i = 0; i < n; ++i ) {
+            get_uniq_haplotype ( new_path, hap_itr );
 
-              std::copy ( new_path.begin(), new_path.end(),
-                  std::inserter ( covered_nodes, covered_nodes.end() ) );
-              paths_covered_nodes.push_back ( covered_nodes );
+            std::copy ( new_path.begin(), new_path.end(),
+                std::inserter ( covered_nodes, covered_nodes.end() ) );
+            paths_covered_nodes.push_back ( covered_nodes );
 
-              new_path_str = this->vargraph->get_string ( new_path );
+            new_path_str = this->vargraph->get_string ( new_path );
 
-              // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
-              char fake_qual = 'I';
-              assignQualities ( new_path_str, std::string ( length(new_path_str), fake_qual ) );
+            // :TODO:Mon Mar 06 13:00:\@cartoonist: faked quality score.
+            char fake_qual = 'I';
+            assignQualities ( new_path_str, std::string ( length(new_path_str), fake_qual ) );
 
-              appendValue ( paths, new_path_str );
+            appendValue ( paths, new_path_str );
 
-              new_path.clear();
-              covered_nodes.clear();
-            }
-          }  /* -----  end of function pick_paths  ----- */
+            new_path.clear();
+            covered_nodes.clear();
+          }
+        }  /* -----  end of function pick_paths  ----- */
 
         /**
          *  @brief  Find seeds on a set of whole-genome paths for the input reads chunk.
          *
          *  @param[in]  paths_index The index of the set of paths used for finding the seeds.
-         *  @param[in]  trav_params Traverse parameters including reads chunk and its index.
          *  @param[in]  callback The call back function applied on the found seeds.
          *
          *  This function uses a set of paths from variation graph to find seeds of the
@@ -142,62 +255,30 @@ namespace grem
          *  both indexes of reads chunk and whole-genome paths.
          */
         // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
-        inline void
-          seeds_on_paths ( Dna5QStringSetIndex < seqan::IndexEsa<> > &paths_index,
-              typename TPathTraverser::Param trav_params,
-              std::function< void(typename TPathTraverser::Output const &) > callback )
-          {
-            if ( length ( indexText ( paths_index ) ) == 0 ) return;
-
-            TIMED_SCOPE(pathsSeedFindTimer, "paths-seed-find");
-
-            LOG(INFO) << "Finding seeds on paths...";
-
-            // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
-            //typedef Dna5QStringSetIndex < seqan::IndexEsa<> > TPathIndex;
-            //typedef Dna5QStringSetIndex < typename TPathTraverser::IndexType > TReadsIndex;
-
-            //TFineIndexIter < TPathIndex, seqan::ParentLinks<> > paths_itr (paths_index);
-            //TFineIndexIter < TReadsIndex, seqan::ParentLinks<> > reads_itr ( trav_params.mutable_get_reads_index() );
-            //seqan::Iterator < TPathIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type paths_itr (paths_index);
-            //typename seqan::Iterator < TReadsIndex, seqan::TopDown<seqan::ParentLinks<>> >::Type reads_itr ( trav_params.mutable_get_reads_index() );
-
-            //std::vector < seqan::Seed < seqan::Simple > > seeds_set;
-            //kmer_exact_matches < TReadsIndex, TPathIndex > ( seeds_set, reads_itr, paths_itr, trav_params.get_seed_len() );
-            kmer_exact_matches ( paths_index, trav_params.mutable_get_seeds_index(),
-               trav_params.get_seed_len(), callback );
-
-            //std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
-          }  /* -----  end of method Mapper::seeds_on_paths  ----- */
-
-        inline void traverse(typename TPathTraverser::Param trav_params,
-                      std::function< void(typename TPathTraverser::Output const &) > callback)
+          inline void
+        seeds_on_paths( Dna5QStringSetIndex < seqan::IndexEsa<> > &paths_index,
+            std::function< void(typename TTraverser::output_type const &) >& callback )
         {
-          TIMED_SCOPE(traverseTimer, "traverse");
-          unsigned int locus_counter = 0;
-          unsigned int nof_reports = 0;
+          if ( length ( indexText ( paths_index ) ) == 0 ) return;
 
-          for (auto locus : this->starting_points)
-          {
-            this->traverse_from_locus(trav_params, callback, locus);
+          TIMED_SCOPE(pathsSeedFindTimer, "paths-seed-find");
 
-            ++locus_counter;
-            if (locus_counter % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
-            {
-              locus_counter = 0;
-              ++nof_reports;
-              PERFORMANCE_CHECKPOINT_WITH_ID(traverseTimer,
-                  std::to_string(nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO));
-            }
-          }
-        }
+          LOG(INFO) << "Finding seeds on paths...";
+
+          // :TODO:Mon Mar 06 13:00:\@cartoonist: IndexEsa<> -> IndexFM<>
+          // :TODO:Tue Aug 29 14:48:\@cartoonist: there is a newer `kmer_exact_matches` function!
+          //                                      Check `index_iter.h`.
+          kmer_exact_matches( paths_index, this->seeds_index, this->seed_len, callback );
+
+          //std::for_each ( seeds_set.begin(), seeds_set.end(), callback );
+        }  /* -----  end of method Mapper::seeds_on_paths  ----- */
 
         inline void add_all_loci(std::vector < VarGraph::NodeCoverage > &paths_coverage,
             unsigned int k, unsigned int step=1)
         {
           if ( paths_coverage.size() == 0 ) return this->add_all_loci(step);
 
-          seqan::Iterator< VarGraph, Backtracker<> >::Type bt_itr ( this->vargraph );
+          seqan::Iterator< VarGraph, Backtracker >::Type bt_itr ( this->vargraph );
           std::vector< VarGraph::nodeid_type > trav_path;
           unsigned int trav_len = 0;
 
@@ -262,7 +343,7 @@ namespace grem
 
           LOG(INFO) << "Number of starting points selected (from "
                     << this->vargraph->node_count << "): "
-                    << this->starting_points.size();
+                    << this->starting_loci.size();
         }
 
         inline void add_all_loci(unsigned int step=1)
@@ -276,7 +357,7 @@ namespace grem
           // TODO: Add documentation.
           TIMED_SCOPE(addAllLociTimer, "add-starts");
 
-          seqan::Iterator<VarGraph, BFS<>>::Type itr(this->vargraph);
+          seqan::Iterator<VarGraph, BFS>::Type itr(this->vargraph);
 
           unsigned long int prenode_remain = 0;
           unsigned long int remain_estimate = 0;
@@ -320,92 +401,58 @@ namespace grem
 
           LOG(INFO) << "Number of starting points selected (from "
                     << this->vargraph->node_count << "): "
-                    << this->starting_points.size();
+                    << this->starting_loci.size();
         }
-
-        inline std::vector< vg::Position > const & get_starting_points()
+        /* ====================  METHODS       ======================================= */
+          inline void
+        traverse ( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {
-          return this->starting_points;
-        }
-
-      private:
-        // Attributes
-        const VarGraph *             vargraph;
-        std::vector< vg::Position >  starting_points;
-
-        // internal methods
-        inline void traverse_from_locus(typename TPathTraverser::Param & trav_params,
-            std::function< void(typename TPathTraverser::Output const &) > & callback,
-            const vg::Position & locus)
-        {
-          // TODO: Thread unsafe!
-          //       Possible solution: non-static variable passed by caller.
-          static std::vector< TPathTraverser > path_traversers;
-          static std::vector< int > deleted_paths_idx;
-          static std::vector< typename TPathTraverser::Output > seeds;
-          static std::vector< TPathTraverser > new_ptravs;
-
+          TIMED_SCOPE(traverseTimer, "traverse");
 #ifndef NDEBUG
-          // TODO: Use a structure with atomic increase operation to collect statistics.
-          static unsigned long int ptrav_counter = 0;
-          static unsigned long int ptrav_len_sum = 0;
-          static double      pre_avg_paths_len = 0;
-          static double      avg_paths_len = 0;
+          unsigned int locus_counter = 0;
+          unsigned int nof_reports = 0;
 #endif
-
-          path_traversers.push_back(TPathTraverser(this->vargraph, &trav_params, locus));
-          while (!path_traversers.empty())
+          TTraverser traverser( this->vargraph, &(this->reads_index), this->seed_len );
+          for (auto locus : this->starting_loci)
           {
-            for (unsigned int i = 0; i < path_traversers.size(); ++i)
-            {
-              TPathTraverser &ptrav = path_traversers[i];
-              if (is_finished(ptrav))
-              {
+            traverser.set_start_locus( locus );
+            traverser.run( callback );
 #ifndef NDEBUG
-                // XXX: compute average path length.
-                ptrav_len_sum += ptrav.get_path_length();
-                ++ptrav_counter;
-                if (ptrav_counter == NOF_PATHLEN_SAMPLES)
-                {
-                  static int nof_reports = 0;
-                  avg_paths_len = ptrav_len_sum / static_cast<float>(NOF_PATHLEN_SAMPLES);
-                  if (pre_avg_paths_len != 0)
-                  {
-                    avg_paths_len = (avg_paths_len + pre_avg_paths_len) / 2.0;
-                  }
-                  pre_avg_paths_len = avg_paths_len;
-
-                  LOG(INFO) << "Average traversed path length (from "
-                            << nof_reports * NOF_PATHLEN_SAMPLES + ptrav_counter
-                            << " samples): " << avg_paths_len;
-                  ++nof_reports;
-
-                  ptrav_counter = 0;
-                  ptrav_len_sum = 0;
-                }
-#endif
-
-                get_results(ptrav, seeds);
-                for (auto s : seeds) callback(s);
-                deleted_paths_idx.push_back(i);
-                seeds.clear();
-              }
-              else
-              {
-                move_forward(ptrav, new_ptravs);
-                path_traversers.reserve(path_traversers.size() + new_ptravs.size());
-                std::move(std::begin(new_ptravs), std::end(new_ptravs),
-                          std::back_inserter(path_traversers));
-                new_ptravs.clear();
-              }
-            }
-
-            for (auto idx : deleted_paths_idx)
+            ++locus_counter;
+            if (locus_counter % TRAVERSE_CHECKPOINT_LOCI_NO == 0)
             {
-              path_traversers.erase(path_traversers.begin()+idx);
+              locus_counter = 0;
+              ++nof_reports;
+              PERFORMANCE_CHECKPOINT_WITH_ID(traverseTimer,
+                  std::to_string(nof_reports * TRAVERSE_CHECKPOINT_LOCI_NO));
             }
-
-            deleted_paths_idx.clear();
+#endif
+          }
+        }
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        const VarGraph* vargraph;
+        std::vector< vg::Position > starting_loci;
+        Dna5QRecords reads;
+        unsigned int seed_len;
+        unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
+        typename TTraverser::index_type reads_index;
+        Dna5QStringSet seeds;
+        typename TTraverser::index_type seeds_index;
+        /* ====================  METHODS       ======================================= */
+          inline void
+        index_reads( )
+        {
+          TIMED_BLOCK(readsIndexTimer, "index-reads")
+          {
+            this->reads_index = typename TTraverser::index_type( this->reads.str );
+          }
+          TIMED_BLOCK(seedingTimer, "seeding") {
+            this->seeds =
+              seeding ( this->reads.str, this->seed_len, FixedLengthNonOverlapping() );
+          }
+          TIMED_BLOCK(seedsIndexTimer, "index-seeds") {
+            this->seeds_index = typename TTraverser::index_type( this->seeds );
           }
         }
     };
