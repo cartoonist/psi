@@ -1,19 +1,19 @@
-/*
- * =====================================================================================
+/**
+ *    @file  release.h
+ *   @brief  Release information.
  *
- * Filename: release.h
+ *  This header file contains release information, such as version, short and long
+ *  description, and other constant values.
  *
- * Created: Sun Nov 13, 2016  00:08
- * Last modified: Wed Nov 23, 2016  00:53
+ *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
- * Description: Release information.
+ *  @internal
+ *       Created:  Sun Nov 13, 2016  00:08
+ *  Organization:  Max-Planck-Institut fuer Informatik
+ *     Copyright:  Copyright (c) 2017, Ali Ghaffaari
  *
- * Copyright (c) 2016, Ali Ghaffaari
- *
- * Author: Ali Ghaffaari, <ali.ghaffaari@mpi-inf.mpg.de>
- * Organization: Max-Planck-Institut fuer Informatik
- *
- * =====================================================================================
+ *  This source code is released under the terms of the MIT License.
+ *  See LICENSE file for more information.
  */
 
 #ifndef RELEASE_H__
@@ -21,8 +21,17 @@
 
 namespace grem
 {
-  const char * const VERSION = "0.0.1.dev";
-  const char * const PACKAGE = "grem";
+  const char * const VERSION = "0.0.2";                /**< @brief Version number. */
+  const char * const PACKAGE = "grem";                 /**< @brief Package name. */
+  const char * const SHORT_DESC = "Graph REad Mapper"; /**< @brief Short description. */
+  /** @brief Long description. */
+  const char * const LONG_DESC = "Map DNA reads to a reference graph.";
+  /** @brief Banner to be printed on help and version messages. */
+  const char * const BANNER =
+    "\n"
+    " ┌─┐┬─┐┌─┐┌┬┐\n"
+    " │ ┬├┬┘├┤ │││\n"
+    " └─┘┴└─└─┘┴ ┴\n";
 }
 
 #endif  // RELEASE_H__

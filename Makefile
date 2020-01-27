@@ -1,37 +1,108 @@
 ##  Directories:
+# External libraries directory.
+EXTDIR       := ext
 # Source files directory.
 SRCDIR       := src
-# Proto files directory.
-PROTODIR     := proto
 # Tests directory.
 TESTDIR      := test
+# Binary files directory.
+BINDIR       := ./bin
+# The location where the binary files should be installed.
+PREFIX       ?= ~/.local
 
 ##  Sources:
-# Proto files.
-PROTOS       := $(wildcard ${PROTODIR}/*.proto)
-# Sources to be generated from proto files.
-PROTO_SRCS   := $(subst ${PROTODIR}, ${SRCDIR}, ${PROTOS:%.proto=%.pb.cc})
+SOURCES  := $(wildcard ${SRCDIR}/*.cc)
+SOURCES  += $(wildcard ${SRCDIR}/*.h)
+SOURCES  += $(wildcard ${TESTDIR}/*.cc)
+SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
-## Recipes:
-COMPILE.proto = protoc -I=${PROTODIR}/ --cpp_out=${SRCDIR}/
+##  Header-only libraries:
+HEADERONLY_LIBS = catch spdlog cxxopts kseq++
 
 # Specifying phony targets.
-.PHONY: all test clean dist-clean
-# Specifying precious targets.
-.PRECIOUS: ${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h
+.PHONY: all init release debug test test-debug doc tags install install-debug clean distclean
 
-all: ${PROTO_SRCS}
-	make -C ${SRCDIR}
+## Functions:
+define echotitle
+	@echo
+	@tput setaf 2
+	@echo "$1"
+	@tput sgr0
+	@echo
+endef
 
-${SRCDIR}/%.pb.cc ${SRCDIR}/%.pb.h:: ${PROTODIR}/%.proto
-	${COMPILE.proto} $<
+define make_test
+	$(call echotitle,"Building tests...")
+	@make -C ${TESTDIR}
+endef
 
-test: all
-	make -C ${TESTDIR}
+define run_test
+	$(call echotitle,"Running tests...")
+	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c "echo \"** Running '{}'\" && {}"
+endef
+
+define uninstall_headers
+	rm -rfv $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+endef
+
+
+all: release
+
+init-header:
+	$(call echotitle,"Copying header-only libraries...")
+
+init: init-header $(addprefix ${SRCDIR}/, ${HEADERONLY_LIBS})
+
+${SRCDIR}/catch:
+	@cp -rv ${EXTDIR}/Catch/single_include $@
+
+${SRCDIR}/spdlog:
+	@cp -rv ${EXTDIR}/spdlog/include/spdlog $@
+
+${SRCDIR}/cxxopts:
+	@mkdir $@
+	@cp -v ${EXTDIR}/cxxopts/include/cxxopts.hpp $@/cxxopts.h
+
+${SRCDIR}/kseq++:
+	@cp -rv ${EXTDIR}/kseq++/src $@
+
+release: init
+	$(call echotitle,"Building sources...")
+	@make -C ${SRCDIR} BUILD=release
+
+debug: init
+	$(call echotitle,"Building sources for debug...")
+	@make -C ${SRCDIR} BUILD=debug CXXFLAGS=-g
+
+test: release
+	$(call make_test)
+	$(call run_test)
+
+test-debug: debug
+	$(call make_test)
+	$(call run_test)
+
+doc:
+	$(call echotitle,"Generating source code documentation...")
+	doxygen
+
+tags:
+	$(call echotitle,"Updating ctags...")
+	ctags ${SOURCES}
+
+install: all
+	$(call echotitle,"Installing binaries...")
+	@install -v ${BINDIR}/release/grem ${PREFIX}/bin
+
+install-debug: debug
+	$(call echotitle,"Installing debug binaries...")
+	@install -v ${BINDIR}/debug/grem ${PREFIX}/bin
 
 clean:
-	make -C ${SRCDIR} $@
+	@make -C ${SRCDIR} $@
+	@make -C ${TESTDIR} $@
 
-dist-clean: clean
-	make -C ${SRCDIR} $@
-	rm -f ${SRCDIR}/*.pb.cc ${SRCDIR}/*.pb.h
+distclean:
+	$(call uninstall_headers)
+	@make -C ${SRCDIR} $@
+	@make -C ${TESTDIR} $@

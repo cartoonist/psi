@@ -1,38 +1,28 @@
 ## Directories:
+# Package source files directory.
+SRCDIR       := ../src
 # Binary files directory.
-BINDIR       := ../bin
-# Release binary directory (relative to `$BINDIR`).
-RELDIR       := release
-# Debug binary directory (relative to `$BINDIR`).
-DEBDIR       := debug
-# Build type
-BUILD        ?= release  # Should be one of the binary directories: `debug` or `release`
+BINDIR       := ./bin
 # Make the binary files directory.
-$(shell mkdir -p ${BINDIR}/${BUILD} >/dev/null)
+$(shell mkdir -p ${BINDIR} >/dev/null)
 # Dependencies Makefiles' directory.
 DPMDIR       := .d
 # Make the dependencies Makefiles' directory.
 $(shell mkdir -p ${DPMDIR} >/dev/null)
 
+#Makefile absolute path.
+TEST_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 ##  Build variables:
 # Compiler.
 CXX          ?= g++
-# Last commit date.
-UPDATE_DATE  := $(shell git log -n 1 --pretty='format:%cd' --date='format:%b %d %Y')
-# Git version tag.
-GIT_VERSION  := $(shell git describe)
 # Compiler flags.
-ifeq ($(BUILD),debug)
-MACROS       ?= -DGREM_DEBUG=1
-endif
-MACROS       ?= -DGREM_DEBUG=0
-MACROS       += -DGREM_UPDATE_DATE="\"${UPDATE_DATE}\"" -DGREM_GIT_VERSION="\"${GIT_VERSION}\""
-
+MACROS       ?= -DGREM_DEBUG=1 -DTESTDIR=\"${TEST_PATH}\"
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
-CXXFLAGS     ?= -g -O3
+CXXFLAGS     ?= -g
 # FIXME: Manage the dependencies in a better way!
 VGDIR        ?= /home/ghaffari/src/vg
-LIBS_CFLAGS  := -I. \
+LIBS_CFLAGS  := -I ${SRCDIR}/ \
                 -I${VGDIR}/include \
                 -I${VGDIR}/src \
                 -I${VGDIR} \
@@ -60,7 +50,7 @@ LDFLAG       := -fopenmp \
 SOURCES      := $(wildcard *.cc)
 
 ##  Targets:
-TARGET       := ${BINDIR}/${BUILD}/grem
+TARGETS       := ${BINDIR}/count_kmers ${BINDIR}/ggsim ${BINDIR}/pathindex_stats ${BINDIR}/loci_stats ${BINDIR}/tests_pathset ${BINDIR}/tests_path ${BINDIR}/tests_fmindex ${BINDIR}/tests_sequence ${BINDIR}/tests_stat ${BINDIR}/tests_mapper ${BINDIR}/tests_pathindex ${BINDIR}/tests_utils ${BINDIR}/tests_indexiter ${BINDIR}/tests_traverser ${BINDIR}/tests_vargraph ${BINDIR}/test_linear
 
 ##  Recipes:
 COMPILE.cxx   = ${CXX} -c ${CXXFLAGS} ${CPPFLAGS} -o $@
@@ -71,17 +61,57 @@ MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MG -MF $@
 .PHONY: all clean distclean
 
 # building target.
-all: ${TARGET}
+all: ${TARGETS}
 
-${BINDIR}/release/grem: grem.o
+${BINDIR}/test_linear: linear.o
 	${LINK}
 
-${BINDIR}/debug/grem: grem.g.o
+${BINDIR}/loci_stats: loci_stats.o
+	${LINK}
+
+${BINDIR}/pathindex_stats: pathindex_stats.o
+	${LINK}
+
+${BINDIR}/ggsim: ggsim.o
+	${LINK}
+
+${BINDIR}/count_kmers: count_kmers.o
+	${LINK}
+
+${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_traverser: tests_traverser.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_indexiter: tests_indexiter.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_utils: tests_utils.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_pathindex: tests_pathindex.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_mapper: tests_mapper.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_stat: tests_stat.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_sequence: tests_sequence.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_fmindex: tests_fmindex.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_path: tests_path.o tests_main.o
+	${LINK}
+
+${BINDIR}/tests_pathset: tests_pathset.o tests_main.o
 	${LINK}
 
 # general rule for compiling cc files.
-%.g.o: %.cc
-	${COMPILE.cxx} $<
 %.o: %.cc
 	${COMPILE.cxx} $<
 
@@ -96,17 +126,9 @@ distclean: clean
 ${DPMDIR}/%.d: %.cc
 	${MAKE_DMAKES} -MT $*.o -MT $@ $<
 
-# generating sources' prerequisites automatically by remaking *.g.d Makefiles (debug mode).
-${DPMDIR}/%.g.d: %.cc
-	${MAKE_DMAKES} -MT $*.g.o -MT $@ $<
-
 # include *.d Makefiles.
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),distclean)
-ifneq ($(BUILD),debug)
 -include $(addprefix ${DPMDIR}/, ${SOURCES:%.cc=%.d})
-else
--include $(addprefix ${DPMDIR}/, ${SOURCES:%.cc=%.g.d})
-endif
 endif
 endif
