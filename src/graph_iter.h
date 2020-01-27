@@ -117,7 +117,13 @@ namespace grem {
         GraphIter( const TGraph& vargraph, value_type start=0 ) :
           GraphIter( &vargraph, start ) { }
         /* ====================  OPERATORS     ======================================= */
-        value_type operator*( ) { return this->itr_value; }
+        inline value_type operator*( )
+        {
+          if ( at_end( *this ) && this->raise_on_end ) {
+            throw std::range_error( "The iterator has reached the end." );
+          }
+          return this->itr_value;
+        }
         GraphIter& operator++( );  // prefix: go forward.
         GraphIter& operator--( );  // prefix: go backward (reset) considering last traverse as history.
         GraphIter& operator--( int );  // postfix: go backward (reset) without side effects.

@@ -127,6 +127,24 @@ namespace grem {
         }
 
         /**
+         *  @brief  alias: See `add_path`.
+         */
+          inline void
+        push_back( Path< TGraph >&& new_path )
+        {
+          this->add_path( std::move( new_path ) );
+        }
+
+        /**
+         *  @brief  alias: See `add_path`.
+         */
+          inline void
+        push_back( const Path< TGraph >& new_path )
+        {
+          this->add_path( Path< TGraph >( new_path ) );
+        }
+
+        /**
          *  @brief  Get the size of the paths set.
          *
          *  @return The size of the paths set.
@@ -234,6 +252,17 @@ namespace grem {
 
   template< typename TGraph, typename TIndexSpec >
     using Dna5QPathSet = PathSet< TGraph, seqan::Dna5QString, TIndexSpec >;
+
+  /* PathSet interface functions  ------------------------------------------------ */
+
+  template< typename TGraph, typename TText, typename TIndexSpec >
+      inline typename PathSet< TGraph, TText, TIndexSpec >::size_type
+    length( PathSet< TGraph, TText, TIndexSpec >& set )
+    {
+      return set.size();
+    }
+
+  /* END OF PathSet interface functions  ----------------------------------------- */
 
 }  /* -----  end of namespace grem  ----- */
 

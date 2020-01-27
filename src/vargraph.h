@@ -416,7 +416,7 @@ namespace grem {
       typedef typename seqan::Value< GraphIter< VarGraph, BFS > >::Type TValue;
 
       if ( at_end( *this ) && this->raise_on_end ) {
-          throw std::range_error( "The iterator has reached the end." );
+        throw std::range_error( "The iterator has reached the end." );
       }
 
       if ( this->visiting_buffer.empty() ) return *this;
@@ -536,7 +536,7 @@ namespace grem {
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Backtracker > >::Type TValue;
 
-      if ( this->state.end && this->raise_on_end ) {
+      if ( at_end( *this ) && this->raise_on_end ) {
         throw std::range_error( "The iterator has reached the end." );
       }
 
@@ -685,7 +685,7 @@ namespace grem {
     {
       typedef typename seqan::Value< GraphIter< VarGraph, Haplotyper > >::Type TValue;
 
-      if ( this->state.end && this->raise_on_end ) {
+      if ( at_end( *this ) && this->raise_on_end ) {
         throw std::range_error( "The iterator has reached the end." );
       }
 
@@ -796,10 +796,11 @@ namespace grem {
         grem::GraphIter< VarGraph, TIterSpec >& iter,
         unsigned int k )
     {
-      while ( path.get_sequence_len() < k ) {
+      while ( !at_end( iter ) && path.get_sequence_len() < k ) {
         add_node( path, *iter );
         ++iter;
       }
+      iter.operator*();  /**< @brief Trigger the exception if it's at end and raise_on_end is true. */
     }
 
   /**
@@ -813,41 +814,6 @@ namespace grem {
     {
       throw std::runtime_error( "Cannot be used by BFS iterator." );
     }
-
-  /**
-   *  @brief  Move forward a segment and preserve its length of k.
-   *
-   *  @param  segment The segment to move.
-   *  @param  iter The graph iterator.
-   *  @param  k The segment length to be preserved.
-   *
-   *  After each call, the segment will be extended by one nodes. If poping nodes from
-   *  the start of the segment does not make it shorter than k, those are cut off.
-   */
-  template< typename TIterSpec >
-      inline void
-    move_forward( Path< VarGraph, Dynamic >& segment,
-        grem::GraphIter< VarGraph, TIterSpec >& iter,
-        unsigned int k )
-    {
-      add_node( segment, *iter );
-      ++iter;
-      while ( segment.get_sequence_len() -
-          iter.get_vargraph()->node_length( segment.get_nodes().front() ) >= k ) {
-        pop_front( segment );
-      }
-    }
-
-  /**
-   *  @overload Prevent using BFS for moving a segment.
-   */
-    inline void
-  move_forward( Path< VarGraph, Dynamic >&,
-      grem::GraphIter< VarGraph, BFS >&,
-      unsigned int )
-  {
-    throw std::runtime_error( "Cannot be used by BFS iterator." );
-  }
 
   /**
    *  @brief  Simulate a unique haplotype.
@@ -900,7 +866,9 @@ namespace grem {
     {
       Path< VarGraph > haplotype( iter.get_vargraph() );
       get_uniq_full_haplotype( haplotype, iter, tries );
-      paths.add_path( std::move( haplotype ) );
+      if ( length( haplotype ) != 0 ){
+        paths.push_back( std::move( haplotype ) );
+      }
     }
 
   template< typename TPathSet >
@@ -908,35 +876,57 @@ namespace grem {
     get_uniq_patches( TPathSet& paths,
         typename seqan::Iterator< VarGraph, Haplotyper >::Type& iter,
         unsigned int k )
-    {
+    { // :TODO:Fri Dec 01 21:26:\@cartoonist: the length of pre-context sequence won't be k all the time.
       iter.raise_on_end = true;
       Path< VarGraph > patch( iter.get_vargraph() );
       Path< VarGraph, Dynamic > frontier( iter.get_vargraph() );
+      typename Path< VarGraph, Dynamic >::nodes_type::value_type marked;
       try {
         while ( true ) {
+          marked = 0;
+          if ( 0 < length( frontier ) ) marked = frontier.get_nodes().back();
           // Bootstrap.
-          extend_to_k( frontier, iter, k );
+          extend_to_k( frontier, iter, ( ( marked != 0 ) + 1 ) * k );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( length( patch ) > 0 && iter[ frontier.get_nodes() ] ) {
-            paths.add_path( patch );
+            paths.push_back( patch );
             clear( patch );
+            trim_front_by_len( frontier, k );
+          }
+          else if ( length( patch ) > 0 ) {
+            // Nodes from first to the `marked` are already added.
+            trim_front( frontier, marked );
+            marked = 0;
+            extend_to_k( frontier, iter, k );
           }
           // Search for a patch of length k that is not covered by visited paths of `iter`.
-          while ( iter[ patch.get_nodes() ] ) move_forward( frontier, iter, k );
+          while ( iter[ frontier.get_nodes() ] )
+          {
+            add_node( frontier, *iter );
+            trim_front_by_len( frontier, k );
+            ++iter;
+          }
           // Extend the patch.
           patch += frontier;
-          while( !iter[ frontier.get_nodes() ] ) {
-            move_forward( frontier, iter, k );
-            add_node( patch, frontier.get_nodes().back() );
+          while ( !iter[ frontier.get_nodes() ] ) {
+            add_node( frontier, *iter );
+            add_node( patch, *iter );
+            trim_front_by_len( frontier, k );
+            ++iter;
           }
-          clear( frontier );
         }
       }
       catch( const std::range_error& ) {
         if ( length( patch ) > 0 ) {
-          paths.add_path( patch );
-          --iter;  // save the traversed path and reset the Haplotyper iterator.
+          if ( !iter[ frontier.get_nodes() ] &&
+              !contains( patch, frontier.get_nodes().begin(), frontier.get_nodes().end() ) )
+          {
+            if ( marked != 0 ) trim_front( frontier, marked );
+            patch += frontier;
+          }
+          paths.push_back( patch );
         }
+        --iter;  // save the traversed path and reset the Haplotyper iterator.
       }
       iter.raise_on_end = false;
     }
@@ -951,9 +941,9 @@ namespace grem {
         get_uniq_full_haplotype( paths, iter );
         return true;
       }
-      unsigned int paths_no = length( paths.string_set );
+      unsigned int paths_no = paths.size();
       get_uniq_patches( paths, iter, context_len );
-      if ( paths_no == length( paths.string_set ) ) return false;
+      if ( paths_no == paths.size() ) return false;
       return true;
     }
 
