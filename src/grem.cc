@@ -193,7 +193,7 @@ template< typename TIndexSpec  >
       /* Load all reads from file. */
       readRecords( reads, reads_infile );
     }
-    log->info( "Read all reads in {} us.",
+    log->info( "Read {} reads in {} us.", length( reads ),
         Timer::get_duration( "read-reads" ).count() );
 
     /* If chunksize is zero (unspecified), set it to the no of reads; i.e. one chunk. */
