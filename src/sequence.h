@@ -353,18 +353,18 @@ namespace grem {
         GreedyNonOverlapping )
     {
       clear( seeds );
-      reserve ( seeds, static_cast<int>( lengthSum ( string_set ) / k ) );
+      reserve( seeds, static_cast<int>( lengthSum( string_set ) / k ) );
 
-      for ( unsigned int idx = 0; idx < length ( string_set ); ++idx ) {
-        for ( unsigned int i = 0; i < length ( string_set[idx] ) - k; i += k ) {
-          appendValue ( seeds, infixWithLength ( string_set[idx], i, k ) );
+      for ( unsigned int idx = 0; idx < length( string_set ); ++idx ) {
+        for ( unsigned int i = 0; i < length( string_set[idx] ) - k; i += k ) {
+          appendValue( seeds, infixWithLength( string_set[idx], i, k ) );
         }
-        unsigned int last = length ( string_set[idx] ) - k;
-        appendValue ( seeds, infixWithLength ( string_set[idx], last, k ) );
+        unsigned int last = length( string_set[idx] ) - k;
+        appendValue( seeds, infixWithLength( string_set[idx], last, k ) );
       }
     }  /* -----  end of function seeding  ----- */
-  /* END OF Interface functions  ------------------------------------------------- */
 
+  /* END OF Interface functions  ------------------------------------------------- */
 }  /* -----  end of namespace grem  ----- */
 
 #endif  /* ----- #ifndef SEQUENCE_H__  ----- */

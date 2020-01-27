@@ -33,6 +33,7 @@ LDFLAG       := -fopenmp \
 	        -lz \
 		-lbz2 \
 	        -lrt \
+		-latomic \
 	        $(shell pkg-config --libs xg) \
 	        $(shell pkg-config --libs protobuf)
 
