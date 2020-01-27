@@ -23,6 +23,7 @@
 #include <seqan/sequence.h>
 
 namespace grem {
+  // :TODO:Tue Sep 05 09:36:\@cartoonist: clear the code up from direct usage of seqan::Dna5QString.
   /* Typedefs  ------------------------------------------------------------------- */
   typedef seqan::StringSet< seqan::CharString >    CharStringSet;
   typedef seqan::StringSet< seqan::Dna5QString >   Dna5QStringSet;

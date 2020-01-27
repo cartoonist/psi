@@ -21,7 +21,7 @@ CXX          ?= g++
 # Compiler flags.
 MACROS       ?= -DGREM_DEBUG=1 -DTESTDIR=\"${TEST_PATH}\"
 CPPFLAGS      = -Wall -Werror -pedantic -fopenmp -std=c++14 ${MACROS} ${LIBS_CFLAGS}
-CXXFLAGS     ?= -O3
+CXXFLAGS     ?= -g
 LIBS_CFLAGS  := -I ${SRCDIR}/ \
 	        -I ${EXTDIR}/ \
 	        $(shell pkg-config --cflags seqan-2) \
@@ -52,48 +52,25 @@ MAKE_DMAKES   = ${CXX} ${CPPFLAGS} -MM -MG -MF $@
 # building target.
 all: ${TARGETS}
 
-debug: CXXFLAGS := -g
-debug: $(addsuffix _d, ${TARGETS})
-
 ${BINDIR}/test_linear: linear.o
-	${LINK}
-
-${BINDIR}/test_linear_d: linear.g.o
 	${LINK}
 
 ${BINDIR}/tests_bfs: tests_bfs.o tests_main.o ${SRCDIR}/vargraph.o
 	${LINK}
 
-${BINDIR}/tests_bfs_d: tests_bfs.g.o tests_main.g.o ${SRCDIR}/vargraph.g.o
-	${LINK}
-
 ${BINDIR}/tests_vargraph: tests_vargraph.o tests_main.o ${SRCDIR}/vargraph.o
-	${LINK}
-
-${BINDIR}/tests_vargraph_d: tests_vargraph.g.o tests_main.g.o ${SRCDIR}/vargraph.g.o
 	${LINK}
 
 ${BINDIR}/tests_traverser: tests_traverser.o tests_main.o ${SRCDIR}/vargraph.o
 	${LINK}
 
-${BINDIR}/tests_traverser_d: tests_traverser.g.o tests_main.g.o ${SRCDIR}/vargraph.g.o
-	${LINK}
-
 ${BINDIR}/tests_indexiter: tests_indexiter.o tests_main.o
-	${LINK}
-
-${BINDIR}/tests_indexiter_d: tests_indexiter.g.o tests_main.g.o
 	${LINK}
 
 ${BINDIR}/tests_utils: tests_utils.o tests_main.o
 	${LINK}
 
-${BINDIR}/tests_utils_d: tests_utils.g.o tests_main.g.o
-	${LINK}
-
 # general rule for compiling cc files.
-%.g.o: %.cc
-	${COMPILE.cxx} $<
 %.o: %.cc
 	${COMPILE.cxx} $<
 

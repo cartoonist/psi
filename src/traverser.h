@@ -29,6 +29,7 @@
 #include "sequence.h"
 #include "index.h"
 #include "index_iter.h"
+#include "seed.h"
 
 // TODO: refactor: types (const, * and &).
 
@@ -107,19 +108,11 @@ namespace grem
     class Traverser
     {
       public:
-        // Member typedefs and classes
-        typedef struct
-        {
-          vg::Position      seed_locus;
-          seqan::CharString read_id;
-          unsigned int      read_pos;
-        } SeedHit;
-
-        // defined types
+        /* ====================  TYPEDEFS      ======================================= */
         typedef seqan::Seed < seqan::Simple > Output;
         typedef TIndexSpec IndexType;
         typedef seqan::TopDown< seqan::ParentLinks<> > IterType;
-        // Traverse parameters
+
         class Param
         {
           friend class Traverser;

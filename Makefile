@@ -9,13 +9,13 @@ BINDIR       := ./bin
 PREFIX       ?= ~/.local
 
 ##  Sources:
-ALL_SOURCES  := $(wildcard ${SRCDIR}/*.cc)
-ALL_SOURCES  += $(wildcard ${SRCDIR}/*.h)
-ALL_SOURCES  += $(wildcard ${TESTDIR}/*.cc)
-ALL_SOURCES  += $(wildcard ${TESTDIR}/*.h)
+SOURCES  := $(wildcard ${SRCDIR}/*.cc)
+SOURCES  += $(wildcard ${SRCDIR}/*.h)
+SOURCES  += $(wildcard ${TESTDIR}/*.cc)
+SOURCES  += $(wildcard ${TESTDIR}/*.h)
 
 # Specifying phony targets.
-.PHONY: all release benchmark debug test doc tags clean distclean
+.PHONY: all release debug test test-debug doc tags install install-debug clean distclean
 
 ## Functions:
 define echotitle
@@ -26,31 +26,33 @@ define echotitle
 	@echo
 endef
 
+define make_test
+	$(call echotitle,"Building tests...")
+	@make -C ${TESTDIR}
+endef
+
+define run_test
+	$(call echotitle,"Running tests...")
+	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c {}
+endef
+
 all: release
 
 release:
 	$(call echotitle,"Building sources...")
 	@make -C ${SRCDIR} BUILD=release
 
-benchmark:
-	$(call echotitle,"Building sources for benchmark...")
-	@make -C ${SRCDIR} BUILD=release MACROS=-DGREM_DEBUG=1
-
 debug:
 	$(call echotitle,"Building sources for debug...")
-	@make -C ${SRCDIR} BUILD=debug
+	@make -C ${SRCDIR} BUILD=debug CXXFLAGS=-g
 
-test: benchmark
-	$(call echotitle,"Building tests...")
-	@make -C ${TESTDIR}
-	$(call echotitle,"Running tests...")
-	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*" | xargs -I{} sh -c {}
+test: release
+	$(call make_test)
+	$(call run_test)
 
 test-debug: debug
-	$(call echotitle,"Building tests for debug...")
-	@make -C ${TESTDIR} debug
-	$(call echotitle,"Running tests...")
-	@find ${TESTDIR}/bin -maxdepth 1 -type f -name "tests_*_d" | xargs -I{} sh -c {}
+	$(call make_test)
+	$(call run_test)
 
 doc:
 	$(call echotitle,"Generating source code documentation...")
@@ -58,11 +60,15 @@ doc:
 
 tags:
 	$(call echotitle,"Updating ctags...")
-	ctags ${ALL_SOURCES}
+	ctags ${SOURCES}
 
 install: all
 	$(call echotitle,"Installing binaries...")
 	@install -v ${BINDIR}/release/grem ${PREFIX}/bin
+
+install-debug: debug
+	$(call echotitle,"Installing debug binaries...")
+	@install -v ${BINDIR}/debug/grem ${PREFIX}/bin
 
 clean:
 	@make -C ${SRCDIR} $@
