@@ -84,9 +84,6 @@ namespace grem{
     select( const Path< TGraph, TSpec >& path,
         typename Path< TGraph, TSpec >::size_type rank );
   template< typename TGraph, typename TSpec >
-      typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path );
-  template< typename TGraph, typename TSpec >
       void
     clear( Path< TGraph, TSpec >& path );
   template< typename TGraph, typename TSpec >
@@ -623,15 +620,35 @@ namespace grem{
    */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path, Forward )
+    sequence( const Path< TGraph, TSpec >& path, Forward, unsigned int context=0 )
     {
       assert( path.get_vargraph() != nullptr );
 
+      if ( length( path ) == 0 ) return "";
+
       typename Path< TGraph, TSpec >::string_type repr_str;
       repr_str.reserve( path.get_sequence_len() );
-      for ( const auto& node_id : path.get_nodes() ) {
-        repr_str += path.get_vargraph()->node_sequence( node_id );
+
+      /* If context is set (not zero) the first node is trimmed by length `context`. */
+      auto iter = path.get_nodes().begin();
+      if ( context != 0 ){
+        repr_str += path.get_vargraph()->node_sequence( *iter )
+          .substr( path.get_vargraph()->node_length( *iter ) - context + 1 );
+        ++iter;
       }
+
+      /* Add sequence of intermediate nodes. */
+      while ( ( context != 0 && iter != path.get_nodes().end() - 1 ) ||
+          ( context == 0 && iter != path.get_nodes().end() ) ) {
+        repr_str += path.get_vargraph()->node_sequence( *iter );
+        ++iter;
+      }
+
+      /* If context is set (not zero) the last node is trimmed by length `context`. */
+      if ( context != 0 ) {
+        repr_str += path.get_vargraph()->node_sequence( *iter ).substr( 0, context - 1 );
+      }
+
       return repr_str;
     }  /* -----  end of template function sequence  ----- */
 
@@ -645,18 +662,19 @@ namespace grem{
    */
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path, Reversed )
+    sequence( const Path< TGraph, TSpec >& path, Reversed, unsigned int context=0 )
     {
-      typename Path< TGraph, TSpec >::string_type repr_str = sequence( path, Forward() );
+      typename Path< TGraph, TSpec >::string_type repr_str =
+        sequence( path, Forward(), context );
       std::reverse( repr_str.begin(), repr_str.end() );
       return repr_str;
     }  /* -----  end of template function sequence  ----- */
 
   template< typename TGraph, typename TSpec >
       inline typename Path< TGraph, TSpec >::string_type
-    sequence( const Path< TGraph, TSpec >& path )
+    sequence( const Path< TGraph, TSpec >& path, unsigned int context=0 )
     {
-      return sequence( path, Forward() );
+      return sequence( path, Forward(), context );
     }
 
   /**

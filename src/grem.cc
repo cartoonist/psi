@@ -143,9 +143,9 @@ template< typename TIndexSpec  >
     void
   find_seeds( VarGraph& vargraph, SeqFileIn& reads_infile, seqan::File<>& output_file,
       unsigned int seed_len, unsigned int chunk_size, unsigned int start_every,
-      unsigned int path_num, bool paths_index, const std::string& paths_index_file,
-      bool nomapping, bool dumpstarts, const std::string& starts_path,
-      TIndexSpec const /* Tag */ )
+      unsigned int path_num, unsigned int context, bool paths_index,
+      const std::string& paths_index_file, bool nomapping, bool dumpstarts,
+      const std::string& starts_path, TIndexSpec const /* Tag */ )
   {
     /* Get the main logger. */
     auto log = get_logger( "main" );
@@ -158,7 +158,7 @@ template< typename TIndexSpec  >
     /* Install mapper singal handler for getting progress report. */
     std::signal( SIGUSR1, signal_handler< TMapper > );
     /* Genome-wide paths set. */
-    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths;
+    Dna5QPathSet< VarGraph, grem::CFMIndex, Forward > paths( context );
     /* Prepare (load or create) genome-wide paths. */
     prepare_paths_index( paths, mapper, paths_index, paths_index_file, path_num );
 
@@ -256,6 +256,7 @@ startup( const Options & options )
   log->info( "Parameters:" );
   log->info( "- Seed length: {}", options.seed_len );
   log->info( "- Number of paths: {}", options.path_num );
+  log->info( "- Context length (used in patching): {}", options.context );
   log->info( "- Paths index file: '{}'", options.paths_index_file );
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
@@ -301,6 +302,7 @@ startup( const Options & options )
                               options.chunk_size,
                               options.start_every,
                               options.path_num,
+                              options.context,
                               options.paths_index,
                               options.paths_index_file,
                               options.nomapping,
@@ -315,6 +317,7 @@ startup( const Options & options )
                              options.chunk_size,
                              options.start_every,
                              options.path_num,
+                             options.context,
                              options.paths_index,
                              options.paths_index_file,
                              options.nomapping,
@@ -381,10 +384,15 @@ setup_argparser( seqan::ArgumentParser& parser )
   setDefaultValue(parser, "e", 1);
 
   // number of paths
-  addOption ( parser, seqan::ArgParseOption ( "n", "path-num", "Number of paths from "
+  addOption( parser, seqan::ArgParseOption( "n", "path-num", "Number of paths from "
         "the variation graph in hybrid approach.", seqan::ArgParseArgument::INTEGER,
         "INT" ) );
   setDefaultValue(parser, "n", 0);
+
+  // context in patching the paths
+  addOption( parser, seqan::ArgParseOption( "t", "context", "Context length in patching.",
+        seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "t", 0 );
 
   // index
   addOption(parser, seqan::ArgParseOption("i", "index", "Index type for indexing reads.",
@@ -436,6 +444,7 @@ get_option_values ( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.chunk_size, parser, "chunk-size" );
   getOptionValue( options.start_every, parser, "start-every" );
   getOptionValue( options.path_num, parser, "path-num" );
+  getOptionValue( options.context, parser, "context" );
   options.paths_index = isSet( parser, "paths-index" );
   getOptionValue( options.paths_index_file, parser, "paths-index" );
   getOptionValue( indexname, parser, "index" );

@@ -278,6 +278,55 @@ SCENARIO( "Trim a path in a variation graph", "[graph][path]" )
 
       REQUIRE( path.get_sequence() == init_sequence );
 
+      WHEN( "The forward sequence with non-zero context is computed" )
+      {
+        std::string s = sequence( path, 11 );
+
+        THEN( "The sequence of the first and last nodes should be trimmed according to context" )
+        {
+          REQUIRE( s == init_sequence.substr( 31 ) );
+        }
+      }
+
+      WHEN( "The forward sequence with non-zero context is computed" )
+      {
+        auto other = path;
+        trim_back( other, 37 );
+        std::string s = sequence( other, 11 );
+
+        THEN( "The sequence of the first and last nodes should be trimmed according to context" )
+        {
+          REQUIRE( s == init_sequence.substr( 31, 81 ) );
+        }
+      }
+
+      WHEN( "The reversed sequence is computed" )
+      {
+        std::string s = sequence( path, Reversed() );
+
+        THEN( "The reversed sequence should be returned" )
+        {
+          std::string rev_s;
+          std::copy( init_sequence.rbegin(),
+              init_sequence.rend(),
+              std::back_inserter( rev_s ) );
+          REQUIRE( s == rev_s );
+        }
+      }
+
+      WHEN( "The reversed sequence with non-zero context is computed" )
+      {
+        std::string s = sequence( path, Reversed(), 11 );
+
+        THEN( "The sequence of the first and last nodes should be trimmed according to context" )
+        {
+          std::string truth = init_sequence.substr( 31 );
+          std::string rev_s;
+          std::copy( truth.rbegin(), truth.rend(), std::back_inserter( rev_s ) );
+          REQUIRE( s == rev_s );
+        }
+      }
+
       WHEN( "The last node is trimmed" )
       {
         VarGraph::offset_type trimmed_len
@@ -458,7 +507,7 @@ SCENARIO( "Trim a path to the length of k", "[graph][path]" )
   }
 }
 
-SCENARIO( "Query node coordinates by position in the path" )
+SCENARIO( "Query node coordinates by position in the path", "[graph][path]" )
 {
   std::vector< VarGraph::nodeid_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
