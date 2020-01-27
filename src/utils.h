@@ -39,15 +39,14 @@ namespace grem {
    *  A wrapper function for `seqan::readRecords` method to read the records into named
    *  string set.
    */
-  inline void
-    readRecords ( Dna5QRecords &records,
-        seqan::SeqFileIn &infile, unsigned int num_record )
-    {
-      CharStringSet quals;
-      seqan::readRecords ( records.id, records.str, quals, infile, num_record );
-      assignQualities ( records.str, quals );
-      return;
-    }  /* -----  end of function readRecords  ----- */
+    inline void
+  readRecords( Dna5QRecords& records, seqan::SeqFileIn& infile, unsigned int num_record )
+  {
+    CharStringSet quals;
+    seqan::readRecords( records.id, records.str, quals, infile, num_record );
+    assignQualities( records.str, quals );
+    return;
+  }  /* -----  end of function readRecords  ----- */
 
 
   /**
@@ -60,7 +59,7 @@ namespace grem {
    *  It checks the first string whether the second one is one of its suffixes or not.
    */
     inline bool
-  ends_with ( std::string str, std::string suf )
+  ends_with( std::string str, std::string suf )
   {
     if ( suf.length() <= str.length() ) {
       if ( std::equal( suf.rbegin(), suf.rend(), str.rbegin() ) ) {
@@ -81,7 +80,7 @@ namespace grem {
    *  portability.
    */
     inline bool
-  readable ( const std::string& file_name )
+  readable( const std::string& file_name )
   {
     std::ifstream ifs( file_name );
     return ifs.good();
@@ -98,7 +97,7 @@ namespace grem {
    *  portability.
    */
     inline bool
-  writable ( const std::string& file_name )
+  writable( const std::string& file_name )
   {
     std::ofstream ofs( file_name );
     if ( ofs.good() ) {
@@ -112,10 +111,26 @@ namespace grem {
   typedef uint64_t TContainerSize;
 
   /**
+   *  @brief  Simple object serialization implementation.
+   *
+   *  @param[out]  out The output stream.
+   *  @param[in]  obj The object to be written into the output stream.
+   *
+   *  It simply writes the object bitwise into the stream.
+   */
+  template< typename TObject >
+      inline void
+    serialize( std::ostream& out, const TObject& obj )
+    {
+      out.write( reinterpret_cast< const char* >( &obj ), sizeof( TObject ) );
+    }
+
+
+  /**
    *  @brief  Container serialization implementation.
    *
-   *  @param[out]  out Output stream.
-   *  @param[in]  size Size of the container.
+   *  @param[out]  out The output stream.
+   *  @param[in]  size The size of the container.
    *  @param[in]  begin The begin input iterator.
    *  @param[in]  end The end input iterator.
    *
@@ -123,17 +138,11 @@ namespace grem {
    *  by all items between two input iterators are written.
    */
   template< typename TIter, typename TSize >
-    void
+    inline void
   _serialize( std::ostream& out, TSize size, TIter begin, TIter end )
   {
-    out.write( reinterpret_cast< char* >( &size ), sizeof( TSize ) );
-
-    for ( ; begin != end; ++begin ) {
-      out.write( reinterpret_cast< const char* >( &*begin ),
-          sizeof( typename TIter::value_type ));
-    }
-
-    out.flush();
+    serialize( out, size );
+    for ( ; begin != end; ++begin ) serialize( out, *begin );
   }  /* -----  end of template function _serialize  ----- */
 
 
@@ -149,7 +158,7 @@ namespace grem {
    *  `TSize` represents the size type.
    */
   template< typename TIter, typename TSize = TContainerSize >
-    void
+    inline void
   serialize( std::ostream& out, TIter begin, TIter end )
   {
     TSize size = end - begin;
@@ -171,12 +180,28 @@ namespace grem {
    *  container itself to infer the size.
    */
   template< typename TContainer, typename TIter, typename TSize = TContainerSize >
-    void
-  serialize( std::ostream& out, TContainer container, TIter begin, TIter end )
+    inline void
+  serialize( std::ostream& out, const TContainer& container, TIter begin, TIter end )
   {
     TSize size = container.size();
     _serialize( out, size, begin, end );
   }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Deserialize a simple object from an input stream.
+   *
+   *  @param[in,out]  in The input stream.
+   *  @param[out]  obj The deserialized value will be written to this variable.
+   *
+   *  It simply reads the object from an input stream.
+   */
+  template< typename TObject >
+      inline void
+    deserialize( std::istream& in, TObject& obj )
+    {
+      in.read( reinterpret_cast< char* >( &obj ), sizeof( TObject ) );
+    }
 
 
   /**
@@ -190,16 +215,15 @@ namespace grem {
    *  and populate the container from serialized data.
    */
   template< typename TContainer, typename TOutIter, typename TSize = TContainerSize >
-    void
-  deserialize ( std::istream& in, TContainer& container, TOutIter itr )
+    inline void
+  deserialize( std::istream& in, TContainer& container, TOutIter itr )
   {
     TSize size;
-    in.read( reinterpret_cast< char* >( &size ), sizeof( TSize ) );
+    deserialize( in, size );
     container.reserve( size );
     for ( unsigned int i = 0; i < size; ++i ) {
       typename TContainer::value_type item;
-      in.read( reinterpret_cast< char* >( &item ),
-          sizeof( typename TContainer::value_type ) );
+      deserialize( in, item );
       *itr++ = item;
     }
   }  /* -----  end of template function deserialize  ----- */

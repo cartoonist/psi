@@ -113,7 +113,7 @@ namespace grem
 
   template< typename TSpec >
       void
-    save( const Path< TSpec >& path, const std::string& file_name );
+    save( const Path< TSpec >& path, std::ostream& out );
   template< typename TSpec >
       void
     _add_node( Path< TSpec >& path, const VarGraph::nodeid_type& node_id );
@@ -242,7 +242,7 @@ namespace grem
         }  /* -----  end of method set_nodes  ----- */
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        save< TSpec >( const Path< TSpec >& path, const std::string& file_name );
+        save< TSpec >( const Path< TSpec >& path, std::ostream& out );
           friend void
         _add_node< TSpec >( Path< TSpec >& path, const VarGraph::nodeid_type& node_id );
           friend std::string
@@ -364,7 +364,7 @@ namespace grem
         }  /* -----  end of method set_nodes  ----- */
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        save< Full >( const Path< Full >& path, const std::string& file_name );
+        save< Full >( const Path< Full >& path, std::ostream& out );
           friend void
         _add_node< Full >( Path< Full >& path, const VarGraph::nodeid_type& node_id );
           friend void
@@ -386,6 +386,21 @@ namespace grem
   /* Normal and Full Path interface functions  --------------------------------- */
 
   /**
+   *  @brief  Save the path to an output stream.
+   *
+   *  @param  path The path.
+   *  @param  out The output stream.
+   *
+   *  It saves the sequence of the node IDs into the given output stream.
+   */
+  template< typename TSpec >
+      inline void
+    save( const Path< TSpec >& path, std::ostream& out )
+    {
+      serialize( out, path.nodes, path.nodes.begin(), path.nodes.end() );
+    }  /* -----  end of function save  ----- */
+
+  /**
    *  @brief  Save the path to file.
    *
    *  @param  path The path.
@@ -401,7 +416,7 @@ namespace grem
       if( !ofs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      serialize( ofs, path.nodes, path.nodes.begin(), path.nodes.end() );
+      save( path, ofs );
     }  /* -----  end of function save  ----- */
 
   /**
@@ -609,7 +624,7 @@ namespace grem
         }  /* -----  end of method set_nodes  ----- */
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend void
-        save< Compact >( const Path< Compact >& path, const std::string& file_name );
+        save< Compact >( const Path< Compact >& path, std::ostream& out );
           friend void
         add_node< Compact >( Path< Compact >& path,
             const VarGraph::nodeid_type& node_id );
@@ -627,6 +642,21 @@ namespace grem
   /* Compact Path interface functions definitions  ----------------------------- */
 
   /**
+   *  @brief  Save the path to an output stream -- Compact specialization.
+   *
+   *  @param  path The path.
+   *  @param  out The output stream.
+   *
+   *  It saves the sequence of the node IDs into the given output stream.
+   */
+  template< >
+      inline void
+    save( const Path< Compact >& path, std::ostream& out )
+    {
+      serialize( out, path.nodes_set, path.nodes_set.begin(), path.nodes_set.end() );
+    }  /* -----  end of function save  ----- */
+
+  /**
    *  @brief  Save the path to file -- Compact specialization.
    *
    *  @param  path The path.
@@ -642,7 +672,7 @@ namespace grem
       if( !ofs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      serialize( ofs, path.nodes_set, path.nodes_set.begin(), path.nodes_set.end() );
+      save( path, ofs );
     }  /* -----  end of function save  ----- */
 
   /**
@@ -705,6 +735,23 @@ namespace grem
   /* Path interface functions  ------------------------------------------------- */
 
   /**
+   *  @brief  Load the path from an input stream.
+   *
+   *  @param  path The path.
+   *  @param  in The input stream.
+   *
+   *  It loads the sequence of the node IDs from the given input stream.
+   */
+  template< typename TSpec >
+      void
+    load( Path< TSpec >& path, std::istream& in )
+    {
+      std::vector< VarGraph::nodeid_type > nodes;
+      deserialize( in, nodes, std::back_inserter( nodes ) );
+      path.set_nodes( std::move( nodes ) );
+    }  /* -----  end of template function load  ----- */
+
+  /**
    *  @brief  Load the path from file.
    *
    *  @param  path The path.
@@ -720,9 +767,7 @@ namespace grem
       if( !ifs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      std::vector< VarGraph::nodeid_type > nodes;
-      deserialize( ifs, nodes, std::back_inserter( nodes ) );
-      path.set_nodes( std::move( nodes ) );
+      load( path, ifs );
     }  /* -----  end of template function load  ----- */
 
   /**
@@ -959,20 +1004,10 @@ namespace grem
 
   /* Traits template specialization  ------------------------------------------- */
 
-  struct BFSStrategy;
-  struct DFSStrategy;
-  struct BacktrackStrategy;
-  struct HaplotypeStrategy;
-
-  typedef seqan::Tag< BFSStrategy > BFS;
-  typedef seqan::Tag< DFSStrategy > DFS;
-  typedef seqan::Tag< BacktrackStrategy > Backtracker;
-  typedef seqan::Tag< HaplotypeStrategy > Haplotyper;
-
   /**
    *  @brief  Breadth-first search graph iterator tag.
    *
-   *  Specialization of generic graph iterator tag BFSIter for VarGraph.
+   *  Specialization of generic graph iterator tag BFS for VarGraph.
    */
   template< >
     struct GraphIterTraits < VarGraph, BFS >
@@ -1002,7 +1037,9 @@ namespace grem
       };
 
       typedef std::unordered_set< TContainer::value_type, pair_hash, pair_pred > TSet;
-      typedef void* TState;
+      typedef struct {
+        std::size_t lb_visited_rank;  /**< @brief lower-bound for rank of visited nodes. */
+      } TState;
     };
 
   /**

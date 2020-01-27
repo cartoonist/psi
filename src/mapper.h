@@ -356,23 +356,27 @@ namespace grem
          *
          *  This method generates a set of (probably) unique whole-genome paths from the
          *  variation graph.
+         *
+         *  XXX: We assume that each connect component in the graph has one and only one
+         *  path indicating a sample haplotype in that region.
          */
         template< typename TIndexSpec >
             void
           pick_paths( PathSet< TIndexSpec >& paths, int n )
           {
             if ( n == 0 ) return;
-
             auto timer = stats_type( "pick-paths" );
 
-            seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph );
-
-            paths.reserve( n );
-            for ( int i = 0; i < n; ++i ) {
-              Path<> new_path( this->vargraph );
-              reserve( new_path, this->vargraph->node_count );
-              get_uniq_haplotype( new_path, hap_itr );
-              paths.add_path( std::move( new_path ) );
+            paths.reserve( n * this->vargraph->path_count );
+            for ( std::size_t rank = 1; rank <= this->vargraph->max_path_rank(); ++rank ) {
+              const auto& path_name = this->vargraph->path_name( rank );
+              auto s = this->vargraph->node_at_path_position( path_name, 0 );
+              seqan::Iterator< VarGraph, Haplotyper >::Type hap_itr( this->vargraph, s );
+              for ( int i = 0; i < n; ++i ) {
+                Path<> new_path( this->vargraph );
+                get_uniq_haplotype( new_path, hap_itr );
+                paths.add_path( std::move( new_path ) );
+              }
             }
           }  /* -----  end of template function pick_paths  ----- */
 
@@ -421,6 +425,10 @@ namespace grem
               while ( !at_end( bt_itr ) && offset != 0 ) {
                 while ( !at_end( bt_itr ) ) {
                   add_node( trav_path, *bt_itr );
+                  // :TODO:Fri Sep 29 00:45:\@cartoonist: in some cases when this loop
+                  //     breaks when `bt_itr` is at end but below condition is not met,
+                  //     a few unnecessary loci would be added. Bring `add_start` in the
+                  //     outer loop and add neccessary loci in the loop; not outside it.
                   if ( trav_path.get_sequence().length() < offset - 1 + k ) ++bt_itr;
                   else break;
                 }
@@ -491,7 +499,7 @@ namespace grem
         }
         /* ====================  METHODS       ======================================= */
           inline void
-        traverse ( std::function< void( typename TTraverser::output_type const& ) >& callback )
+        traverse( std::function< void( typename TTraverser::output_type const& ) >& callback )
         {
           auto timer = stats_type( "traverse" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );

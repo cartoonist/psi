@@ -60,7 +60,7 @@ SCENARIO ( "Serialize/deserialize paths set into/from the file", "[pathset]" )
       THEN ( "Deserializing should yield the same paths" )
       {
         PathSet< TIndexSpec > loaded_paths;
-        loaded_paths.load( file_path, &vargraph, paths_num );
+        loaded_paths.load( file_path, &vargraph );
         REQUIRE ( loaded_paths.size() == paths_num );
         REQUIRE( length( loaded_paths.paths_set.at(0) ) == 52 );
         REQUIRE( length( loaded_paths.paths_set.at(1) ) == 26 );
