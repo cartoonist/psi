@@ -434,12 +434,12 @@ namespace psi {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
 
-            this->pindex.reserve( n * this->graph_ptr->path_count );
+            this->pindex.reserve( n * this->graph_ptr->get_path_count() );
             auto hp_itr = begin( *this->graph_ptr, Haplotyper<>() );
             auto hp_end = end( *this->graph_ptr, Haplotyper<>() );
             auto context = this->pindex.get_context();
             this->graph_ptr->for_each_path(
-                [&]( auto path_id ) {
+                [&]( auto path_rank, auto path_id ) {
                   auto path_name = this->graph_ptr->path_name( path_id );
                   id_type s = *this->graph_ptr->path( path_id ).begin();
                   hp_itr.reset( s );
