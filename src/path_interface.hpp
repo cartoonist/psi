@@ -794,7 +794,7 @@ namespace psi {
    */
   template< typename TNodeID, typename TContainer >
       inline std::size_t
-    get_path_coverage( TNodeID const& node_id, const TContainer& paths_set )
+    path_coverage( TNodeID const& node_id, const TContainer& paths_set )
     {
       std::size_t coverage = 0;
       for ( const auto & path : paths_set ) {
@@ -803,7 +803,7 @@ namespace psi {
         }
       }
       return coverage;
-    }  /* -----  end of template function get_path_coverage  ----- */
+    }  /* -----  end of template function path_coverage  ----- */
 
   /**
    *  @brief  Return the path coverage of a given path.
@@ -817,7 +817,7 @@ namespace psi {
    */
   template< typename TIter, typename TContainer >
       inline std::size_t
-    get_path_coverage( TIter begin, TIter end, TContainer const& paths_set )
+    path_coverage( TIter begin, TIter end, TContainer const& paths_set )
     {
       std::size_t coverage = 0;
       for ( const auto& path : paths_set ) {
@@ -826,7 +826,7 @@ namespace psi {
         }
       }
       return coverage;
-    }  /* -----  end of template function get_path_coverage  ----- */
+    }  /* -----  end of template function path_coverage  ----- */
 
   /**
    *  @brief  Convert a psi::Path to vg::Path.

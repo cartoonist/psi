@@ -171,7 +171,7 @@ namespace psi {
 
     /* === ACCESSORS === */
     inline graph_type const*
-    get_graph( ) const
+    get_graph_ptr( ) const
     {
       return this->graph_ptr;
     }
@@ -566,8 +566,8 @@ namespace psi {
 
       this->value = start;
       this->state.start = start;
-      this->visiting = std::make_unique< path_type >( g );
-      this->state.current_path = std::make_unique< happath_type >( g );
+      this->visiting = std::make_unique< path_type >( &g );
+      this->state.current_path = std::make_unique< happath_type >( &g );
       this->state.current_path->push_back( this->value );
       this->state.setback = 0;
       this->state.entropy = 1;
@@ -764,9 +764,9 @@ namespace psi {
       }
 
       this->value = start;
-      this->visiting = std::make_unique< path_type >( g );
+      this->visiting = std::make_unique< path_type >( &g );
       this->state.start = start;
-      this->state.current_path = std::make_unique< happath_type >( g );
+      this->state.current_path = std::make_unique< happath_type >( &g );
       this->state.current_path->push_back( this->value );
       this->state.setback = 0;
       this->param = p;

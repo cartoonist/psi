@@ -507,8 +507,8 @@ namespace psi {
           marked = 0;
           if ( !frontier.empty() ) marked = frontier.get_nodes().back();
           // Bootstrap.
-          if ( !marked ) extend_to_k( frontier, hp_itr, hp_end, k );
-          else extend_to_k( frontier, hp_itr, hp_end,
+          if ( !marked ) util::extend_to_k( frontier, hp_itr, hp_end, k );
+          else util::extend_to_k( frontier, hp_itr, hp_end,
               2*k + frontier.get_sequence_len() - frontier.get_seqlen_tail() );
           // Check the next patch distance to merge with previous patch if is less than k.
           if ( !patch.empty() && hp_itr[ frontier.get_nodes() ] ) {
@@ -521,7 +521,7 @@ namespace psi {
             // Nodes from first to the `marked` are already added.
             trim_front( frontier, marked );
             marked = 0;
-            extend_to_k( frontier, hp_itr, hp_end, k );
+            util::extend_to_k( frontier, hp_itr, hp_end, k );
           }
           if ( patch.empty() ) {
             // Search for a patch of length k that is not covered by visited paths of `hp_itr`.
@@ -565,7 +565,7 @@ namespace psi {
         unsigned int context_len )
     {
       assert( context_len != 0 );
-      if ( level( hp_itr ) == 0 ) {
+      if ( hp_itr.level() == 0 ) {
         get_uniq_full_haplotype( paths, hp_itr, hp_end );
         return true;
       }
