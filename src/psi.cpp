@@ -26,16 +26,16 @@
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 #include <gum/io_utils.hpp>
+#include <psi/graph.hpp>
+#include <psi/seed_finder.hpp>
+#include <psi/sequence.hpp>
+#include <psi/seed.hpp>
+#include <psi/utils.hpp>
+#include <psi/stat.hpp>
+#include <psi/release.hpp>
 
-#include "graph.hpp"
-#include "seed_finder.hpp"
-#include "sequence.hpp"
-#include "seed.hpp"
-#include "utils.hpp"
 #include "options.hpp"
-#include "stat.hpp"
 #include "logger.hpp"
-#include "release.hpp"
 
 using namespace klibpp;
 using namespace seqan;
