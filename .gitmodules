@@ -13,3 +13,6 @@
 [submodule "src/ext/cxxopts"]
 	path = src/ext/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "ext/seqan"]
+	path = ext/seqan
+	url = https://github.com/seqan/seqan
