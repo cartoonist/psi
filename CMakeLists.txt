@@ -5,6 +5,7 @@ project(psi VERSION 0.0.2 LANGUAGES CXX)
 option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
 option(BUILD_AUX_TOOLS "Build auxiliary tools" OFF)
 option(BUILD_TESTING "Build test programs" OFF)
+option(BUILD_DOC "Build documentation" OFF)
 
 # Adding CMake module path.
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
@@ -21,6 +22,10 @@ include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 # Force CMake to use `-I` instead of `-isystem`
 set(CMAKE_NO_SYSTEM_FROM_IMPORTED TRUE)
 
+# Load `BuildDoxygen` module
+if(BUILD_DOC)
+  include(BuildDoxygen)
+endif(BUILD_DOC)
 # Load `CheckGitRevision` module
 include(CheckGitRevision)
 
