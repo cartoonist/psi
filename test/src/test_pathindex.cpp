@@ -21,7 +21,6 @@
 #include "vargraph.h"
 #include "pathindex.h"
 #include "index.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 

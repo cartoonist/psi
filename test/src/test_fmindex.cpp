@@ -18,7 +18,6 @@
 #include <string>
 
 #include "fmindex.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 

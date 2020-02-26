@@ -20,7 +20,6 @@
 
 #include "vargraph.h"
 #include "pathset.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 

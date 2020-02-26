@@ -37,7 +37,6 @@
 #include "index_iter.hpp"
 #include "pathindex.hpp"
 #include "utils.hpp"
-#include "logger.hpp"
 #include "stat.hpp"
 
 

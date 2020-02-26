@@ -21,8 +21,6 @@
 #include <seqan/seq_io.h>
 
 #include "sequence.h"
-#include "options.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 
@@ -115,15 +113,6 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
 
 SCENARIO( "Constructing a DiskString", "[sequence]" )
 {
-  Options opt;
-  opt.log_path = "";
-  opt.nologfile = true;
-  opt.nolog = false;
-  opt.quiet = false;
-  opt.nocolor = false;
-  opt.verbose = true;
-  if ( get_logger( "main" ) == nullptr ) config_logger( opt );
-
   auto check_content =
     []( DiskString& d, const std::string& data ) {
       std::ifstream in( d.get_file_path() );

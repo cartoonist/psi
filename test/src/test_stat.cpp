@@ -20,7 +20,6 @@
 #include <thread>
 
 #include "stat.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 

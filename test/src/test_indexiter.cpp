@@ -22,7 +22,6 @@
 #include "seed.h"
 #include "index.h"
 #include "index_iter.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 

@@ -31,7 +31,6 @@
 
 #include "graph.hpp"
 #include "graph_iter.hpp"
-#include "logger.hpp"
 #include "sequence.hpp"
 #include "index.hpp"
 #include "index_iter.hpp"

@@ -30,7 +30,6 @@
 #include <sdsl/bit_vectors.hpp>
 
 #include "utils.hpp"
-#include "logger.hpp"
 
 
 #define SEQUENCE_DEFAULT_SENTINEL_CHAR '$'
@@ -251,24 +250,22 @@ namespace psi {
         }
 
           inline void
-        load( std::istream& in )
+        load( std::istream& in, bool strict=false )
         {
           this->close();
           this->fpath.clear();
           psi::deserialize( in, this->fpath, std::back_inserter( this->fpath ) );
-          if ( !readable( this->fpath ) ) {
-            get_logger( "main" )->warn(
-                "File '{}' does not exist: disk-based string content cannot be read.",
-                this->fpath );
+          sint_type l;
+          psi::deserialize( in, l );
+          this->len = l;
+          if ( strict && !readable( this->fpath ) ) {
+            throw std::runtime_error( "File " + this->fpath + " not found:"
+                                      " disk-based string content cannot be retrieved." );
           }
 
           if ( appendable( this->fpath ) ) {
             this->out.open( this->fpath, std::ofstream::app );
           }
-
-          sint_type l;
-          psi::deserialize( in, l );
-          this->len = l;
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
@@ -551,10 +548,10 @@ namespace seqan {
         }
 
           inline void
-        load( std::istream& in )
+        load( std::istream& in, bool strict=false )
         {
           this->clear();
-          psi::DiskString::load( in );
+          psi::DiskString::load( in, strict );
           psi::deserialize( in, this->count );
           this->bv_str_breaks.load( in );
           this->initialize();

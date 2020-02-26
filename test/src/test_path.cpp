@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "vargraph.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 

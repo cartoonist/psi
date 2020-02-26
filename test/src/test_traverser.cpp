@@ -26,7 +26,6 @@
 #include "vargraph.h"
 #include "traverser.h"
 #include "utils.h"
-#include "logger.h"
 
 #include "test_base.hpp"
 
