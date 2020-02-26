@@ -114,7 +114,7 @@ namespace psi {
                    std::function< void( vg::Graph& ) > callback,
                    std::ptrdiff_t chunk_size )
     {
-      assert( chunk_size < std::PTRDIFF_MAX );
+      assert( chunk_size < PTRDIFF_MAX );
       auto nodes_l = nbegin;
       auto nodes_r = nodes_l + 1;
       auto edges_l = ebegin;

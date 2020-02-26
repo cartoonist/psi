@@ -320,7 +320,7 @@ namespace psi {
       typedef typename graph_type::linktype_type linktype_type;
 
       if ( this->visiting.empty() ) {
-        assert( this->value == GraphIterBase::end_value );
+        assert( this->value == base_type::end_value );
         return *this;
       }
 
