@@ -1,15 +1,15 @@
+# Build directory
+build/
+
 # Binary directory
 bin/
 
 # Generated Makefiles
+include/psi/config.hpp
+
+# Generated Makefiles
 src/.d/
 test/.d/
-
-# Installed header-only libraries
-src/cxxopts
-src/catch
-src/spdlog
-src/kseq++
 
 # Log files
 *.log
