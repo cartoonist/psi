@@ -1,12 +1,6 @@
-[submodule "ext/kseq++"]
-	path = ext/kseq++
-	url = git@github.com:cartoonist/kseqpp.git
 [submodule "test/ext/catch2"]
 	path = test/ext/catch2
 	url = https://github.com/philsquared/Catch.git
-[submodule "ext/gum"]
-	path = ext/gum
-	url = git@github.com:cartoonist/gum.git
 [submodule "src/ext/spdlog"]
 	path = src/ext/spdlog
 	url = https://github.com/gabime/spdlog.git
@@ -16,3 +10,9 @@
 [submodule "ext/seqan"]
 	path = ext/seqan
 	url = https://github.com/seqan/seqan
+[submodule "ext/kseq++"]
+	path = ext/kseq++
+	url = https://github.com/cartoonist/kseqpp.git
+[submodule "ext/gum"]
+	path = ext/gum
+	url = https://github.com/cartoonist/gum.git
