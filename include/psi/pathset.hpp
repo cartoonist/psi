@@ -317,7 +317,7 @@ namespace psi {
         set_id_breaks( const string_type& encids )
         {
           sdsl::bit_vector bv( encids.size(), 0 );
-#ifdef GREM_DEBUG_ENABLED
+#ifdef PSI_DEBUG_ENABLED
           bool flag = false;
           assert( encids[ 0 ] == ID_SEPARATOR );
           assert( encids[ 1 ] != ID_SEPARATOR );
@@ -326,7 +326,7 @@ namespace psi {
           for ( sdsl::bit_vector::size_type i = 2; i < bv.size(); ++i ) {
             if ( encids[ i ] == ID_SEPARATOR ) {
               bv[ i - 1 ] = 1;
-#ifdef GREM_DEBUG_ENABLED
+#ifdef PSI_DEBUG_ENABLED
               /* Sanity check: there should not be two 1s subsequently. */
               assert( !flag );
               flag = true;

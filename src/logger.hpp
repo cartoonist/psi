@@ -19,7 +19,6 @@
 #ifndef PSI_LOGGER_HPP__
 #define PSI_LOGGER_HPP__
 
-#include "base.hpp"
 #include "options.hpp"
 
 #include "spdlog/spdlog.h"

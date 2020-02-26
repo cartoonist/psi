@@ -416,13 +416,15 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
 parse_args( Options& options, int argc, char* argv[] )
 {
   // setup ArgumentParser.
-  seqan::ArgumentParser parser( PACKAGE );
+  seqan::ArgumentParser parser( "psikt" );
   setup_argparser( parser );
 
   // Embedding program's meta data and build information.
   setShortDescription( parser, SHORT_DESC );
-  setVersion( parser, GIT_VERSION );
-  setDate( parser, UPDATE_DATE );
+  setVersion( parser, REVISION + 1 /* skip the leading 'v' before version number */ );
+#ifdef GIT_COMMIT_DATE
+  setDate( parser, GIT_COMMIT_DATE );
+#endif  // GIT_COMMIT_DATE
   addDescription( parser, LONG_DESC );
 
   std::ostringstream hold_buf_stdout;

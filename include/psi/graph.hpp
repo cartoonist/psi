@@ -28,6 +28,8 @@
 #include <vg/io/stream.hpp>
 #include <gum/seqgraph.hpp>
 
+#include "base.hpp"
+
 
 namespace psi {
   namespace util {

@@ -26,7 +26,6 @@
 #include <unordered_set>
 #include <stdexcept>
 
-#include "base.hpp"
 #include "path.hpp"
 
 
