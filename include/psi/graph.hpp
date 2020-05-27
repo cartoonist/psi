@@ -26,7 +26,6 @@
 
 #include <vg/vg.pb.h>
 #include <vg/io/stream.hpp>
-#include <gum/seqgraph.hpp>
 
 #include "base.hpp"
 

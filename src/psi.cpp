@@ -120,10 +120,9 @@ template< class TGraph, typename TReadsIndexSpec >
                                  params.context,
                                  params.step_size ) ) {
       log->info( "The path index has been found and loaded." );
-      return;
     }
     /* No genome-wide path index requested. */
-    if ( params.path_num == 0 ) {
+    else if ( params.path_num == 0 ) {
       log->info( "No path has been specified. Skipping path indexing..." );
     }
     else {

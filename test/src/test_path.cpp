@@ -74,7 +74,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
       REQUIRE( !path.empty() );
       std::size_t i = 0;
       for ( const auto& nid : path ) {
-        REQUIRE( nid == nodes[ i++ ] );
+        REQUIRE( static_cast< id_type >( nid ) == nodes[ i++ ] );
       }
       REQUIRE( !contains( path, other_nodes.begin(), other_nodes.end() ) );
       REQUIRE( !contains( path, empty.begin(), empty.end() ) );
@@ -1439,11 +1439,6 @@ SCENARIO( "Basic tests for offset path", "[path]" )
         REQUIRE( path.size() == 12 );
         REQUIRE( path.is_initialized() );
 
-        AND_WHEN( "Set left offset a negative value" )
-        {
-          REQUIRE_THROWS( path.set_left_by_len( -8 ) );
-        }
-
         AND_WHEN( "Set left offset a large value" )
         {
           path.set_left_by_len( 83 );
@@ -1474,11 +1469,6 @@ SCENARIO( "Basic tests for offset path", "[path]" )
             REQUIRE( path.size() == 12 );
             REQUIRE( path.is_initialized() );
           }
-        }
-
-        AND_WHEN( "Set right offset a negative value" )
-        {
-          REQUIRE_THROWS( path.set_right_by_len( -8 ) );
         }
 
         AND_WHEN( "Set right offset a large value" )

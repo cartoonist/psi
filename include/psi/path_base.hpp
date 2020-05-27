@@ -376,7 +376,6 @@ namespace psi {
           inline void
         set_left_by_len( offset_type value )
         {
-          if ( value < 0 ) throw std::runtime_error( "Invalid left offset value" );
           if ( this->empty() ) {
             throw std::runtime_error( "Cannot set offset for an empty path" );
           }
@@ -405,7 +404,6 @@ namespace psi {
           inline void
         set_right_by_len( offset_type value )
         {
-          if ( value < 0 ) throw std::runtime_error( "Invalid right offset value" );
           if ( this->empty() ) {
             throw std::runtime_error( "Cannot set offset for an empty path" );
           }
@@ -1218,7 +1216,9 @@ namespace psi {
             inline bool
           contains( TIter begin, TIter end ) const
           {
-            if ( begin == end ) return false;
+            if ( begin == end ||
+                 !this->graph_ptr->has_node( *begin ) ||
+                 !this->graph_ptr->has_node( *( end - 1 ) ) ) return false;
 
             auto brank = this->graph_ptr->id_to_rank( *begin );
             auto erank = this->graph_ptr->id_to_rank( *( end - 1 ) );
@@ -1242,7 +1242,9 @@ namespace psi {
             inline bool
           rcontains( TIter rbegin, TIter rend ) const
           {
-            if ( rbegin == rend ) return false;
+            if ( rbegin == rend ||
+                 !this->graph_ptr->has_node( *rbegin ) ||
+                 !this->graph_ptr->has_node( *( rend - 1 ) ) ) return false;
 
             auto rbrank = this->graph_ptr->id_to_rank( *rbegin );
             auto rerank = this->graph_ptr->id_to_rank( *( rend - 1 ) );

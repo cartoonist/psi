@@ -25,7 +25,7 @@
 #include <memory>
 
 #include <seqan/seq_io.h>
-#include <kseq++/seqio.h>
+#include <kseq++/seqio.hpp>
 #include <seqan/sequence.h>
 #include <sdsl/bit_vectors.hpp>
 
@@ -223,7 +223,7 @@ namespace psi {
           return YaString::length();
         }
 
-          inline pos_type
+          constexpr inline pos_type
         get_position( pos_type p )
         {
           return p;
