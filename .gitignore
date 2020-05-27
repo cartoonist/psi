@@ -1,15 +1,9 @@
 # Build directory
 build/
 
-# Binary directory
-bin/
-
-# Generated Makefiles
+# Generated files
 include/psi/config.hpp
-
-# Generated Makefiles
-src/.d/
-test/.d/
+psi.pc
 
 # Log files
 *.log
