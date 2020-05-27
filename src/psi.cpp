@@ -420,10 +420,14 @@ parse_args( Options& options, int argc, char* argv[] )
 
   // Embedding program's meta data and build information.
   setShortDescription( parser, SHORT_DESC );
-  setVersion( parser, REVISION + 1 /* skip the leading 'v' before version number */ );
-#ifdef GIT_COMMIT_DATE
-  setDate( parser, GIT_COMMIT_DATE );
-#endif  // GIT_COMMIT_DATE
+#ifdef PSI_GIT_REVISION
+    setVersion( parser, REVISION+1 /* skip the leading 'v' before version number */ );
+#else
+    setVersion( parser, VERSION );
+#endif
+#ifdef PSI_GIT_COMMIT_DATE
+  setDate( parser, PSI_GIT_COMMIT_DATE );
+#endif  // PSI_GIT_COMMIT_DATE
   addDescription( parser, LONG_DESC );
 
   std::ostringstream hold_buf_stdout;

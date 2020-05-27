@@ -30,6 +30,12 @@ endif(BUILD_DOC)
 include(CheckGitRevision)
 
 # Defining the configure header file
+if(GIT_REVISION)
+  set(PSI_GIT_REVISION ${GIT_REVISION})
+endif(GIT_REVISION)
+if(GIT_COMMIT_DATE)
+  set(PSI_GIT_COMMIT_DATE ${GIT_COMMIT_DATE})
+endif(GIT_COMMIT_DATE)
 configure_file(include/psi/config.hpp.in ${PROJECT_SOURCE_DIR}/include/psi/config.hpp @ONLY)
 # Setting header files
 file(GLOB HEADER_FILES "${PROJECT_SOURCE_DIR}/include/psi/*.hpp")

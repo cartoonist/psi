@@ -23,8 +23,12 @@
 
 
 namespace psi {
-  const char * const VERSION = PROJECT_VERSION;             /**< @brief Version number. */
-  const char * const REVISION = GIT_REVISION;               /**< @brief Git revision. */
+  const char * const VERSION = PSI_PROJECT_VERSION;         /**< @brief Version number. */
+#ifdef PSI_GIT_REVISION
+  const char * const REVISION = PSI_GIT_REVISION;           /**< @brief Git revision. */
+#else
+  const char * const REVISION = "";
+#endif
   const char * const PACKAGE = "PSI";                       /**< @brief Package name. */
   const char * const SHORT_DESC = "Pan-genome Seed Index";  /**< @brief Short description. */
   /** @brief Long description. */
