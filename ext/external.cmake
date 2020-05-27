@@ -28,7 +28,10 @@ if(NOT TARGET gum::gum)
   execute_process(
     COMMAND git submodule update --init --recursive -- ${GUM_SOURCE_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
+  set(BUILD_TESTING OFF)
   add_subdirectory(${GUM_SOURCE_DIR})
+  set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
 endif()
 
 # When `kseq++` is not found
@@ -37,5 +40,8 @@ if(NOT TARGET kseq++::kseq++)
   execute_process(
     COMMAND git submodule update --init --recursive -- ${KSEQPP_SOURCE_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
+  set(BUILD_TESTING OFF)
   add_subdirectory(${KSEQPP_SOURCE_DIR})
+  set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
 endif()
