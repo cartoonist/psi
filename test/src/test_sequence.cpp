@@ -704,6 +704,9 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
       {
         check_content( dstrset, raw_total );
         REQUIRE( dstrset.length() == 3 );
+        REQUIRE( ( MemString( dstrset[ 0 ] ) == str1 ) );
+        REQUIRE( ( MemString( dstrset[ 1 ] ) == str2 ) );
+        REQUIRE( ( MemString( dstrset[ 2 ] ) == str3 ) );
         REQUIRE( length( dstrset[ 0 ] ) == 38 );
         REQUIRE( length( dstrset[ 1 ] ) == 42 );
         REQUIRE( length( dstrset[ 2 ] ) == 37 );
