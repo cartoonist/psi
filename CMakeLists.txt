@@ -60,6 +60,10 @@ target_link_libraries(psi
 if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
 endif()
+# Define `PSI_STAT`
+if(PSI_STAT)
+  target_compile_definitions(psi INTERFACE PSI_STAT)
+endif(PSI_STAT)
 # Use C++17
 target_compile_features(psi INTERFACE cxx_std_17)
 # Defining `psi::psi` alias

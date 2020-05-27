@@ -104,7 +104,11 @@ template< class TGraph, typename TReadsIndexSpec >
     typedef Dna5QStringSet<> TReadsStringSet;
     typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
     typedef typename Traverser< TGraph, TReadsIndex, BFS, ExactMatching >::Type TTraverser;
+#ifdef PSI_STAT
     typedef SeedFinder< TTraverser > TSeedFinder;
+#else
+    typedef SeedFinder< TTraverser, NoStat > TSeedFinder;
+#endif
 
     /* Get the main logger. */
     auto log = get_logger( "main" );
