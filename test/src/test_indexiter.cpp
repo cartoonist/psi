@@ -18,15 +18,15 @@
 #include <string>
 #include <functional>
 
-#include "sequence.h"
-#include "seed.h"
-#include "index.h"
-#include "index_iter.h"
+#include <psi/sequence.hpp>
+#include <psi/seed.hpp>
+#include <psi/index.hpp>
+#include <psi/index_iter.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]" )
 {
@@ -59,8 +59,8 @@ SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterato
 
   GIVEN( "A sample small path and FM-index" )
   {
-    typedef grem::MemString TString;
-    typedef grem::FMIndex<> TIndexSpec;
+    typedef psi::MemString TString;
+    typedef psi::FMIndex<> TIndexSpec;
     typedef seqan::Index< TString, TIndexSpec > TIndex;
     typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
 

@@ -21,15 +21,14 @@
 #include <vector>
 #include <iterator>
 
-#include <seqan/sequence.h>
+#include <psi/utils.hpp>
 #include <sdsl/bit_vectors.hpp>
-
-#include "utils.h"
+#include <seqan/sequence.h>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 SCENARIO( "Two strings can be checked for suffix match", "[utils]" )
 {

@@ -18,37 +18,37 @@
 #include <fstream>
 #include <string>
 
-#include "vargraph.h"
-#include "pathindex.h"
-#include "index.h"
+#include <psi/graph.hpp>
+#include <psi/pathindex.hpp>
+#include <psi/index.hpp>
+#include <gum/seqgraph.hpp>
+#include <gum/io_utils.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" )
 {
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
   GIVEN ( "Two paths from a small graph" )
   {
     typedef seqan::IndexEsa<> TIndexSpec;
 
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath.c_str() );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
-    Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
+    std::string vgpath = test_data_dir + "/small/x.vg";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
+    Dna5QPathIndex< graph_type, TIndexSpec > pindex;
 
     unsigned int paths_num = 2;
     std::string file_path = SEQAN_TEMP_FILENAME();
 
     pindex.reserve( paths_num );
     for ( unsigned int i = 0; i < paths_num; ++i ) {
-      Path< VarGraph > path( &vargraph );
-      for ( VarGraph::nodeid_type j = 3+i; j <= 210; j+=(i+1)*4 ) {
+      Path< graph_type > path( &graph );
+      for ( graph_type::id_type j = 3+i; j <= 210; j+=(i+1)*4 ) {
         add_node( path, j );
       }
       pindex.add_path( std::move( path ) );
@@ -60,8 +60,8 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
 
       THEN ( "Deserializing should yield the same paths" )
       {
-        Dna5QPathIndex< VarGraph, TIndexSpec > loaded_paths;
-        loaded_paths.load( file_path, &vargraph );
+        Dna5QPathIndex< graph_type, TIndexSpec > loaded_paths;
+        loaded_paths.load( file_path, &graph );
         REQUIRE ( loaded_paths.size() == paths_num );
         REQUIRE( length( loaded_paths.get_paths_set()[0] ) == 52 );
         REQUIRE( length( loaded_paths.get_paths_set()[1] ) == 26 );
@@ -80,20 +80,18 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
 
 SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
 {
-  GIVEN( "A VarGraph and PathIndex within the graph" )
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
+  GIVEN( "A graph and PathIndex within the graph" )
   {
     typedef seqan::IndexEsa<> TIndexSpec;
 
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath.c_str() );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.gfa";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
-    Dna5QPathIndex< VarGraph, TIndexSpec > pindex;
-    Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 } );
+    Dna5QPathIndex< graph_type, TIndexSpec > pindex;
+    Path< graph_type > path( &graph, { 205, 207, 209, 210 } );
 
     REQUIRE( path.get_sequence_len() == 54 );
     REQUIRE( length( path ) == 4 );
@@ -127,27 +125,25 @@ SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
 
 SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
 {
-  GIVEN( "A VarGraph" )
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
+  GIVEN( "A graph" )
   {
     typedef seqan::IndexEsa<> TIndexSpec;
 
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath.c_str() );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.vg";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     WHEN( "A set of paths are added to a PathIndex with non-zero context in lazy mode" )
     {
       uint64_t context = 10;
-      Dna5QPathIndex< VarGraph, TIndexSpec, Forward > pindex( context, true );
-      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 }, context-1, context-1 );
+      Dna5QPathIndex< graph_type, TIndexSpec, Forward > pindex( context, true );
+      Path< graph_type > path( &graph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
+      path = Path< graph_type >( &graph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
+      path = Path< graph_type >( &graph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
       pindex.add_path( ( path ) );
 
       pindex.create_index();  /**< @brief Paths are added with this call. */
@@ -163,12 +159,12 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     WHEN( "A set of paths are added to a PathIndex with non-zero context in Forward direction" )
     {
       uint64_t context = 10;
-      Dna5QPathIndex< VarGraph, TIndexSpec, Forward > pindex( context );
-      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 }, context-1, context-1 );
+      Dna5QPathIndex< graph_type, TIndexSpec, Forward > pindex( context );
+      Path< graph_type > path( &graph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
+      path = Path< graph_type >( &graph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
+      path = Path< graph_type >( &graph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
       pindex.add_path( ( path ) );
 
       THEN( "The paths sequence set should be trimmed according to context" )
@@ -238,12 +234,12 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     WHEN( "A set of paths are added to a PathIndex with non-zero context in Reversed direction" )
     {
       uint64_t context = 10;
-      Dna5QPathIndex< VarGraph, TIndexSpec, Reversed > pindex( context );
-      Path< VarGraph > path( &vargraph, { 205, 207, 209, 210 }, context-1, context-1 );
+      Dna5QPathIndex< graph_type, TIndexSpec, Reversed > pindex( context );
+      Path< graph_type > path( &graph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
+      path = Path< graph_type >( &graph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
       pindex.add_path( ( path ) );
-      path = Path< VarGraph >( &vargraph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
+      path = Path< graph_type >( &graph, { 167, 168, 171, 172, 174 }, context-1, context-1 );
       pindex.add_path( ( path ) );
 
       THEN( "The paths sequence set should be trimmed according to context" )

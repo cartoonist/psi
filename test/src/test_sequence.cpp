@@ -20,12 +20,12 @@
 
 #include <seqan/seq_io.h>
 
-#include "sequence.h"
+#include <psi/sequence.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 
 SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
@@ -40,7 +40,7 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
     }
     Records< Dna5QStringSet<> > reads;
     readRecords( reads, infile );
-    Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
+    Records< Dna5QStringSet< psi::Dependent > > reads_chunk;
     unsigned int subset_len = 4;
     unsigned int offset = 2;
 
