@@ -1085,6 +1085,13 @@ namespace psi {
       return length( records.str );
     }
 
+  template< typename TText, typename TStringSetSpec >
+      inline bool
+    empty( const Records< seqan::StringSet< TText, TStringSetSpec > >& records )
+    {
+      return length( records.str ) == 0;
+    }
+
   template< typename TText, typename TStringSetSpec, typename TPosition >
       inline typename seqan::Reference< seqan::StringSet< TText, TStringSetSpec > const >::Type
     get_value( const Records< seqan::StringSet< TText, TStringSetSpec > >& records,
