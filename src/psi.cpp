@@ -129,8 +129,8 @@ template< class TGraph, typename TReadsIndexSpec >
     else {
       log->info( "No valid path index found. Creating the path index..." );
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
-      finder.create_path_index( params.path_num, params.context,
-                                params.patched, params.step_size,
+      finder.create_path_index( params.path_num, params.patched,
+                                params.context, params.step_size,
                                 [&log]( std::string const& msg ) {
                                   log->info( msg );
                                 },

@@ -324,6 +324,16 @@ namespace psi {
         {
           return this->reads;
         }
+
+        /**
+         *  @brief  getter function for pindex.
+         */
+          inline pathindex_type const&
+        get_pindex( ) const
+        {
+          return this->pindex;
+        }
+
         /* ====================  MUTATORS       ====================================== */
         /**
          *  @brief  setter function for graph_ptr.
@@ -430,8 +440,10 @@ namespace psi {
          *  path indicating a sample haplotype in that region.
          */
             inline void
-          pick_paths( unsigned int n, bool patched=true,
-              std::function< void( std::string const&, int ) > callback=nullptr )
+          pick_paths( unsigned int n, bool patched=true, unsigned int context=0,
+              std::function< void( std::string const&, int ) > callback=nullptr,
+              std::function< void( std::string const& ) > info=nullptr,
+              std::function< void( std::string const& ) > warn=nullptr )
           {
             if ( n == 0 ) return;
             auto timer = stats_type( "pick-paths" );
@@ -439,7 +451,7 @@ namespace psi {
             this->pindex.reserve( n * this->graph_ptr->get_path_count() );
             auto hp_itr = begin( *this->graph_ptr, Haplotyper<>() );
             auto hp_end = end( *this->graph_ptr, Haplotyper<>() );
-            auto context = this->pindex.get_context();
+            context = this->set_context( context, patched, info, warn );
             this->graph_ptr->for_each_path(
                 [&]( auto path_rank, auto path_id ) {
                   auto path_name = this->graph_ptr->path_name( path_id );
@@ -453,34 +465,27 @@ namespace psi {
                 } );
           }
 
+        inline void
+        index_paths( )
+        {
+          auto timer = stats_type( "index-paths" );
+          this->pindex.create_index();
+        }
+
         /**
          *  @brief  Create path index.
          *
          *  @param  n The number of paths.
-         *  @param  context The context size for patching.
          *  @param  patched Whether patch the selected paths or not.
+         *  @param  context The context size for patching.
          *  @param  progress A callback function reporting the progress of path selection.
-         *
-         *  NOTE: If `patched` is set, the context size cannot be zero. If the
-         *  given value for context size is zero, it will be reset to seed
-         *  length value. Otherwise (`patched` is `false`), the context doesn't
-         *  matter and will be set to zero.
          */
         inline void
-        create_path_index( unsigned int n, unsigned int context=0,
-            bool patched=true, unsigned int step_size=1,
+        create_path_index( unsigned int n, bool patched=true,
+            unsigned int context=0, unsigned int step_size=1,
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
-          /* See the NOTE section above. */
-          if ( !patched ) context = 0;
-          if ( patched && context == 0 ) {
-            if ( warn ) warn( "The context size cannot be zero for patching. "
-                              "Assuming the seed length as the context size..." );
-            context = this->seed_len;
-          }
-          /* Set the context size for path index. */
-          this->pindex.set_context( context );
           /* Select the requested number of genome-wide paths. */
           std::function< void( std::string const&, int ) > progress = nullptr;
           if ( info ) {
@@ -490,7 +495,7 @@ namespace psi {
                         " of region " + name + "..." );
                 };
           }
-          this->pick_paths( n, patched, progress );
+          this->pick_paths( n, patched, context, progress, info, warn );
           info( "Indexing the selected paths..." );
           this->index_paths();
           info( "Detecting uncovered loci..." );
@@ -803,18 +808,41 @@ namespace psi {
         readsindex_type reads_index;
         traverser_type traverser;
         /* ====================  METHODS       ======================================= */
+        /**
+         *  @brief  Set the context size for patching.
+         *
+         *  @param  context The context size for patching.
+         *  @param  patched Whether patch the selected paths or not.
+         *
+         *  @return the actual context length set for the path index.
+         *
+         *  NOTE: If `patched` is set, the context size cannot be zero. If the
+         *  given value for context size is zero, it will be reset to seed
+         *  length value. Otherwise (`patched` is `false`), the context doesn't
+         *  matter and will be set to zero.
+         */
+        inline unsigned int
+        set_context( unsigned int context, bool patched,
+            std::function< void( std::string const& ) > info=nullptr,
+            std::function< void( std::string const& ) > warn=nullptr )
+        {
+          /* See the NOTE section above. */
+          if ( !patched ) context = 0;
+          if ( patched && context == 0 ) {
+            if ( warn ) warn( "The context size cannot be zero for patching. "
+                              "Assuming the seed length as the context size..." );
+            context = this->seed_len;
+          }
+          /* Set the context size for path index. */
+          this->pindex.set_context( context );
+          return context;
+        }
+
           inline void
         index_reads( )
         {
           auto timer = stats_type( "index-reads" );
           this->reads_index = readsindex_type( this->reads.str );
-        }
-
-          inline void
-        index_paths( )
-        {
-          auto timer = stats_type( "index-paths" );
-          this->pindex.create_index();
         }
     };
 }  /* --- end of namespace psi --- */
