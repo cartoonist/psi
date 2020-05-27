@@ -20,6 +20,9 @@ test/.d/
 
 # ctags
 tags
+GTAGS
+GRTAGS
+GPATH
 
 # compile flags
 compile_commands.json
