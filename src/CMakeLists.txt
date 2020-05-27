@@ -1,6 +1,3 @@
-# Finding dependencies.
-find_package(VGio REQUIRED)
-
 # Setting the build type if it is not already set
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -21,9 +18,7 @@ target_compile_options(psikt PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(psikt
   PRIVATE ${PROJECT_BINARY_DIR}/src
   PRIVATE psi::psi
-  PRIVATE VGio::VGio
   PRIVATE spdlog::spdlog_header_only)
 target_link_libraries(psikt
   PRIVATE psi::psi
-  PRIVATE VGio::VGio
   PRIVATE spdlog::spdlog_header_only)
