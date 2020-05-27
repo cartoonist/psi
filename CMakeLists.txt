@@ -14,8 +14,8 @@ find_package(ZLIB REQUIRED)   # required by SeqAn
 find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 find_package(SeqAn QUIET)
-find_package(sdsl REQUIRED)
 find_package(gum QUIET)
+find_package(kseq++ QUIET)
 # Include external dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 
@@ -48,12 +48,12 @@ target_include_directories(psi
   INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   SYSTEM INTERFACE $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
   INTERFACE gum::gum
-  INTERFACE sdsl::sdsl
+  INTERFACE kseq++::kseq++
   INTERFACE SeqAn::SeqAn)
 # Defining link libraries
 target_link_libraries(psi
   INTERFACE gum::gum
-  INTERFACE sdsl::sdsl
+  INTERFACE kseq++::kseq++
   INTERFACE SeqAn::SeqAn
   INTERFACE "atomic")
 # Define `PSI_DEBUG`

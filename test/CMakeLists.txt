@@ -19,5 +19,6 @@ target_include_directories(Tests
   PRIVATE psi::psi
   PRIVATE VGio::VGio)
 target_link_libraries(Tests
+  PRIVATE Catch2::Catch2
   PRIVATE psi::psi
   PRIVATE VGio::VGio)
