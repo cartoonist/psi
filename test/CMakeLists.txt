@@ -2,23 +2,25 @@
 set(CMAKE_BUILD_TYPE "Debug")
 
 # Prepare "Catch" library for other executables
-set(CATCH_SOURCE_DIR ext/catch2)
-execute_process(COMMAND git submodule update --init -- ${CATCH_SOURCE_DIR}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-add_subdirectory(${CATCH_SOURCE_DIR})
+if(NOT TARGET Catch2::Catch2)
+  set(CATCH_SOURCE_DIR ext/catch2)
+  execute_process(COMMAND git submodule update --init -- ${CATCH_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  add_subdirectory(${CATCH_SOURCE_DIR})
+endif()
 
 # Defining the configure header file
 configure_file(src/test_config.hpp.in ${PROJECT_BINARY_DIR}/test/src/test_config.hpp @ONLY)
 
-# Defining target Tests
+# Defining target psi-tests
 file(GLOB TEST_SOURCES "src/*.cpp")
-add_executable(Tests ${TEST_SOURCES})
-target_compile_options(Tests PRIVATE -g -Wall -Wpedantic -Werror)
-target_include_directories(Tests
+add_executable(psi-tests ${TEST_SOURCES})
+target_compile_options(psi-tests PRIVATE -g -Wall -Wpedantic -Werror)
+target_include_directories(psi-tests
   PRIVATE ${PROJECT_BINARY_DIR}/test/src
   PRIVATE psi::psi
   PRIVATE VGio::VGio)
-target_link_libraries(Tests
+target_link_libraries(psi-tests
   PRIVATE Catch2::Catch2
   PRIVATE psi::psi
   PRIVATE VGio::VGio)
