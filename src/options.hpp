@@ -23,8 +23,6 @@
 
 #include <seqan/index.h>
 
-#include "base.hpp"
-
 
 namespace psi {
   // :TODO:Tue Mar 07 20:34:\@cartoonist: Option class.

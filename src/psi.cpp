@@ -26,16 +26,16 @@
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
 #include <gum/io_utils.hpp>
+#include <psi/graph.hpp>
+#include <psi/seed_finder.hpp>
+#include <psi/sequence.hpp>
+#include <psi/seed.hpp>
+#include <psi/utils.hpp>
+#include <psi/stat.hpp>
+#include <psi/release.hpp>
 
-#include "graph.hpp"
-#include "seed_finder.hpp"
-#include "sequence.hpp"
-#include "seed.hpp"
-#include "utils.hpp"
 #include "options.hpp"
-#include "stat.hpp"
 #include "logger.hpp"
-#include "release.hpp"
 
 using namespace klibpp;
 using namespace seqan;
@@ -104,7 +104,11 @@ template< class TGraph, typename TReadsIndexSpec >
     typedef Dna5QStringSet<> TReadsStringSet;
     typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
     typedef typename Traverser< TGraph, TReadsIndex, BFS, ExactMatching >::Type TTraverser;
+#ifdef PSI_STAT
     typedef SeedFinder< TTraverser > TSeedFinder;
+#else
+    typedef SeedFinder< TTraverser, NoStat > TSeedFinder;
+#endif
 
     /* Get the main logger. */
     auto log = get_logger( "main" );
@@ -120,17 +124,16 @@ template< class TGraph, typename TReadsIndexSpec >
                                  params.context,
                                  params.step_size ) ) {
       log->info( "The path index has been found and loaded." );
-      return;
     }
     /* No genome-wide path index requested. */
-    if ( params.path_num == 0 ) {
+    else if ( params.path_num == 0 ) {
       log->info( "No path has been specified. Skipping path indexing..." );
     }
     else {
       log->info( "No valid path index found. Creating the path index..." );
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
-      finder.create_path_index( params.path_num, params.context,
-                                params.patched, params.step_size,
+      finder.create_path_index( params.path_num, params.patched,
+                                params.context, params.step_size,
                                 [&log]( std::string const& msg ) {
                                   log->info( msg );
                                 },
@@ -416,13 +419,19 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
 parse_args( Options& options, int argc, char* argv[] )
 {
   // setup ArgumentParser.
-  seqan::ArgumentParser parser( PACKAGE );
+  seqan::ArgumentParser parser( "psikt" );
   setup_argparser( parser );
 
   // Embedding program's meta data and build information.
   setShortDescription( parser, SHORT_DESC );
-  setVersion( parser, GIT_VERSION );
-  setDate( parser, UPDATE_DATE );
+#ifdef PSI_GIT_REVISION
+    setVersion( parser, REVISION+1 /* skip the leading 'v' before version number */ );
+#else
+    setVersion( parser, VERSION );
+#endif
+#ifdef PSI_GIT_COMMIT_DATE
+  setDate( parser, PSI_GIT_COMMIT_DATE );
+#endif  // PSI_GIT_COMMIT_DATE
   addDescription( parser, LONG_DESC );
 
   std::ostringstream hold_buf_stdout;

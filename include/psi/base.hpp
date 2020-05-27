@@ -19,26 +19,15 @@
 #ifndef PSI_BASE_HPP__
 #define PSI_BASE_HPP__
 
-// Define/Undefine NDEBUG according to GREM_DEBUG macro value specified at compile time.
+#include "config.hpp"
+
+/* Define/Undefine NDEBUG according to PSI_DEBUG macro value specified at compile time.
+ * This is necessary because SeqAn manipulates NDEBUG. */
 #undef NDEBUG
-#if !GREM_DEBUG
+#if !PSI_DEBUG
 #define NDEBUG
 #else
-#define GREM_DEBUG_ENABLED
-#endif
-
-#undef GIT_VERSION
-#ifdef GREM_GIT_VERSION
-#define GIT_VERSION GREM_GIT_VERSION
-#else
-#define GIT_VERSION VERSION
-#endif
-
-#undef UPDATE_DATE
-#ifdef GREM_UPDATE_DATE
-#define UPDATE_DATE GREM_UPDATE_DATE
-#else
-#define UPDATE_DATE __DATE__
+#define PSI_DEBUG_ENABLED
 #endif
 
 #endif  /* --- #ifndef PSI_BASE_HPP__ --- */

@@ -20,14 +20,12 @@
 
 #include <seqan/seq_io.h>
 
-#include "sequence.h"
-#include "options.h"
-#include "logger.h"
+#include <psi/sequence.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 
 SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
@@ -42,7 +40,7 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
     }
     Records< Dna5QStringSet<> > reads;
     readRecords( reads, infile );
-    Records< Dna5QStringSet< grem::Dependent > > reads_chunk;
+    Records< Dna5QStringSet< psi::Dependent > > reads_chunk;
     unsigned int subset_len = 4;
     unsigned int offset = 2;
 
@@ -115,15 +113,6 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
 
 SCENARIO( "Constructing a DiskString", "[sequence]" )
 {
-  Options opt;
-  opt.log_path = "";
-  opt.nologfile = true;
-  opt.nolog = false;
-  opt.quiet = false;
-  opt.nocolor = false;
-  opt.verbose = true;
-  if ( get_logger( "main" ) == nullptr ) config_logger( opt );
-
   auto check_content =
     []( DiskString& d, const std::string& data ) {
       std::ifstream in( d.get_file_path() );
@@ -715,6 +704,9 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
       {
         check_content( dstrset, raw_total );
         REQUIRE( dstrset.length() == 3 );
+        REQUIRE( ( MemString( dstrset[ 0 ] ) == str1 ) );
+        REQUIRE( ( MemString( dstrset[ 1 ] ) == str2 ) );
+        REQUIRE( ( MemString( dstrset[ 2 ] ) == str3 ) );
         REQUIRE( length( dstrset[ 0 ] ) == 38 );
         REQUIRE( length( dstrset[ 1 ] ) == 42 );
         REQUIRE( length( dstrset[ 2 ] ) == 37 );

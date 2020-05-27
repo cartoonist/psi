@@ -18,18 +18,21 @@
 #include <fstream>
 #include <string>
 
-#include "vargraph.h"
-#include "pathset.h"
-#include "logger.h"
+#include <psi/graph.hpp>
+#include <psi/pathset.hpp>
+#include <gum/seqgraph.hpp>
+#include <gum/io_utils.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 SCENARIO( "PathSet provides an interface similar to a conventional container", "[pathset]" )
 {
-  auto basic_tests = []( auto&& set, const VarGraph& vargraph ) {
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
+  auto basic_tests = []( auto&& set, const graph_type& graph ) {
     REQUIRE( set.size() == 4 );
     REQUIRE( (*set.begin()).get_nodes().size() == 100 );
     REQUIRE( *(*set.begin()).get_nodes().begin() == 1 );
@@ -44,43 +47,39 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
     REQUIRE( *(*(set.end()-1)).get_nodes().begin() == 200 );
     REQUIRE( *((*(set.end()-1)).get_nodes().end() - 1 ) == 210 );
 
-    typedef Path< VarGraph > TPath;
+    typedef Path< graph_type > TPath;
     typedef typename TPath::nodes_type::value_type TNodeID;
 
     std::vector< TNodeID > nodes( 100 );
     std::iota( nodes.begin(), nodes.end(), 1 );
-    Path< VarGraph > path( &vargraph, nodes );
+    Path< graph_type > path( &graph, nodes );
     REQUIRE( set.found( path ) );
 
     nodes = std::vector< TNodeID >( 12 );
     std::iota( nodes.begin(), nodes.end(), 94 );
-    path = Path< VarGraph >( &vargraph, nodes );
+    path = Path< graph_type >( &graph, nodes );
     REQUIRE( set.found( path ) );
 
     nodes = std::vector< TNodeID >( 12 );
     std::iota( nodes.begin(), nodes.end(), 194 );
-    path = Path< VarGraph >( &vargraph, nodes );
+    path = Path< graph_type >( &graph, nodes );
     REQUIRE( !covered_by( path, set ) );
 
     nodes = std::vector< TNodeID >( 1 );
     std::iota( nodes.begin(), nodes.end(), 210 );
-    path = Path< VarGraph >( &vargraph, nodes );
+    path = Path< graph_type >( &graph, nodes );
     REQUIRE( covered_by( path, set ) );
   };
 
-  GIVEN( "A small VarGraph" )
+  GIVEN( "A small graph" )
   {
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath.c_str() );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.gfa";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     GIVEN( "A PathSet containing some paths" )
     {
-      typedef Path< VarGraph, Compact > TPath;
+      typedef Path< graph_type, Compact > TPath;
       typedef typename TPath::nodes_type::value_type TNodeID;
 
       PathSet< TPath > set;
@@ -89,24 +88,24 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
       {
         std::vector< TNodeID > nodes( 100 );
         std::iota( nodes.begin(), nodes.end(), 1 );
-        TPath path( &vargraph, std::move( nodes ) );
+        TPath path( &graph, std::move( nodes ) );
         set.push_back( path );
         nodes = std::vector< TNodeID >( 12 );
         std::iota( nodes.begin(), nodes.end(), 43 );
-        path = TPath( &vargraph, std::move( nodes ) );
+        path = TPath( &graph, std::move( nodes ) );
         set.push_back( path );
         nodes = std::vector< TNodeID >( 200 );
         std::iota( nodes.begin(), nodes.end(), 1 );
-        path = TPath( &vargraph, std::move( nodes ) );
+        path = TPath( &graph, std::move( nodes ) );
         set.push_back( path );
         nodes = std::vector< TNodeID >( 11 );
         std::iota( nodes.begin(), nodes.end(), 200 );
-        path = TPath( &vargraph, std::move( nodes ) );
+        path = TPath( &graph, std::move( nodes ) );
         set.push_back( path );
 
         THEN( "It should pass the basic tests" )
         {
-          basic_tests( set, vargraph );
+          basic_tests( set, graph );
         }
 
         AND_WHEN( "The PathSet is moved by assignment" )
@@ -116,7 +115,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
 
           THEN( "The moved PathSet should pass the basic tests" )
           {
-            basic_tests( another_set, vargraph );
+            basic_tests( another_set, graph );
           }
         }
 
@@ -126,7 +125,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
 
           THEN( "The moved PathSet should pass the basic tests" )
           {
-            basic_tests( another_set, vargraph );
+            basic_tests( another_set, graph );
           }
         }
 
@@ -135,11 +134,11 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
           std::string tmpfpath = get_tmpfile();
           save( set, tmpfpath );
           PathSet< TPath > another_set;
-          open( another_set, &vargraph, tmpfpath );
+          open( another_set, &graph, tmpfpath );
 
           THEN( "The loaded PathSet should pass the basic tests" )
           {
-            basic_tests( another_set, vargraph );
+            basic_tests( another_set, graph );
           }
         }
 

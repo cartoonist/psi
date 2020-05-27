@@ -26,7 +26,8 @@
 
 #include <vg/vg.pb.h>
 #include <vg/io/stream.hpp>
-#include <gum/seqgraph.hpp>
+
+#include "base.hpp"
 
 
 namespace psi {
@@ -112,7 +113,7 @@ namespace psi {
                    std::function< void( vg::Graph& ) > callback,
                    std::ptrdiff_t chunk_size )
     {
-      assert( chunk_size < std::PTRDIFF_MAX );
+      assert( chunk_size < PTRDIFF_MAX );
       auto nodes_l = nbegin;
       auto nodes_r = nodes_l + 1;
       auto edges_l = ebegin;
@@ -195,7 +196,7 @@ namespace psi {
       typedef typename graph_type::linktype_type linktype_type;
 
       id_type lc_id = 0;
-      int lc_value = -1;
+      std::size_t lc_value = UINTMAX_MAX;
       bool equally_covered = true;
       auto cov =
           [&graph, &paths_set]( id_type id ) {
@@ -206,10 +207,10 @@ namespace psi {
           node_id,
           [&lc_id, &lc_value, &cov, &equally_covered]( id_type to, linktype_type type ) {
             auto value = cov( to );
-            if ( lc_value != -1 && equally_covered && lc_value != value ) {
+            if ( equally_covered && lc_value != UINTMAX_MAX && lc_value != value ) {
               equally_covered = false;
             }
-            if ( lc_value == -1 || value < lc_value ) {
+            if ( value < lc_value ) {
               lc_id = to;
               lc_value = value;
             }
@@ -229,7 +230,7 @@ namespace psi {
       typedef typename graph_type::linktype_type linktype_type;
 
       id_type lc_id = 0;
-      int lc_value = -1;
+      std::size_t lc_value = UINTMAX_MAX;
       bool equally_covered = true;
       auto cov =
           [&graph, &paths_set]( TPath const& tail ) {
@@ -244,10 +245,10 @@ namespace psi {
               tail.push_back( to );  /* XXX: should be popped later! */
               auto value = cov( tail );
               tail.pop_back();
-              if ( lc_value != -1 && equally_covered && lc_value != value ) {
+              if ( equally_covered && lc_value != UINTMAX_MAX && lc_value != value ) {
                 equally_covered = false;
               }
-              if ( lc_value == -1 || value < lc_value ) {
+              if ( value < lc_value ) {
                 lc_id = to;
                 lc_value = value;
               }

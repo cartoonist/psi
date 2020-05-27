@@ -1,8 +1,8 @@
 /**
  *    @file  test_fmindex.cpp
- *   @brief  Test grem::FM-Index module.
+ *   @brief  Test FM-Index module.
  *
- *  Test scenarios for FM-Index class in grem (not SeqAn).
+ *  Test scenarios for FM-Index class in psi.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -17,20 +17,19 @@
 
 #include <string>
 
-#include "fmindex.h"
-#include "logger.h"
+#include <psi/fmindex.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
 SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" )
 {
   GIVEN( "An index based on a disk-based string" )
   {
     typedef YaString< DiskBased > string_type;
-    typedef seqan::Index< string_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
@@ -86,7 +85,7 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
   GIVEN( "An index based on a in-memory string" )
   {
     typedef YaString< InMemory > string_type;
-    typedef seqan::Index< string_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
@@ -145,7 +144,7 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
   GIVEN( "An index based on a disk-based string set" )
   {
     typedef seqan::StringSet< DiskString > stringset_type;
-    typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -207,7 +206,7 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
   GIVEN( "An index based on a in-memory string set" )
   {
     typedef seqan::StringSet< MemString > stringset_type;
-    typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -272,7 +271,7 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
   GIVEN( "An index based on a disk-based string serialized to the disk" )
   {
     typedef YaString< DiskBased > string_type;
-    typedef seqan::Index< string_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index1( text );
@@ -352,7 +351,7 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
   GIVEN( "An index based on a in-memory string serialized to the disk" )
   {
     typedef YaString< InMemory > string_type;
-    typedef seqan::Index< string_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index1( text );
@@ -435,7 +434,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
   GIVEN( "An index based on a disk-based string set serialized to the disk" )
   {
     typedef seqan::StringSet< DiskString > stringset_type;
-    typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -521,7 +520,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
   GIVEN( "An index based on a in-memory string set serialized to the disk" )
   {
     typedef seqan::StringSet< MemString > stringset_type;
-    typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -610,7 +609,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
   GIVEN( "An index based on a disk-based string" )
   {
     typedef YaString< DiskBased > string_type;
-    typedef seqan::Index< string_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
@@ -789,7 +788,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
   GIVEN( "An index based on a in-memory string" )
   {
     typedef YaString< InMemory > string_type;
-    typedef seqan::Index< string_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
@@ -971,7 +970,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
   GIVEN( "An index based on a disk-based string set serialized to the disk" )
   {
     typedef seqan::StringSet< DiskString > stringset_type;
-    typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -1164,7 +1163,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
   GIVEN( "An index based on a in-memory string set serialized to the disk" )
   {
     typedef seqan::StringSet< MemString > stringset_type;
-    typedef seqan::Index< stringset_type, grem::FMIndex<> > index_type;
+    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";

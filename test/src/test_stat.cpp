@@ -19,13 +19,12 @@
 #include <chrono>
 #include <thread>
 
-#include "stat.h"
-#include "logger.h"
+#include <psi/stat.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 using namespace std::chrono_literals;
 
 SCENARIO ( "Test the Timer", "[stat]" )

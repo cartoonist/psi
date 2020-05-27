@@ -1,6 +1,6 @@
 /**
  *    @file  test_path.cpp
- *   @brief  Test cases for Path submodule of module VarGraph.
+ *   @brief  Test cases for Path module.
  *
  *  Contains test cases for Path template class.
  *
@@ -20,26 +20,31 @@
 #include <string>
 #include <vector>
 
-#include "vargraph.h"
-#include "logger.h"
+#include <psi/graph.hpp>
+#include <psi/path.hpp>
+#include <gum/seqgraph.hpp>
+#include <gum/io_utils.hpp>
 
 #include "test_base.hpp"
 
 
-using namespace grem;
+using namespace psi;
 
-SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
+SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
 {
-  std::vector< VarGraph::nodeid_type > nodes
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+  typedef graph_type::id_type id_type;
+
+  std::vector< id_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
-  std::vector< VarGraph::nodeid_type > nodes_shuff
+  std::vector< id_type > nodes_shuff
     = { 29, 32, 34, 28, 21, 23, 26, 25, 37, 35, 30, 20 };
-  std::vector< VarGraph::nodeid_type > other_nodes
+  std::vector< id_type > other_nodes
     = { 56, 123, 9, 10, 27, 9, 10 };
-  std::vector< VarGraph::nodeid_type > other_nodes_sorted
+  std::vector< id_type > other_nodes_sorted
     = { 9, 10, 27, 56, 123 };
-  std::vector< VarGraph::nodeid_type > invld_nodes = { 0 };
-  std::vector< VarGraph::nodeid_type > empty;
+  std::vector< id_type > invld_nodes = { 0 };
+  std::vector< id_type > empty;
   std::string nodes_str = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTATTTGA"
     "AGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
 
@@ -69,7 +74,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
       REQUIRE( !path.empty() );
       std::size_t i = 0;
       for ( const auto& nid : path ) {
-        REQUIRE( nid == nodes[ i++ ] );
+        REQUIRE( static_cast< id_type >( nid ) == nodes[ i++ ] );
       }
       REQUIRE( !contains( path, other_nodes.begin(), other_nodes.end() ) );
       REQUIRE( !contains( path, empty.begin(), empty.end() ) );
@@ -105,20 +110,16 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.vg";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     GIVEN( "An empty path" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       initialize( hap_path );
 
       THEN( "The paths should be in valid state" )
@@ -162,10 +163,10 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
       WHEN( "It is reset by an empty set of nodes" )
       {
-        path.set_nodes( Path< VarGraph >::nodes_type(), 1, 3 );
-        dyn_path.set_nodes( Path< VarGraph, Dynamic >::nodes_type(), 1, 3 );
-        cmp_path.set_nodes( Path< VarGraph, Compact >::nodes_type(), 1, 3 );
-        hap_path.set_nodes( std::vector< VarGraph::nodeid_type >() );
+        path.set_nodes( Path< graph_type >::nodes_type(), 1, 3 );
+        dyn_path.set_nodes( Path< graph_type, Dynamic >::nodes_type(), 1, 3 );
+        cmp_path.set_nodes( Path< graph_type, Compact >::nodes_type(), 1, 3 );
+        hap_path.set_nodes( std::vector< graph_type::id_type >() );
         initialize( hap_path );
 
         THEN( "It should be in a valid state" )
@@ -285,7 +286,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
       WHEN( "It is extended by a path" )
       {
-        Path< VarGraph > another( &vargraph, nodes );
+        Path< graph_type > another( &graph, nodes );
         path += another;
         dyn_path += another;
         initialize( path );
@@ -301,13 +302,13 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     GIVEN( "An a path with one node" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       path.push_back( 20 );
       dyn_path.push_back( 20 );
-      cmp_path.set_nodes( std::vector< VarGraph::nodeid_type >( { 20 } ) );
+      cmp_path.set_nodes( std::vector< graph_type::id_type >( { 20 } ) );
       hap_path.push_back( 20 );
       initialize( hap_path );
 
@@ -402,7 +403,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path in the graph constructed at once" )
     {
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path( &graph );
       path.set_nodes( nodes );
       initialize( path );
 
@@ -433,7 +434,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path in the graph constructed incrementally" )
     {
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path( &graph );
       for ( const auto& n: nodes ) {
         add_node( path, n );
       }
@@ -447,7 +448,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path in the graph constructed at once" )
     {
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       dyn_path.set_nodes( nodes.begin(), nodes.end() );
       initialize( dyn_path );
 
@@ -478,7 +479,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path in the graph constructed incrementally" )
     {
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( dyn_path, n );
       }
@@ -492,7 +493,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path in the graph constructed at once" )
     {
-      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< graph_type, Compact > cmp_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path.set_nodes( nodes );
@@ -526,7 +527,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Micro path in the graph constructed at once" )
     {
-      Path< VarGraph, Micro > mcr_path;
+      Path< graph_type, Micro > mcr_path;
       mcr_path.set_nodes( nodes );
 
       THEN( "It should pass basic tests" )
@@ -553,7 +554,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Micro path in the graph constructed incrementally" )
     {
-      Path< VarGraph, Micro > mcr_path;
+      Path< graph_type, Micro > mcr_path;
       for ( const auto& n: nodes ) {
         add_node( mcr_path, n );
       }
@@ -566,7 +567,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path in the graph constructed at once" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       hap_path.set_nodes( nodes );
 
       THEN( "It should pass basic tests" )
@@ -596,7 +597,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path in the graph constructed incrementally" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( hap_path, n );
       }
@@ -611,7 +612,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "An existing path in the graph reset by another set of nodes" )
     {
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path( &graph );
       path.set_nodes( other_nodes );
       initialize( path );
       path.set_nodes( nodes );
@@ -625,7 +626,7 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "An existing Haplotype path in the graph reset by another set of nodes" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       hap_path.set_nodes( other_nodes_sorted );
       hap_path.set_nodes( nodes );
 
@@ -638,8 +639,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path constructed by a Default path using assignment" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       path.set_nodes( nodes );
       initialize( path );
 
@@ -653,8 +654,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path constructed by a Default path using move assignment" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       path.set_nodes( nodes );
       initialize( path );
 
@@ -668,8 +669,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path constructed by a Compact path using assignment" )
     {
-      Path< VarGraph, Compact > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Compact > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       path.set_nodes( nodes );
@@ -686,8 +687,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path constructed by a Compact path using move assignment" )
     {
-      Path< VarGraph, Compact > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Compact > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       path.set_nodes( nodes );
@@ -704,8 +705,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path constructed by a Dynamic path using assignment" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( dyn_path, n );
       }
@@ -721,8 +722,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path constructed by a Dynamic path using move assignment" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( dyn_path, n );
       }
@@ -738,8 +739,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path constructed by a Compact path using assignment" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path.set_nodes( nodes );
@@ -756,8 +757,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path constructed by a Compact path using move assignment" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path.set_nodes( nodes );
@@ -774,8 +775,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path constructed by a Dynamic path using assignment" )
     {
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( dyn_path, n );
       }
@@ -794,8 +795,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path constructed by a Dynamic path using move assignment" )
     {
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( dyn_path, n );
       }
@@ -811,8 +812,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path constructed by a Default path using assignment" )
     {
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type > path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       path.set_nodes( nodes );
@@ -829,8 +830,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path constructed by a Default path using move assignment" )
     {
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type > path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       path.set_nodes( nodes );
@@ -847,8 +848,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path constructed by a Default path using assignment" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type > path( &graph );
       path.set_nodes( nodes );
       initialize( path );
 
@@ -863,8 +864,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path constructed by a Dynamic path using assignment" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( dyn_path, n );
       }
@@ -881,8 +882,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path constructed by a Compact path using assignment" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path.set_nodes( nodes );
@@ -900,8 +901,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path constructed by a Dynamic path using assignment" )
     {
-      Path< VarGraph, Dynamic > dyn_path2( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Dynamic > dyn_path2( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       dyn_path.set_nodes( nodes.begin(), nodes.end() );
       initialize( dyn_path );
 
@@ -915,8 +916,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path constructed by a Dynamic path using move assignment" )
     {
-      Path< VarGraph, Dynamic > dyn_path2( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type, Dynamic > dyn_path2( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       dyn_path.set_nodes( nodes.begin(), nodes.end() );
       initialize( dyn_path );
 
@@ -930,8 +931,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path constructed by a Default path using assignment" )
     {
-      Path< VarGraph > path2( &vargraph );
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path2( &graph );
+      Path< graph_type > path( &graph );
       for ( const auto& n: nodes ) {
         add_node( path, n );
       }
@@ -947,8 +948,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path constructed by a Default path using move assignment" )
     {
-      Path< VarGraph > path2( &vargraph );
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path2( &graph );
+      Path< graph_type > path( &graph );
       for ( const auto& n: nodes ) {
         add_node( path, n );
       }
@@ -964,8 +965,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path constructed by a Compact path using assignment" )
     {
-      Path< VarGraph, Compact > cmp_path2( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< graph_type, Compact > cmp_path2( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path.set_nodes( nodes );
@@ -982,8 +983,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Compact path constructed by a Compact path using move assignment" )
     {
-      Path< VarGraph, Compact > cmp_path2( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
+      Path< graph_type, Compact > cmp_path2( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path.set_nodes( nodes );
@@ -1000,8 +1001,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Micro path constructed by a Micro path using assignment" )
     {
-      Path< VarGraph, Micro > path2;
-      Path< VarGraph, Micro > path;
+      Path< graph_type, Micro > path2;
+      Path< graph_type, Micro > path;
       path.set_nodes( nodes );
 
       path2 = path;
@@ -1014,8 +1015,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Micro path constructed by a Micro path using move assignment" )
     {
-      Path< VarGraph, Micro > path2;
-      Path< VarGraph, Micro > path;
+      Path< graph_type, Micro > path2;
+      Path< graph_type, Micro > path;
       for ( const auto& n: nodes ) {
         add_node( path, n );
       }
@@ -1030,8 +1031,8 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path constructed by a Haplotype path using assignment" )
     {
-      Path< VarGraph, Haplotype > hap_path2( &vargraph );
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type, Haplotype > hap_path2( &graph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       for ( const auto& n: nodes ) {
         add_node( hap_path, n );
       }
@@ -1048,9 +1049,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path is extended by another Default path" )
     {
-      Path< VarGraph > path1( &vargraph );
-      Path< VarGraph > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type > path1( &graph );
+      Path< graph_type > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path1, nodes[ i ] );
       }
@@ -1068,9 +1069,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path is extended by an offset Default path" )
     {
-      Path< VarGraph > path1( &vargraph );
-      Path< VarGraph > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type > path1( &graph );
+      Path< graph_type > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path2, nodes[ i ] );
       }
@@ -1099,9 +1100,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path is extended by another Haplotype path" )
     {
-      Path< VarGraph, Haplotype > hap_path1( &vargraph );
-      Path< VarGraph, Haplotype > hap_path2( &vargraph );
-      Path< VarGraph, Haplotype >::size_type i = 0;
+      Path< graph_type, Haplotype > hap_path1( &graph );
+      Path< graph_type, Haplotype > hap_path2( &graph );
+      Path< graph_type, Haplotype >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( hap_path1, nodes[ i ] );
       }
@@ -1121,9 +1122,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path is extended by a Default path" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Haplotype >::size_type i = 0;
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Haplotype >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( hap_path, nodes[ i ] );
       }
@@ -1142,9 +1143,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path is extended by a Dynamic path" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
-      Path< VarGraph, Haplotype >::size_type i = 0;
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
+      Path< graph_type, Haplotype >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( hap_path, nodes[ i ] );
       }
@@ -1163,13 +1164,13 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Haplotype path is extended by a Compact path" )
     {
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph, Haplotype >::size_type i = 0;
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type, Haplotype >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( hap_path, nodes[ i ] );
       }
-      std::vector< VarGraph::nodeid_type > subset;
+      std::vector< graph_type::id_type > subset;
       for ( ; i < nodes.size(); ++i ) {
         subset.push_back( nodes[i] );
       }
@@ -1189,9 +1190,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path is extended by a Default path" )
     {
-      Path< VarGraph, Dynamic > path1( &vargraph );
-      Path< VarGraph > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type, Dynamic > path1( &graph );
+      Path< graph_type > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path1, nodes[ i ] );
       }
@@ -1209,9 +1210,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path is extended by a Haplotype path" )
     {
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph, Dynamic >::size_type i = 0;
+      Path< graph_type, Dynamic > dyn_path( &graph );
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type, Dynamic >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( dyn_path, nodes[ i ] );
       }
@@ -1230,9 +1231,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path is extended by a Dynamic Path" )
     {
-      Path< VarGraph > path1( &vargraph );
-      Path< VarGraph, Dynamic > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type > path1( &graph );
+      Path< graph_type, Dynamic > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path1, nodes[ i ] );
       }
@@ -1250,9 +1251,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path is extended by a Haplotype path" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type > path( &graph );
+      Path< graph_type, Haplotype > hap_path( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path, nodes[ i ] );
       }
@@ -1271,9 +1272,9 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path is extended by another Dynamic path" )
     {
-      Path< VarGraph, Dynamic > path1( &vargraph );
-      Path< VarGraph, Dynamic > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type, Dynamic > path1( &graph );
+      Path< graph_type, Dynamic > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path1, nodes[ i ] );
       }
@@ -1291,13 +1292,13 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Default path is extended by a Compact Path" )
     {
-      Path< VarGraph > path1( &vargraph );
-      Path< VarGraph, Compact > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type > path1( &graph );
+      Path< graph_type, Compact > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path1, nodes[ i ] );
       }
-      std::vector< VarGraph::nodeid_type > subset;
+      std::vector< graph_type::id_type > subset;
       for ( ; i < nodes.size(); ++i ) {
         subset.push_back( nodes[i] );
       }
@@ -1316,13 +1317,13 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
     WHEN( "A Dynamic path is extended by a Compact Path" )
     {
-      Path< VarGraph, Dynamic > path1( &vargraph );
-      Path< VarGraph, Compact > path2( &vargraph );
-      Path< VarGraph >::size_type i = 0;
+      Path< graph_type, Dynamic > path1( &graph );
+      Path< graph_type, Compact > path2( &graph );
+      Path< graph_type >::size_type i = 0;
       for ( ; i < nodes.size() - 3; ++i ) {
         add_node( path1, nodes[ i ] );
       }
-      std::vector< VarGraph::nodeid_type > subset;
+      std::vector< graph_type::id_type > subset;
       for ( ; i < nodes.size(); ++i ) {
         subset.push_back( nodes[i] );
       }
@@ -1343,24 +1344,22 @@ SCENARIO( "Basic test for a simple path in a variation graph", "[path]" )
 
 SCENARIO( "Basic tests for offset path", "[path]" )
 {
-  std::vector< VarGraph::nodeid_type > nodes
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
+  std::vector< graph_type::id_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
   std::string init_sequence = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTA"
     "TTTGAAGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.gfa";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     GIVEN( "A path in the graph" )
     {
-      Path< VarGraph, Default > path( &vargraph );
+      Path< graph_type, Default > path( &graph );
 
       WHEN( "One node is added with offset with left offset" )
       {
@@ -1408,7 +1407,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
       WHEN( "One node is added with left and right offset" )
       {
-        path.set_nodes( std::vector< VarGraph::nodeid_type >( { 20 } ), 12, 30 );
+        path.set_nodes( std::vector< graph_type::id_type >( { 20 } ), 12, 30 );
         initialize( path );
 
         THEN( "It should be offset from both sides" )
@@ -1428,7 +1427,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
     GIVEN( "A Default offset path in the graph" )
     {
-      Path< VarGraph, Default > path( &vargraph );
+      Path< graph_type, Default > path( &graph );
 
       WHEN( "It is offset afterward" )
       {
@@ -1439,11 +1438,6 @@ SCENARIO( "Basic tests for offset path", "[path]" )
         REQUIRE( path.get_seqlen_tail() == 5 );
         REQUIRE( path.size() == 12 );
         REQUIRE( path.is_initialized() );
-
-        AND_WHEN( "Set left offset a negative value" )
-        {
-          REQUIRE_THROWS( path.set_left_by_len( -8 ) );
-        }
 
         AND_WHEN( "Set left offset a large value" )
         {
@@ -1475,11 +1469,6 @@ SCENARIO( "Basic tests for offset path", "[path]" )
             REQUIRE( path.size() == 12 );
             REQUIRE( path.is_initialized() );
           }
-        }
-
-        AND_WHEN( "Set right offset a negative value" )
-        {
-          REQUIRE_THROWS( path.set_right_by_len( -8 ) );
         }
 
         AND_WHEN( "Set right offset a large value" )
@@ -1723,7 +1712,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
       {
         path.push_back( nodes.front(), 21 );
         auto s = path.get_sequence();
-        REQUIRE( s == vargraph.node_sequence( nodes.front() ).substr( 21 ) );
+        REQUIRE( s == graph.node_sequence( nodes.front() ).substr( 21 ) );
         path.push_back( *( nodes.begin()+1 ), 5 );
         path.push_back( *( nodes.begin()+2 ), -1 );
         path.push_back( *( nodes.begin()+3 ) );
@@ -1751,7 +1740,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
         AND_WHEN( "It is copied" )
         {
-          Path< VarGraph, Default > other( path );
+          Path< graph_type, Default > other( path );
 
           THEN( "The copy should be identical" )
           {
@@ -1767,7 +1756,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
         AND_WHEN( "It is moved" )
         {
-          Path< VarGraph, Default > other( std::move( path ) );
+          Path< graph_type, Default > other( std::move( path ) );
 
           THEN( "The copy should be identical" )
           {
@@ -1783,7 +1772,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
         AND_WHEN( "It is assigned using copy assignment operator" )
         {
-          Path< VarGraph, Default > other = path;
+          Path< graph_type, Default > other = path;
 
           THEN( "The copy should be identical" )
           {
@@ -1799,7 +1788,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
         AND_WHEN( "It is assigned using move assignment operator" )
         {
-          Path< VarGraph, Default > other = std::move( path );
+          Path< graph_type, Default > other = std::move( path );
 
           THEN( "The copy should be identical" )
           {
@@ -1815,7 +1804,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
         AND_WHEN( "A Dynamic path is assigned by offset Default path" )
         {
-          Path< VarGraph, Dynamic > other( &vargraph );
+          Path< graph_type, Dynamic > other( &graph );
           other = path;
 
           THEN( "The copy should be identical" )
@@ -1848,7 +1837,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
 
         AND_WHEN( "A Campact path is assigned by offset Default path" )
         {
-          Path< VarGraph, Compact > other( &vargraph );
+          Path< graph_type, Compact > other( &graph );
           other = path;
 
           THEN( "The copy should be identical" )
@@ -1867,29 +1856,27 @@ SCENARIO( "Basic tests for offset path", "[path]" )
   }
 }
 
-SCENARIO( "Trim a path in a variation graph", "[path]" )
+SCENARIO( "Trim a path in a sequence graph", "[path]" )
 {
-  std::vector< VarGraph::nodeid_type > nodes
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
+  std::vector< graph_type::id_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
   std::string init_sequence = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTA"
     "TTTGAAGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
 
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.gfa";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     GIVEN( "An empty path in the graph" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
-      Path< VarGraph, Compact > cmp_path( &vargraph );
-      Path< VarGraph, Haplotype > hap_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
+      Path< graph_type, Compact > cmp_path( &graph );
+      Path< graph_type, Haplotype > hap_path( &graph );
       initialize( hap_path );
 
       WHEN( "Trim back is called" )
@@ -2049,7 +2036,7 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
     GIVEN( "A path in the graph" )
     {
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path( &graph );
       //path.set_nodes( nodes );
       for ( const auto& n : nodes ) {
         add_node( path, n );
@@ -2111,8 +2098,8 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
       WHEN( "The last node is trimmed" )
       {
-        VarGraph::offset_type trimmed_len
-          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        graph_type::offset_type trimmed_len
+          = path.get_sequence().length() - graph.node_length( path.get_nodes().back() );
         trim_back( path, 37 );
 
         THEN( "Its length and sequence should be decreased accordingly" )
@@ -2127,9 +2114,9 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
         std::size_t trim_len = 0;
         auto it = path.get_nodes().end();
         for ( it -= 6; it != path.get_nodes().end(); ++it ) {
-          trim_len += vargraph.node_length( *it );
+          trim_len += graph.node_length( *it );
         }
-        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        graph_type::offset_type trimmed_len = path.get_sequence().length() - trim_len;
         trim_back( path, 29 );
         THEN( "Its length and sequence should be decreased accordingly" )
         {
@@ -2140,8 +2127,8 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
       WHEN( "Trim by providing zero as node ID" )
       {
-        VarGraph::offset_type trimmed_len
-          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        graph_type::offset_type trimmed_len
+          = path.get_sequence().length() - graph.node_length( path.get_nodes().back() );
         trim_back( path, 0 );
         THEN( "The last node should be trimmed" )
         {
@@ -2152,8 +2139,8 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
       WHEN( "Trim by providing no parameter" )
       {
-        VarGraph::offset_type trimmed_len
-          = path.get_sequence().length() - vargraph.node_length( path.get_nodes().back() );
+        graph_type::offset_type trimmed_len
+          = path.get_sequence().length() - graph.node_length( path.get_nodes().back() );
         trim_back( path );
         THEN( "The last node should be trimmed" )
         {
@@ -2174,7 +2161,7 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
     GIVEN( "A Dynamic Path in the graph" )
     {
-      Path< VarGraph, Dynamic > path( &vargraph );
+      Path< graph_type, Dynamic > path( &graph );
       for ( const auto& n : nodes ) {
         add_node( path, n );
       }
@@ -2183,9 +2170,9 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
       WHEN( "The first node is trimmed" )
       {
-        VarGraph::offset_type trim_len =
-          vargraph.node_length( path.get_nodes().front() );
-        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        graph_type::offset_type trim_len =
+          graph.node_length( path.get_nodes().front() );
+        graph_type::offset_type trimmed_len = path.get_sequence().length() - trim_len;
         trim_front( path, 20 );
 
         THEN( "Its length and sequence should be decreased accordingly" )
@@ -2199,9 +2186,9 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
       {
         std::size_t trim_len = 0;
         for ( auto it = path.get_nodes().begin(); it != path.get_nodes().end() - 8; ++it ) {
-          trim_len += vargraph.node_length( *it );
+          trim_len += graph.node_length( *it );
         }
-        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        graph_type::offset_type trimmed_len = path.get_sequence().length() - trim_len;
         trim_front( path, 25 );
         THEN( "Its length and sequence should be decreased accordingly" )
         {
@@ -2212,9 +2199,9 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
       WHEN( "Trim by providing zero as node ID" )
       {
-        VarGraph::offset_type trim_len =
-          vargraph.node_length( path.get_nodes().front() );
-        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        graph_type::offset_type trim_len =
+          graph.node_length( path.get_nodes().front() );
+        graph_type::offset_type trimmed_len = path.get_sequence().length() - trim_len;
         trim_front( path, 0 );
         THEN( "The last node should be trimmed" )
         {
@@ -2225,9 +2212,9 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
       WHEN( "Trim by providing no parameter" )
       {
-        VarGraph::offset_type trim_len =
-          vargraph.node_length( path.get_nodes().front() );
-        VarGraph::offset_type trimmed_len = path.get_sequence().length() - trim_len;
+        graph_type::offset_type trim_len =
+          graph.node_length( path.get_nodes().front() );
+        graph_type::offset_type trimmed_len = path.get_sequence().length() - trim_len;
         trim_front( path );
         THEN( "The last node should be trimmed" )
         {
@@ -2250,17 +2237,18 @@ SCENARIO( "Trim a path in a variation graph", "[path]" )
 
 SCENARIO( "Trim a path to the length of k", "[path]" )
 {
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
   GIVEN( "A small variation graph" )
   {
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream ifs( vgpath, std::ifstream::in | std::ifstream::binary );
-    VarGraph vargraph;
-    vargraph.load( ifs );
+    std::string vgpath = test_data_dir + "/small/x.vg";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     GIVEN( "Two paths: one Default and one Dynamic" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       path.set_nodes( { 2, 5, 6, 7, 9, 11, 12 } );
       dyn_path = path;
       unsigned int k = 5;
@@ -2338,8 +2326,8 @@ SCENARIO( "Trim a path to the length of k", "[path]" )
 
     GIVEN( "Another two paths: one Default and one Dynamic" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       path.set_nodes( { 20, 21, 23, 25, 26 } );
       dyn_path = path;
       unsigned int k = 5;
@@ -2590,8 +2578,8 @@ SCENARIO( "Trim a path to the length of k", "[path]" )
 
     GIVEN( "Two offset paths: one Default and one Dynamic" )
     {
-      Path< VarGraph > path( &vargraph );
-      Path< VarGraph, Dynamic > dyn_path( &vargraph );
+      Path< graph_type > path( &graph );
+      Path< graph_type, Dynamic > dyn_path( &graph );
       path.set_nodes( { 20, 21, 23, 25, 26 }, 4, 2 );
       dyn_path = path;
       unsigned int k = 5;
@@ -2675,24 +2663,22 @@ SCENARIO( "Trim a path to the length of k", "[path]" )
 
 SCENARIO( "Query node coordinates by position in the path", "[path]" )
 {
-  std::vector< VarGraph::nodeid_type > nodes
+  typedef gum::SeqGraph< gum::Dynamic > graph_type;
+
+  std::vector< graph_type::id_type > nodes
     = { 20, 21, 23, 25, 26, 28, 29, 30, 32, 34, 35, 37 };
   std::string init_sequence = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTA"
     "TTTGAAGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
 
   GIVEN ( "A small variation graph" )
   {
-    std::string vgpath = test_data_dir + "/small/x.xg";
-    std::ifstream gifs( vgpath, std::ifstream::in | std::istream::binary );
-    if ( !gifs ) {
-      throw std::runtime_error( "cannot open file " + vgpath );
-    }
-    VarGraph vargraph;
-    vargraph.load( gifs );
+    std::string vgpath = test_data_dir + "/small/x.gfa";
+    graph_type graph;
+    gum::util::extend( graph, vgpath );
 
     WHEN( "A path in the graph" )
     {
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path( &graph );
       path.set_nodes( nodes );
       initialize( path );
 
@@ -2726,7 +2712,7 @@ SCENARIO( "Query node coordinates by position in the path", "[path]" )
 
     WHEN( "An offset path in the graph" )
     {
-      Path< VarGraph > path( &vargraph );
+      Path< graph_type > path( &graph );
       path.set_nodes( nodes, 20, 2 );
       initialize( path );
 

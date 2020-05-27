@@ -2,6 +2,8 @@
 
 ## Requirements
 
+- Zlib
+- BZip2
 - [GUM](https://github.com/cartoonist/gum)
 
 ## Development

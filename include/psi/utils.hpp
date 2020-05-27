@@ -245,13 +245,11 @@ namespace psi {
    *  Bitvector identical-range copy. The [idx...idx+len) from `src` is copied
    *  to the same range in `dst`.
    */
-  template< typename TBitVector >
+  template< typename TBitVector, uint8_t WLEN=64 >
       inline void
     bv_icopy( const TBitVector& src, TBitVector& dst, typename TBitVector::size_type idx=0,
         typename TBitVector::size_type len=0 )
     {
-      static const short int WLEN = 64;
-
       assert( idx < src.size() );
       assert( dst.size() >= src.size() );
 
@@ -600,8 +598,11 @@ namespace psi {
         sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rbegin2,
         sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rend2 )
     {
+      typedef std::make_unsigned_t< typename TIter::value_type > value_type;
+
       for ( ; rbegin1 != rend1; ++rbegin1 ) {
-        if ( rbegin2 == rend2 || *rbegin1 != *--rbegin2 ) return false;
+        if ( rbegin2 == rend2 ||
+             static_cast< value_type >( *rbegin1 ) != *--rbegin2 ) return false;
       }
       return true;
     }

@@ -19,10 +19,13 @@
 #ifndef PSI_LOGGER_HPP__
 #define PSI_LOGGER_HPP__
 
-#include "base.hpp"
-#include "options.hpp"
+#include <spdlog/spdlog.h>
+#include <spdlog/async.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
 
-#include "spdlog/spdlog.h"
+#include "options.hpp"
 
 
 namespace psi {
@@ -32,6 +35,7 @@ namespace psi {
    *  @param  nolog Disable logging completely.
    *  @param  quiet Disable logging to console.
    *  @param  nocolor Disable coloured output.
+   *  @param  verbose Enable verbosity.
    *  @param  nologfile Disable logging to file.
    *  @param  log_path Path to log file.
    *
@@ -44,38 +48,33 @@ namespace psi {
   config_logger( bool nolog, bool quiet, bool nocolor, bool verbose, bool nologfile,
      const std::string& log_path )
   {
-    // Set to asynchronous mode.
-    spdlog::set_async_mode(8192);
+    typedef spdlog::sinks::stdout_sink_mt console_sink;
+    typedef spdlog::sinks::stdout_color_sink_mt console_color_sink;
+    typedef spdlog::sinks::basic_file_sink_mt file_sink;
+    typedef spdlog::async_logger logger_type;
+
     std::vector< spdlog::sink_ptr > sinks;
 
     if ( !nolog && !quiet ) {
-      if ( nocolor ) {
-        auto stdout_sink = spdlog::sinks::stdout_sink_mt::instance();
-        sinks.push_back( stdout_sink );
-      }
-      else {
-        auto color_sink = std::make_shared< spdlog::sinks::ansicolor_stdout_sink_mt >();
-        sinks.push_back( color_sink );
-      }
-      if ( verbose ) {
-        sinks.back()->set_level( spdlog::level::info );
-      }
-      else {
-        sinks.back()->set_level( spdlog::level::warn );
-      }
+      if ( nocolor ) sinks.push_back( std::make_shared< console_sink >() );
+      else sinks.push_back( std::make_shared< console_color_sink >() );
+
+      if ( verbose ) sinks.back()->set_level( spdlog::level::info );
+      else sinks.back()->set_level( spdlog::level::warn );
     }
 
     if ( !nolog && !nologfile ) {
-      auto simple
-        = std::make_shared< spdlog::sinks::simple_file_sink_mt >( log_path );
-      sinks.push_back( simple );
+      sinks.push_back( std::make_shared< file_sink >( log_path ) );
       // Always verbose for file sink.
       sinks.back()->set_level( spdlog::level::info );
     }
 
-    auto main_logger
-      = std::make_shared< spdlog::logger >( "main", begin(sinks), end(sinks) );
-
+    auto main_logger =
+        std::make_shared< logger_type >( "main",
+                                         begin(sinks),
+                                         end(sinks),
+                                         spdlog::thread_pool(),
+                                         spdlog::async_overflow_policy::overrun_oldest );
     spdlog::register_logger( main_logger );
   }
 

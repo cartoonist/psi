@@ -25,12 +25,11 @@
 #include <memory>
 
 #include <seqan/seq_io.h>
-#include <kseq++/seqio.h>
+#include <kseq++/seqio.hpp>
 #include <seqan/sequence.h>
 #include <sdsl/bit_vectors.hpp>
 
 #include "utils.hpp"
-#include "logger.hpp"
 
 
 #define SEQUENCE_DEFAULT_SENTINEL_CHAR '$'
@@ -224,7 +223,7 @@ namespace psi {
           return YaString::length();
         }
 
-          inline pos_type
+          constexpr inline pos_type
         get_position( pos_type p )
         {
           return p;
@@ -251,24 +250,22 @@ namespace psi {
         }
 
           inline void
-        load( std::istream& in )
+        load( std::istream& in, bool strict=false )
         {
           this->close();
           this->fpath.clear();
           psi::deserialize( in, this->fpath, std::back_inserter( this->fpath ) );
-          if ( !readable( this->fpath ) ) {
-            get_logger( "main" )->warn(
-                "File '{}' does not exist: disk-based string content cannot be read.",
-                this->fpath );
+          sint_type l;
+          psi::deserialize( in, l );
+          this->len = l;
+          if ( strict && !readable( this->fpath ) ) {
+            throw std::runtime_error( "File " + this->fpath + " not found:"
+                                      " disk-based string content cannot be retrieved." );
           }
 
           if ( appendable( this->fpath ) ) {
             this->out.open( this->fpath, std::ofstream::app );
           }
-
-          sint_type l;
-          psi::deserialize( in, l );
-          this->len = l;
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
@@ -322,7 +319,49 @@ namespace psi {
 
   template< typename TString >
     class YaInfix
-    : public std::pair< typename TString::size_type, typename TString::size_type > { };
+    : public std::pair< typename TString::size_type, typename TString::size_type > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef TString string_type;
+        typedef typename string_type::size_type size_type;
+        typedef std::pair< size_type, size_type > base_type;
+
+        /* ====================  LIFECYCLE     ======================================= */
+        constexpr YaInfix( string_type const *p=nullptr )
+          : base_type( ), ptr( p )
+        { }
+
+        constexpr YaInfix( string_type const *p, size_type x, size_type y )
+          : base_type( x, y ), ptr( p )
+        { }
+
+        YaInfix( YaInfix const& ) = default;
+        YaInfix( YaInfix&& ) = default;
+        ~YaInfix( ) = default;
+
+        /* ====================  OPERATORS     ======================================= */
+        YaInfix& operator=( YaInfix const& ) = default;
+        YaInfix& operator=( YaInfix&& ) = default;
+
+          inline bool
+        operator==( char const* other ) const
+        {
+          return static_cast< string_type >( *this ) == string_type( other );
+        }
+
+        operator string_type() const
+        {
+          string_type infix( length( *this ), '\0' );
+          auto begin = ptr->begin();
+          std::copy( begin + this->first,
+                     begin + this->second,
+                     infix.begin() );
+          return infix;
+        }
+
+        /* ====================  DATA MEMBERS  ======================================= */
+        string_type const* ptr;
+    };
 
   template< typename TString >
       inline typename TString::size_type
@@ -410,8 +449,9 @@ namespace seqan {
     class StringSet< psi::DiskString, Owner<> > : public psi::DiskString {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef psi::DiskString value_type;
-        typedef psi::DiskString::string_type string_type;
+        typedef psi::DiskString base_type;
+        typedef base_type value_type;
+        typedef base_type::string_type string_type;
         typedef string_type::size_type stringsize_type;
         typedef uint64_t size_type;       /**< @brief Type for serializing the length. */
         typedef psi::DiskBased device_type;
@@ -457,17 +497,16 @@ namespace seqan {
         /* ====================  CONST MEMBERS ======================================= */
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
-          inline psi::YaInfix< StringSet >
+          inline psi::YaInfix< base_type >
         operator[]( size_type idx ) const
         {
           ASSERT( this->is_initialized() );
-          psi::YaInfix< StringSet > retval;
-          retval.first = this->select( idx );
-          retval.second = this->select( idx + 1 ) - 1;
-          return retval;
+          auto first = this->select( idx );
+          auto second = this->select( idx + 1 ) - 1;
+          return psi::YaInfix< base_type >( this, first, second );
         }
 
-          inline psi::YaInfix< StringSet >
+          inline psi::YaInfix< base_type >
         operator[]( size_type idx )
         {
           if ( !this->is_initialized() ) this->initialize();
@@ -551,10 +590,10 @@ namespace seqan {
         }
 
           inline void
-        load( std::istream& in )
+        load( std::istream& in, bool strict=false )
         {
           this->clear();
-          psi::DiskString::load( in );
+          psi::DiskString::load( in, strict );
           psi::deserialize( in, this->count );
           this->bv_str_breaks.load( in );
           this->initialize();
@@ -661,8 +700,9 @@ namespace seqan {
     class StringSet< psi::MemString, Owner<> > : public psi::MemString {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef psi::MemString value_type;
-        typedef psi::MemString::string_type string_type;
+        typedef psi::MemString base_type;
+        typedef base_type value_type;
+        typedef base_type::string_type string_type;
         typedef string_type::size_type stringsize_type;
         typedef uint64_t size_type;
         typedef psi::InMemory device_type;
@@ -717,17 +757,16 @@ namespace seqan {
         /* ====================  CONST MEMBERS ======================================= */
         const char SENTINEL = SEQUENCE_DEFAULT_SENTINEL_CHAR;
         /* ====================  OPERATORS     ======================================= */
-          inline psi::YaInfix< StringSet >
+          inline psi::YaInfix< base_type >
         operator[]( size_type idx ) const
         {
           ASSERT( this->is_initialized() );
-          psi::YaInfix< StringSet > retval;
-          retval.first = this->select( idx );
-          retval.second = this->select( idx + 1 ) - 1;
-          return retval;
+          auto first = this->select( idx );
+          auto second = this->select( idx + 1 ) - 1;
+          return psi::YaInfix< base_type >( this, first, second );
         }
 
-          inline psi::YaInfix< StringSet >
+          inline psi::YaInfix< base_type >
         operator[]( size_type idx )
         {
           if ( !this->is_initialized() ) this->initialize();
@@ -1044,6 +1083,13 @@ namespace psi {
     length( const Records< seqan::StringSet< TText, TStringSetSpec > >& records )
     {
       return length( records.str );
+    }
+
+  template< typename TText, typename TStringSetSpec >
+      inline bool
+    empty( const Records< seqan::StringSet< TText, TStringSetSpec > >& records )
+    {
+      return length( records.str ) == 0;
     }
 
   template< typename TText, typename TStringSetSpec, typename TPosition >
