@@ -85,8 +85,11 @@ target_compile_features(psi_novg INTERFACE cxx_std_17)
 # Defining `psi::psi` alias
 add_library(psi::psi ALIAS psi)
 add_library(psi::psi_novg ALIAS psi_novg)
+# Generating pkgconfig file
+configure_file(psi.pc.in ${PROJECT_SOURCE_DIR}/psi.pc @ONLY)
 # Install targets
-install(DIRECTORY include/psi DESTINATION include PATTERN "*.hpp.in" EXCLUDE)
+install(FILES ${HEADER_FILES} DESTINATION include/psi)
+install(FILES psi.pc DESTINATION lib/pkgconfig)
 
 # Adding `psikt` submodule
 if(BUILD_PSIKT)
