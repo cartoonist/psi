@@ -28,7 +28,7 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
-#include <vg/io/stream.hpp>
+#include <gum/seqgraph.hpp>
 
 #include "graph.hpp"
 #include "traverser.hpp"
@@ -227,24 +227,26 @@ namespace psi {
         static inline void set_total_nof_loci( const std::size_t& value ) { }
     };  /* --- end of template class SeedFinderStat --- */
 
-  template< class TTraverser, typename TStatSpec >
+  template< class TTraverser, typename TStatSpec, typename TStringSpec >
     class SeedFinder;
 
   /**
    *  @brief  Stat template class specialization for `SeedFinderStat`.
    */
-  template< class TTraverser, typename TSpec >
-    class Stat< SeedFinder< TTraverser, TSpec > >
+  template< class TTraverser, typename TStatSpec, typename TStringSpec >
+    class Stat< SeedFinder< TTraverser, TStatSpec, TStringSpec > >
     {
+      typedef SeedFinder< TTraverser, TStatSpec, TStringSpec > seedfinder_type;
       public:
-        typedef SeedFinderStat< SeedFinder< TTraverser, TSpec >, TSpec > Type;
+        typedef SeedFinderStat< seedfinder_type, TStatSpec > Type;
     };  /* --- end of template class Stat --- */
 
   template< class TSeedFinder >
     using StatT = typename Stat< TSeedFinder >::Type;
 
   template< class TTraverser = typename Traverser< gum::SeqGraph< gum::Succinct >, seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> >, BFS, ExactMatching >::Type,
-            typename TStatSpec = void >
+            typename TStatSpec = void,
+            typename TStringSpec = DiskBased >
     class SeedFinder
     {
       public:
@@ -257,7 +259,8 @@ namespace psi {
         typedef StatT< SeedFinder > stats_type;
         typedef Records< typename traverser_type::stringset_type > readsrecord_type;
         typedef typename traverser_type::index_type readsindex_type;
-        typedef PathIndex< graph_type, DiskString, psi::FMIndex<>, Reversed > pathindex_type;
+        typedef YaString< TStringSpec > text_type;
+        typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             readsrecord_type r,
