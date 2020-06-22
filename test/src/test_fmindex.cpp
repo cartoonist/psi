@@ -613,6 +613,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
+    indexRequire( index, seqan::FibreSALF() );
 
     GIVEN( "A top-down iterator for virtual prefix tree of the string" )
     {
@@ -792,6 +793,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
+    indexRequire( index, seqan::FibreSALF() );
 
     GIVEN( "A top-down iterator for virtual prefix tree of the string" )
     {
