@@ -66,6 +66,7 @@ SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterato
 
     TString str = "ACCGATCAGATAG";
     TIndex index( str );
+    indexRequire( index, seqan::FibreSALF() );
     TIter itr( index );
 
     REQUIRE( go_down( itr, 'A' ) );

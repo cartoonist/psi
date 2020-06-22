@@ -22,3 +22,5 @@ target_include_directories(psikt
 target_link_libraries(psikt
   PRIVATE psi::psi
   PRIVATE spdlog::spdlog_header_only)
+# Install targets
+install(TARGETS psikt DESTINATION bin)

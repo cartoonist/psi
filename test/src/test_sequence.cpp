@@ -1201,7 +1201,7 @@ SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
 
     WHEN( "It is incremented" )
     {
-      unsigned int s = increment_kmer( kmer );
+      auto s = increment_kmer( kmer );
       REQUIRE( s == length( kmer ) - 1 );
       THEN( "It should be the next lexicographical kmer" )
       {
@@ -1211,33 +1211,43 @@ SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
 
     WHEN( "It is incremented at two positions in the middle of the string" )
     {
-      unsigned int s = increment_kmer( kmer, 12 );
+      auto s = increment_kmer( kmer, 11 );
       REQUIRE( s == 11 );
-      s = increment_kmer( kmer, 17 );
+      s = increment_kmer( kmer, 16 );
       REQUIRE( s == 16 );
       THEN( "It should be the next lexicographical kmer at those positions" )
       {
         REQUIRE( kmer == "AAAAAAAAAAACAAAACAAA" );
       }
     }
+  }
 
-    WHEN( "It is incremented at a position out of range" )
+  GIVEN( "A k-mer of length " + std::to_string( k ) )
+  {
+    seqan::DnaString kmer;
+    for ( unsigned int i = 0; i < k/2; ++i ) appendValue( kmer, 'A' );
+    for ( unsigned int i = k/2; i < k; ++i ) appendValue( kmer, 'T' );
+
+    WHEN( "It is incremented at a position in the middle of a 'T' chain" )
     {
-      unsigned int s = increment_kmer( kmer, 32 );
-      REQUIRE( s == length( kmer ) - 1 );
-      THEN( "It should be the next lexicographical kmer at last character" )
+      AND_WHEN( "It is continuously incremented" )
       {
-        REQUIRE( kmer == "AAAAAAAAAAAAAAAAAAAC" );
+        auto s = increment_kmer( kmer, k/2 + 4 );
+        REQUIRE( s == k/2-1 );
+        THEN( "It should be the next lexicographical kmer at that position" )
+        {
+          REQUIRE( kmer == "AAAAAAAAACAAAAAAAAAA" );
+        }
       }
-    }
 
-    WHEN( "It is incremented at a position out of range" )
-    {
-      unsigned int s = increment_kmer( kmer, -1 );
-      REQUIRE( s == length( kmer ) - 1 );
-      THEN( "It should be the next lexicographical kmer at last character" )
+      AND_WHEN( "It is NOT continuously incremented" )
       {
-        REQUIRE( kmer == "AAAAAAAAAAAAAAAAAAAC" );
+        auto s = increment_kmer( kmer, k/2 + 4, true );
+        REQUIRE( s == k/2-1 );
+        THEN( "It should be the next lexicographical kmer at that position" )
+        {
+          REQUIRE( kmer == "AAAAAAAAACAAAAATTTTT" );
+        }
       }
     }
   }
@@ -1249,11 +1259,11 @@ SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
 
     WHEN( "It is incremented" )
     {
-      unsigned int s = increment_kmer( kmer );
-      REQUIRE( s == -1 );
+      auto s = increment_kmer( kmer );
+      REQUIRE( s + 1 == 0 );
       THEN( "It should not be changed" )
       {
-        REQUIRE( kmer == "TTTTTTTTTTTTTTTTTTTT" );
+        REQUIRE( kmer == "AAAAAAAAAAAAAAAAAAAA" );
       }
     }
   }

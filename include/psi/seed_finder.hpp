@@ -227,7 +227,9 @@ namespace psi {
         static inline void set_total_nof_loci( const std::size_t& value ) { }
     };  /* --- end of template class SeedFinderStat --- */
 
-  template< class TTraverser, typename TStatSpec, typename TStringSpec >
+  template< class TTraverser = typename Traverser< gum::SeqGraph< gum::Succinct >, seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> >, BFS, ExactMatching >::Type,
+            typename TStatSpec = void,
+            typename TStringSpec = DiskBased >
     class SeedFinder;
 
   /**
@@ -244,9 +246,7 @@ namespace psi {
   template< class TSeedFinder >
     using StatT = typename Stat< TSeedFinder >::Type;
 
-  template< class TTraverser = typename Traverser< gum::SeqGraph< gum::Succinct >, seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> >, BFS, ExactMatching >::Type,
-            typename TStatSpec = void,
-            typename TStringSpec = DiskBased >
+  template< class TTraverser, typename TStatSpec, typename TStringSpec >
     class SeedFinder
     {
       public:
@@ -263,21 +263,10 @@ namespace psi {
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
-            readsrecord_type r,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), reads( std::move( r ) ), pindex( true ), seed_len( len ),
-          seed_mismatches( mismatches ), traverser( graph_ptr, seed_len )
-        {
-          if ( length( this->reads.str ) != 0 ) {
-            this->index_reads();
-          }
-        }
-
-        SeedFinder( const graph_type& g,
-            unsigned int len,
-            unsigned char mismatches = 0 )
-          : SeedFinder( g, readsrecord_type( ), len, mismatches )
+          : graph_ptr( &g ), pindex( true ), seed_len( len ),
+          seed_mismatches( mismatches )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
@@ -314,15 +303,6 @@ namespace psi {
         get_seed_mismatches( ) const
         {
           return this->seed_mismatches;
-        }
-
-        /**
-         *  @brief  getter function for reads.
-         */
-          inline const readsrecord_type&
-        get_reads( ) const
-        {
-          return this->reads;
         }
 
         /**
@@ -385,31 +365,25 @@ namespace psi {
         }
 
           inline readsrecord_type
-        create_readrecord( )
+        create_readrecord( ) const
         {
           return readsrecord_type();
         }
 
-        /**
-         *  @brief  setter function for reads.
-         *
-         */
-          inline void
-        set_reads( readsrecord_type value )
+          inline readsindex_type
+        index_reads( readsrecord_type const& reads ) const
         {
-          this->reads = std::move( value );
-          this->index_reads();
+          auto timer = stats_type( "index-reads" );
+          return readsindex_type( reads.str );
         }
 
         template< typename T >
           inline void
-        set_reads( readsrecord_type const& value, T distance )
+        get_seeds( readsrecord_type& seeds, readsrecord_type const& reads,
+                   T distance ) const
         {
-          {
-            auto timer = Timer<>( "seeding" );
-            seeding( this->reads, value, this->seed_len, distance );
-          }
-          this->index_reads();
+          auto timer = Timer<>( "seeding" );
+          seeding( seeds, reads, this->seed_len, distance );
         }
 
           inline void
@@ -548,16 +522,17 @@ namespace psi {
         /**
          *  @brief  Find seeds on a set of whole-genome paths for the input reads chunk.
          *
-         *  @param[in]  paths The set of paths used for finding the seeds.
+         *  @param[in]  reads The set of input reads.
+         *  @param[in]  reads_index The reads index.
          *  @param[in]  callback The call back function applied on the found seeds.
          *
          *  This function uses a set of paths from the graph to find seeds of
          *  the input set of reads on these paths by traversing the virtual
          *  suffix tree of both indexes of reads chunk and whole-genome paths.
          */
-        // :TODO:Mon Mar 06 11:56:\@cartoonist: Function intention and naming is vague.
             inline void
-          seeds_on_paths( std::function< void(typename traverser_type::output_type const &) > callback )
+          seeds_on_paths( readsrecord_type const& reads, readsindex_type& reads_index,
+                          std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
             typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
@@ -573,8 +548,8 @@ namespace psi {
             auto timer = stats_type( "seeds-on-paths" );
 
             TPIterator piter( this->pindex.index );
-            TRIterator riter( this->reads_index );
-            kmer_exact_matches( piter, riter, &this->pindex, &(this->reads), this->seed_len, callback );
+            TRIterator riter( reads_index );
+            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len, callback );
           }
 
             inline void
@@ -778,22 +753,34 @@ namespace psi {
           return set.size();
         }
 
+          inline traverser_type
+        create_traverser( ) const
+        {
+          return traverser_type( this->graph_ptr, this->seed_len );
+        }
+
           inline void
-        seeds_off_paths( std::function< void( typename traverser_type::output_type const& ) > callback )
+        setup_traverser( traverser_type& traverser, readsrecord_type const& reads, readsindex_type& reads_index ) const
+        {
+          traverser.set_reads( &reads );
+          traverser.set_reads_index( &reads_index );
+        }
+
+          inline void
+        seeds_off_paths( traverser_type& traverser,
+                         std::function< void( typename traverser_type::output_type const& ) > callback ) const
         {
           auto timer = stats_type( "seeds-off-path" );
           stats_type::set_total_nof_loci( this->starting_loci.size() );
 
-          this->traverser.set_reads( &(this->reads) );
-          this->traverser.set_reads_index( &(this->reads_index) );
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
             const auto& locus = this->starting_loci[ idx ];
-            this->traverser.add_locus( locus );
+            traverser.add_locus( locus );
             if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
 
             stats_type::set_lastproc_locus( locus );
-            this->traverser.run( callback );
+            traverser.run( callback );
             stats_type::set_lastdone_locus_idx( idx );
           }
         }
@@ -801,12 +788,9 @@ namespace psi {
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
-        readsrecord_type reads;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
-        readsindex_type reads_index;
-        traverser_type traverser;
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Set the context size for patching.
@@ -836,13 +820,6 @@ namespace psi {
           /* Set the context size for path index. */
           this->pindex.set_context( context );
           return context;
-        }
-
-          inline void
-        index_reads( )
-        {
-          auto timer = stats_type( "index-reads" );
-          this->reads_index = readsindex_type( this->reads.str );
         }
     };
 }  /* --- end of namespace psi --- */

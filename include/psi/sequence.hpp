@@ -1627,34 +1627,50 @@ namespace psi {
    *  @brief  Get next lexicographical k-mer in a specific position in the string.
    *
    *  @param  str The input k-mer.
-   *  @param  rank The rank of the character which should be incremented (1-based).
-   *  @return The lowest rank at which the character is not modified. In case that
-   *          there is no k-mer it returns negative value of -1.
+   *  @param  pos The pos of the character which should be incremented.
+   *  @return The smallest position at which the character is modified. In case
+   *          that there is no k-mer it returns UINT_MAX.
    *
-   *  The value of input string would be changed to next lexicographical k-mer by
-   *  incrementing the character at position '`rank` - 1', the carry over may change
-   *  the other characters at lower ranks. The lowest rank at which the character is not
-   *  modified will be returned.
+   *  The value of input string would be changed to next lexicographical k-mer
+   *  by incrementing the character at position `pos`. The carry over may change
+   *  the other characters at lower positions. The smallest position at which
+   *  the character is modified will be returned.
    */
   template< typename TText >
-      inline int
-    increment_kmer( TText& str, unsigned long int rank = 0 )
+      inline typename seqan::Size< TText >::Type
+    increment_kmer( TText& str, typename seqan::Size< TText >::Type pos, bool continuous=false )
     {
       static const unsigned int max_value = ordValue( maxValue( str[0] ) );
       static const unsigned int min_value = ordValue( minValue( str[0] ) );
 
-      int _rank = std::min( rank - 1, length( str ) - 1 );
+      assert( pos < length( str ) );
 
-      while ( 0 <= _rank && ordValue( str[_rank] ) == max_value ) {
-        str[_rank] = min_value;
-        _rank--;
+      // `continuous = true` means that the k-mer is continuously incremented so
+      // far. So, there is no need to reset characters at positions > `pos`.
+      if ( !continuous ) {
+        // TODO: We can optimise this part by defining a `Kmer` class where all
+        // elements after the specified pointer will be 'A' and we just need to
+        // move the pointer back and forth. Only in the latter case (moving
+        // forward) rewriting 'A' is required avoiding all unnecessary checks.
+        // TODO: This part can be optimised further by SIMD vectorisation.
+        for( std::size_t i = length( str ) - 1; i > pos; --i ) {
+          if ( str[i] != min_value ) str[i] = min_value;
+        }
       }
-      if ( _rank >= 0 ) {
-        str[_rank] = ordValue( str[_rank] ) + 1;
-        return _rank;
+      // when `pos = 0` and gets decremented `--pos = UINT_MAX`, then `pos + 1 == 0`.
+      while ( 0 < pos + 1 && ordValue( str[pos] ) == max_value ) {
+        str[pos] = min_value;
+        pos--;
       }
-      for( unsigned int i = 0; i < length( str ); ++i ) str[i] = max_value;
-      return -1;
+      if ( 0 < pos + 1 ) str[pos] = ordValue( str[pos] ) + 1;
+      return pos;
+    }
+
+  template< typename TText >
+      inline typename seqan::Size< TText >::Type
+    increment_kmer( TText& str )
+    {
+      return increment_kmer( str, length(str) - 1 );
     }
 
   /**

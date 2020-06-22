@@ -238,6 +238,24 @@ namespace seqan {
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
     indexRequire(
+        Index< psi::YaString< psi::DiskBased >, psi::FMIndex< TWT, TDens, TInvDens > > const& index,
+        FibreSALF )
+    {
+      assert( !index.empty() );
+    }
+
+  template< class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline void
+    indexRequire(
+        Index< psi::YaString< psi::InMemory >, psi::FMIndex< TWT, TDens, TInvDens > > const& index,
+        FibreSALF )
+    {
+      assert( !index.empty() );
+    }
+
+  template< class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline void
+    indexRequire(
         Index< StringSet< psi::YaString< psi::DiskBased > >, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         FibreSALF )
     {
@@ -258,6 +276,24 @@ namespace seqan {
         FibreSALF )
     {
       if ( index.constructible() ) construct_im( index.fm, index.text_p->c_str(), 1 );
+    }
+
+  template< class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline void
+    indexRequire(
+        Index< StringSet< psi::YaString< psi::DiskBased > >, psi::FMIndex< TWT, TDens, TInvDens > > const& index,
+        FibreSALF )
+    {
+      assert( !index.empty() );
+    }
+
+  template< class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline void
+    indexRequire(
+        Index< StringSet< psi::YaString< psi::InMemory > >, psi::FMIndex< TWT, TDens, TInvDens > > const& index,
+        FibreSALF )
+    {
+      assert( !index.empty() );
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
@@ -486,9 +522,9 @@ namespace seqan {
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
-        Iter( index_type* i_p )
+        Iter( index_type const* i_p )
           : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), initialized( false ) { }
-        Iter( index_type& i )
+        Iter( index_type const& i )
           : Iter( &i ) { }
         /* ====================  METHODS       ======================================= */
           inline bool
@@ -680,7 +716,7 @@ namespace seqan {
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        index_type* index_p;
+        index_type const* index_p;
         savalue_type occ_cur;
         savalue_type occ_end;
         bool initialized;
