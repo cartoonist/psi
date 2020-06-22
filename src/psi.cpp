@@ -180,6 +180,8 @@ template< class TGraph, typename TReadsIndexSpec >
     /* Found seeds in chunks. */
     {
       auto chunk = finder.create_readrecord();
+      auto seeds = finder.create_readrecord();
+      auto traverser = finder.create_traverser();
       log->info( "Finding seeds..." );
       auto timer = Timer<>( "seed-finding" );
       while ( true ) {
@@ -192,11 +194,12 @@ template< class TGraph, typename TReadsIndexSpec >
         log->info( "Fetched {} reads in {}.", length( chunk ),
             Timer<>::get_duration_str( "load-chunk" ) );
         /* Give the current chunk to the finder. */
-        finder.set_reads( chunk, params.distance );
+        finder.get_seeds( seeds, chunk, params.distance );
+        auto seeds_index = finder.index_reads( seeds );
         log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
         log->info( "Finding seeds on paths..." );
         /* Find seeds on genome-wide paths. */
-        finder.seeds_on_paths( write_callback );
+        finder.seeds_on_paths( seeds, seeds_index, write_callback );
         log->info( "Found seeds on paths in {}.",
             Timer<>::get_duration_str( "seeds-on-paths" ) );
         log->info( "Total number of seeds found on paths: {}", found );
@@ -204,7 +207,8 @@ template< class TGraph, typename TReadsIndexSpec >
         found = 0;
         log->info( "Finding seeds off paths..." );
         /* Find seeds on the graph by traversing starting loci. */
-        finder.seeds_off_paths( write_callback );
+        finder.setup_traverser( traverser, seeds, seeds_index );
+        finder.seeds_off_paths( traverser, write_callback );
         log->info( "Found seeds off paths in {}.", Timer<>::get_duration_str( "seeds-off-paths" ) );
         log->info( "Total number of seeds found off paths: {}", found );
         total_found += found;
