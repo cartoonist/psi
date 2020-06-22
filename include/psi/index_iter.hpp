@@ -545,7 +545,7 @@ namespace psi {
 
   template< typename TIter >
       inline typename seqan::Size< TIter >::Type
-    upto_prefix( TIter& itr, const unsigned int& cp_len )
+    upto_prefix( TIter& itr, unsigned int cp_len )
     {
       while( repLength( itr ) > cp_len ) goUp( itr );
       return repLength( itr );
@@ -650,12 +650,13 @@ namespace psi {
     }
 
   template< typename TIndex, typename TIterSpec >
-      inline typename seqan::Size< IndexIter< TIndex, TopDownFine< TIterSpec > > >::Type
+      inline void
     upto_prefix( IndexIter< TIndex, TopDownFine< TIterSpec > >& itr,
-        const unsigned int& cp_len )
+        unsigned int cp_len )
     {
-      while( rep_length( itr ) > cp_len ) go_up( itr );
-      return rep_length( itr );
+      auto rlen = rep_length( itr );
+      if ( rlen <= cp_len ) return;
+      while ( rlen-- != cp_len ) go_up( itr );
     }
 
   template< typename TIndex1, typename TIndex2, typename TRecords1, typename TRecords2, typename TCallback >
@@ -678,24 +679,20 @@ namespace psi {
       seqan::DnaString seed;                   // seed = A..(k)..A
       for ( unsigned int i = 0; i < k; ++i ) appendValue( seed, 'A' );
 
-      int s = 0;
+      unsigned int plen = 0;
       do {
-        unsigned int plen;
-        bool fst_agreed = true;
-        bool snd_agreed = true;
-
-        upto_prefix( fst_itr, s );
-        upto_prefix( snd_itr, s );
-        for ( plen = s; fst_agreed && snd_agreed && plen < k; ++plen ) {
-          fst_agreed = go_down( fst_itr, seed[plen] );
-          snd_agreed = go_down( snd_itr, seed[plen] );
+        upto_prefix( fst_itr, plen );
+        upto_prefix( snd_itr, plen );
+        for ( ; plen < k; ++plen ) {
+          if ( !go_down( fst_itr, seed[plen] ) ) break;
+          if ( !go_down( snd_itr, seed[plen] ) ) break;
         }
-        if ( fst_agreed && snd_agreed ) {
+        if ( plen == k ) {
           _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
-          plen = 0;
+          --plen;
         }
-        s = increment_kmer( seed, plen );
-      } while ( s >= 0 );
+        plen = increment_kmer( seed, plen, true );
+      } while ( plen + 1 > 0 );
     }
 
   template< typename TIndex, typename TRecords1, typename TRecordsIter, typename TCallback >
