@@ -1,15 +1,9 @@
-# Binary directory
-bin/
+# Build directory
+build/
 
-# Generated Makefiles
-src/.d/
-test/.d/
-
-# Installed header-only libraries
-src/cxxopts
-src/catch
-src/spdlog
-src/kseq++
+# Generated files
+include/psi/config.hpp
+psi.pc
 
 # Log files
 *.log
@@ -20,6 +14,9 @@ src/kseq++
 
 # ctags
 tags
+GTAGS
+GRTAGS
+GPATH
 
 # compile flags
 compile_commands.json

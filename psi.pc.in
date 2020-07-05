@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+includedir=${prefix}/include
+
+Name: psi
+Description: Pan-genome Seed Index
+URL: https://github.com/cartoonist/psi
+Version: @PROJECT_VERSION@
+Requires: gum kseq++ seqan-2
+Cflags: -I${includedir}
+Libs: -fopenmp -lpthread -latomic
