@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(psi VERSION 0.0.2 LANGUAGES CXX)
+project(psi VERSION 0.9.0 LANGUAGES CXX)
 
 # Options
 option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
