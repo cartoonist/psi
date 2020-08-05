@@ -61,21 +61,25 @@ namespace psi {
   template< typename TGraph >
     struct PathTraits< TGraph, Default > {
       typedef std::vector< typename TGraph::id_type > TNodeSequence;
+      typedef TNodeSequence TNodeVector;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Dynamic > {
       typedef std::deque< typename TGraph::id_type > TNodeSequence;
+      typedef TNodeSequence TNodeVector;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Compact > {
       typedef sdsl::enc_vector< sdsl::coder::elias_delta > TNodeSequence;
+      typedef TNodeSequence::int_vector_type TNodeVector;
     };
 
   template< typename TGraph >
     struct PathTraits< TGraph, Haplotype > {
       typedef sdsl::bit_vector TNodeSequence;
+      typedef TNodeSequence TNodeVector;
     };
 
   /**
@@ -96,6 +100,7 @@ namespace psi {
         typedef std::string string_type;
         typedef string_type::size_type seqsize_type;
         typedef typename TTraits::TNodeSequence nodes_type;
+        typedef typename TTraits::TNodeVector mutable_nodes_type;
         typedef typename graph_type::id_type value_type;
         typedef typename graph_type::offset_type offset_type;
         typedef typename nodes_type::size_type size_type;
@@ -544,7 +549,8 @@ namespace psi {
         serialize( std::ostream& out ) const
         {
           ASSERT( this->is_initialized() );  // Path must be initialized to be serialized
-          psi::serialize( out, this->nodes );
+          nodes_type cnodes = this->nodes_in_coordinate();
+          psi::serialize( out, cnodes );
           psi::serialize( out, static_cast< uint64_t >( this->left ) );
           psi::serialize( out, static_cast< uint64_t >( this->right ) );
           this->bv_node_breaks.serialize( out );
@@ -570,6 +576,7 @@ namespace psi {
           deserialize( in, offset );
           r = offset;
           this->set_nodes( std::move( tmp ), l, r );
+          this->drop_coordinate();
           this->bv_node_breaks.load( in );
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
           sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
@@ -665,6 +672,44 @@ namespace psi {
             cursor += this->get_seqlen_tail();
             this->bv_node_breaks[ cursor - 1 ] = 1;
           }
+        }
+
+          inline void
+        drop_coordinate( )
+        {
+          this->drop_coordinate( spec_type() );
+        }
+
+        template< typename T >
+        inline void
+        drop_coordinate( T )
+        {
+          std::transform( this->nodes.begin(), this->nodes.end(), this->nodes.begin(),
+                          [this]( value_type id ) -> value_type {
+                            return this->graph_ptr->id_by_coordinate( id );
+                          } );
+        }
+
+          inline void
+        drop_coordinate( Compact )
+        {
+          mutable_nodes_type lnodes( this->nodes.size() );
+          std::transform( this->nodes.begin(), this->nodes.end(), lnodes.begin(),
+                          [this]( value_type id ) -> value_type {
+                            return this->graph_ptr->id_by_coordinate( id );
+                          } );
+          sdsl::util::assign( this->nodes, lnodes );
+        }
+
+          inline mutable_nodes_type
+        nodes_in_coordinate( ) const
+        {
+          mutable_nodes_type cnodes( this->nodes.size() );
+          std::transform( this->nodes.begin(), this->nodes.end(), cnodes.begin(),
+                          [this]( value_type id ) -> value_type {
+                            return this->graph_ptr->coordinate_id( id );
+                          } );
+          return cnodes;
         }
     };  /* --- end of template class Path --- */
 
