@@ -265,7 +265,7 @@ namespace psi {
         SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( true ), seed_len( len ),
+          : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
           seed_mismatches( mismatches )
         { }
         /* ====================  ACCESSORS      ====================================== */
@@ -504,7 +504,7 @@ namespace psi {
         {
           if ( fpath.empty() ) return false;
           this->pindex.set_context( context );
-          return this->pindex.load( fpath, this->graph_ptr );
+          return this->pindex.load( fpath );
         }
 
         inline bool

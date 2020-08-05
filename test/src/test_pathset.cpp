@@ -82,7 +82,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
       typedef Path< graph_type, Compact > TPath;
       typedef typename TPath::nodes_type::value_type TNodeID;
 
-      PathSet< TPath > set;
+      PathSet< TPath > set( graph );
 
       WHEN( "The paths are added" )
       {
@@ -110,7 +110,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
 
         AND_WHEN( "The PathSet is moved by assignment" )
         {
-          PathSet< TPath > another_set;
+          PathSet< TPath > another_set( graph );
           another_set = std::move( set );
 
           THEN( "The moved PathSet should pass the basic tests" )
@@ -133,8 +133,8 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
         {
           std::string tmpfpath = get_tmpfile();
           save( set, tmpfpath );
-          PathSet< TPath > another_set;
-          open( another_set, &graph, tmpfpath );
+          PathSet< TPath > another_set( graph );
+          open( another_set, tmpfpath );
 
           THEN( "The loaded PathSet should pass the basic tests" )
           {

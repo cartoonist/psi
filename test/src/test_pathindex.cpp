@@ -40,7 +40,7 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
     gum::util::extend( graph, vgpath );
-    Dna5QPathIndex< graph_type, TIndexSpec > pindex;
+    Dna5QPathIndex< graph_type, TIndexSpec > pindex( graph );
 
     unsigned int paths_num = 2;
     std::string file_path = SEQAN_TEMP_FILENAME();
@@ -60,8 +60,8 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
 
       THEN ( "Deserializing should yield the same paths" )
       {
-        Dna5QPathIndex< graph_type, TIndexSpec > loaded_paths;
-        loaded_paths.load( file_path, &graph );
+        Dna5QPathIndex< graph_type, TIndexSpec > loaded_paths( graph );
+        loaded_paths.load( file_path );
         REQUIRE ( loaded_paths.size() == paths_num );
         REQUIRE( length( loaded_paths.get_paths_set()[0] ) == 52 );
         REQUIRE( length( loaded_paths.get_paths_set()[1] ) == 26 );
@@ -90,7 +90,7 @@ SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
     graph_type graph;
     gum::util::extend( graph, vgpath );
 
-    Dna5QPathIndex< graph_type, TIndexSpec > pindex;
+    Dna5QPathIndex< graph_type, TIndexSpec > pindex( graph );
     Path< graph_type > path( &graph, { 205, 207, 209, 210 } );
 
     REQUIRE( path.get_sequence_len() == 54 );
@@ -138,7 +138,7 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     WHEN( "A set of paths are added to a PathIndex with non-zero context in lazy mode" )
     {
       uint64_t context = 10;
-      Dna5QPathIndex< graph_type, TIndexSpec, Forward > pindex( context, true );
+      Dna5QPathIndex< graph_type, TIndexSpec, Forward > pindex( graph, context, true );
       Path< graph_type > path( &graph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
       path = Path< graph_type >( &graph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
@@ -159,7 +159,7 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     WHEN( "A set of paths are added to a PathIndex with non-zero context in Forward direction" )
     {
       uint64_t context = 10;
-      Dna5QPathIndex< graph_type, TIndexSpec, Forward > pindex( context );
+      Dna5QPathIndex< graph_type, TIndexSpec, Forward > pindex( graph, context );
       Path< graph_type > path( &graph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
       path = Path< graph_type >( &graph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
@@ -234,7 +234,7 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
     WHEN( "A set of paths are added to a PathIndex with non-zero context in Reversed direction" )
     {
       uint64_t context = 10;
-      Dna5QPathIndex< graph_type, TIndexSpec, Reversed > pindex( context );
+      Dna5QPathIndex< graph_type, TIndexSpec, Reversed > pindex( graph, context );
       Path< graph_type > path( &graph, { 205, 207, 209, 210 }, context-1, context-1 );
       pindex.add_path( ( path ) );
       path = Path< graph_type >( &graph, { 187, 189, 191, 193, 194, 195, 197 }, context-1, context-1 );
