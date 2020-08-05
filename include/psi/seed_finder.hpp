@@ -711,7 +711,10 @@ namespace psi {
           if ( !ifs ) return false;
 
           std::function< void( vg::Position& ) > push_back =
-            [this]( vg::Position& pos ) { this->starting_loci.push_back( pos ); };
+              [this]( vg::Position& pos ) {
+                pos.set_node_id( this->graph_ptr->id_by_coordinate( pos.node_id() ) );
+                this->starting_loci.push_back( pos );
+              };
 
           try {
             vg::io::for_each( ifs, push_back );
@@ -733,7 +736,11 @@ namespace psi {
           if ( !ofs ) return false;
 
           std::function< vg::Position( uint64_t ) > lambda =
-            [this]( uint64_t i ) { return this->starting_loci.at( i ); };
+              [this]( uint64_t i ) {
+                auto pos = this->starting_loci.at( i );
+                pos.set_node_id( this->graph_ptr->coordinate_id( pos.node_id() ) );
+                return pos;
+              };
 
           try {
             vg::io::write( ofs, this->starting_loci.size(), lambda );
