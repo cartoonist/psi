@@ -514,43 +514,43 @@ namespace psi {
     }
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    open( TObject& obj, std::istream& in )
+    open( TObject& obj, std::istream& in, TArgs&&... args )
     {
-      obj.load( in );
+      obj.load( in, std::forward< TArgs >( args )... );
     }
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    open( TObject& obj, const std::string& file_name )
+    open( TObject& obj, const std::string& file_name, TArgs&&... args )
     {
       std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
       if( !ifs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      open( obj, ifs );
+      open( obj, ifs, std::forward< TArgs >( args )... );
     }  /* -----  end of template function load  ----- */
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    save( TObject& obj, std::ostream& out )
+    save( TObject& obj, std::ostream& out, TArgs&&... args )
     {
-      obj.serialize( out );
+      obj.serialize( out, std::forward< TArgs >( args )... );
     }
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    save( TObject& obj, const std::string& file_name )
+    save( TObject& obj, const std::string& file_name, TArgs&&... args )
     {
       std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
       if( !ofs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      save( obj, ofs );
+      save( obj, ofs, std::forward< TArgs >( args )... );
     }
 
 
