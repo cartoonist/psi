@@ -575,8 +575,8 @@ namespace psi {
           l = offset;
           deserialize( in, offset );
           r = offset;
+          this->drop_coordinate( tmp );
           this->set_nodes( std::move( tmp ), l, r );
-          this->drop_coordinate();
           this->bv_node_breaks.load( in );
           sdsl::util::init_support( this->rs_node_breaks, &this->bv_node_breaks );
           sdsl::util::init_support( this->ss_node_breaks, &this->bv_node_breaks );
@@ -675,30 +675,24 @@ namespace psi {
         }
 
           inline void
-        drop_coordinate( )
+        drop_coordinate( mutable_nodes_type& path_nodes )
         {
-          this->drop_coordinate( spec_type() );
-        }
-
-        template< typename T >
-        inline void
-        drop_coordinate( T )
-        {
-          std::transform( this->nodes.begin(), this->nodes.end(), this->nodes.begin(),
+          std::transform( path_nodes.begin(), path_nodes.end(), path_nodes.begin(),
                           [this]( value_type id ) -> value_type {
                             return this->graph_ptr->id_by_coordinate( id );
                           } );
         }
 
+        template< typename TNodes >
           inline void
-        drop_coordinate( Compact )
+        drop_coordinate( TNodes& path_nodes )
         {
-          mutable_nodes_type lnodes( this->nodes.size() );
-          std::transform( this->nodes.begin(), this->nodes.end(), lnodes.begin(),
+          mutable_nodes_type tmp( path_nodes.size() );
+          std::transform( path_nodes.begin(), path_nodes.end(), tmp.begin(),
                           [this]( value_type id ) -> value_type {
                             return this->graph_ptr->id_by_coordinate( id );
                           } );
-          sdsl::util::assign( this->nodes, lnodes );
+          sdsl::util::assign( path_nodes, tmp );
         }
 
           inline mutable_nodes_type
