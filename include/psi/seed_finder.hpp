@@ -37,7 +37,7 @@
 #include "index_iter.hpp"
 #include "pathindex.hpp"
 #include "utils.hpp"
-#include "stat.hpp"
+#include "stats.hpp"
 
 
 namespace psi {

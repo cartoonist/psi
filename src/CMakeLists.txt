@@ -12,7 +12,7 @@ if(NOT TARGET spdlog::spdlog)
 endif()
 
 # Defining target 'psikt': PSI indexing/seeding tool
-set(SOURCES "psi.cpp")
+set(SOURCES "psikt.cpp")
 add_executable(psikt ${SOURCES})
 target_compile_options(psikt PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(psikt

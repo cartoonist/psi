@@ -1,5 +1,5 @@
 /**
- *    @file  psi.cpp
+ *    @file  psikt.cpp
  *   @brief  PSI command-line interface.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
@@ -31,7 +31,7 @@
 #include <psi/sequence.hpp>
 #include <psi/seed.hpp>
 #include <psi/utils.hpp>
-#include <psi/stat.hpp>
+#include <psi/stats.hpp>
 #include <psi/release.hpp>
 
 #include "options.hpp"
@@ -104,7 +104,7 @@ template< class TGraph, typename TReadsIndexSpec >
     typedef Dna5QStringSet<> TReadsStringSet;
     typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
     typedef typename Traverser< TGraph, TReadsIndex, BFS, ExactMatching >::Type TTraverser;
-#ifdef PSI_STAT
+#ifdef PSI_STATS
     typedef SeedFinder< TTraverser > TSeedFinder;
 #else
     typedef SeedFinder< TTraverser, NoStat > TSeedFinder;

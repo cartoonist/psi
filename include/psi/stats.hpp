@@ -1,8 +1,9 @@
 /**
- *    @file  stat.hpp
- *   @brief  Stat template class.
+ *    @file  stats.hpp
+ *   @brief  Module for performance measurement and running-time statistics.
  *
- *  Stat template class definition.
+ *  This module provides necessary tools for measuring performance and capturing
+ *  running-time statistics.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -15,20 +16,19 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_STAT_HPP__
-#define PSI_STAT_HPP__
+#ifndef PSI_STATS_HPP__
+#define PSI_STATS_HPP__
 
 #include <chrono>
 #include <unordered_map>
-
-#include <seqan/basic.h>
 
 #include "base.hpp"
 
 
 namespace psi {
-  struct NoStatStrategy;                        /**< @brief No-stat mode strategy. */
-  typedef seqan::Tag< NoStatStrategy > NoStat;  /**< @brief No-stat mode tag. */
+  struct NoStats;                        /**< @brief No-stats mode tag. */
+  struct WithStats;                      /**< @brief With-stats mode tag. */
+
   /**
    *  @brief  Observer template class to collect statistics.
    *
@@ -38,16 +38,16 @@ namespace psi {
   template < typename TObject >
     class Stat;
 
-  template< typename TSpec >
-    class TimerTraits;
-
   typedef clock_t CpuClock;
   typedef std::chrono::steady_clock SteadyClock;
+
+  template< typename TSpec = CpuClock >
+    class TimerTraits;
 
   template< >
     class TimerTraits< std::chrono::steady_clock > {
       public:
-        /* ====================  MEMBER TYPES  ======================================= */
+        /* ====================  TYPE MEMBERS  ======================================= */
         typedef std::chrono::steady_clock clock_type;
         typedef std::chrono::microseconds duration_type;
         typedef duration_type::rep rep_type;
@@ -77,12 +77,12 @@ namespace psi {
             std::to_string( TimerTraits::duration_rep( end, start ) ) + " "
             + TimerTraits::unit_repr;
         }
-    };
+    };  /* ---  end of class TimerTraits  --- */
 
   template< >
     class TimerTraits< clock_t > {
       public:
-        /* ====================  MEMBER TYPES  ======================================= */
+        /* ====================  TYPE MEMBERS  ======================================= */
         typedef struct {
           typedef clock_t time_point;
             static inline time_point
@@ -116,7 +116,7 @@ namespace psi {
           return std::to_string( TimerTraits::duration_rep( end, start ) ) + " "
             + TimerTraits::unit_repr;
         }
-    };
+    };  /* ---  end of class TimerTraits  --- */
 
   /**
    *  @brief  Timers for measuring execution time.
@@ -124,23 +124,23 @@ namespace psi {
    *  Measure the time period between its instantiation and destruction. The timers are
    *  kept in static table hashed by the timer name.
    */
-  template< typename TClock=clock_t >
+  template< typename TClock=CpuClock >
     class Timer
     {
       public:
-        /* ====================  MEMBER TYPES  ======================================= */
-        typedef TimerTraits< TClock > trait_type;
-        typedef typename trait_type::clock_type clock_type;
-        typedef typename trait_type::duration_type duration_type;
-        typedef typename trait_type::rep_type rep_type;
+        /* ====================  TYPE MEMBERS  ======================================= */
+        typedef TimerTraits< TClock > traits_type;
+        typedef typename traits_type::clock_type clock_type;
+        typedef typename traits_type::duration_type duration_type;
+        typedef typename traits_type::rep_type rep_type;
         struct TimePeriod {
           typename clock_type::time_point start;
           typename clock_type::time_point end;
         };
         /* ====================  STATIC DATA   ======================================= */
-        constexpr static const char* unit_repr = trait_type::unit_repr;
-        constexpr static const duration_type zero_duration = trait_type::zero_duration;
-        constexpr static const rep_type zero_duration_rep = trait_type::zero_duration_rep;
+        constexpr static const char* unit_repr = traits_type::unit_repr;
+        constexpr static const duration_type zero_duration = traits_type::zero_duration;
+        constexpr static const rep_type zero_duration_rep = traits_type::zero_duration_rep;
         /* ====================  LIFECYCLE     ======================================= */
         /**
          *  @brief  Timer constructor.
@@ -285,8 +285,8 @@ namespace psi {
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         std::string timer_name;    /**< @brief The timer name of the current instance. */
-    };  /* -----  end of class Timer  ----- */
+    };  /* ---  end of class Timer  --- */
 
 }  /* --- end of namespace psi --- */
 
-#endif  /* --- #ifndef PSI_STAT_HPP__ --- */
+#endif  /* --- #ifndef PSI_STATS_HPP__ --- */
