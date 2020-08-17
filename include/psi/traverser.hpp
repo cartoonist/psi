@@ -26,19 +26,19 @@ namespace psi {
     typename TIndex,
     typename TStrategy,
     template<typename, typename> class TMatchingTraits,
-    typename TStatSpec = void >
+    typename TStatsSpec = WithStats >
     class Traverser;
 
-  template< typename TGraph, typename TIndex, typename TStatSpec >
-    class Traverser< TGraph, TIndex, BFS, ExactMatching, TStatSpec > {
+  template< typename TGraph, typename TIndex, typename TStatsSpec >
+    class Traverser< TGraph, TIndex, BFS, ExactMatching, TStatsSpec > {
       public:
-        typedef TraverserBFS< TGraph, TIndex, ExactMatching, TStatSpec > Type;
+        typedef TraverserBFS< TGraph, TIndex, ExactMatching, TStatsSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
 
-  template< typename TGraph, typename TIndex, typename TStatSpec >
-    class Traverser< TGraph, TIndex, DFS, ExactMatching, TStatSpec > {
+  template< typename TGraph, typename TIndex, typename TStatsSpec >
+    class Traverser< TGraph, TIndex, DFS, ExactMatching, TStatsSpec > {
       public:
-        typedef TraverserDFS< TGraph, TIndex, ExactMatching, TStatSpec > Type;
+        typedef TraverserDFS< TGraph, TIndex, ExactMatching, TStatsSpec > Type;
     };  /* ----------  end of template class Traverser  ---------- */
 }  /* --- end of namespace psi --- */
 

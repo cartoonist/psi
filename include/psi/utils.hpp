@@ -23,11 +23,13 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <thread>
 #include <vector>
 #include <unordered_map>
 #include <set>
 #include <memory>
 #include <cassert>
+#include <limits>
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
@@ -361,6 +363,15 @@ namespace psi {
     ::close( fd );
     delete[] tmpl;
     return tmpfile_templ;
+  }
+
+
+    inline std::string
+  get_thread_id( )
+  {
+    std::ostringstream ss;
+    ss << "#" << std::hex << std::this_thread::get_id();
+    return ss.str();
   }
 
 
@@ -858,6 +869,47 @@ namespace psi {
 
   template< typename T1, typename T2 >
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
+
+  namespace random {
+    /* Adapted from here: https://stackoverflow.com/q/440133/357257 */
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen( rd() );
+
+    template< typename TInteger >
+    inline TInteger
+    random_integer( TInteger low=std::numeric_limits< TInteger >::min(),
+                    TInteger high=std::numeric_limits< TInteger >::max() )
+    {
+      assert( low <= high );
+      std::uniform_int_distribution< TInteger > dis( low, high );
+      return dis( gen );
+    }
+
+    template< typename TInteger >
+    inline TInteger
+    random_index( TInteger length )
+    {
+      assert( 0 < length );
+      return random_integer< TInteger >( 0, length - 1 );
+    }
+
+    inline std::string
+    random_string( std::size_t length )
+    {
+      auto randchar = []() -> char
+      {
+        const char charset[] =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = ( sizeof( charset ) - 1 );
+        return charset[ random_index( max_index ) ];
+      };
+      std::string str( length, 0 );
+      std::generate_n( str.begin(), length, randchar );
+      return str;
+    }
+  }
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_UTILS_HPP__ --- */

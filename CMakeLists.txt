@@ -19,9 +19,6 @@ find_package(kseq++ QUIET)
 # Include external dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 
-# Force CMake to use `-I` instead of `-isystem`
-set(CMAKE_NO_SYSTEM_FROM_IMPORTED TRUE)
-
 # Load `BuildDoxygen` module
 if(BUILD_DOC)
   include(BuildDoxygen)
@@ -74,11 +71,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
   target_compile_definitions(psi_novg INTERFACE PSI_DEBUG)
 endif()
-# Define `PSI_STAT`
-if(PSI_STAT)
-  target_compile_definitions(psi INTERFACE PSI_STAT)
-  target_compile_definitions(psi_novg INTERFACE PSI_STAT)
-endif(PSI_STAT)
+# Define `PSI_STATS`
+if(PSI_STATS)
+  target_compile_definitions(psi INTERFACE PSI_STATS)
+  target_compile_definitions(psi_novg INTERFACE PSI_STATS)
+endif(PSI_STATS)
 # Use C++17
 target_compile_features(psi INTERFACE cxx_std_17)
 target_compile_features(psi_novg INTERFACE cxx_std_17)
@@ -110,7 +107,7 @@ endif(BUILD_TESTING)
 include(CTest)
 add_test(NAME TestUtils COMMAND psi-tests "[utils]")
 add_test(NAME TestGraphIter COMMAND psi-tests "[graph][iterator]")
-add_test(NAME TestStat COMMAND psi-tests "[stat]")
+add_test(NAME TestStats COMMAND psi-tests "[stats]")
 add_test(NAME TestSequence COMMAND psi-tests "[sequence]")
 add_test(NAME TestTraverser COMMAND psi-tests "[traverser]")
 add_test(NAME TestIndexIter COMMAND psi-tests "[index][iterator]")

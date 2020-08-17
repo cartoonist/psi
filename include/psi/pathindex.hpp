@@ -380,7 +380,7 @@ namespace psi {
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::index_type > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
+      real_pos.i2 = pindex.get_paths_set()[ pos.i1 ].get_sequence_len() - pos.i2 - 1;
       assert( real_pos.i1 < pindex.get_paths_set().size() );
       return position_to_offset( pindex.get_paths_set()[ real_pos.i1 ], real_pos.i2 );
     }
@@ -409,7 +409,7 @@ namespace psi {
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::index_type > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
+      real_pos.i2 = pindex.get_paths_set()[ pos.i1 ].get_sequence_len() - pos.i2 - 1;
       assert( real_pos.i1 < pindex.get_paths_set().size() );
       return position_to_id( pindex.get_paths_set()[ real_pos.i1 ], real_pos.i2 );
     }
