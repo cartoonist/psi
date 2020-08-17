@@ -52,29 +52,6 @@ using namespace psi;
 // TODO: inconsistency: some public methods are interface functions, some are members.
 // TODO: Add value_t< T > typedef as typename seqan::Value< T >::Type
 
-
-template< typename TSeedFinder >
-  void
-signal_handler( int signal )
-{
-  std::cout << std::endl << "Report requested by SIGUSR1" << std::endl
-            << "---------------------------" << std::endl;
-  std::cout << "Elapsed time in traversal phase: "
-            << Stat< TSeedFinder >::Type::get_lap_str( "seeds-off-paths" ) << std::endl;
-  auto pos = Stat< TSeedFinder >::Type::get_lastproc_locus().load();
-  std::cout << "Current node: (" << pos.node_id << ", " << pos.offset << ")"
-            << std::endl;
-  auto idx = Stat< TSeedFinder >::Type::get_lastdone_locus_idx().load();
-  auto total = Stat< TSeedFinder >::Type::get_total_nof_loci();
-  unsigned int wlen = std::to_string( total ).length();
-  std::cout << "Progress: " << std::setw(wlen) << idx << " / " << std::setw(wlen)
-            << total << " [%" << std::setw(3) << idx * 100 / total << "]" << std::endl;
-}
-
-
-  void
-default_signal_handler( int signal ) { /* Do nothing */ }
-
 template< typename TSeedFinder, typename TSet >
     void
   report( TSeedFinder& finder, TSet& covered_reads, unsigned long long int found )
@@ -101,22 +78,26 @@ template< class TGraph, typename TReadsIndexSpec >
               Options const& params, TReadsIndexSpec const )
   {
     /* typedefs */
-    typedef Dna5QStringSet<> TReadsStringSet;
-    typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > TReadsIndex;
-    typedef typename Traverser< TGraph, TReadsIndex, BFS, ExactMatching >::Type TTraverser;
+    typedef Dna5QStringSet<> readsstringset_type;
+    typedef SeedFinderTraits< typename TGraph::spec_type,
+                              readsstringset_type, TReadsIndexSpec > finder_traits_type;
 #ifdef PSI_STATS
-    typedef SeedFinder< TTraverser > TSeedFinder;
+    typedef SeedFinder< WithStats, finder_traits_type > finder_type;
 #else
-    typedef SeedFinder< TTraverser, NoStat > TSeedFinder;
+    typedef SeedFinder< NoStats, finder_traits_type > finder_type;
 #endif
+    typedef typename finder_type::traverser_type traverser_type;
+    typedef typename finder_type::stats_type stats_type;
+    typedef typename stats_type::timer_type timer_type;
 
     /* Get the main logger. */
     auto log = get_logger( "main" );
+    auto thread_id = get_thread_id();
     /* Install seed finder singal handler for getting progress report. */
-    std::signal( SIGUSR1, signal_handler< TSeedFinder > );
+    std::signal( SIGUSR1, finder_type::stats_type::signal_handler );
 
     /* The seed finder for the input graph. */
-    TSeedFinder finder( graph, params.seed_len );
+    finder_type finder( graph, params.seed_len );
     /* Prepare (load or create) genome-wide paths. */
     log->info( "Looking for an existing path index..." );
     /* Load the genome-wide path index for the graph if available. */
@@ -140,10 +121,18 @@ template< class TGraph, typename TReadsIndexSpec >
                                 [&log]( std::string const& msg ) {
                                   log->warn( msg );
                                 } );
-      log->info( "Picked paths in {}.", Timer<>::get_duration_str( "pick-paths" ) );
-      log->info( "Indexed paths in {}.", Timer<>::get_duration_str( "index-paths" ) );
-      log->info( "Selected starting loci in {}.",
-                 Timer<>::get_duration_str( "add-starts" ) );
+      log->info( "Picked paths in {}.",
+                 timer_type::get_duration_str(
+                     stats_type::get_instance_const_ptr()->get_timer( "pick-paths",
+                                                                      thread_id ) ) );
+      log->info( "Indexed paths in {}.",
+                 timer_type::get_duration_str(
+                     stats_type::get_instance_const_ptr()->get_timer( "index-paths",
+                                                                      thread_id ) ) );
+      log->info( "Found uncovered loci in {}.",
+                 timer_type::get_duration_str(
+                     stats_type::get_instance_const_ptr()->get_timer( "find-uncovered",
+                                                                      thread_id ) ) );
       log->info( "Saving path index..." );
       /* Serialize the indexed paths. */
       if ( params.pindex_path.empty() ) {
@@ -151,10 +140,13 @@ template< class TGraph, typename TReadsIndexSpec >
       } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size ) ) {
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
-        log->info( "Saved path index in {}.", Timer<>::get_duration_str( "save-paths" ) );
+        log->info( "Saved path index in {}.",
+                   timer_type::get_duration_str(
+                       stats_type::get_instance_const_ptr()->get_timer( "save-paths",
+                                                                        thread_id ) ) );
       }
     }
-    log->info( "Number of uncovered loci (in {} nodes of total {}): {}",
+    log->info( "Number of starting loci (in {} nodes of total {}): {}",
         finder.get_nof_uniq_nodes(), finder.get_graph_ptr()->get_node_count(),
         finder.get_starting_loci().size() );
 
@@ -165,10 +157,10 @@ template< class TGraph, typename TReadsIndexSpec >
 
     unsigned long long int found = 0;
     unsigned long long int total_found = 0;
-    std::unordered_set< Records< TReadsStringSet >::TPosition > covered_reads;
-    std::function< void(typename TTraverser::output_type const &) > write_callback =
+    std::unordered_set< Records< readsstringset_type >::TPosition > covered_reads;
+    std::function< void(typename traverser_type::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
-      (typename TTraverser::output_type const & seed_hit) {
+      (typename traverser_type::output_type const & seed_hit) {
       ++found;
       write( output_file, &seed_hit.node_id, 1 );
       write( output_file, &seed_hit.node_offset, 1 );
@@ -196,12 +188,17 @@ template< class TGraph, typename TReadsIndexSpec >
         /* Give the current chunk to the finder. */
         finder.get_seeds( seeds, chunk, params.distance );
         auto seeds_index = finder.index_reads( seeds );
-        log->info( "Seeding done in {}.", Timer<>::get_duration_str( "seeding" ) );
+        log->info( "Seeding done in {}.",
+                   timer_type::get_duration_str(
+                       stats_type::get_instance_const_ptr()->get_timer( "seeding",
+                                                                        thread_id ) ) );
         log->info( "Finding seeds on paths..." );
         /* Find seeds on genome-wide paths. */
         finder.seeds_on_paths( seeds, seeds_index, write_callback );
         log->info( "Found seeds on paths in {}.",
-            Timer<>::get_duration_str( "seeds-on-paths" ) );
+                   timer_type::get_duration_str(
+                       stats_type::get_instance_const_ptr()->get_timer( "seeds-on-paths",
+                                                                        thread_id ) ) );
         log->info( "Total number of seeds found on paths: {}", found );
         total_found += found;
         found = 0;
@@ -209,7 +206,10 @@ template< class TGraph, typename TReadsIndexSpec >
         /* Find seeds on the graph by traversing starting loci. */
         finder.setup_traverser( traverser, seeds, seeds_index );
         finder.seeds_off_paths( traverser, write_callback );
-        log->info( "Found seeds off paths in {}.", Timer<>::get_duration_str( "seeds-off-paths" ) );
+        log->info( "Found seeds off paths in {}.",
+                   timer_type::get_duration_str(
+                       stats_type::get_instance_const_ptr()->get_timer( "seeds-off-paths",
+                                                                        thread_id ) ) );
         log->info( "Total number of seeds found off paths: {}", found );
         total_found += found;
         found = 0;
@@ -478,8 +478,6 @@ main( int argc, char *argv[] )
    */
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  /* Install signal handler -- default handler */
-  std::signal( SIGUSR1, default_signal_handler );
   /* Configure loggers */
   config_logger( options );
   /* Start seed finding... */

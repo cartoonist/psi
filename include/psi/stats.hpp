@@ -36,7 +36,10 @@ namespace psi {
    *  `TObject` template parameter.
    */
   template < typename TObject >
-    class Stat;
+    class Stats;
+
+  template< class TObject >
+    using StatsType = typename Stats< TObject >::type;
 
   typedef clock_t CpuClock;
   typedef std::chrono::steady_clock SteadyClock;

@@ -224,14 +224,14 @@ namespace psi {
     };  /* --- end of template class TraverserStats --- */
 
   /**
-   *  @brief  Stat template class specialization for `TraverserBase`.
+   *  @brief  Stats template class specialization for `TraverserBase`.
    */
   template< class TGraph,
     typename TIndex,
     typename TStrategy,
     template<typename, typename> class TMatchingTraits,
     typename TSpec >
-    class Stat< TraverserBase< TGraph, TIndex, TStrategy, TMatchingTraits, TSpec > >
+    class Stats< TraverserBase< TGraph, TIndex, TStrategy, TMatchingTraits, TSpec > >
     {
       public:
         typedef TraverserStats< TSpec > Type;
@@ -259,7 +259,7 @@ namespace psi {
         typedef TIndexIter< TIndex, iterspec_type > iterator_type;
         typedef TMatchingTraits< graph_type, iterator_type > traits_type;
         typedef typename seqan::SAValue< TIndex >::Type TSAValue;
-        typedef typename Stat< TraverserBase >::Type stats_type;
+        typedef typename Stats< TraverserBase >::Type stats_type;
         /* ====================  DATA MEMBERS  ======================================= */
         static const auto max_mismatches = traits_type::max_mismatches;
         /* ====================  LIFECYCLE      ====================================== */

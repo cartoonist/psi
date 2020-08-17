@@ -34,15 +34,13 @@ SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
   GIVEN ( "A tiny variation graph" )
   {
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
+    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<>, InMemory > finder_traits_type;
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
     gum::util::extend( graph, vgpath );
 
-    typedef seqan::IndexEsa<> TIndexSpec;
-    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
-    typedef typename Traverser< graph_type, TIndex, BFS, ExactMatching >::Type TTraverser;
-    SeedFinder< TTraverser, void, InMemory > finder( graph, 30 );
+    SeedFinder< NoStats, finder_traits_type > finder( graph, 30 );
 
     unsigned int nof_paths = 4;
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a SeedFinder" )
@@ -73,14 +71,11 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
     typedef graph_type::id_type id_type;
     typedef graph_type::offset_type offset_type;
+    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<> > finder_traits_type;
 
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
     gum::util::extend( graph, vgpath );
-
-    typedef seqan::IndexEsa<> TIndexSpec;
-    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
-    typedef typename Traverser< graph_type, TIndex, BFS, ExactMatching >::Type TTraverser;
 
     unsigned char k = 12;
     unsigned char nof_paths = 4;
@@ -97,7 +92,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
       truth.push_back( std::make_pair( 3, 0 ) );
       auto truth_itr = truth.begin();
 
-      SeedFinder< TTraverser > finder( graph, k );
+      SeedFinder< WithStats, finder_traits_type > finder( graph, k );
       finder.pick_paths( nof_paths, true, k );
 
       THEN( "Starting loci must have at least one uncovered " + std::to_string( k ) + "-path" )
@@ -114,7 +109,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     nof_paths = 8;
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
-      SeedFinder< TTraverser > finder( graph, k );
+      SeedFinder< NoStats, finder_traits_type > finder( graph, k );
       finder.pick_paths( nof_paths, true, k );
 
       THEN( "All loci should be covered by path index" )
@@ -129,7 +124,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     nof_paths = 32;
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
-      SeedFinder< TTraverser > finder( graph, k );
+      SeedFinder< NoStats, finder_traits_type > finder( graph, k );
       finder.pick_paths( nof_paths, false );
 
       THEN( "All loci should be covered by path index" )
@@ -147,6 +142,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
   GIVEN ( "A tiny variation graph" )
   {
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
+    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<> > finder_traits_type;
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
@@ -154,13 +150,9 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
 
     GIVEN( "A SeedFinder on this graph with known starting loci" )
     {
-      typedef seqan::IndexEsa<> TIndexSpec;
-      typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
-      typedef typename Traverser< graph_type, TIndex, BFS, ExactMatching >::Type TTraverser;
-
       int k = 12;
       int e = 10;
-      SeedFinder< TTraverser > finder( graph, k );
+      SeedFinder< WithStats, finder_traits_type > finder( graph, k );
 
       for ( int i = 325; i > 0; i -= 4 ) {
         finder.add_start( i, i % 17 );

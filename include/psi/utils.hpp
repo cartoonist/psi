@@ -23,6 +23,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <thread>
 #include <vector>
 #include <unordered_map>
 #include <set>
@@ -362,6 +363,15 @@ namespace psi {
     ::close( fd );
     delete[] tmpl;
     return tmpfile_templ;
+  }
+
+
+    inline std::string
+  get_thread_id( )
+  {
+    std::ostringstream ss;
+    ss << "#" << std::hex << std::this_thread::get_id();
+    return ss.str();
   }
 
 
