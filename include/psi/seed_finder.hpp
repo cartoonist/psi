@@ -939,7 +939,11 @@ namespace psi {
             this->stats_ptr->set_progress( progress_type::find_uncovered );
 
             auto&& pathset = this->pindex.get_paths_set();
-            if ( pathset.size() == 0 ) this->add_all_loci( step );
+            if ( pathset.size() == 0 )
+            {
+              this->add_all_loci( step );
+              return;
+            }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"

@@ -322,10 +322,10 @@ namespace psi {
           sdsl::bit_vector bv( encids.size(), 0 );
 #ifdef PSI_DEBUG_ENABLED
           bool flag = false;
+#endif
           assert( encids[ 0 ] == ID_SEPARATOR );
           assert( encids[ 1 ] != ID_SEPARATOR );
           assert( encids[ encids.size() - 1 ] == ID_SEPARATOR );
-#endif
           for ( sdsl::bit_vector::size_type i = 2; i < bv.size(); ++i ) {
             if ( encids[ i ] == ID_SEPARATOR ) {
               bv[ i - 1 ] = 1;
