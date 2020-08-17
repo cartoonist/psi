@@ -23,11 +23,13 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <thread>
 #include <vector>
 #include <unordered_map>
 #include <set>
 #include <memory>
 #include <cassert>
+#include <limits>
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
@@ -364,6 +366,15 @@ namespace psi {
   }
 
 
+    inline std::string
+  get_thread_id( )
+  {
+    std::ostringstream ss;
+    ss << "#" << std::hex << std::this_thread::get_id();
+    return ss.str();
+  }
+
+
   typedef uint64_t TContainerSize;
 
   /**
@@ -514,43 +525,43 @@ namespace psi {
     }
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    open( TObject& obj, std::istream& in )
+    open( TObject& obj, std::istream& in, TArgs&&... args )
     {
-      obj.load( in );
+      obj.load( in, std::forward< TArgs >( args )... );
     }
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    open( TObject& obj, const std::string& file_name )
+    open( TObject& obj, const std::string& file_name, TArgs&&... args )
     {
       std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
       if( !ifs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      open( obj, ifs );
+      open( obj, ifs, std::forward< TArgs >( args )... );
     }  /* -----  end of template function load  ----- */
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    save( TObject& obj, std::ostream& out )
+    save( TObject& obj, std::ostream& out, TArgs&&... args )
     {
-      obj.serialize( out );
+      obj.serialize( out, std::forward< TArgs >( args )... );
     }
 
 
-  template< typename TObject >
+  template< typename TObject, typename ...TArgs >
       inline void
-    save( TObject& obj, const std::string& file_name )
+    save( TObject& obj, const std::string& file_name, TArgs&&... args )
     {
       std::ofstream ofs( file_name, std::ofstream::out | std::ofstream::binary );
       if( !ofs ) {
         throw std::runtime_error( "cannot open file '" + file_name + "'" );
       }
-      save( obj, ofs );
+      save( obj, ofs, std::forward< TArgs >( args )... );
     }
 
 
@@ -858,6 +869,47 @@ namespace psi {
 
   template< typename T1, typename T2 >
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
+
+  namespace random {
+    /* Adapted from here: https://stackoverflow.com/q/440133/357257 */
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 gen( rd() );
+
+    template< typename TInteger >
+    inline TInteger
+    random_integer( TInteger low=std::numeric_limits< TInteger >::min(),
+                    TInteger high=std::numeric_limits< TInteger >::max() )
+    {
+      assert( low <= high );
+      std::uniform_int_distribution< TInteger > dis( low, high );
+      return dis( gen );
+    }
+
+    template< typename TInteger >
+    inline TInteger
+    random_index( TInteger length )
+    {
+      assert( 0 < length );
+      return random_integer< TInteger >( 0, length - 1 );
+    }
+
+    inline std::string
+    random_string( std::size_t length )
+    {
+      auto randchar = []() -> char
+      {
+        const char charset[] =
+            "0123456789"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = ( sizeof( charset ) - 1 );
+        return charset[ random_index( max_index ) ];
+      };
+      std::string str( length, 0 );
+      std::generate_n( str.begin(), length, randchar );
+      return str;
+    }
+  }
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_UTILS_HPP__ --- */

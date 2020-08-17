@@ -29,16 +29,16 @@ namespace psi {
   template< class TGraph,
     typename TIndex,
     template<typename, typename> class TMatchingTraits,
-    typename TStatSpec >
+    typename TStatsSpec >
       class TraverserDFS;
 
-  template< class TGraph, typename TIndex, typename TStatSpec >
-    class TraverserDFS< TGraph, TIndex, ExactMatching, TStatSpec >
-    : public TraverserBase< TGraph, TIndex, DFS, ExactMatching, TStatSpec >
+  template< class TGraph, typename TIndex, typename TStatsSpec >
+    class TraverserDFS< TGraph, TIndex, ExactMatching, TStatsSpec >
+    : public TraverserBase< TGraph, TIndex, DFS, ExactMatching, TStatsSpec >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef TraverserBase< TGraph, TIndex, DFS, ExactMatching, TStatSpec > base_type;
+        typedef TraverserBase< TGraph, TIndex, DFS, ExactMatching, TStatsSpec > base_type;
         typedef typename base_type::graph_type graph_type;
         typedef typename graph_type::id_type id_type;
         typedef typename graph_type::offset_type offset_type;

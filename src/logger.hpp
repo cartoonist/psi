@@ -69,6 +69,7 @@ namespace psi {
       sinks.back()->set_level( spdlog::level::info );
     }
 
+    spdlog::init_thread_pool(8192, 2);
     auto main_logger =
         std::make_shared< logger_type >( "main",
                                          begin(sinks),

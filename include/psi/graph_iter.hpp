@@ -43,13 +43,13 @@ namespace psi {
 
   /* Graph iterator traits. */
   template< class TGraph, typename TSpec >
-  struct GraphIterTrait;
+  struct GraphIterTraits;
 
   /**
    *  @brief  Breadth-first search graph iterator trait.
    */
   template< class TGraph >
-  struct GraphIterTrait < TGraph, BFS > {
+  struct GraphIterTraits< TGraph, BFS > {
     typedef TGraph graph_type;
     typedef typename graph_type::id_type value_type;
     typedef value_type level_type;
@@ -61,13 +61,13 @@ namespace psi {
     typedef void* param_type;
 
     constexpr static const param_type param_default = nullptr;
-  };  /* --- end of struct GraphIterTrait (BFS specialisation) --- */
+  };  /* --- end of struct GraphIterTraits (BFS specialisation) --- */
 
   /**
    *  @brief  Backtracker graph iterator trait.
    */
   template< class TGraph >
-  struct GraphIterTrait< TGraph, Backtracker > {
+  struct GraphIterTraits< TGraph, Backtracker > {
     typedef TGraph graph_type;
     typedef typename graph_type::id_type value_type;
     typedef value_type level_type;
@@ -80,13 +80,13 @@ namespace psi {
     typedef void* param_type;
 
     constexpr static const param_type param_default = nullptr;
-  };  /* --- end of struct GraphIterTrait (Backtracker specialisation) --- */
+  };  /* --- end of struct GraphIterTraits (Backtracker specialisation) --- */
 
   /**
    *  @brief  Haplotyper graph iterator trait.
    */
   template< class TGraph, typename TSpec >
-  struct GraphIterTrait< TGraph, Haplotyper< TSpec > > {
+  struct GraphIterTraits< TGraph, Haplotyper< TSpec > > {
     typedef TGraph graph_type;
     typedef typename graph_type::id_type value_type;
     typedef Path< graph_type, Dynamic > path_type;
@@ -104,13 +104,13 @@ namespace psi {
     typedef unsigned int param_type;
 
     static const param_type param_default = 0;
-  };  /* --- end of struct GraphIterTrait (Haplotyper general specialisation) --- */
+  };  /* --- end of struct GraphIterTraits (Haplotyper general specialisation) --- */
 
   /**
    *  @brief  Haplotyper graph iterator trait (Random specialisation).
    */
   template< class TGraph >
-  struct GraphIterTrait< TGraph, Haplotyper< Random > > {
+  struct GraphIterTraits< TGraph, Haplotyper< Random > > {
     typedef TGraph graph_type;
     typedef typename graph_type::id_type value_type;
     typedef value_type level_type;
@@ -123,7 +123,7 @@ namespace psi {
     typedef unsigned int param_type;
 
     constexpr static const param_type param_default = 0;
-  };  /* --- end of struct GraphIterTrait (Random Haplotyper specialisation) --- */
+  };  /* --- end of struct GraphIterTraits (Random Haplotyper specialisation) --- */
 
   /**
    *  @brief  Graph iterator template base class.
@@ -142,13 +142,13 @@ namespace psi {
     /* === TYPEDEFS === */
     typedef TGraph graph_type;
     typedef TSpec spec_type;
-    typedef GraphIterTrait< graph_type, spec_type > trait_type;
-    typedef typename trait_type::value_type value_type;
-    typedef typename trait_type::level_type level_type;
-    typedef typename trait_type::container_type container_type;
-    typedef typename trait_type::set_type set_type;
-    typedef typename trait_type::state_type state_type;
-    typedef typename trait_type::param_type param_type;
+    typedef GraphIterTraits< graph_type, spec_type > traits_type;
+    typedef typename traits_type::value_type value_type;
+    typedef typename traits_type::level_type level_type;
+    typedef typename traits_type::container_type container_type;
+    typedef typename traits_type::set_type set_type;
+    typedef typename traits_type::state_type state_type;
+    typedef typename traits_type::param_type param_type;
 
     /* === CONSTANTS === */
     constexpr static const int end_value = 0;
@@ -178,7 +178,7 @@ namespace psi {
     static constexpr inline param_type
     get_default_param( )
     {
-      return trait_type::param_default;
+      return traits_type::param_default;
     }
 
     inline bool

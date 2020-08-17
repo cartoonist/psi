@@ -657,3 +657,51 @@ SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
     }
   }
 }
+
+SCENARIO( "Generate random integers", "[utils]" )
+{
+  WHEN( "A range is given" )
+  {
+    int low = random::random_integer< int >();
+    int high = random::random_integer< int >( low + 1 );
+    int n = 1000000;
+
+    THEN( "Generated random integers should be in the range" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_integer( low, high );
+        REQUIRE( ( low <= rnum && rnum <= high ) );
+      }
+    }
+  }
+
+  WHEN( "A length is given" )
+  {
+    unsigned int len = random::random_integer< unsigned int >();
+    int n = 1000000;
+
+    THEN( "Generated random index should be in the range" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_index( len );
+        REQUIRE( ( 0 <= rnum && rnum <= len - 1 ) );
+      }
+    }
+  }
+}
+
+SCENARIO( "Generate random strings", "[utils]" )
+{
+  WHEN( "A length is given" )
+  {
+    unsigned int len = 60;
+    int n = 1000;
+
+    THEN( "Generated random string should have the given length" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        REQUIRE( random::random_string( len ).length() == len );
+      }
+    }
+  }
+}

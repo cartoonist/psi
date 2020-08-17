@@ -40,7 +40,8 @@ namespace psi {
     class PathIndex {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef Path< TGraph, Compact > value_type;
+        typedef TGraph graph_type;
+        typedef Path< graph_type, Compact > value_type;
         typedef PathSet< value_type > container_type;
         typedef seqan::StringSet< TText, seqan::Owner<> > stringset_type;
         typedef seqan::Index< stringset_type, TIndexSpec > index_type;
@@ -56,9 +57,11 @@ namespace psi {
         bool lazy_mode;
       public:
         /* ====================  LIFECYCLE     ======================================= */
-        PathIndex( context_type ct=0, bool l=false )
-          : context( ct ), lazy_mode( l ) { };
-        PathIndex( bool lazy ) : context( 0 ), lazy_mode( lazy ) { };
+        PathIndex( graph_type const& graph,  context_type ct=0, bool l=false )
+          : paths_set( graph ), context( ct ), lazy_mode( l ) { };
+
+        PathIndex( graph_type const& graph, bool lazy )
+          : paths_set( graph ), context( 0 ), lazy_mode( lazy ) { };
         /* ====================  ACCESSORS     ======================================= */
           inline container_type&
         get_paths_set( )
@@ -96,7 +99,6 @@ namespace psi {
          *  @brief  Load the path index from file.
          *
          *  @param[in]   filepath_prefix The file path prefix of the saved path index.
-         *  @param[in]   graph_ptr A pointer to the graph whose paths is loading.
          *  @return `true` if the path index is successfully loaded from file; otherwise
          *          `false`.
          *
@@ -104,12 +106,12 @@ namespace psi {
          *  attributes.
          */
           inline bool
-        load( const std::string& filepath_prefix, const TGraph* graph_ptr )
+        load( const std::string& filepath_prefix )
         {
           this->clear();
 
           if ( open( this->index, filepath_prefix ) &&
-              this->load_paths_set( filepath_prefix + "_paths", graph_ptr ) ) {
+              this->load_paths_set( filepath_prefix + "_paths" ) ) {
             /* XXX: Unnecessary copy. Use `FibreText` of `this->index` directly. */
             //this->string_set = indexText( this->index );
             return true;
@@ -167,7 +169,7 @@ namespace psi {
          */
         template< typename TPathSpec >
             inline void
-          add_path( Path< TGraph, TPathSpec > new_path,
+          add_path( Path< graph_type, TPathSpec > new_path,
               enable_if_not_equal_t< typename value_type::spec_type, TPathSpec > tag = TPathSpec() )
           {
             value_type native_path( new_path.get_graph_ptr() );
@@ -189,7 +191,7 @@ namespace psi {
          */
         template< typename TPathSpec >
             inline void
-          push_back( Path< TGraph, TPathSpec > new_path,
+          push_back( Path< graph_type, TPathSpec > new_path,
               enable_if_not_equal_t< typename value_type::spec_type, TPathSpec > tag = TPathSpec() )
           {
             this->add_path( std::move( new_path ) );
@@ -268,14 +270,13 @@ namespace psi {
          *  @brief  Load the set of paths and other attributes from file.
          *
          *  @param[in]   filepath The file path of the saved paths.
-         *  @param[in]   graph_ptr A pointer to the graph whose paths is loading.
          *  @return `true` if the paths set is successfully loaded from file; otherwise
          *          `false`.
          *
          *  It deserializes the paths set. The paths are prefixed by the number of paths.
          */
           inline bool
-        load_paths_set( const std::string& filepath, const TGraph* graph_ptr )
+        load_paths_set( const std::string& filepath )
         {
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
@@ -292,7 +293,7 @@ namespace psi {
             if ( dir != std::is_same< TSequenceDirection, Forward >::value ) {
               return false;
             }
-            this->paths_set.load( ifs, graph_ptr );
+            this->paths_set.load( ifs );
           }
           catch ( const std::runtime_error& ) {
             return false;
@@ -379,7 +380,7 @@ namespace psi {
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::index_type > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
+      real_pos.i2 = pindex.get_paths_set()[ pos.i1 ].get_sequence_len() - pos.i2 - 1;
       assert( real_pos.i1 < pindex.get_paths_set().size() );
       return position_to_offset( pindex.get_paths_set()[ real_pos.i1 ], real_pos.i2 );
     }
@@ -408,7 +409,7 @@ namespace psi {
         TSAValue< typename PathIndex< TGraph, TText, TIndexSpec, Reversed >::index_type > const& pos )
     {
       auto real_pos = pos;
-      real_pos.i2 = length( indexText( pindex.index )[ pos.i1 ] ) - pos.i2 - 1;
+      real_pos.i2 = pindex.get_paths_set()[ pos.i1 ].get_sequence_len() - pos.i2 - 1;
       assert( real_pos.i1 < pindex.get_paths_set().size() );
       return position_to_id( pindex.get_paths_set()[ real_pos.i1 ], real_pos.i2 );
     }

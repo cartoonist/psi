@@ -23,6 +23,7 @@
 #include <atomic>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <iterator>
 #include <functional>
 #include <algorithm>
@@ -37,236 +38,576 @@
 #include "index_iter.hpp"
 #include "pathindex.hpp"
 #include "utils.hpp"
-#include "stat.hpp"
+#include "stats.hpp"
 
 
 namespace psi {
+  struct SeedFinderStatsBase {
+    enum progress_type : int {
+      finder_off,
+      instantiated,
+      load_pindex,
+      load_starts,
+      select_paths,
+      create_index,
+      find_uncovered,
+      write_index,
+      write_starts,
+      ready,
+    };
+
+    constexpr static const char* progress_table[] = {
+      "Progress is not tracked",
+      "Just instantiated",
+      "Loading path index",
+      "Loading starting loci",
+      "Selecting paths from input graph",
+      "Indexing paths sequences",
+      "Finding uncovered loci",
+      "Writing path index",
+      "Writing starting loci",
+      "Ready for seed finding",
+    };
+
+    enum thread_progress_type : int {
+      thread_off,
+      sleeping,
+      seed_chunk,
+      index_chunk,
+      find_on_paths,
+      find_off_paths,
+    };
+
+    constexpr static const char* thread_progress_table[] = {
+      "Progress is not tracked",
+      "Zzz",
+      "Seeding a read chunk",
+      "Indexing a read chunk",
+      "Find seeds on paths",
+      "Find seeds off paths",
+    };
+  };  /* --- end of template class SeedFinderStats --- */
+
   /**
-   *  @brief  SeedFinderStat template class.
+   *  @brief  SeedFinderStats template class.
    *
-   *  Collect statistics from one (or more) `SeedFinder` class instance(s) in running time.
+   *  Collect running-time statistics from a `SeedFinder` class instance.
    */
-  template< class TSeedFinder, typename TSpec = void >
-    class SeedFinderStat : public Timer<>
+  template< class TSeedFinder, typename TSpec = WithStats >
+    class SeedFinderStats
+      : public SeedFinderStatsBase
     {
       public:
-        /* ====================  TYPEDEFS      ======================================= */
-        typedef typename TSeedFinder::graph_type graph_type;
-        typedef typename graph_type::id_type id_type;
-        typedef typename graph_type::offset_type offset_type;
-        /* ====================  MEMBER TYPES  ======================================= */
-        struct Coordinates {
-          id_type node_id;
-          offset_type offset;
-          Coordinates( id_type nid, offset_type noff )
-            : node_id( nid ), offset( noff ) { }
+        /* === TYPE MEMBERS === */
+        typedef TSeedFinder seedfinder_type;
+        typedef SeedFinderStatsBase base_type;
+        using base_type::progress_type;
+        using base_type::thread_progress_type;
+
+        struct ThreadStats {
+          private:
+            /* === DATA MEMBERS === */
+            thread_progress_type progress;
+            unsigned int chunks_done;
+            std::size_t locus_idx;
+          public:
+            /* === LIFECYCLE === */
+            ThreadStats( )
+              : progress( thread_progress_type::sleeping ), chunks_done( 0 ),
+                locus_idx( 0 )
+            { }
+
+            /* === ACCESSORS === */
+              inline thread_progress_type
+            get_progress( ) const
+            {
+              return this->progress;
+            }
+
+              inline const char*
+            get_progress_str( ) const
+            {
+              return base_type::thread_progress_table[ this->progress ];
+            }
+
+              inline unsigned int
+            get_chunks_done( ) const
+            {
+              return this->chunks_done;
+            }
+
+              inline std::size_t
+            get_locus_idx( ) const
+            {
+              return this->locus_idx;
+            }
+
+            /* === MUTATORS === */
+              inline void
+            set_progress( thread_progress_type value )
+            {
+              this->progress = value;
+            }
+
+              inline void
+            set_chunks_done( unsigned int value )
+            {
+              this->chunks_done = value;
+            }
+
+              inline void
+            set_locus_idx( std::size_t value )
+            {
+              this->locus_idx = value;
+            }
         };
-        /* ====================  LIFECYCLE     ======================================= */
-        /**
-         *  @brief  SeedFinderStat constructor.
-         *
-         *  Start the timer.
-         */
-        SeedFinderStat( const std::string& name )
-          : Timer( name )
-        { }
-        /* ====================  ACCESSORS     ======================================= */
-        /**
-         *  @brief  Get the last processing locus.
-         *
-         *  @return The reference to static variable `lastproc_locus`.
-         *
-         *  It is set to the last processing locus when the seed finder is in
-         *  the middle of the "traversal" phase.
-         */
-          static inline std::atomic< Coordinates >&
-        get_lastproc_locus( )
+        typedef std::unordered_map< std::string, ThreadStats > container_type;
+        typedef typename container_type::size_type size_type;
+        typedef Timer<> timer_type;
+        /* === CONST MEMBERS === */
+        constexpr static const int CLS_ID_LEN = 8;
+      private:
+        /* === DATA MEMBERS === */
+        seedfinder_type const* finder_ptr;
+        progress_type progress;
+        container_type tstats;
+        std::string id;
+
+        /* === STATIC MEMBERS === */
+          static inline SeedFinderStats*&
+        get_instance_ptr( )
         {
-          static std::atomic< Coordinates > lastproc_locus( { 0, 0 } );
-          return lastproc_locus;
+          static SeedFinderStats* instance_ptr = nullptr;
+          return instance_ptr;
         }
 
-        /**
-         *  @brief  Get the index of the last processed locus in the starting loci.
-         *
-         *  @return The reference to static variable `lastdone_locus_idx`.
-         *
-         *  It gets the index of the last processed locus in the starting loci
-         *  vector when the seed finder is in the middle of the "traversal"
-         *  phase.
-         */
-          static inline std::atomic< std::size_t >&
-        get_lastdone_locus_idx( )
-        {
-          static std::atomic< std::size_t > lastdone_locus_idx( 0 );
-          return lastdone_locus_idx;
-        }
-
-        /**
-         *  @brief  Get the total number of starting loci.
-         *
-         *  @return The reference to static variable `total_nof_loci`.
-         */
-          static inline std::size_t&
-        get_total_nof_loci( )
-        {
-          static std::size_t total_nof_loci = 0;
-          return total_nof_loci;
-        }
-        /* ====================  METHODS       ======================================= */
-        /**
-         *  @brief  Set the last processing locus.
-         *
-         *  @param  value The value to be set as last processing locus.
-         *
-         *  It sets the last processing locus when the seed finder is in the
-         *  middle of the "traversal" phase.
-         */
           static inline void
-        set_lastproc_locus( const vg::Position& value )
+        set_instance_ptr( SeedFinderStats* value )
         {
-          get_lastproc_locus().store( Coordinates( value.node_id(), value.offset() ) );
+          SeedFinderStats::get_instance_ptr() = value;
+        }
+
+      public:
+        /* === STATIC MEMBERS === */
+          static inline SeedFinderStats const*
+        get_instance_const_ptr( )
+        {
+          return SeedFinderStats::get_instance_ptr();
+        }
+
+          static inline void
+        signal_handler( int signo )
+        {
+          std::cout << "\n---"
+                    <<"Received signal " << strsignal( signo ) << " (" << signo << ")"
+                    << "\n---" << std::endl;
+          std::cout << "Seed finder progress: "
+                    << SeedFinderStats::get_instance_ptr()->get_progress_str() << std::endl;
+          auto const& threads_stats = SeedFinderStats::get_instance_ptr()->get_threads_stats();
+          std::cout << ( threads_stats.empty() ? "No" : std::to_string( threads_stats.size() ) )
+                    << " running thread(s)." << std::endl;
+          uint8_t tid = 0;
+          for ( auto const& stats : threads_stats ) {
+            std::cout << stats.first << " -- Thread: " << ++tid << std::endl;
+            std::cout << stats.first << " -- Progress: " << stats.second.get_progress_str()
+                      << std::endl;
+            std::cout << stats.first << " -- Chunks done: "
+                      << stats.second.get_chunks_done() << std::endl;
+            if ( stats.second.get_progress() == thread_progress_type::find_off_paths ) {
+              auto loc_idx = stats.second.get_locus_idx();
+              auto loc_num = SeedFinderStats::get_instance_ptr()->get_ptr()->get_starting_loci().size();
+              auto wlen = std::to_string( loc_num ).length();
+              std::cout << stats.first << " -- Traversed loci: " << std::setw(wlen)
+                        << loc_idx << " / " << std::setw(wlen) << loc_num
+                        << " [%" << std::setw(3) << loc_idx * 100 / loc_num << "]"
+                        << std::endl;
+              auto pos = SeedFinderStats::get_instance_ptr()->get_ptr()->get_starting_loci()[ loc_idx ];
+              std::cout << stats.first << " -- Last traversed locus: "
+                        << "(" << pos.node_id() << ", " << pos.offset() << ")" << std::endl;
+            }
+            SeedFinderStats::get_instance_ptr()->for_each_timer(
+                stats.first,
+                [&stats]( auto name, auto period ) {
+                  std::cout << stats.first << " -- Timer '" << name << "': "
+                            << timer_type::get_lap_str( period ) << std::endl;
+                  return true;
+                } );
+          }
+          SeedFinderStats::get_instance_ptr()->for_each_timer(
+              get_thread_id(),
+              []( auto name, auto period ) {
+                std::cout << "Timer '" << name << "': "
+                          << timer_type::get_lap_str( period ) << std::endl;
+                return true;
+              } );
+        }
+
+        /* === LIFECYCLE === */
+        SeedFinderStats( seedfinder_type const* ptr )
+          : finder_ptr( ptr ), progress( progress_type::instantiated ),
+            id( random::random_string( SeedFinderStats::CLS_ID_LEN ) )
+        {
+          SeedFinderStats::set_instance_ptr( this );  // keep the last instance as tracked one
+        }
+
+        /* === ACCESSORS === */
+        /**
+         *  @brief  Get the pointer to the SeedFinder instance.
+         */
+          inline seedfinder_type const*
+        get_ptr( ) const
+        {
+          return this->finder_ptr;
         }
 
         /**
-         *  @brief  Set the index of the last processed locus in the starting loci.
-         *
-         *  @param  value The value to be set as last done locus index.
-         *
-         *  It sets the index of the last processed locus in the starting loci
-         *  vector when the seed finder is in the middle of the "traversal"
-         *  phase.
+         *  @brief  Get the progress code.
          */
-          static inline void
-        set_lastdone_locus_idx( const std::size_t& value )
+          inline progress_type
+        get_progress( ) const
         {
-          get_lastdone_locus_idx().store( value );
+          return this->progress;
         }
 
         /**
-         *  @brief  Set the total number of starting loci.
-         *
-         *  @param  value The value to be set as total number of loci.
+         *  @brief  Get the progress string.
          */
-          static inline void
-        set_total_nof_loci( const std::size_t& value )
+          inline const char*
+        get_progress_str( ) const
         {
-          get_total_nof_loci() = value;
+          return base_type::progress_table[ this->progress ];
         }
-    };  /* --- end of template class SeedFinderStat --- */
+
+        /**
+         *  @brief  Get the statistics for thread `t`.
+         */
+          inline ThreadStats&
+        get_thread_stats( std::string const& thread_id )
+        {
+          return this->tstats[ thread_id ];
+        }
+
+        /**
+         *  @brief  Get the statistics for all threads.
+         */
+          inline container_type const&
+        get_threads_stats( ) const
+        {
+          return this->tstats;
+        }
+
+        /* === MUTATORS === */
+        /**
+         *  @brief  Set the progress code.
+         */
+          inline void
+        set_progress( progress_type value )
+        {
+          this->progress = value;
+        }
+
+          inline void
+        set_as_tracked( )
+        {
+          SeedFinderStats::set_instance_ptr( this );
+        }
+
+        /* === METHODS === */
+          inline timer_type
+        timeit( std::string const& name, std::string const& thread_id ) const
+        {
+          return timer_type( this->id + name + thread_id );
+        }
+
+          inline timer_type
+        timeit( std::string const& name ) const
+        {
+          return timer_type( this->id + name );
+        }
+
+          inline timer_type::period_type
+        get_timer( std::string const& name ) const
+        {
+          return timer_type::get_timers()[ this->id + name ];
+        }
+
+          inline timer_type::period_type
+        get_timer( std::string const& name, std::string const& thread_id ) const
+        {
+          return timer_type::get_timers()[ this->id + name + thread_id ];
+        }
+
+        template< typename TCallback >
+          inline bool
+        for_each_timer( TCallback callback ) const
+        {
+          for ( auto const& timer : timer_type::get_timers() ) {
+            if ( starts_with( timer.first, this->id ) &&
+                 !callback( timer.first.substr( SeedFinderStats::CLS_ID_LEN ),
+                            timer.second ) ) return false;
+          }
+          return true;
+        }
+
+        template< typename TCallback >
+          inline bool
+        for_each_timer( std::string const& thread_id, TCallback callback ) const
+        {
+          auto thread_id_len = thread_id.size();
+          for ( auto const& timer : timer_type::get_timers() ) {
+            if ( starts_with( timer.first, this->id ) &&
+                 ends_with( timer.first, thread_id ) &&
+                 !callback( timer.first.substr( SeedFinderStats::CLS_ID_LEN,
+                                                timer.first.size()
+                                                - thread_id_len
+                                                - SeedFinderStats::CLS_ID_LEN ),
+                            timer.second ) ) return false;
+          }
+          return true;
+        }
+    };  /* --- end of template class SeedFinderStats --- */
 
   /**
-   *  @brief  SeedFinderStat template specialization for no-stat.
+   *  @brief  SeedFinderStats template specialization for no-stats.
    *
    *  Do nothing.
    */
   template< class TSeedFinder >
-    class SeedFinderStat< TSeedFinder, NoStat >
+    class SeedFinderStats< TSeedFinder, NoStats >
+      : public SeedFinderStatsBase
     {
       public:
-        /* ====================  TYPEDEFS      ======================================= */
-        typedef typename TSeedFinder::graph_type graph_type;
-        typedef typename graph_type::id_type id_type;
-        typedef typename graph_type::offset_type offset_type;
-        /* ====================  MEMBER TYPES  ======================================= */
-        typedef Timer<> timer_type;
-        struct Coordinates {
-          id_type node_id;
-          offset_type offset;
-        };
-        /* ====================  LIFECYCLE     ======================================= */
-        SeedFinderStat( const std::string& ) { }
-        ~SeedFinderStat() { }
-        /* ====================  METHODS       ======================================= */
-        constexpr static inline timer_type::duration_type get_duration( const std::string& )
-        {
-          return timer_type::zero_duration;
-        }
-        constexpr static inline timer_type::rep_type get_duration_rep( const std::string& )
-        {
-          return timer_type::zero_duration_rep;
-        }
-        constexpr static inline const char* get_duration_str( const std::string& )
-        {
-          return "0";
-        }
-        constexpr static inline timer_type::duration_type get_lap( const std::string& )
-        {
-          return timer_type::zero_duration;
-        }
-        constexpr static inline timer_type::rep_type get_lap_rep( const std::string& )
-        {
-          return timer_type::zero_duration_rep;
-        }
-        constexpr static inline const char* get_lap_str( const std::string& )
-        {
-          return "0";
-        }
-        /* ====================  ACCESSORS     ======================================= */
-          static inline std::atomic< Coordinates >&
-        get_lastproc_locus( )
-        {
-          static std::atomic< Coordinates > lastproc_locus( { 0, 0 } );
-          return lastproc_locus;
-        }
-          static inline std::atomic< std::size_t >&
-        get_lastdone_locus_idx( )
-        {
-          static std::atomic< std::size_t > lastdone_locus_idx( 0 );
-          return lastdone_locus_idx;
-        }
-          static inline std::size_t&
-        get_total_nof_loci( )
-        {
-          static std::size_t total_nof_loci = 0;
-          return total_nof_loci;
-        }
-        /* ====================  METHODS       ======================================= */
-        static inline void set_lastproc_locus( const vg::Position& value ) { }
-        static inline void set_lastdone_locus_idx( const std::size_t& value ) { }
-        static inline void set_total_nof_loci( const std::size_t& value ) { }
-    };  /* --- end of template class SeedFinderStat --- */
+        /* === TYPE MEMBERS === */
+        typedef TSeedFinder seedfinder_type;
+        typedef SeedFinderStatsBase base_type;
+        using base_type::progress_type;
+        using base_type::thread_progress_type;
 
-  template< class TTraverser = typename Traverser< gum::SeqGraph< gum::Succinct >, seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> >, BFS, ExactMatching >::Type,
-            typename TStatSpec = void,
-            typename TStringSpec = DiskBased >
+        struct ThreadStats {
+          public:
+            /* === ACCESSORS === */
+              constexpr inline thread_progress_type
+            get_progress( ) const
+            {
+              return thread_progress_type::thread_off;
+            }
+
+              constexpr inline const char*
+            get_progress_str( ) const
+            {
+              return base_type::thread_progress_table[ thread_progress_type::thread_off ];
+            }
+
+              constexpr inline unsigned int
+            get_chunks_done( ) const
+            {
+              return 0;
+            }
+
+              constexpr inline std::size_t
+            get_locus_idx( ) const
+            {
+              return 0;
+            }
+
+            /* === MUTATORS === */
+              constexpr inline void
+            set_progress( thread_progress_type )
+            { /* noop */ }
+
+              constexpr inline void
+            set_chunks_done( unsigned int )
+            { /* noop */ }
+
+              constexpr inline void
+            set_locus_idx( std::size_t )
+            { /* noop */ }
+        };
+        typedef std::unordered_map< std::string, ThreadStats > container_type;
+        typedef typename container_type::size_type size_type;
+        typedef Timer< void > timer_type;
+        /* === STATIC MEMBERS === */
+          static inline void
+        signal_handler( int signo )
+        {
+          std::cout << "\n---"
+                    <<"Received signal " << strsignal( signo ) << " (" << signo << ")"
+                    << "\n---" << std::endl;
+          std::cout << "Seed finder progress: "
+                    << base_type::progress_table[ progress_type::finder_off ] << std::endl;
+        }
+
+      private:
+        /* === DATA MEMBERS === */
+        ThreadStats null_stats;
+
+        /* === STATIC MEMBERS === */
+          static inline SeedFinderStats*&
+        get_instance_ptr( )
+        {
+          static SeedFinderStats* instance_ptr = nullptr;
+          return instance_ptr;
+        }
+
+          static inline void
+        set_instance_ptr( SeedFinderStats* value )
+        {
+          SeedFinderStats::get_instance_ptr() = value;
+        }
+
+      public:
+        /* === STATIC MEMBERS === */
+        static inline SeedFinderStats const*
+        get_instance_const_ptr( )
+        {
+          return SeedFinderStats::get_instance_ptr();
+        }
+
+        /* === LIFECYCLE === */
+        SeedFinderStats( seedfinder_type const* )
+        {
+          SeedFinderStats::set_instance_ptr( this );
+        }
+
+        /* === ACCESSORS === */
+          constexpr inline seedfinder_type const*
+        get_ptr( ) const
+        {
+          return nullptr;
+        }
+          constexpr inline progress_type
+        get_progress( ) const
+        {
+          return progress_type::finder_off;
+        }
+
+          constexpr inline const char*
+        get_progress_str( ) const
+        {
+          return base_type::progress_table[ progress_type::finder_off ];
+        }
+
+          inline ThreadStats&
+        get_thread_stats( std::string const& )
+        {
+          return this->null_stats;
+        }
+
+          inline container_type
+        get_threads_stats( ) const
+        {
+          return container_type();
+        }
+
+        /* === MUTATORS === */
+          constexpr inline void
+        set_progress( progress_type ) { /* noop */ }
+
+          constexpr inline void
+        set_as_tracked( )
+        {
+          SeedFinderStats::set_instance_ptr( this );
+        }
+
+        /* === METHODS === */
+          constexpr inline timer_type
+        timeit( std::string const&, std::string const& ) const
+        {
+          return timer_type( );
+        }
+
+          constexpr inline timer_type
+        timeit( std::string const& ) const
+        {
+          return timer_type( );
+        }
+
+          constexpr inline timer_type::period_type
+        get_timer( std::string const& name ) const
+        {
+          return nullptr;
+        }
+
+          constexpr inline timer_type::period_type
+        get_timer( std::string const& name, std::string const& thread_id ) const
+        {
+          return nullptr;
+        }
+
+        template< typename TCallback >
+          constexpr inline bool
+        for_each_timer( TCallback ) const
+        {
+          return true;
+        }
+
+        template< typename TCallback >
+          constexpr inline bool
+        for_each_timer( std::string const&, TCallback ) const
+        {
+          return true;
+        }
+    };  /* --- end of template class SeedFinderStats --- */
+
+  template< typename TGraphSpec = gum::Succinct,
+            typename TReadsStringSet = Dna5QStringSet<>,
+            typename TReadsIndexSpec = seqan::IndexWotd<>,
+            typename TPathsStringSetSpec = DiskBased,
+            typename TStrategy = BFS,
+            template<typename, typename> class TMatchingTraits = ExactMatching >
+  struct SeedFinderTraits {
+    typedef gum::SeqGraph< TGraphSpec > graph_type;
+    typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > seedindex_type;
+
+    template< typename TStatsSpec = NoStats >
+      using traverser_type = typename Traverser< graph_type, seedindex_type,
+                                                 TStrategy, TMatchingTraits,
+                                                 TStatsSpec >::Type;
+
+    typedef TPathsStringSetSpec pathstrsetspec_type;
+  };
+
+  template< typename TStatsSpec = NoStats,
+            typename TTraits = SeedFinderTraits<> >
     class SeedFinder;
 
   /**
-   *  @brief  Stat template class specialization for `SeedFinderStat`.
+   *  @brief  `Stats` template class specialization for `SeedFinder`.
    */
-  template< class TTraverser, typename TStatSpec, typename TStringSpec >
-    class Stat< SeedFinder< TTraverser, TStatSpec, TStringSpec > >
+  template< typename TStatsSpec, typename TTraits >
+    class Stats< SeedFinder< TStatsSpec, TTraits > >
     {
-      typedef SeedFinder< TTraverser, TStatSpec, TStringSpec > seedfinder_type;
+      typedef SeedFinder< TStatsSpec, TTraits > seedfinder_type;
       public:
-        typedef SeedFinderStat< seedfinder_type, TStatSpec > Type;
-    };  /* --- end of template class Stat --- */
+        typedef SeedFinderStats< seedfinder_type, TStatsSpec > type;
+    };  /* --- end of template class Stats --- */
 
-  template< class TSeedFinder >
-    using StatT = typename Stat< TSeedFinder >::Type;
-
-  template< class TTraverser, typename TStatSpec, typename TStringSpec >
+  template< typename TStatsSpec, typename TTraits >
     class SeedFinder
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef TTraverser traverser_type;
-        typedef typename traverser_type::graph_type graph_type;
+        typedef TTraits traits_type;
+        typedef typename traits_type::graph_type graph_type;
+        typedef typename traits_type::template traverser_type< TStatsSpec > traverser_type;
+        typedef typename traits_type::pathstrsetspec_type pathstrsetspec_type;
         typedef typename graph_type::id_type id_type;
         typedef typename graph_type::offset_type offset_type;
         typedef typename graph_type::rank_type rank_type;
-        typedef StatT< SeedFinder > stats_type;
+        typedef StatsType< SeedFinder > stats_type;
+        typedef typename stats_type::progress_type progress_type;
+        typedef typename stats_type::thread_progress_type thread_progress_type;
         typedef Records< typename traverser_type::stringset_type > readsrecord_type;
         typedef typename traverser_type::index_type readsindex_type;
-        typedef YaString< TStringSpec > text_type;
+        typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( true ), seed_len( len ),
-          seed_mismatches( mismatches )
+          : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
+          seed_mismatches( mismatches ),
+          stats_ptr( std::make_unique< stats_type >( this ) )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
@@ -373,7 +714,13 @@ namespace psi {
           inline readsindex_type
         index_reads( readsrecord_type const& reads ) const
         {
-          auto timer = stats_type( "index-reads" );
+          thread_local static const std::string thread_id = get_thread_id();
+          thread_local static const std::string timer_id = "index-reads" + thread_id;
+          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::index_chunk );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+          auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
           return readsindex_type( reads.str );
         }
 
@@ -382,7 +729,13 @@ namespace psi {
         get_seeds( readsrecord_type& seeds, readsrecord_type const& reads,
                    T distance ) const
         {
-          auto timer = Timer<>( "seeding" );
+          thread_local static const std::string thread_id = get_thread_id();
+          thread_local static const std::string timer_id = "seeding" + thread_id;
+          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::seed_chunk );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+          auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
           seeding( seeds, reads, this->seed_len, distance );
         }
 
@@ -419,8 +772,15 @@ namespace psi {
               std::function< void( std::string const& ) > info=nullptr,
               std::function< void( std::string const& ) > warn=nullptr )
           {
+            thread_local static const std::string timer_id = "pick-paths" + get_thread_id();
+
+            this->stats_ptr->set_progress( progress_type::select_paths );
+
             if ( n == 0 ) return;
-            auto timer = stats_type( "pick-paths" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+            auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
 
             this->pindex.reserve( n * this->graph_ptr->get_path_count() );
             auto hp_itr = begin( *this->graph_ptr, Haplotyper<>() );
@@ -442,7 +802,12 @@ namespace psi {
         inline void
         index_paths( )
         {
-          auto timer = stats_type( "index-paths" );
+          thread_local static const std::string timer_id = "index-paths" + get_thread_id();
+          this->stats_ptr->set_progress( progress_type::create_index );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+          auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
           this->pindex.create_index();
         }
 
@@ -479,8 +844,13 @@ namespace psi {
         inline bool
         serialize_path_index_only( std::string const& fpath )
         {
+          thread_local static const std::string timer_id = "save-paths" + get_thread_id();
+          this->stats_ptr->set_progress( progress_type::write_index );
           if ( fpath.empty() ) return false;
-          auto timer = stats_type( "save-paths" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+          auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
           return this->pindex.serialize( fpath );
         }
 
@@ -502,9 +872,10 @@ namespace psi {
         inline bool
         load_path_index_only( std::string const& fpath, unsigned int context=0 )
         {
+          this->stats_ptr->set_progress( progress_type::load_pindex );
           if ( fpath.empty() ) return false;
           this->pindex.set_context( context );
-          return this->pindex.load( fpath, this->graph_ptr );
+          return this->pindex.load( fpath );
         }
 
         inline bool
@@ -538,6 +909,11 @@ namespace psi {
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
+            thread_local static const std::string thread_id = get_thread_id();
+            thread_local static const std::string timer_id = "seeds-on-paths" + thread_id;
+            this->stats_ptr->set_progress( progress_type::ready );
+            this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_on_paths );
+
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
               throw std::runtime_error( "seed length should not be larger than context size" );
@@ -545,7 +921,10 @@ namespace psi {
 
             if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 
-            auto timer = stats_type( "seeds-on-paths" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+            auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
 
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
@@ -555,9 +934,21 @@ namespace psi {
             inline void
           add_uncovered_loci( unsigned int step=1 )
           {
+            thread_local static const std::string timer_id = "find-uncovered" + get_thread_id();
+
+            this->stats_ptr->set_progress( progress_type::find_uncovered );
+
             auto&& pathset = this->pindex.get_paths_set();
-            if ( pathset.size() == 0 ) this->add_all_loci( step );
-            auto timer = stats_type( "add-starts" );
+            if ( pathset.size() == 0 )
+            {
+              this->add_all_loci( step );
+              return;
+            }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+            auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
             auto bt_end = end( *this->graph_ptr, Backtracker() );
@@ -613,7 +1004,12 @@ namespace psi {
           // TODO: Add documentation.
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph.
-          auto timer = stats_type( "add-starts" );
+          thread_local static const std::string timer_id = "find-uncovered" + get_thread_id();
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+          auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
 
           auto bfs_itr = begin( *this->graph_ptr,  BFS() );
           auto bfs_end = end( *this->graph_ptr,  BFS() );
@@ -655,8 +1051,13 @@ namespace psi {
             inline unsigned long long int
           nof_uncovered_kmers( PathSet< TPath, TSpec >& paths, unsigned int k )
           {
+            thread_local static const std::string timer_id = "count-uncovered-kmer" + get_thread_id();
+
             if ( this->starting_loci.size() == 0 ) return 0;
-            auto timer = stats_type( "count-uncovered-kmer" );
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+            auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
             auto bt_end = end( *this->graph_ptr, Backtracker() );
@@ -705,13 +1106,17 @@ namespace psi {
         open_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
+          this->stats_ptr->set_progress( progress_type::load_starts );
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
           std::function< void( vg::Position& ) > push_back =
-            [this]( vg::Position& pos ) { this->starting_loci.push_back( pos ); };
+              [this]( vg::Position& pos ) {
+                pos.set_node_id( this->graph_ptr->id_by_coordinate( pos.node_id() ) );
+                this->starting_loci.push_back( pos );
+              };
 
           try {
             vg::io::for_each( ifs, push_back );
@@ -727,13 +1132,18 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
+          this->stats_ptr->set_progress( progress_type::write_starts );
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 
           std::function< vg::Position( uint64_t ) > lambda =
-            [this]( uint64_t i ) { return this->starting_loci.at( i ); };
+              [this]( uint64_t i ) {
+                auto pos = this->starting_loci.at( i );
+                pos.set_node_id( this->graph_ptr->coordinate_id( pos.node_id() ) );
+                return pos;
+              };
 
           try {
             vg::io::write( ofs, this->starting_loci.size(), lambda );
@@ -770,8 +1180,15 @@ namespace psi {
         seeds_off_paths( traverser_type& traverser,
                          std::function< void( typename traverser_type::output_type const& ) > callback ) const
         {
-          auto timer = stats_type( "seeds-off-path" );
-          stats_type::set_total_nof_loci( this->starting_loci.size() );
+          thread_local static const std::string thread_id = get_thread_id();
+          thread_local static const std::string timer_id = "seeds-off-path" + thread_id;
+          this->stats_ptr->set_progress( progress_type::ready );
+          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_off_paths);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+          auto timer = this->stats_ptr->timeit( timer_id );
+#pragma GCC diagnostic pop
 
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
@@ -779,9 +1196,8 @@ namespace psi {
             traverser.add_locus( locus );
             if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
 
-            stats_type::set_lastproc_locus( locus );
             traverser.run( callback );
-            stats_type::set_lastdone_locus_idx( idx );
+            this->stats_ptr->get_thread_stats( thread_id ).set_locus_idx( idx );
           }
         }
       private:
@@ -791,6 +1207,7 @@ namespace psi {
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
+        std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Set the context size for patching.

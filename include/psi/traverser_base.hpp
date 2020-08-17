@@ -35,7 +35,7 @@
 #include "index.hpp"
 #include "index_iter.hpp"
 #include "seed.hpp"
-#include "stat.hpp"
+#include "stats.hpp"
 
 // TODO: refactor: types (const, * and &).
 
@@ -45,7 +45,7 @@ namespace psi {
     typename TIndex,
     typename TStrategy,
     template<typename, typename> class TMatchingTraits,
-    typename TStatSpec >
+    typename TStatsSpec >
     class TraverserBase;
 
   template< typename TGraph, typename TIter, std::size_t MaxMismatches >
@@ -101,12 +101,12 @@ namespace psi {
     using ApproxMatching = MatchingTraits< TGraph, TIter, 3 >;
 
   /**
-   *  @brief  TraverserStat template class.
+   *  @brief  TraverserStats template class.
    *
    *  Collect statistics from a `TraverserBase` class instance(s) in running time.
    */
-  template< typename TSpec = void >
-    class TraverserStat
+  template< typename TSpec = WithStats >
+    class TraverserStats
     {
       public:
         /* ====================  ACCESSORS     ======================================= */
@@ -200,15 +200,15 @@ namespace psi {
         {
           get_partial_nof_paths().store( 0 );
         }
-    };  /* --- end of template class TraverserStat --- */
+    };  /* --- end of template class TraverserStats --- */
 
   /**
-   *  @brief  TraverserStat template class no-stat specialization.
+   *  @brief  TraverserStats template class no-stats specialization.
    *
    *  Do nothing.
    */
   template< >
-    class TraverserStat< NoStat >
+    class TraverserStats< NoStats >
     {
       public:
         /* ====================  ACCESSORS     ======================================= */
@@ -221,27 +221,27 @@ namespace psi {
         static inline void inc_total_nof_paths( unsigned int by=1 ) { }
         static inline void reset_total_nof_paths( ) { }
         static inline void inc_pathlens_partial_sum( unsigned int by=1 ) { }
-    };  /* --- end of template class TraverserStat --- */
+    };  /* --- end of template class TraverserStats --- */
 
   /**
-   *  @brief  Stat template class specialization for `TraverserBase`.
+   *  @brief  Stats template class specialization for `TraverserBase`.
    */
   template< class TGraph,
     typename TIndex,
     typename TStrategy,
     template<typename, typename> class TMatchingTraits,
     typename TSpec >
-    class Stat< TraverserBase< TGraph, TIndex, TStrategy, TMatchingTraits, TSpec > >
+    class Stats< TraverserBase< TGraph, TIndex, TStrategy, TMatchingTraits, TSpec > >
     {
       public:
-        typedef TraverserStat< TSpec > Type;
+        typedef TraverserStats< TSpec > Type;
     };
 
   template< class TGraph,
     typename TIndex,
     typename TStrategy,
     template<typename, typename> class TMatchingTraits,
-    typename TStatSpec >
+    typename TStatsSpec >
     class TraverserBase
     {
       public:
@@ -259,7 +259,7 @@ namespace psi {
         typedef TIndexIter< TIndex, iterspec_type > iterator_type;
         typedef TMatchingTraits< graph_type, iterator_type > traits_type;
         typedef typename seqan::SAValue< TIndex >::Type TSAValue;
-        typedef typename Stat< TraverserBase >::Type stats_type;
+        typedef typename Stats< TraverserBase >::Type stats_type;
         /* ====================  DATA MEMBERS  ======================================= */
         static const auto max_mismatches = traits_type::max_mismatches;
         /* ====================  LIFECYCLE      ====================================== */

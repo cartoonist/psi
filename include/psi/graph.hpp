@@ -27,7 +27,7 @@
 #include <vg/vg.pb.h>
 #include <vg/io/stream.hpp>
 
-#include "base.hpp"
+#include "utils.hpp"
 
 
 namespace psi {
@@ -148,16 +148,25 @@ namespace psi {
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::rank_type rank_type;
       typedef typename graph_type::linktype_type linktype_type;
+
+      thread_local static std::mt19937 lgen;
+      thread_local static unsigned int lseed = std::mt19937::default_seed;
 
       auto odeg = graph.outdegree( node_id );
       if ( odeg == 0 ) return 0;
 
-      std::random_device rd;  // Will be used to obtain a seed for the random no. engine
-      if ( seed == 0 ) seed = rd(); // use random_device to generate a seed if seed is not provided
-      std::mt19937 gen( seed );  // Standard mersenne_twister_engine seeded with seed
-      std::uniform_int_distribution<> dis(0, odeg - 1);
-      auto idx = dis(gen);
+      rank_type idx;
+      if ( seed == 0 ) idx = random::random_index( odeg );
+      else {
+        if ( seed != lseed ) {
+          lseed = seed;
+          lgen.seed( seed );
+        }
+        std::uniform_int_distribution< rank_type > dis( 0, odeg - 1 );
+        idx = dis( lgen );
+      }
 
       id_type candidate = 0;
       graph.for_each_edges_out(

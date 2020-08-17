@@ -1,8 +1,8 @@
 /**
- *    @file  test_stat.cpp
- *   @brief  Test stat module.
+ *    @file  test_stats.cpp
+ *   @brief  Test stats module.
  *
- *  This test contains test scenarios for stat module.
+ *  This test contains test scenarios for stats module.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -19,7 +19,7 @@
 #include <chrono>
 #include <thread>
 
-#include <psi/stat.hpp>
+#include <psi/stats.hpp>
 
 #include "test_base.hpp"
 
@@ -27,7 +27,7 @@
 using namespace psi;
 using namespace std::chrono_literals;
 
-SCENARIO ( "Test the Timer", "[stat]" )
+SCENARIO ( "Test the Timer", "[stats]" )
 {
   GIVEN( "A CPU clock Timer" )
   {

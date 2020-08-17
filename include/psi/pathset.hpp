@@ -58,13 +58,14 @@ namespace psi {
         /* ====================  CONST MEMBERS  ====================================== */
         const char ID_SEPARATOR = PATHSET_ID_SEPARATOR_CHAR;
         /* ====================  LIFECYCLE      ====================================== */
-        PathSet( ) = default;
+        PathSet( graph_type const& graph ) : graph_ptr( &graph ) { };
 
         PathSet( PathSet const& ) = delete;
         PathSet& operator=( PathSet const& ) = delete;
 
         PathSet( PathSet&& other )
         {
+          this->graph_ptr = other.graph_ptr;
           this->set = std::move( other.set );
           this->encids_set = std::move( other.encids_set );
           if ( other.encids_index.owns_text() ) {
@@ -87,6 +88,7 @@ namespace psi {
 
         PathSet& operator=( PathSet&& other )
         {
+          this->graph_ptr = other.graph_ptr;
           this->set = std::move( other.set );
           this->encids_set = std::move( other.encids_set );
           if ( other.encids_index.owns_text() ) {
@@ -268,7 +270,7 @@ namespace psi {
         }
 
           inline void
-        load( std::istream& in, const graph_type* graph_ptr )
+        load( std::istream& in )
         {
           this->clear();
           size_type paths_num = 0;
@@ -278,7 +280,7 @@ namespace psi {
           this->bv_ids_set.reserve( paths_num );
           this->rs_ids_set.reserve( paths_num );
           for ( size_type i = 0; i < paths_num; ++i ) {
-            value_type path( graph_ptr );
+            value_type path( this->graph_ptr );
             psi::open( path, in );
             this->set.push_back( std::move( path ) );
           }
@@ -295,6 +297,7 @@ namespace psi {
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
+        graph_type const* graph_ptr;
         container_type set;
         stringset_type encids_set;
         index_type encids_index;
@@ -319,10 +322,10 @@ namespace psi {
           sdsl::bit_vector bv( encids.size(), 0 );
 #ifdef PSI_DEBUG_ENABLED
           bool flag = false;
+#endif
           assert( encids[ 0 ] == ID_SEPARATOR );
           assert( encids[ 1 ] != ID_SEPARATOR );
           assert( encids[ encids.size() - 1 ] == ID_SEPARATOR );
-#endif
           for ( sdsl::bit_vector::size_type i = 2; i < bv.size(); ++i ) {
             if ( encids[ i ] == ID_SEPARATOR ) {
               bv[ i - 1 ] = 1;
@@ -344,6 +347,9 @@ namespace psi {
 
   /* PathSet interface functions  -------------------------------------------------- */
 
+  // TODO: The difference between this overload and the one defined in
+  //       `utils.hpp` is only the return value. Modify the one in `utils.hpp`
+  //       with boolean return type and throw exception whenever needed.
   template< typename TPath, typename TSpec >
       inline bool
     save( PathSet< TPath, TSpec >& set, const std::string& file_path )
@@ -356,12 +362,11 @@ namespace psi {
 
   template< typename TPath, typename TSpec >
       inline bool
-    open( PathSet< TPath, TSpec >& set, typename TPath::graph_type const* graph_ptr,
-        const std::string& file_path )
+    open( PathSet< TPath, TSpec >& set, const std::string& file_path )
     {
       std::ifstream ifs( file_path, std::ifstream::in | std::ifstream::binary );
       if( !ifs ) return false;
-      set.load( ifs, graph_ptr );
+      set.load( ifs );
       return true;
     }
 

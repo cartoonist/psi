@@ -1,8 +1,9 @@
 /**
- *    @file  stat.hpp
- *   @brief  Stat template class.
+ *    @file  stats.hpp
+ *   @brief  Module for performance measurement and running-time statistics.
  *
- *  Stat template class definition.
+ *  This module provides necessary tools for measuring performance and capturing
+ *  running-time statistics.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -15,20 +16,19 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_STAT_HPP__
-#define PSI_STAT_HPP__
+#ifndef PSI_STATS_HPP__
+#define PSI_STATS_HPP__
 
 #include <chrono>
 #include <unordered_map>
-
-#include <seqan/basic.h>
 
 #include "base.hpp"
 
 
 namespace psi {
-  struct NoStatStrategy;                        /**< @brief No-stat mode strategy. */
-  typedef seqan::Tag< NoStatStrategy > NoStat;  /**< @brief No-stat mode tag. */
+  struct NoStats;                        /**< @brief No-stats mode tag. */
+  struct WithStats;                      /**< @brief With-stats mode tag. */
+
   /**
    *  @brief  Observer template class to collect statistics.
    *
@@ -36,18 +36,21 @@ namespace psi {
    *  `TObject` template parameter.
    */
   template < typename TObject >
-    class Stat;
+    class Stats;
 
-  template< typename TSpec >
-    class TimerTraits;
+  template< class TObject >
+    using StatsType = typename Stats< TObject >::type;
 
   typedef clock_t CpuClock;
   typedef std::chrono::steady_clock SteadyClock;
 
+  template< typename TSpec = CpuClock >
+    class TimerTraits;
+
   template< >
     class TimerTraits< std::chrono::steady_clock > {
       public:
-        /* ====================  MEMBER TYPES  ======================================= */
+        /* ====================  TYPE MEMBERS  ======================================= */
         typedef std::chrono::steady_clock clock_type;
         typedef std::chrono::microseconds duration_type;
         typedef duration_type::rep rep_type;
@@ -77,12 +80,12 @@ namespace psi {
             std::to_string( TimerTraits::duration_rep( end, start ) ) + " "
             + TimerTraits::unit_repr;
         }
-    };
+    };  /* ---  end of class TimerTraits  --- */
 
   template< >
     class TimerTraits< clock_t > {
       public:
-        /* ====================  MEMBER TYPES  ======================================= */
+        /* ====================  TYPE MEMBERS  ======================================= */
         typedef struct {
           typedef clock_t time_point;
             static inline time_point
@@ -116,7 +119,41 @@ namespace psi {
           return std::to_string( TimerTraits::duration_rep( end, start ) ) + " "
             + TimerTraits::unit_repr;
         }
-    };
+    };  /* ---  end of class TimerTraits  --- */
+
+  template< >
+    class TimerTraits< void > {
+      public:
+        /* === TYPE MEMBERS === */
+        typedef struct {
+          typedef void* time_point;
+          static inline time_point now() { return nullptr; }
+        } clock_type;
+        typedef float duration_type;
+        typedef duration_type rep_type;
+        /* === DATA MEMBERS === */
+        constexpr static const char* unit_repr = "s";
+        constexpr static const duration_type zero_duration = 0;
+        constexpr static const rep_type zero_duration_rep = 0;
+        /* === METHODS === */
+        constexpr static inline duration_type
+        duration( clock_type::time_point, clock_type::time_point )
+        {
+          return TimerTraits::zero_duration;
+        }
+
+        constexpr static inline rep_type
+        duration_rep( clock_type::time_point, clock_type::time_point )
+        {
+          return TimerTraits::zero_duration_rep;
+        }
+
+        constexpr static inline const char*
+        duration_str( clock_type::time_point, clock_type::time_point )
+        {
+          return "0";
+        }
+    };  /* ---  end of class TimerTraits  --- */
 
   /**
    *  @brief  Timers for measuring execution time.
@@ -124,23 +161,24 @@ namespace psi {
    *  Measure the time period between its instantiation and destruction. The timers are
    *  kept in static table hashed by the timer name.
    */
-  template< typename TClock=clock_t >
+  template< typename TClock=CpuClock >
     class Timer
     {
       public:
-        /* ====================  MEMBER TYPES  ======================================= */
-        typedef TimerTraits< TClock > trait_type;
-        typedef typename trait_type::clock_type clock_type;
-        typedef typename trait_type::duration_type duration_type;
-        typedef typename trait_type::rep_type rep_type;
+        /* ====================  TYPE MEMBERS  ======================================= */
+        typedef TimerTraits< TClock > traits_type;
+        typedef typename traits_type::clock_type clock_type;
+        typedef typename traits_type::duration_type duration_type;
+        typedef typename traits_type::rep_type rep_type;
         struct TimePeriod {
           typename clock_type::time_point start;
           typename clock_type::time_point end;
         };
+        typedef TimePeriod period_type;
         /* ====================  STATIC DATA   ======================================= */
-        constexpr static const char* unit_repr = trait_type::unit_repr;
-        constexpr static const duration_type zero_duration = trait_type::zero_duration;
-        constexpr static const rep_type zero_duration_rep = trait_type::zero_duration_rep;
+        constexpr static const char* unit_repr = traits_type::unit_repr;
+        constexpr static const duration_type zero_duration = traits_type::zero_duration;
+        constexpr static const rep_type zero_duration_rep = traits_type::zero_duration_rep;
         /* ====================  LIFECYCLE     ======================================= */
         /**
          *  @brief  Timer constructor.
@@ -184,10 +222,15 @@ namespace psi {
          *  Get the duration represented by the timer.
          */
           static inline duration_type
+        get_duration( TimePeriod const& period )
+        {
+          return traits_type::duration( period.end, period.start );
+        }
+
+          static inline duration_type
         get_duration( const std::string& name )
         {
-          return trait_type::duration( get_timers()[ name ].end,
-              get_timers()[ name ].start );
+          return get_duration( get_timers()[ name ] );
         }  /* -----  end of method get_duration  ----- */
 
         /**
@@ -199,10 +242,15 @@ namespace psi {
          *  Get the arithmetic representation of the requested timer duration.
          */
           static inline rep_type
+        get_duration_rep( TimePeriod const& period )
+        {
+          return traits_type::duration_rep( period.end, period.start );
+        }
+
+          static inline rep_type
         get_duration_rep( const std::string& name )
         {
-          return trait_type::duration_rep( get_timers()[ name ].end,
-              get_timers()[ name ].start );
+          return get_duration_rep( get_timers()[ name ] );
         }  /* -----  end of method get_duration  ----- */
 
         /**
@@ -214,10 +262,15 @@ namespace psi {
          *  Get the string representation of the requested timer duration.
          */
           static inline std::string
+        get_duration_str( TimePeriod const& period )
+        {
+          return traits_type::duration_str( period.end, period.start );
+        }
+
+          static inline std::string
         get_duration_str( const std::string& name )
         {
-          return trait_type::duration_str( get_timers()[ name ].end,
-              get_timers()[ name ].start );
+          return get_duration_str( get_timers()[ name ] );
         }  /* -----  end of method get_duration  ----- */
 
         /**
@@ -233,12 +286,18 @@ namespace psi {
          *  returns the duration between start time to 'now'.
          */
           static inline duration_type
+        get_lap( TimePeriod const& period )
+        {
+          if ( period.end > period.start ) {
+            return get_duration( period );
+          }
+          return traits_type::duration( clock_type::now(), period.start );
+        }
+
+          static inline duration_type
         get_lap( const std::string& name )
         {
-          if ( get_timers()[ name ].end > get_timers()[ name ].start ) {
-            return get_duration( name );
-          }
-          return trait_type::duration( clock_type::now(), get_timers()[ name ].start );
+          return get_lap( get_timers()[ name ] );
         }  /* -----  end of method get_lap  ----- */
 
         /**
@@ -254,12 +313,18 @@ namespace psi {
          *  returns the duration between start time to 'now'.
          */
           static inline rep_type
+        get_lap_rep( TimePeriod const& period )
+        {
+          if ( period.end > period.start ) {
+            return get_duration_rep( period );
+          }
+          return traits_type::duration_rep( clock_type::now(), period.start );
+        }
+
+          static inline rep_type
         get_lap_rep( const std::string& name )
         {
-          if ( get_timers()[ name ].end > get_timers()[ name ].start ) {
-            return get_duration_rep( name );
-          }
-          return trait_type::duration_rep( clock_type::now(), get_timers()[ name ].start );
+          return get_lap_rep( get_timers()[ name ] );
         }  /* -----  end of method get_lap  ----- */
 
         /**
@@ -275,18 +340,84 @@ namespace psi {
          *  returns the duration between start time to 'now'.
          */
           static inline std::string
+        get_lap_str( TimePeriod const& period )
+        {
+          if ( period.end > period.start ) {
+            return get_duration_str( period );
+          }
+          return traits_type::duration_str( clock_type::now(), period.start );
+        }
+
+          static inline std::string
         get_lap_str( const std::string& name )
         {
-          if ( get_timers()[ name ].end > get_timers()[ name ].start ) {
-            return get_duration_str( name );
-          }
-          return trait_type::duration_str( clock_type::now(), get_timers()[ name ].start );
+          return get_lap_str( get_timers()[ name ] );
         }  /* -----  end of method get_lap  ----- */
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
         std::string timer_name;    /**< @brief The timer name of the current instance. */
-    };  /* -----  end of class Timer  ----- */
+    };  /* ---  end of class Timer  --- */
 
+  template< >
+    class Timer< void >
+    {
+    public:
+      /* === TYPE MEMBERS === */
+      typedef TimerTraits< void > traits_type;
+      typedef void* period_type;
+      /* === LIFECYCLE === */
+      Timer( std::string const& ) { }
+      Timer( ) { }
+      /* === METHODS === */
+      constexpr static inline traits_type::duration_type get_duration( period_type )
+      {
+        return traits_type::zero_duration;
+      }
+      constexpr static inline traits_type::duration_type get_duration( const std::string& )
+      {
+        return traits_type::zero_duration;
+      }
+      constexpr static inline traits_type::rep_type get_duration_rep( period_type )
+      {
+        return traits_type::zero_duration_rep;
+      }
+      constexpr static inline traits_type::rep_type get_duration_rep( const std::string& )
+      {
+        return traits_type::zero_duration_rep;
+      }
+      constexpr static inline const char* get_duration_str( period_type )
+      {
+        return "0";
+      }
+      constexpr static inline const char* get_duration_str( const std::string& )
+      {
+        return "0";
+      }
+      constexpr static inline traits_type::duration_type get_lap( period_type )
+      {
+        return traits_type::zero_duration;
+      }
+      constexpr static inline traits_type::duration_type get_lap( const std::string& )
+      {
+        return traits_type::zero_duration;
+      }
+      constexpr static inline traits_type::rep_type get_lap_rep( period_type )
+      {
+        return traits_type::zero_duration_rep;
+      }
+      constexpr static inline traits_type::rep_type get_lap_rep( const std::string& )
+      {
+        return traits_type::zero_duration_rep;
+      }
+      constexpr static inline const char* get_lap_str( period_type )
+      {
+        return "0";
+      }
+      constexpr static inline const char* get_lap_str( const std::string& )
+      {
+        return "0";
+      }
+    };  /*  --- end of class Timer --- */
 }  /* --- end of namespace psi --- */
 
-#endif  /* --- #ifndef PSI_STAT_HPP__ --- */
+#endif  /* --- #ifndef PSI_STATS_HPP__ --- */
