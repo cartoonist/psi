@@ -83,8 +83,8 @@ namespace psi {
       "Zzz",
       "Seeding a read chunk",
       "Indexing a read chunk",
-      "Find seeds on paths",
-      "Find seeds off paths",
+      "Finding seeds on paths",
+      "Finding seeds off paths",
     };
   };  /* --- end of template class SeedFinderStats --- */
 
@@ -198,18 +198,19 @@ namespace psi {
           static inline void
         signal_handler( int signo )
         {
-          std::cout << "\n---"
-                    <<"Received signal " << strsignal( signo ) << " (" << signo << ")"
-                    << "\n---" << std::endl;
-          std::cout << "Seed finder progress: "
+          std::cout << "\n====  "
+                    << "Received \"" << strsignal( signo ) << "\" (" << signo << ")"
+                    << "  ====" << std::endl;
+          std::cout << "PSI seed finder last status: "
                     << SeedFinderStats::get_instance_ptr()->get_progress_str() << std::endl;
           auto const& threads_stats = SeedFinderStats::get_instance_ptr()->get_threads_stats();
           std::cout << ( threads_stats.empty() ? "No" : std::to_string( threads_stats.size() ) )
-                    << " running thread(s)." << std::endl;
-          uint8_t tid = 0;
+                    << " running thread(s)" << ( threads_stats.empty() ? "." : ":" )
+                    << std::endl;
+          int tid = 0;
           for ( auto const& stats : threads_stats ) {
             std::cout << stats.first << " -- Thread: " << ++tid << std::endl;
-            std::cout << stats.first << " -- Progress: " << stats.second.get_progress_str()
+            std::cout << stats.first << " -- Last status: " << stats.second.get_progress_str()
                       << std::endl;
             std::cout << stats.first << " -- Chunks done: "
                       << stats.second.get_chunks_done() << std::endl;
@@ -232,14 +233,23 @@ namespace psi {
                             << timer_type::get_lap_str( period ) << std::endl;
                   return true;
                 } );
+            std::cout << std::endl;
           }
+          bool first = true;
           SeedFinderStats::get_instance_ptr()->for_each_timer(
-              get_thread_id(),
-              []( auto name, auto period ) {
+              [&first]( auto name, auto period ) {
+                if ( first ) {
+                  std::cout << "All timers" << std::endl;
+                  std::cout << "----------" << std::endl;
+                  first = false;
+                }
                 std::cout << "Timer '" << name << "': "
                           << timer_type::get_lap_str( period ) << std::endl;
                 return true;
               } );
+          if ( !first ) {
+            std::cout << "----------" << std::endl;
+          }
         }
 
         /* === LIFECYCLE === */
@@ -430,10 +440,10 @@ namespace psi {
           static inline void
         signal_handler( int signo )
         {
-          std::cout << "\n---"
-                    <<"Received signal " << strsignal( signo ) << " (" << signo << ")"
-                    << "\n---" << std::endl;
-          std::cout << "Seed finder progress: "
+          std::cout << "\n====  "
+                    << "Received \"" << strsignal( signo ) << "\" (" << signo << ")"
+                    << "  ====" << std::endl;
+          std::cout << "PSI seed finder last status: "
                     << base_type::progress_table[ progress_type::finder_off ] << std::endl;
         }
 
