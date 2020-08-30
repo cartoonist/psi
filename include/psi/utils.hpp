@@ -857,6 +857,178 @@ namespace psi {
     ev.load( in );
   }  /* -----  end of template function deserialize  ----- */
 
+  /**
+   * Inspired by: https://yizhang82.dev/lock-free-rw-lock
+   */
+  template< typename TOrdinal = uint8_t,
+            TOrdinal HAS_WRITER = std::numeric_limits< TOrdinal >::max() >
+  class RWSpinLock {
+    private:
+      /* === CONSTANTS === */
+      constexpr static const unsigned int RETRY_THRESHOLD = 4;
+
+    public:
+      /* === LIFECYCLE === */
+      RWSpinLock( ) : readers( 0 ), writer_waiting( false ) { }
+
+      /* === METHODS === */
+        inline void
+      acquire_reader()
+      {
+        auto retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( !this->writer_waiting.load() && peek_readers != HAS_WRITER ) {
+            if ( this->readers.compare_exchange_weak(
+                     peek_readers, peek_readers + 1,
+                     std::memory_order_release,
+                     std::memory_order_relaxed ) ) return;
+          }
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+        inline void
+      release_reader()
+      {
+        assert( this->readers.load() != HAS_WRITER );
+        --this->readers;
+      }
+
+      /**
+       * Strongly tries to acquire writer lock.
+       */
+        inline void
+      acquire_writer()
+      {
+        unsigned int retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( peek_readers == 0 ) {
+            if ( this->readers.compare_exchange_weak(
+                     peek_readers, HAS_WRITER,
+                     std::memory_order_release,
+                     std::memory_order_relaxed ) ) return;
+          }
+          this->writer_waiting.store( true );
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+      /**
+       * Give up if there is another writer.
+       */
+        inline bool
+      acquire_writer_weak()
+      {
+        unsigned int retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( peek_readers == 0 ) {
+            if ( this->readers.compare_exchange_weak(
+                     peek_readers, HAS_WRITER,
+                     std::memory_order_release,
+                     std::memory_order_relaxed ) ) return true;
+          }
+          else if ( peek_readers == HAS_WRITER ) return false;
+          this->writer_waiting.store( true );
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+        inline void
+      release_writer()
+      {
+        assert( this->readers.load() == HAS_WRITER );
+        this->writer_waiting.store( false );
+        this->readers.store( 0 );
+      }
+
+    private:
+      /* === DATA MEMBERS === */
+      std::atomic< TOrdinal > readers;
+      std::atomic< bool > writer_waiting;
+  };
+
+  template< typename TLock >
+  class ReaderLock {
+    private:
+      /* === DATA MEMBERS === */
+      TLock& lock;
+
+    public:
+      /* === LIFECYCLE === */
+      ReaderLock( TLock& l ) : lock( l )
+      {
+        this->lock.acquire_reader();
+      }
+
+      ~ReaderLock( ) noexcept
+      {
+        this->lock.release_reader();
+      }
+  };
+
+  template< typename TLock >
+  class WriterLock {
+    private:
+      /* === DATA MEMBERS === */
+      TLock& lock;
+
+    public:
+      /* === LIFECYCLE === */
+      WriterLock( TLock& l ) : lock( l )
+      {
+        this->lock.acquire_writer();
+      }
+
+      ~WriterLock( ) noexcept
+      {
+        this->lock.release_writer();
+      }
+  };
+
+  template< typename TLock >
+  class UniqWriterLock {
+  private:
+    /* === DATA MEMBERS === */
+    TLock& lock;
+    bool locked;
+
+  public:
+    /* === LIFECYCLE === */
+    UniqWriterLock( TLock& l ) : lock( l )
+    {
+      this->locked = this->lock.acquire_writer_weak();
+    }
+
+    ~UniqWriterLock( ) noexcept
+    {
+      if ( this->locked ) this->lock.release_writer();
+    }
+
+    /* === OPERATORS === */
+    operator bool() const {
+      return this->locked;
+    }
+
+    /* === METHODS === */
+    inline bool
+    is_locked( ) const
+    {
+      return this->locked;
+    }
+  };
+
   /* Meta-functions */
   template< typename T1, typename T2 >
     using enable_if_equal = std::enable_if< std::is_same< T1, T2 >::value, T2 >;
