@@ -156,6 +156,12 @@ namespace psi {
             }
 
               inline void
+            inc_chunks_done( )
+            {
+              ++this->chunks_done;
+            }
+
+              inline void
             set_locus_idx( std::size_t value )
             {
               this->locus_idx = value;
@@ -427,6 +433,10 @@ namespace psi {
 
               constexpr inline void
             set_chunks_done( unsigned int )
+            { /* noop */ }
+
+              constexpr inline void
+            inc_chunks_done( unsigned int )
             { /* noop */ }
 
               constexpr inline void
@@ -1210,6 +1220,32 @@ namespace psi {
             this->stats_ptr->get_thread_stats( thread_id ).set_locus_idx( idx );
           }
         }
+
+          inline void
+        seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
+                   std::function< void(typename traverser_type::output_type const &) > callback ) const
+        {
+          thread_local static const std::string thread_id = get_thread_id();
+
+          this->seeds_on_paths( reads, reads_index, callback );
+          this->setup_traverser( traverser, reads, reads_index );
+          this->seeds_off_paths( traverser, callback );
+          this->stats_ptr->get_thread_stats( thread_id ).inc_chunks_done( );
+        }
+
+          inline void
+        seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
+                   std::function< void(typename traverser_type::output_type const &) > callback1,
+                   std::function< void(typename traverser_type::output_type const &) > callback2 ) const
+        {
+          thread_local static const std::string thread_id = get_thread_id();
+
+          this->seeds_on_paths( reads, reads_index, callback1 );
+          this->setup_traverser( traverser, reads, reads_index );
+          this->seeds_off_paths( traverser, callback2 );
+          this->stats_ptr->get_thread_stats( thread_id ).inc_chunks_done( );
+        }
+
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* graph_ptr;
