@@ -227,7 +227,7 @@ namespace psi {
           double pre_avg_pathlen = get_avg_pathlen().load();
           double new_avg_pathlen = partial_sum / static_cast< double >( partial_total );
           if ( pre_avg_pathlen == PLEN_NONE ) get_avg_pathlen().store( new_avg_pathlen );
-          else get_avg_pathlen().store( ( new_avg_pathlen + pre_avg_pathlen ) / 2 );
+          else get_avg_pathlen().store( ( new_avg_pathlen + pre_avg_pathlen ) / 2.0 );
         }
         static inline void reset_partial_pathlen_sum( )
         {

@@ -436,7 +436,7 @@ namespace psi {
             { /* noop */ }
 
               constexpr inline void
-            inc_chunks_done( unsigned int )
+            inc_chunks_done( )
             { /* noop */ }
 
               constexpr inline void
