@@ -731,14 +731,16 @@ namespace psi {
       while ( rlen-- != cp_len ) go_up( itr );
     }
 
-  template< typename TIndex1, typename TIndex2, typename TRecords1, typename TRecords2, typename TCallback >
+  template< typename TIndex1, typename TIndex2, typename TRecords1, typename TRecords2,
+            typename TCallback, typename TStats = std::function< void( std::size_t ) > >
       inline void
     kmer_exact_matches( IndexIter< TIndex1, TopDownFine< seqan::ParentLinks<> > >& fst_itr,
         IndexIter< TIndex2, TopDownFine< seqan::ParentLinks<> > >& snd_itr,
         const TRecords1* rec1,
         const TRecords2* rec2,
         unsigned int k,
-        TCallback callback )
+        TCallback callback,
+        TStats collect_stats=[]( std::size_t )->void{} )
     {
       static_assert( ( is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
@@ -760,6 +762,7 @@ namespace psi {
           if ( !go_down( snd_itr, seed[plen] ) ) break;
         }
         if ( plen == k ) {
+          collect_stats( countOccurrences( fst_itr.get_iter_() ) );
           _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
           --plen;
         }

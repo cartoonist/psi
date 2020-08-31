@@ -256,6 +256,8 @@ namespace psi {
                       << std::endl;
             std::cout << stats.first << " -- Chunks done: "
                       << stats.second.get_chunks_done() << std::endl;
+            std::cout << stats.first << " -- Average seed genome occurrence count: "
+                      << stats.second.avg_seed_gocc() << std::endl;
             if ( stats.second.get_progress() == thread_progress_type::find_off_paths ) {
               auto loc_idx = stats.second.get_locus_idx();
               auto loc_num = SeedFinderStats::get_instance_ptr()->get_ptr()->get_starting_loci().size();
@@ -981,7 +983,8 @@ namespace psi {
             thread_local static const std::string thread_id = get_thread_id();
             thread_local static const std::string timer_id = "seeds-on-paths" + thread_id;
             this->stats_ptr->set_progress( progress_type::ready );
-            this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_on_paths );
+            auto&& thread_stats = this->stats_ptr->get_thread_stats( thread_id );
+            thread_stats.set_progress( thread_progress_type::find_on_paths );
 
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
@@ -997,7 +1000,13 @@ namespace psi {
 
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
-            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len, callback );
+            auto collect_stats =
+                [&thread_stats]( std::size_t count ) {
+                  thread_stats.add_seed_gocc( count );
+                };
+
+            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len,
+                                callback, collect_stats );
           }
 
             inline void
