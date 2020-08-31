@@ -106,15 +106,23 @@ namespace psi {
 
         struct ThreadStats {
           private:
+            /* === CONSTANTS === */
+            constexpr static const double GOCC_AVG_NONE = -1;
+            constexpr static const unsigned long long int GOCC_UBOUND = ULLONG_MAX / 2;
+
             /* === DATA MEMBERS === */
             thread_progress_type progress;
             unsigned int chunks_done;
             std::size_t locus_idx;
+            unsigned long long int gocc_sum;  /**< @brief Sum of genome occurrence counts */
+            unsigned long long int gocc_tot;  /**< @brief No. of seeds contributed in the sum */
+            double gocc_avg;  /**< @brief Average seed genome occurrence count */
+
           public:
             /* === LIFECYCLE === */
             ThreadStats( )
               : progress( thread_progress_type::sleeping ), chunks_done( 0 ),
-                locus_idx( 0 )
+                locus_idx( 0 ), gocc_sum( 0 ), gocc_tot( 0 ), gocc_avg( GOCC_AVG_NONE )
             { }
 
             /* === ACCESSORS === */
@@ -165,6 +173,34 @@ namespace psi {
             set_locus_idx( std::size_t value )
             {
               this->locus_idx = value;
+            }
+
+            /* === METHODS === */
+              inline void
+            add_seed_gocc( unsigned long long int count )
+            {
+              if ( this->gocc_sum >= GOCC_UBOUND ) update_avg_seed_gocc();
+              this->gocc_sum += count;
+              this->gocc_tot++;
+            }
+
+              inline void
+            update_avg_seed_gocc()
+            {
+              this->gocc_avg = this->avg_seed_gocc();
+              this->gocc_sum = 0;
+              this->gocc_tot = 0;
+            }
+
+              inline double
+            avg_seed_gocc( ) const
+            {
+              if ( this->gocc_tot != 0 ) {
+                double new_avg = this->gocc_sum / static_cast< double >( this->gocc_tot );
+                if ( this->gocc_avg == GOCC_AVG_NONE ) return new_avg;
+                else return ( this->gocc_avg + new_avg ) / 2.0;
+              }
+              return ( this->gocc_avg != GOCC_AVG_NONE ? this->gocc_avg : 0 );
             }
         };
         typedef std::unordered_map< std::string, ThreadStats > container_type;
@@ -442,6 +478,19 @@ namespace psi {
               constexpr inline void
             set_locus_idx( std::size_t )
             { /* noop */ }
+
+            /* === METHODS === */
+              constexpr inline void
+            add_seed_gocc( unsigned long long int )
+            { /* noop */}
+
+              constexpr inline void
+            update_avg_seed_gocc()
+            { /* noop  */ }
+
+              constexpr inline double
+            avg_seed_gocc( )
+            { return 0; }
         };
         typedef std::unordered_map< std::string, ThreadStats > container_type;
         typedef typename container_type::size_type size_type;
