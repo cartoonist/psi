@@ -732,7 +732,7 @@ namespace psi {
     }
 
   template< typename TIndex1, typename TIndex2, typename TRecords1, typename TRecords2,
-            typename TCallback, typename TStats = std::function< void( std::size_t ) > >
+            typename TCallback, typename TStats = std::function< void( std::size_t, bool ) > >
       inline void
     kmer_exact_matches( IndexIter< TIndex1, TopDownFine< seqan::ParentLinks<> > >& fst_itr,
         IndexIter< TIndex2, TopDownFine< seqan::ParentLinks<> > >& snd_itr,
@@ -740,7 +740,8 @@ namespace psi {
         const TRecords2* rec2,
         unsigned int k,
         TCallback callback,
-        TStats collect_stats=[]( std::size_t )->void{} )
+        unsigned int gocc_threshold = 0,
+        TStats collect_stats=[]( std::size_t, bool )->void{} )
     {
       static_assert( ( is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
@@ -749,6 +750,9 @@ namespace psi {
           "The paths direction and the path index used are not compatible." );
 
       if ( k == 0 ) return;
+      if ( gocc_threshold == 0 ) {
+        gocc_threshold = std::numeric_limits< decltype( gocc_threshold ) >::max();
+      }
 
       seqan::DnaString seed;                   // seed = A..(k)..A
       for ( unsigned int i = 0; i < k; ++i ) appendValue( seed, 'A' );
@@ -762,8 +766,11 @@ namespace psi {
           if ( !go_down( snd_itr, seed[plen] ) ) break;
         }
         if ( plen == k ) {
-          collect_stats( countOccurrences( fst_itr.get_iter_() ) );
-          _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
+          auto count = countOccurrences( fst_itr.get_iter_() );
+          if ( count <= gocc_threshold ) {
+            collect_stats( count, false );
+            _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
+          } else collect_stats( count, true );
           --plen;
         }
         plen = increment_kmer( seed, plen, true );

@@ -99,7 +99,7 @@ template< class TGraph, typename TReadsIndexSpec >
     std::signal( SIGUSR1, finder_type::stats_type::signal_handler );
 
     /* The seed finder for the input graph. */
-    finder_type finder( graph, params.seed_len );
+    finder_type finder( graph, params.seed_len, params.gocc_threshold );
     /* Prepare (load or create) genome-wide paths. */
     log->info( "Looking for an existing path index..." );
     /* Load the genome-wide path index for the graph if available. */
@@ -224,6 +224,7 @@ startup( const Options & options )
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
+  log->info( "- Seed genome occurrence count threshold: {}", options.gocc_threshold );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
   log->info( "- Output file: '{}'", options.output_path );
 
@@ -339,6 +340,12 @@ setup_argparser( seqan::ArgumentParser& parser )
         "Context length in patching.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "t", 0 );
+  // seed genome occurrence count threshold
+  addOption( parser,
+             seqan::ArgParseOption( "r", "gocc-threshold",
+                                    "Seed genome occurrence count threshold (no threshold by default).",
+                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "r", 0 );
   // index
   addOption( parser,
       seqan::ArgParseOption( "i", "index",
@@ -392,6 +399,7 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.distance, parser, "distance" );
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
+  getOptionValue( options.gocc_threshold, parser, "gocc-threshold" );
   options.patched = !isSet( parser, "no-patched" );
   getOptionValue( options.pindex_path, parser, "path-index" );
   getOptionValue( indexname, parser, "index" );

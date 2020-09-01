@@ -117,12 +117,14 @@ namespace psi {
             unsigned long long int gocc_sum;  /**< @brief Sum of genome occurrence counts */
             unsigned long long int gocc_tot;  /**< @brief No. of seeds contributed in the sum */
             double gocc_avg;  /**< @brief Average seed genome occurrence count */
+            unsigned long long int gocc_skips;  /**< @brief No. of skipped seeds because of high gocc */
 
           public:
             /* === LIFECYCLE === */
             ThreadStats( )
               : progress( thread_progress_type::sleeping ), chunks_done( 0 ),
-                locus_idx( 0 ), gocc_sum( 0 ), gocc_tot( 0 ), gocc_avg( GOCC_AVG_NONE )
+                locus_idx( 0 ), gocc_sum( 0 ), gocc_tot( 0 ), gocc_avg( GOCC_AVG_NONE ),
+                gocc_skips( 0 )
             { }
 
             /* === ACCESSORS === */
@@ -150,6 +152,12 @@ namespace psi {
               return this->locus_idx;
             }
 
+              inline unsigned long long int
+            get_gocc_skips( ) const
+            {
+              return this->gocc_skips;
+            }
+
             /* === MUTATORS === */
               inline void
             set_progress( thread_progress_type value )
@@ -173,6 +181,18 @@ namespace psi {
             set_locus_idx( std::size_t value )
             {
               this->locus_idx = value;
+            }
+
+              inline void
+            set_gocc_skips( unsigned long long int value )
+            {
+              this->gocc_skips = value;
+            }
+
+              inline void
+            inc_gocc_skips( )
+            {
+              ++this->gocc_skips;
             }
 
             /* === METHODS === */
@@ -258,6 +278,8 @@ namespace psi {
                       << stats.second.get_chunks_done() << std::endl;
             std::cout << stats.first << " -- Average seed genome occurrence count: "
                       << stats.second.avg_seed_gocc() << std::endl;
+            std::cout << stats.first << " -- Skipped seeds because of high genome occurrence count: "
+                      << stats.second.get_gocc_skips() << std::endl;
             if ( stats.second.get_progress() == thread_progress_type::find_off_paths ) {
               auto loc_idx = stats.second.get_locus_idx();
               auto loc_num = SeedFinderStats::get_instance_ptr()->get_ptr()->get_starting_loci().size();
@@ -464,6 +486,12 @@ namespace psi {
               return 0;
             }
 
+              constexpr inline unsigned long long int
+            get_gocc_skips( ) const
+            {
+              return 0;
+            }
+
             /* === MUTATORS === */
               constexpr inline void
             set_progress( thread_progress_type )
@@ -479,6 +507,14 @@ namespace psi {
 
               constexpr inline void
             set_locus_idx( std::size_t )
+            { /* noop */ }
+
+              constexpr inline void
+            set_gocc_skips( unsigned long long int )
+            { /* noop */ }
+
+              constexpr inline void
+            inc_gocc_skips( )
             { /* noop */ }
 
             /* === METHODS === */
@@ -675,9 +711,11 @@ namespace psi {
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
+            unsigned int gocc_thr = 0,
             unsigned char mismatches = 0 )
           : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
           seed_mismatches( mismatches ),
+          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
         { }
         /* ====================  ACCESSORS      ====================================== */
@@ -1001,12 +1039,13 @@ namespace psi {
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
             auto collect_stats =
-                [&thread_stats]( std::size_t count ) {
+                [&thread_stats]( std::size_t count, bool skipped ) {
                   thread_stats.add_seed_gocc( count );
+                  if ( skipped ) thread_stats.inc_gocc_skips();
                 };
 
             kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len,
-                                callback, collect_stats );
+                                callback, this->gocc_threshold, collect_stats );
           }
 
             inline void
@@ -1311,6 +1350,7 @@ namespace psi {
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
+        unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
         std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */
         /**
