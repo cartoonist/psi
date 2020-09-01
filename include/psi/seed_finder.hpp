@@ -106,15 +106,25 @@ namespace psi {
 
         struct ThreadStats {
           private:
+            /* === CONSTANTS === */
+            constexpr static const double GOCC_AVG_NONE = -1;
+            constexpr static const unsigned long long int GOCC_UBOUND = ULLONG_MAX / 2;
+
             /* === DATA MEMBERS === */
             thread_progress_type progress;
             unsigned int chunks_done;
             std::size_t locus_idx;
+            unsigned long long int gocc_sum;  /**< @brief Sum of genome occurrence counts */
+            unsigned long long int gocc_tot;  /**< @brief No. of seeds contributed in the sum */
+            double gocc_avg;  /**< @brief Average seed genome occurrence count */
+            unsigned long long int gocc_skips;  /**< @brief No. of skipped seeds because of high gocc */
+
           public:
             /* === LIFECYCLE === */
             ThreadStats( )
               : progress( thread_progress_type::sleeping ), chunks_done( 0 ),
-                locus_idx( 0 )
+                locus_idx( 0 ), gocc_sum( 0 ), gocc_tot( 0 ), gocc_avg( GOCC_AVG_NONE ),
+                gocc_skips( 0 )
             { }
 
             /* === ACCESSORS === */
@@ -142,6 +152,12 @@ namespace psi {
               return this->locus_idx;
             }
 
+              inline unsigned long long int
+            get_gocc_skips( ) const
+            {
+              return this->gocc_skips;
+            }
+
             /* === MUTATORS === */
               inline void
             set_progress( thread_progress_type value )
@@ -165,6 +181,46 @@ namespace psi {
             set_locus_idx( std::size_t value )
             {
               this->locus_idx = value;
+            }
+
+              inline void
+            set_gocc_skips( unsigned long long int value )
+            {
+              this->gocc_skips = value;
+            }
+
+              inline void
+            inc_gocc_skips( )
+            {
+              ++this->gocc_skips;
+            }
+
+            /* === METHODS === */
+              inline void
+            add_seed_gocc( unsigned long long int count )
+            {
+              if ( this->gocc_sum >= GOCC_UBOUND ) update_avg_seed_gocc();
+              this->gocc_sum += count;
+              this->gocc_tot++;
+            }
+
+              inline void
+            update_avg_seed_gocc()
+            {
+              this->gocc_avg = this->avg_seed_gocc();
+              this->gocc_sum = 0;
+              this->gocc_tot = 0;
+            }
+
+              inline double
+            avg_seed_gocc( ) const
+            {
+              if ( this->gocc_tot != 0 ) {
+                double new_avg = this->gocc_sum / static_cast< double >( this->gocc_tot );
+                if ( this->gocc_avg == GOCC_AVG_NONE ) return new_avg;
+                else return ( this->gocc_avg + new_avg ) / 2.0;
+              }
+              return ( this->gocc_avg != GOCC_AVG_NONE ? this->gocc_avg : 0 );
             }
         };
         typedef std::unordered_map< std::string, ThreadStats > container_type;
@@ -220,6 +276,10 @@ namespace psi {
                       << std::endl;
             std::cout << stats.first << " -- Chunks done: "
                       << stats.second.get_chunks_done() << std::endl;
+            std::cout << stats.first << " -- Average seed genome occurrence count: "
+                      << stats.second.avg_seed_gocc() << std::endl;
+            std::cout << stats.first << " -- Skipped seeds because of high genome occurrence count: "
+                      << stats.second.get_gocc_skips() << std::endl;
             if ( stats.second.get_progress() == thread_progress_type::find_off_paths ) {
               auto loc_idx = stats.second.get_locus_idx();
               auto loc_num = SeedFinderStats::get_instance_ptr()->get_ptr()->get_starting_loci().size();
@@ -426,6 +486,12 @@ namespace psi {
               return 0;
             }
 
+              constexpr inline unsigned long long int
+            get_gocc_skips( ) const
+            {
+              return 0;
+            }
+
             /* === MUTATORS === */
               constexpr inline void
             set_progress( thread_progress_type )
@@ -436,12 +502,33 @@ namespace psi {
             { /* noop */ }
 
               constexpr inline void
-            inc_chunks_done( unsigned int )
+            inc_chunks_done( )
             { /* noop */ }
 
               constexpr inline void
             set_locus_idx( std::size_t )
             { /* noop */ }
+
+              constexpr inline void
+            set_gocc_skips( unsigned long long int )
+            { /* noop */ }
+
+              constexpr inline void
+            inc_gocc_skips( )
+            { /* noop */ }
+
+            /* === METHODS === */
+              constexpr inline void
+            add_seed_gocc( unsigned long long int )
+            { /* noop */}
+
+              constexpr inline void
+            update_avg_seed_gocc()
+            { /* noop  */ }
+
+              constexpr inline double
+            avg_seed_gocc( )
+            { return 0; }
         };
         typedef std::unordered_map< std::string, ThreadStats > container_type;
         typedef typename container_type::size_type size_type;
@@ -624,9 +711,11 @@ namespace psi {
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
+            unsigned int gocc_thr = 0,
             unsigned char mismatches = 0 )
           : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
           seed_mismatches( mismatches ),
+          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
         { }
         /* ====================  ACCESSORS      ====================================== */
@@ -932,7 +1021,8 @@ namespace psi {
             thread_local static const std::string thread_id = get_thread_id();
             thread_local static const std::string timer_id = "seeds-on-paths" + thread_id;
             this->stats_ptr->set_progress( progress_type::ready );
-            this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_on_paths );
+            auto&& thread_stats = this->stats_ptr->get_thread_stats( thread_id );
+            thread_stats.set_progress( thread_progress_type::find_on_paths );
 
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
@@ -948,7 +1038,14 @@ namespace psi {
 
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
-            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len, callback );
+            auto collect_stats =
+                [&thread_stats]( std::size_t count, bool skipped ) {
+                  thread_stats.add_seed_gocc( count );
+                  if ( skipped ) thread_stats.inc_gocc_skips();
+                };
+
+            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len,
+                                callback, this->gocc_threshold, collect_stats );
           }
 
             inline void
@@ -1253,6 +1350,7 @@ namespace psi {
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
+        unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
         std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */
         /**

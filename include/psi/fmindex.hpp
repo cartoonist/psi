@@ -816,6 +816,20 @@ namespace seqan {
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    countOccurrences( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+    {
+      return iter.count();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    countOccurrences( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    {
+      return iter.count();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
     struct Iterator< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
       typedef Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > Type;
     };
