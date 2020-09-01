@@ -34,12 +34,12 @@ SCENARIO ( "Test the Timer", "[stats]" )
     WHEN( "It measures a short time period" )
     {
       {
-        auto timer = Timer< >( "test-timer" );
+        auto timer = Timer< CpuClock >( "test-timer" );
         std::this_thread::sleep_for( 678912us );
       }
       THEN( "It should get the correct duration" )
       {
-        auto d = Timer< >::get_duration_rep( "test-timer" );
+        auto d = Timer< CpuClock >::get_duration_rep( "test-timer" );
         REQUIRE( d == Approx( 0 ).margin( 0.0001 ) );
       }
     }
@@ -47,12 +47,12 @@ SCENARIO ( "Test the Timer", "[stats]" )
     WHEN( "It measures longer time period" )
     {
       {
-        auto timer = Timer< >( "test-timer" );
+        auto timer = Timer< CpuClock >( "test-timer" );
         std::this_thread::sleep_for( 1278912us );
       }
       THEN( "It should get the correct duration" )
       {
-        auto d = Timer< >::get_duration_rep( "test-timer" );
+        auto d = Timer< CpuClock >::get_duration_rep( "test-timer" );
         REQUIRE( d == Approx( 0 ).margin( 0.0001 ) );
       }
     }

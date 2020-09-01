@@ -44,7 +44,7 @@ namespace psi {
   typedef clock_t CpuClock;
   typedef std::chrono::steady_clock SteadyClock;
 
-  template< typename TSpec = CpuClock >
+  template< typename TSpec = SteadyClock >
     class TimerTraits;
 
   template< >
@@ -161,7 +161,7 @@ namespace psi {
    *  Measure the time period between its instantiation and destruction. The timers are
    *  kept in static table hashed by the timer name.
    */
-  template< typename TClock=CpuClock >
+  template< typename TClock = SteadyClock >
     class Timer
     {
       public:
