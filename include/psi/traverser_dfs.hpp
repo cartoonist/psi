@@ -84,6 +84,7 @@ namespace psi {
             // Process the seed hit.
             seqan::String< TSAValue > saPositions = getOccurrences( cstate.iter.get_iter_() );
             typename seqan::Size< decltype( saPositions ) >::Type i;
+            stats_type::inc_total_seeds_off_paths( length( saPositions ) );
             for ( i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;

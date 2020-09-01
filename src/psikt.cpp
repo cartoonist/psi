@@ -60,6 +60,8 @@ template< typename TSeedFinder, typename TSet >
     auto log = get_logger( "main" );
     log->info( "Total number of starting loci: {}", finder.get_starting_loci().size() );
     log->info( "Total number of seeds found: {}", found );
+    log->info( "-> of which found off paths: {}",
+      TSeedFinder::traverser_type::stats_type::get_total_seeds_off_paths() );
     log->info( "Total number of reads covered: {}", covered_reads.size() );
     log->info( "Total number of 'godown' operations: {}",
       TSeedFinder::traverser_type::stats_type::get_total_nof_godowns() );
@@ -156,7 +158,6 @@ template< class TGraph, typename TReadsIndexSpec >
     }
 
     unsigned long long int found = 0;
-    unsigned long long int total_found = 0;
     std::unordered_set< Records< readsstringset_type >::TPosition > covered_reads;
     std::function< void(typename traverser_type::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
@@ -192,31 +193,20 @@ template< class TGraph, typename TReadsIndexSpec >
                    timer_type::get_duration_str(
                        stats_type::get_instance_const_ptr()->get_timer( "seeding",
                                                                         thread_id ) ) );
-        log->info( "Finding seeds on paths..." );
-        /* Find seeds on genome-wide paths. */
-        finder.seeds_on_paths( seeds, seeds_index, write_callback );
+        log->info( "Finding all seeds..." );
+        finder.seeds_all( seeds, seeds_index, traverser, write_callback );
         log->info( "Found seeds on paths in {}.",
                    timer_type::get_duration_str(
                        stats_type::get_instance_const_ptr()->get_timer( "seeds-on-paths",
                                                                         thread_id ) ) );
-        log->info( "Total number of seeds found on paths: {}", found );
-        total_found += found;
-        found = 0;
-        log->info( "Finding seeds off paths..." );
-        /* Find seeds on the graph by traversing starting loci. */
-        finder.setup_traverser( traverser, seeds, seeds_index );
-        finder.seeds_off_paths( traverser, write_callback );
         log->info( "Found seeds off paths in {}.",
                    timer_type::get_duration_str(
                        stats_type::get_instance_const_ptr()->get_timer( "seeds-off-paths",
                                                                         thread_id ) ) );
-        log->info( "Total number of seeds found off paths: {}", found );
-        total_found += found;
-        found = 0;
       }
     }
     log->info( "Found seed in {}.", Timer<>::get_duration_str( "seed-finding" ) );
-    report( finder, covered_reads, total_found );
+    report( finder, covered_reads, found );
   }
 
 

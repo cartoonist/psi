@@ -108,8 +108,18 @@ namespace psi {
   template< typename TSpec = WithStats >
     class TraverserStats
     {
+      private:
+        /* ====================  CONSTANTS     ======================================= */
+        constexpr static const unsigned int RETRY_THRESHOLD = 4;
+        constexpr static const unsigned long int PARTIAL_PATHLEN_SUM_UBOUND = ULONG_MAX - 65536;
+        constexpr static const unsigned long int PLEN_NONE = -1;
       public:
         /* ====================  ACCESSORS     ======================================= */
+        static inline std::atomic_ullong& get_total_seeds_off_paths( )
+        {
+          static std::atomic_ullong total_seeds_off_paths( 0 );
+          return total_seeds_off_paths;
+        }
         static inline std::atomic_ullong& get_total_nof_godowns( )
         {
           static std::atomic_ullong total_nof_godowns( 0 );
@@ -120,15 +130,16 @@ namespace psi {
           static std::atomic_ulong total_nof_paths( 0 );
           return total_nof_paths;
         }
-        static inline std::atomic< double >& get_avg_pathlens( )
-        {
-          static std::atomic< double > avg_pathlens( 0 );
-          std::lock_guard< std::mutex > lock( get_avg_pathlens_mutex() );
-          update_avg_pathlens();
-          return avg_pathlens;
-        }
         /* ====================  METHODS       ======================================= */
-        static inline void inc_total_nof_godowns( unsigned int by=1 )
+        static inline void inc_total_seeds_off_paths( unsigned long long int by=1 )
+        {
+          get_total_seeds_off_paths().fetch_add( by );
+        }
+        static inline void reset_total_seeds_off_paths( )
+        {
+          get_total_seeds_off_paths().store( 0 );
+        }
+        static inline void inc_total_nof_godowns( unsigned long long int by=1 )
         {
           get_total_nof_godowns().fetch_add( by );
         }
@@ -136,35 +147,66 @@ namespace psi {
         {
           get_total_nof_godowns().store( 0 );
         }
-        static inline void inc_total_nof_paths( unsigned int by=1 )
+        static inline void inc_total_nof_paths( unsigned long int by=1 )
         {
           get_total_nof_paths().fetch_add( by );
-          inc_partial_nof_paths();
         }
         static inline void reset_total_nof_paths( )
         {
           get_total_nof_paths().store( 0 );
         }
-        static inline void inc_pathlens_partial_sum( unsigned int by=1 )
+        static inline void add_pathlen( unsigned long int len=1 )
         {
-          std::lock_guard< std::mutex > lock( get_avg_pathlens_mutex() );
-          if ( get_pathlens_partial_sum() > ULONG_MAX - by ) {
-            update_avg_pathlens();
+          unsigned int retry = RETRY_THRESHOLD;
+          while ( true ) {
+            auto peek_sum = get_partial_pathlen_sum().load();
+            if ( peek_sum >= PARTIAL_PATHLEN_SUM_UBOUND ) {
+              UniqWriterLock reducer( get_rws_lock() );
+              if ( reducer ) {
+                update_avg_pathlen();
+              }
+              continue;
+            }
+            {
+              ReaderLock adder( get_rws_lock() );
+              if ( get_partial_pathlen_sum().compare_exchange_weak(
+                       peek_sum,
+                       peek_sum+len,
+                       std::memory_order_release,
+                       std::memory_order_relaxed ) ) {
+                inc_partial_nof_paths();
+                break;
+              }
+            }
+
+            if ( --retry == 0 ) {
+              retry = RETRY_THRESHOLD;
+              std::this_thread::yield();
+            }
           }
-          get_pathlens_partial_sum().fetch_add( by );
-          inc_total_nof_paths();
+        }
+        static inline double compute_avg_pathlen( )
+        {
+          WriterLock lock( get_rws_lock() );
+          update_avg_pathlen();
+          return get_avg_pathlen().load();
         }
       private:
         /* ====================  ACCESSORS     ======================================= */
-        static inline std::mutex& get_avg_pathlens_mutex( )
+        static inline RWSpinLock<>& get_rws_lock( )
         {
-          static std::mutex avg_pathlens_mutex;
-          return avg_pathlens_mutex;
+          static RWSpinLock<> rws_lock;
+          return rws_lock;
         }
-        static inline std::atomic_ulong& get_pathlens_partial_sum( )
+        static inline std::atomic< double >& get_avg_pathlen( )
         {
-          static std::atomic_ulong pathlens_partial_sum( 0 );
-          return pathlens_partial_sum;
+          static std::atomic< double > avg_pathlen( PLEN_NONE );
+          return avg_pathlen;
+        }
+        static inline std::atomic_ulong& get_partial_pathlen_sum( )
+        {
+          static std::atomic_ulong partial_pathlen_sum( 0 );
+          return partial_pathlen_sum;
         }
         static inline std::atomic_ulong& get_partial_nof_paths( )
         {
@@ -172,25 +214,24 @@ namespace psi {
           return partial_nof_paths;
         }
         /* ====================  METHODS       ======================================= */
-        static inline void update_avg_pathlens( )
+        static inline void update_avg_pathlen( )
         {
-          assert( !get_avg_pathlens_mutex().try_lock() );  // should be already locked.
+          assert( !get_rws_lock().acquire_writer_weak() );
+          assert( get_partial_pathlen_sum().load() >= PARTIAL_PATHLEN_SUM_UBOUND );
 
-          if ( get_partial_nof_paths() == 0 ) return;
-
-          std::atomic< double >& avg_pathlens = get_avg_pathlens();
-          double pre_avg_pathlens = avg_pathlens;
-          avg_pathlens = get_pathlens_partial_sum() /
-            static_cast< double >( get_partial_nof_paths() );
-          if ( pre_avg_pathlens != 0 ) {
-            avg_pathlens = ( avg_pathlens + pre_avg_pathlens ) / 2.0;
-          }
+          auto partial_sum = get_partial_pathlen_sum().load();
+          auto partial_total = get_partial_nof_paths().load();
           reset_partial_nof_paths();
-          reset_pathlens_partial_sum();
+          reset_partial_pathlen_sum();
+
+          double pre_avg_pathlen = get_avg_pathlen().load();
+          double new_avg_pathlen = partial_sum / static_cast< double >( partial_total );
+          if ( pre_avg_pathlen == PLEN_NONE ) get_avg_pathlen().store( new_avg_pathlen );
+          else get_avg_pathlen().store( ( new_avg_pathlen + pre_avg_pathlen ) / 2 );
         }
-        static inline void reset_pathlens_partial_sum( )
+        static inline void reset_partial_pathlen_sum( )
         {
-          get_pathlens_partial_sum().store( 0 );
+          get_partial_pathlen_sum().store( 0 );
         }
         static inline void inc_partial_nof_paths( unsigned int by=1 )
         {
@@ -212,15 +253,18 @@ namespace psi {
     {
       public:
         /* ====================  ACCESSORS     ======================================= */
-        static inline unsigned long long int get_total_nof_godowns( ) { return 0; }
-        static inline unsigned long int get_total_nof_paths( ) { return 0; }
-        static inline double get_avg_pathlens( ) { return 0; }
+        constexpr static inline unsigned long long int get_total_seeds_off_paths( ) { return 0; }
+        constexpr static inline unsigned long long int get_total_nof_godowns( ) { return 0; }
+        constexpr static inline unsigned long int get_total_nof_paths( ) { return 0; }
         /* ====================  METHODS       ======================================= */
-        static inline void inc_total_nof_godowns( unsigned int by=1 ) { }
-        static inline void reset_total_nof_godowns( ) { }
-        static inline void inc_total_nof_paths( unsigned int by=1 ) { }
-        static inline void reset_total_nof_paths( ) { }
-        static inline void inc_pathlens_partial_sum( unsigned int by=1 ) { }
+        constexpr static inline void inc_total_seeds_off_paths( unsigned long long int by=1 ) { }
+        constexpr static inline void reset_total_seeds_off_paths( ) { }
+        constexpr static inline void inc_total_nof_godowns( unsigned long long int by=1 ) { }
+        constexpr static inline void reset_total_nof_godowns( ) { }
+        constexpr static inline void inc_total_nof_paths( unsigned long int by=1 ) { }
+        constexpr static inline void reset_total_nof_paths( ) { }
+        constexpr static inline void add_pathlen( unsigned long int len=1 ) { }
+        constexpr static inline double compute_avg_pathlen( ) { return 0; }
     };  /* --- end of template class TraverserStats --- */
 
   /**
