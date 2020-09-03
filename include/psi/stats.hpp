@@ -21,6 +21,7 @@
 
 #include <chrono>
 #include <unordered_map>
+#include <cassert>
 
 #include "base.hpp"
 
@@ -62,23 +63,25 @@ namespace psi {
           TimerTraits::zero_duration.count();
         /* ====================  METHODS       ======================================= */
           static inline duration_type
-        duration( clock_type::time_point end, clock_type::time_point start )
+        duration( clock_type::time_point end, clock_type::time_point start,
+                  duration_type pre_elapsed=zero_duration )
         {
-          return std::chrono::duration_cast< duration_type >( end - start );
+          return std::chrono::duration_cast< duration_type >( end - start ) + pre_elapsed;
         }
 
           static inline rep_type
-        duration_rep( clock_type::time_point end, clock_type::time_point start )
+        duration_rep( clock_type::time_point end, clock_type::time_point start,
+                      duration_type pre_elapsed=zero_duration )
         {
-          return TimerTraits::duration( end, start ).count();
+          return TimerTraits::duration( end, start, pre_elapsed ).count();
         }
 
           static inline std::string
-        duration_str( clock_type::time_point end, clock_type::time_point start )
+        duration_str( clock_type::time_point end, clock_type::time_point start,
+                      duration_type pre_elapsed=zero_duration )
         {
-          return
-            std::to_string( TimerTraits::duration_rep( end, start ) ) + " "
-            + TimerTraits::unit_repr;
+          return std::to_string( TimerTraits::duration_rep( end, start, pre_elapsed ) ) +
+              " " + TimerTraits::unit_repr;
         }
     };  /* ---  end of class TimerTraits  --- */
 
@@ -102,22 +105,25 @@ namespace psi {
         constexpr static const rep_type zero_duration_rep = 0;
         /* ====================  METHODS       ======================================= */
           static inline duration_type
-        duration( clock_type::time_point end, clock_type::time_point start )
+        duration( clock_type::time_point end, clock_type::time_point start,
+                  duration_type pre_elapsed=zero_duration )
         {
-          return static_cast< float >( end - start ) / CLOCKS_PER_SEC;
+          return static_cast< float >( end - start ) / CLOCKS_PER_SEC + pre_elapsed;
         }
 
           static inline rep_type
-        duration_rep( clock_type::time_point end, clock_type::time_point start )
+        duration_rep( clock_type::time_point end, clock_type::time_point start,
+                      duration_type pre_elapsed=zero_duration )
         {
-          return TimerTraits::duration( end, start );
+          return TimerTraits::duration( end, start, pre_elapsed );
         }
 
           static inline std::string
-        duration_str( clock_type::time_point end, clock_type::time_point start )
+        duration_str( clock_type::time_point end, clock_type::time_point start,
+                      duration_type pre_elapsed=zero_duration )
         {
-          return std::to_string( TimerTraits::duration_rep( end, start ) ) + " "
-            + TimerTraits::unit_repr;
+          return std::to_string( TimerTraits::duration_rep( end, start, pre_elapsed ) ) +
+              " " + TimerTraits::unit_repr;
         }
     };  /* ---  end of class TimerTraits  --- */
 
@@ -142,14 +148,32 @@ namespace psi {
           return TimerTraits::zero_duration;
         }
 
+        constexpr static inline duration_type
+        duration( clock_type::time_point, clock_type::time_point, duration_type )
+        {
+          return TimerTraits::zero_duration;
+        }
+
         constexpr static inline rep_type
         duration_rep( clock_type::time_point, clock_type::time_point )
         {
           return TimerTraits::zero_duration_rep;
         }
 
+        constexpr static inline rep_type
+        duration_rep( clock_type::time_point, clock_type::time_point, duration_type )
+        {
+          return TimerTraits::zero_duration_rep;
+        }
+
         constexpr static inline const char*
         duration_str( clock_type::time_point, clock_type::time_point )
+        {
+          return "0";
+        }
+
+        constexpr static inline const char*
+        duration_str( clock_type::time_point, clock_type::time_point, duration_type )
         {
           return "0";
         }
@@ -171,8 +195,13 @@ namespace psi {
         typedef typename traits_type::duration_type duration_type;
         typedef typename traits_type::rep_type rep_type;
         struct TimePeriod {
+          duration_type pre_elapsed;
           typename clock_type::time_point start;
           typename clock_type::time_point end;
+          TimePeriod( ) : pre_elapsed( traits_type::zero_duration ),
+                          start( traits_type::zero_duration ),
+                          end( traits_type::zero_duration )
+          { }
         };
         typedef TimePeriod period_type;
         /* ====================  STATIC DATA   ======================================= */
@@ -190,7 +219,12 @@ namespace psi {
         Timer( const std::string& name )
         {
           this->timer_name = name;
-          get_timers()[ this->timer_name ].start = clock_type::now();
+          auto found = get_timers().find( this->timer_name );
+          if ( found != get_timers().end() ) {
+            assert( found->second.end > found->second.start );
+            found->second.pre_elapsed = get_duration( found->second );
+            found->second.start = clock_type::now();
+          } else get_timers()[ this->timer_name ].start = clock_type::now();
         }  /* -----  end of method Timer  (constructor)  ----- */
 
         /**
@@ -224,7 +258,7 @@ namespace psi {
           static inline duration_type
         get_duration( TimePeriod const& period )
         {
-          return traits_type::duration( period.end, period.start );
+          return traits_type::duration( period.end, period.start, period.pre_elapsed );
         }
 
           static inline duration_type
@@ -244,7 +278,7 @@ namespace psi {
           static inline rep_type
         get_duration_rep( TimePeriod const& period )
         {
-          return traits_type::duration_rep( period.end, period.start );
+          return traits_type::duration_rep( period.end, period.start, period.pre_elapsed );
         }
 
           static inline rep_type
@@ -264,7 +298,7 @@ namespace psi {
           static inline std::string
         get_duration_str( TimePeriod const& period )
         {
-          return traits_type::duration_str( period.end, period.start );
+          return traits_type::duration_str( period.end, period.start, period.pre_elapsed );
         }
 
           static inline std::string
@@ -291,7 +325,7 @@ namespace psi {
           if ( period.end > period.start ) {
             return get_duration( period );
           }
-          return traits_type::duration( clock_type::now(), period.start );
+          return traits_type::duration( clock_type::now(), period.start, period.pre_elapsed );
         }
 
           static inline duration_type
@@ -318,7 +352,7 @@ namespace psi {
           if ( period.end > period.start ) {
             return get_duration_rep( period );
           }
-          return traits_type::duration_rep( clock_type::now(), period.start );
+          return traits_type::duration_rep( clock_type::now(), period.start, period.pre_elapsed );
         }
 
           static inline rep_type
@@ -345,7 +379,7 @@ namespace psi {
           if ( period.end > period.start ) {
             return get_duration_str( period );
           }
-          return traits_type::duration_str( clock_type::now(), period.start );
+          return traits_type::duration_str( clock_type::now(), period.start, period.pre_elapsed );
         }
 
           static inline std::string
