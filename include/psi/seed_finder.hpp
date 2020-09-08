@@ -800,6 +800,15 @@ namespace psi {
           return this->pindex;
         }
 
+        /**
+         * @brief  getter function for stats_ptr.
+         */
+          inline stats_type const&
+        get_stats() const
+        {
+          return *this->stats_ptr;
+        }
+
         /* ====================  MUTATORS       ====================================== */
         /**
          *  @brief  setter function for graph_ptr.
