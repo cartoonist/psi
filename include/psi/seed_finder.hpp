@@ -355,12 +355,21 @@ namespace psi {
         }
 
         /**
-         *  @brief  Get the statistics for thread `t`.
+         *  @brief  Get the statistics for the thread with the given `id`.
          */
           inline ThreadStats&
-        get_thread_stats( std::string const& thread_id )
+        get_thread_stats( std::string const& id )
         {
-          return this->tstats[ thread_id ];
+          return this->tstats[ id ];
+        }
+
+        /**
+         *  @brief  Get the statistics for this thread.
+         */
+          inline ThreadStats&
+        get_this_thread_stats( )
+        {
+          return this->get_thread_stats( this->get_this_thread_id() );
         }
 
         /**
@@ -393,6 +402,13 @@ namespace psi {
         timeit( std::string const& name, std::string const& thread_id ) const
         {
           return timer_type( this->id + name + thread_id );
+        }
+
+        /* timeit thread-safe */
+          inline timer_type
+        timeit_ts( std::string const& name ) const
+        {
+          return this->timeit( name, this->get_this_thread_id() );
         }
 
           inline timer_type
@@ -440,6 +456,14 @@ namespace psi {
                             timer.second ) ) return false;
           }
           return true;
+        }
+      private:
+        /* === METHODS === */
+          inline std::string const&
+        get_this_thread_id() const
+        {
+          thread_local static const std::string thread_id = get_thread_id();
+          return thread_id;
         }
     };  /* --- end of template class SeedFinderStats --- */
 
@@ -600,6 +624,12 @@ namespace psi {
           return this->null_stats;
         }
 
+          inline ThreadStats&
+        get_this_thread_stats( )
+        {
+          return this->null_stats;
+        }
+
           inline container_type
         get_threads_stats( ) const
         {
@@ -624,19 +654,25 @@ namespace psi {
         }
 
           constexpr inline timer_type
+        timeit_ts( std::string const& ) const
+        {
+          return timer_type( );
+        }
+
+          constexpr inline timer_type
         timeit( std::string const& ) const
         {
           return timer_type( );
         }
 
           constexpr inline timer_type::period_type
-        get_timer( std::string const& name ) const
+        get_timer( std::string const& ) const
         {
           return nullptr;
         }
 
           constexpr inline timer_type::period_type
-        get_timer( std::string const& name, std::string const& thread_id ) const
+        get_timer( std::string const&, std::string const& ) const
         {
           return nullptr;
         }
@@ -823,13 +859,9 @@ namespace psi {
           inline readsindex_type
         index_reads( readsrecord_type const& reads ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-          thread_local static const std::string timer_id = "index-reads" + thread_id;
-          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::index_chunk );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::index_chunk );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-reads" );
           return readsindex_type( reads.str );
         }
 
@@ -838,13 +870,9 @@ namespace psi {
         get_seeds( readsrecord_type& seeds, readsrecord_type const& reads,
                    T distance ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-          thread_local static const std::string timer_id = "seeding" + thread_id;
-          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::seed_chunk );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::seed_chunk );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeding" );
           seeding( seeds, reads, this->seed_len, distance );
         }
 
@@ -881,15 +909,10 @@ namespace psi {
               std::function< void( std::string const& ) > info=nullptr,
               std::function< void( std::string const& ) > warn=nullptr )
           {
-            thread_local static const std::string timer_id = "pick-paths" + get_thread_id();
-
             this->stats_ptr->set_progress( progress_type::select_paths );
 
             if ( n == 0 ) return;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "pick-paths" );
 
             this->pindex.reserve( n * this->graph_ptr->get_path_count() );
             auto hp_itr = begin( *this->graph_ptr, Haplotyper<>() );
@@ -911,12 +934,8 @@ namespace psi {
         inline void
         index_paths( )
         {
-          thread_local static const std::string timer_id = "index-paths" + get_thread_id();
           this->stats_ptr->set_progress( progress_type::create_index );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-paths" );
           this->pindex.create_index();
         }
 
@@ -953,13 +972,9 @@ namespace psi {
         inline bool
         serialize_path_index_only( std::string const& fpath )
         {
-          thread_local static const std::string timer_id = "save-paths" + get_thread_id();
           this->stats_ptr->set_progress( progress_type::write_index );
           if ( fpath.empty() ) return false;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-paths" );
           return this->pindex.serialize( fpath );
         }
 
@@ -1018,10 +1033,8 @@ namespace psi {
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
-            thread_local static const std::string thread_id = get_thread_id();
-            thread_local static const std::string timer_id = "seeds-on-paths" + thread_id;
             this->stats_ptr->set_progress( progress_type::ready );
-            auto&& thread_stats = this->stats_ptr->get_thread_stats( thread_id );
+            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
             thread_stats.set_progress( thread_progress_type::find_on_paths );
 
             auto context = this->pindex.get_context();
@@ -1031,10 +1044,7 @@ namespace psi {
 
             if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeds-on-paths" );
 
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
@@ -1051,8 +1061,6 @@ namespace psi {
             inline void
           add_uncovered_loci( unsigned int step=1 )
           {
-            thread_local static const std::string timer_id = "find-uncovered" + get_thread_id();
-
             this->stats_ptr->set_progress( progress_type::find_uncovered );
 
             auto&& pathset = this->pindex.get_paths_set();
@@ -1062,10 +1070,7 @@ namespace psi {
               return;
             }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "find-uncovered" );
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
             auto bt_end = end( *this->graph_ptr, Backtracker() );
@@ -1121,12 +1126,7 @@ namespace psi {
           // TODO: Add documentation.
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph.
-          thread_local static const std::string timer_id = "find-uncovered" + get_thread_id();
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "find-uncovered" );
 
           auto bfs_itr = begin( *this->graph_ptr,  BFS() );
           auto bfs_end = end( *this->graph_ptr,  BFS() );
@@ -1168,13 +1168,8 @@ namespace psi {
             inline unsigned long long int
           nof_uncovered_kmers( PathSet< TPath, TSpec >& paths, unsigned int k )
           {
-            thread_local static const std::string timer_id = "count-uncovered-kmer" + get_thread_id();
-
             if ( this->starting_loci.size() == 0 ) return 0;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "count-uncovered-kmer" );
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
             auto bt_end = end( *this->graph_ptr, Backtracker() );
@@ -1287,7 +1282,8 @@ namespace psi {
         }
 
           inline void
-        setup_traverser( traverser_type& traverser, readsrecord_type const& reads, readsindex_type& reads_index ) const
+        setup_traverser( traverser_type& traverser, readsrecord_type const& reads,
+                         readsindex_type& reads_index ) const
         {
           traverser.set_reads( &reads );
           traverser.set_reads_index( &reads_index );
@@ -1297,15 +1293,11 @@ namespace psi {
         seeds_off_paths( traverser_type& traverser,
                          std::function< void( typename traverser_type::output_type const& ) > callback ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-          thread_local static const std::string timer_id = "seeds-off-path" + thread_id;
           this->stats_ptr->set_progress( progress_type::ready );
-          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_off_paths);
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::find_off_paths );
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeds-off-path" );
 
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
@@ -1314,7 +1306,7 @@ namespace psi {
             if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
 
             traverser.run( callback );
-            this->stats_ptr->get_thread_stats( thread_id ).set_locus_idx( idx );
+            this->stats_ptr->get_this_thread_stats().set_locus_idx( idx );
           }
         }
 
@@ -1322,12 +1314,10 @@ namespace psi {
         seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
                    std::function< void(typename traverser_type::output_type const &) > callback ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-
           this->seeds_on_paths( reads, reads_index, callback );
           this->setup_traverser( traverser, reads, reads_index );
           this->seeds_off_paths( traverser, callback );
-          this->stats_ptr->get_thread_stats( thread_id ).inc_chunks_done( );
+          this->stats_ptr->get_this_thread_stats().inc_chunks_done( );
         }
 
           inline void
@@ -1335,12 +1325,10 @@ namespace psi {
                    std::function< void(typename traverser_type::output_type const &) > callback1,
                    std::function< void(typename traverser_type::output_type const &) > callback2 ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-
           this->seeds_on_paths( reads, reads_index, callback1 );
           this->setup_traverser( traverser, reads, reads_index );
           this->seeds_off_paths( traverser, callback2 );
-          this->stats_ptr->get_thread_stats( thread_id ).inc_chunks_done( );
+          this->stats_ptr->get_this_thread_stats().inc_chunks_done( );
         }
 
       private:
