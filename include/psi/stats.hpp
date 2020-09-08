@@ -195,6 +195,8 @@ namespace psi {
         typedef typename traits_type::duration_type duration_type;
         typedef typename traits_type::rep_type rep_type;
         struct TimePeriod {
+          typedef Timer timer_type;
+
           duration_type pre_elapsed;
           typename clock_type::time_point start;
           typename clock_type::time_point end;
@@ -202,6 +204,44 @@ namespace psi {
                           start( traits_type::zero_duration ),
                           end( traits_type::zero_duration )
           { }
+
+          /**
+           *  @brief  Get the measured duration.
+           */
+            inline duration_type
+          duration( ) const
+          {
+            return traits_type::duration( this->end, this->start, this->pre_elapsed );
+          }
+
+          /**
+           *  @brief  Get the measured duration (arithmetic representation).
+           */
+            inline rep_type
+          rep( ) const
+          {
+            return traits_type::duration_rep( this->end, this->start, this->pre_elapsed );
+          }
+
+          /**
+           *  @brief  Get the measured duration (string representation).
+           */
+            inline std::string
+          str( ) const
+          {
+            return traits_type::duration_str( this->end, this->start, this->pre_elapsed );
+          }
+
+          /**
+           *  @brief  Get time lap for an ongoing timer.
+           */
+            inline TimePeriod
+          get_lap( ) const
+          {
+            TimePeriod period( *this );
+            if ( period.end <= period.start ) period.end = clock_type::now();
+            return period;
+          }
         };
         typedef TimePeriod period_type;
         /* ====================  STATIC DATA   ======================================= */
@@ -222,7 +262,7 @@ namespace psi {
           auto found = get_timers().find( this->timer_name );
           if ( found != get_timers().end() ) {
             assert( found->second.end > found->second.start );
-            found->second.pre_elapsed = get_duration( found->second );
+            found->second.pre_elapsed = found->second.duration();
             found->second.start = clock_type::now();
           } else get_timers()[ this->timer_name ].start = clock_type::now();
         }  /* -----  end of method Timer  (constructor)  ----- */
@@ -256,15 +296,9 @@ namespace psi {
          *  Get the duration represented by the timer.
          */
           static inline duration_type
-        get_duration( TimePeriod const& period )
-        {
-          return traits_type::duration( period.end, period.start, period.pre_elapsed );
-        }
-
-          static inline duration_type
         get_duration( const std::string& name )
         {
-          return get_duration( get_timers()[ name ] );
+          return get_timers()[ name ].duration();
         }  /* -----  end of method get_duration  ----- */
 
         /**
@@ -276,15 +310,9 @@ namespace psi {
          *  Get the arithmetic representation of the requested timer duration.
          */
           static inline rep_type
-        get_duration_rep( TimePeriod const& period )
-        {
-          return traits_type::duration_rep( period.end, period.start, period.pre_elapsed );
-        }
-
-          static inline rep_type
         get_duration_rep( const std::string& name )
         {
-          return get_duration_rep( get_timers()[ name ] );
+          return get_timers()[ name ].rep();
         }  /* -----  end of method get_duration  ----- */
 
         /**
@@ -296,15 +324,9 @@ namespace psi {
          *  Get the string representation of the requested timer duration.
          */
           static inline std::string
-        get_duration_str( TimePeriod const& period )
-        {
-          return traits_type::duration_str( period.end, period.start, period.pre_elapsed );
-        }
-
-          static inline std::string
         get_duration_str( const std::string& name )
         {
-          return get_duration_str( get_timers()[ name ] );
+          return get_timers()[ name ].str();
         }  /* -----  end of method get_duration  ----- */
 
         /**
@@ -312,80 +334,38 @@ namespace psi {
          *
          *  @param  name The name of the timer.
          *  @return the duration since 'start' to 'now' if the timer is not finished;
-         *          otherwise it returns the duration of the timer by calling method
-         *          `get_duration`.
-         *
-         *  It first checks if the timer specified by its `name` is finished or not. If
-         *  so, it return the duration by calling `get_duration` method. Otherwise, it
-         *  returns the duration between start time to 'now'.
+         *          otherwise it returns the duration of the timer.
          */
           static inline duration_type
-        get_lap( TimePeriod const& period )
+        get_lap_duration( const std::string& name )
         {
-          if ( period.end > period.start ) {
-            return get_duration( period );
-          }
-          return traits_type::duration( clock_type::now(), period.start, period.pre_elapsed );
-        }
-
-          static inline duration_type
-        get_lap( const std::string& name )
-        {
-          return get_lap( get_timers()[ name ] );
+          return get_timers()[ name ].get_lap().duration();
         }  /* -----  end of method get_lap  ----- */
 
         /**
-         *  @brief  Get time lap for an ongoing timer.
+         *  @brief  Get time lap for an ongoing timer (arithmetic representation).
          *
          *  @param  name The name of the timer.
          *  @return the duration since 'start' to 'now' if the timer is not finished;
-         *          otherwise it returns the duration of the timer by calling method
-         *          `get_duration`.
-         *
-         *  It first checks if the timer specified by its `name` is finished or not. If
-         *  so, it return the duration by calling `get_duration` method. Otherwise, it
-         *  returns the duration between start time to 'now'.
+         *          otherwise it returns the duration of the timer.
          */
-          static inline rep_type
-        get_lap_rep( TimePeriod const& period )
-        {
-          if ( period.end > period.start ) {
-            return get_duration_rep( period );
-          }
-          return traits_type::duration_rep( clock_type::now(), period.start, period.pre_elapsed );
-        }
-
           static inline rep_type
         get_lap_rep( const std::string& name )
         {
-          return get_lap_rep( get_timers()[ name ] );
+          return get_timers()[ name ].get_lap().rep();
         }  /* -----  end of method get_lap  ----- */
 
         /**
-         *  @brief  Get time lap for an ongoing timer.
+         *  @brief  Get time lap for an ongoing timer (string representation).
          *
          *  @param  name The name of the timer.
          *  @return the duration since 'start' to 'now' if the timer is not finished;
-         *          otherwise it returns the duration of the timer by calling method
-         *          `get_duration`.
-         *
-         *  It first checks if the timer specified by its `name` is finished or not. If
-         *  so, it return the duration by calling `get_duration` method. Otherwise, it
-         *  returns the duration between start time to 'now'.
+         *          otherwise it returns the duration of the timer.
          */
-          static inline std::string
-        get_lap_str( TimePeriod const& period )
-        {
-          if ( period.end > period.start ) {
-            return get_duration_str( period );
-          }
-          return traits_type::duration_str( clock_type::now(), period.start, period.pre_elapsed );
-        }
-
           static inline std::string
         get_lap_str( const std::string& name )
         {
-          return get_lap_str( get_timers()[ name ] );
+          return get_timers()[ name ].get_lap().str();
         }  /* -----  end of method get_lap  ----- */
       protected:
         /* ====================  DATA MEMBERS  ======================================= */
@@ -398,54 +378,65 @@ namespace psi {
     public:
       /* === TYPE MEMBERS === */
       typedef TimerTraits< void > traits_type;
-      typedef void* period_type;
+      typedef typename traits_type::clock_type clock_type;
+      typedef typename traits_type::duration_type duration_type;
+      typedef typename traits_type::rep_type rep_type;
+      struct TimePeriod {
+        typedef Timer timer_type;
+
+          constexpr inline duration_type
+        duration( ) const
+        {
+          return traits_type::zero_duration;
+        }
+
+          constexpr inline rep_type
+        rep( ) const
+        {
+          return traits_type::zero_duration_rep;
+        }
+
+          constexpr inline const char*
+        str( ) const
+        {
+          return "0";
+        }
+
+          constexpr inline TimePeriod
+        get_lap( ) const
+        {
+          return TimePeriod();
+        }
+      };
+      typedef TimePeriod period_type;
       /* === LIFECYCLE === */
       Timer( std::string const& ) { }
       Timer( ) { }
       /* === METHODS === */
-      constexpr static inline traits_type::duration_type get_duration( period_type )
+      static inline std::unordered_map< std::string, TimePeriod >
+      get_timers( )
+      {
+        return std::unordered_map< std::string, TimePeriod >{};
+      }
+      constexpr static inline duration_type get_duration( const std::string& )
       {
         return traits_type::zero_duration;
       }
-      constexpr static inline traits_type::duration_type get_duration( const std::string& )
-      {
-        return traits_type::zero_duration;
-      }
-      constexpr static inline traits_type::rep_type get_duration_rep( period_type )
+      constexpr static inline rep_type get_duration_rep( const std::string& )
       {
         return traits_type::zero_duration_rep;
-      }
-      constexpr static inline traits_type::rep_type get_duration_rep( const std::string& )
-      {
-        return traits_type::zero_duration_rep;
-      }
-      constexpr static inline const char* get_duration_str( period_type )
-      {
-        return "0";
       }
       constexpr static inline const char* get_duration_str( const std::string& )
       {
         return "0";
       }
-      constexpr static inline traits_type::duration_type get_lap( period_type )
+      constexpr static inline duration_type get_lap_duration( const std::string& )
       {
         return traits_type::zero_duration;
       }
-      constexpr static inline traits_type::duration_type get_lap( const std::string& )
-      {
-        return traits_type::zero_duration;
-      }
-      constexpr static inline traits_type::rep_type get_lap_rep( period_type )
+      constexpr static inline rep_type get_lap_rep( const std::string& )
       {
         return traits_type::zero_duration_rep;
-      }
-      constexpr static inline traits_type::rep_type get_lap_rep( const std::string& )
-      {
-        return traits_type::zero_duration_rep;
-      }
-      constexpr static inline const char* get_lap_str( period_type )
-      {
-        return "0";
       }
       constexpr static inline const char* get_lap_str( const std::string& )
       {

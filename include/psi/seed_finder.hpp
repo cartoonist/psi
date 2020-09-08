@@ -296,7 +296,7 @@ namespace psi {
                 stats.first,
                 [&stats]( auto name, auto period ) {
                   std::cout << stats.first << " -- Timer '" << name << "': "
-                            << timer_type::get_lap_str( period ) << std::endl;
+                            << period.get_lap().str() << std::endl;
                   return true;
                 } );
             std::cout << std::endl;
@@ -310,7 +310,7 @@ namespace psi {
                   first = false;
                 }
                 std::cout << "Timer '" << name << "': "
-                          << timer_type::get_lap_str( period ) << std::endl;
+                          << period.get_lap().str() << std::endl;
                 return true;
               } );
           if ( !first ) {
@@ -668,13 +668,13 @@ namespace psi {
           constexpr inline timer_type::period_type
         get_timer( std::string const& ) const
         {
-          return nullptr;
+          return timer_type::period_type();
         }
 
           constexpr inline timer_type::period_type
         get_timer( std::string const&, std::string const& ) const
         {
-          return nullptr;
+          return timer_type::period_type();
         }
 
         template< typename TCallback >
