@@ -1060,6 +1060,8 @@ namespace psi {
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
+            thread_local std::string occ_tmpfile = get_tmpfile( "/ocs" );
+
             this->stats_ptr->set_progress( progress_type::ready );
             auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
             thread_stats.set_progress( thread_progress_type::find_on_paths );
@@ -1075,9 +1077,12 @@ namespace psi {
 
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
+
+            std::ofstream ofs( occ_tmpfile, std::ofstream::app );
             auto collect_stats =
-                [&thread_stats]( std::size_t count, bool skipped ) {
+                [&thread_stats, &ofs]( std::size_t count, bool skipped ) {
                   thread_stats.add_seed_gocc( count );
+                  ofs << count << std::endl;
                   if ( skipped ) thread_stats.inc_gocc_skips();
                 };
 
