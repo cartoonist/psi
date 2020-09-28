@@ -33,6 +33,7 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
+    indexRequire( index, seqan::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
@@ -89,6 +90,7 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
+    indexRequire( index, seqan::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
@@ -154,6 +156,7 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index( text );
+    indexRequire( index, seqan::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
@@ -216,6 +219,7 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index( text );
+    indexRequire( index, seqan::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {

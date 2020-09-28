@@ -379,9 +379,9 @@ namespace seqan {
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
-        Finder( index_type* i_p )
+        Finder( index_type const* i_p )
           : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), initiated( false ) {}
-        Finder( index_type& i )
+        Finder( index_type const& i )
           : Finder( &i ) {}
         /* ====================  OPERATORS     ======================================= */
           inline Finder&
@@ -449,7 +449,7 @@ namespace seqan {
           }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
-        index_type* index_p;
+        index_type const* index_p;
         savalue_type occ_cur;
         savalue_type occ_end;
         bool initiated;
