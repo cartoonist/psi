@@ -1085,6 +1085,25 @@ namespace psi {
                                 callback, this->gocc_threshold, collect_stats );
           }
 
+          template< typename TString >
+          inline void
+          seeds_on_paths( TString const& sequence,
+                          std::function< void(typename traverser_type::output_type const &) > callback ) const
+          {
+            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
+            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+
+            this->stats_ptr->set_progress( progress_type::ready );
+
+            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-paths" );
+
+            TPIterator piter( this->pindex.index );
+            find_mems( sequence, piter, &this->pindex, this->seed_len, callback,
+                       this->gocc_threshold );
+          }
+
             inline void
           add_uncovered_loci( unsigned int step=1 )
           {

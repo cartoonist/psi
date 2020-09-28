@@ -777,6 +777,40 @@ namespace psi {
       } while ( plen + 1 > 0 );
     }
 
+  template< typename TString, typename TIndex, typename TRecords, typename TCallback >
+      inline void
+    find_mems( TString const& pattern,
+               IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > >& idx_itr,
+               const TRecords* pathset,
+               unsigned int minlen,
+               TCallback callback,
+               unsigned int gocc_threshold = 0 )
+    {
+      typedef typename Direction< TRecords >::Type TPathDir;
+
+      if ( gocc_threshold == 0 ) {
+        gocc_threshold = std::numeric_limits< decltype( gocc_threshold ) >::max();
+      }
+
+      unsigned int plen = 0;
+      while( plen < minlen || countOccurrences( idx_itr.get_iter_() ) > gocc_threshold ) {
+        if ( !go_down( idx_itr, pattern[ plen ] ) ) return;
+      }
+
+      using seqan::length;
+
+      auto const& occs = get_occurrences_stree( idx_itr );
+
+      Seed<> hit;
+      for ( unsigned int i = 0; i < length( occs ); ++i ) {
+          auto oc = _map_occurrences( occs[i], plen, TPathDir() );
+          hit.node_id = position_to_id( *pathset, oc );
+          hit.node_offset = position_to_offset( *pathset, oc );
+          hit.read_offset = 0;
+          callback( hit );
+      }
+    }
+
   template< typename TIndex, typename TRecords1, typename TRecordsIter, typename TCallback >
       inline void
     kmer_exact_matches( TIndex& paths_index, const TRecords1* pathset,
