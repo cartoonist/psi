@@ -41,6 +41,7 @@ namespace psi {
     offset_type node_offset;                      /**< @brief Graph node offset. */
     id_type read_id;                              /**< @brief Read id. */
     offset_type read_offset;                      /**< @brief Read offset. */
+    offset_type match_len;                        /**< @brief Seed match length. */
   };  /* --- end of class Seed --- */
 }  /* --- end of namespace psi --- */
 

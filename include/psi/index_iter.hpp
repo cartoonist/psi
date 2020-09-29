@@ -839,6 +839,7 @@ namespace psi {
           hit.node_id = position_to_id( *pathset, oc );
           hit.node_offset = position_to_offset( *pathset, oc );
           hit.read_offset = 0;
+          hit.match_len = plen;
           callback( hit );
       }
     }
