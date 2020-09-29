@@ -644,11 +644,43 @@ namespace psi {
       return TOccurrence( oc );
     }
 
+  /**
+   *  @brief  Adjust occurrence positions based on the text direction of the underlying index.
+   *
+   *  @param oc  occurrence position of a pattern.
+   *  @param len the length of the occurrence.
+   *  @param tag Reverse direction tag.
+   *
+   *  The occurrence position of a pattern in the path set would be a pair `(i, o)`
+   *  where the pattern occurs in path with id `i` at offset `o`. If the path sequences
+   *  are reversed, the position points at the end of pattern occurrence in reversed
+   *  sequence; e.g.:
+   *
+   *  The pattern 'ttc' is found in the reversed sequence:
+   *         0123 456 7890123
+   *         acga ctt taggtcc
+   *
+   *  The reported occurrence offset would be 4 while the actual offset would be 7; i.e.
+   *
+   *     offset_{fwd,start} = | sequence | - offset_{rev,end} + 1
+   *     offset_{fwd,start} = 14 - 6 - 1 = 7
+   *
+   *  where
+   *
+   *     offset_{rev,end} = offset_{rev,start} + | pattern | - 1
+   *     offset_{rev,end} = 4 + 3 - 1 = 6
+   *
+   *  The first part are calculated in `position_to_offset` interface functions since
+   *  the length of the sequence is only known there. The second part is done in this
+   *  function.
+   *
+   *  NOTE: If the text direction is forward, nothing needs to be done.
+   */
   template< typename TOccurrence >
       inline TOccurrence
-    _map_occurrences( TOccurrence const& oc, unsigned int k, Reversed )
+    _map_occurrences( TOccurrence const& oc, unsigned int len, Reversed /* tag */ )
     {
-      return TOccurrence( oc.i1, oc.i2 + k - 1 );  /**< @brief End position of the occurrence. */
+      return TOccurrence( oc.i1, oc.i2 + len - 1 );  /**< @brief End position of the occurrence. */
     }
 
   template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
