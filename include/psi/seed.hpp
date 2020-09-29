@@ -42,6 +42,7 @@ namespace psi {
     id_type read_id;                              /**< @brief Read id. */
     offset_type read_offset;                      /**< @brief Read offset. */
     offset_type match_len;                        /**< @brief Seed match length. */
+    offset_type gocc;                             /**< @brief Genome occurrence count. */
   };  /* --- end of class Seed --- */
 }  /* --- end of namespace psi --- */
 
