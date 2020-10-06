@@ -71,6 +71,10 @@ namespace psi {
     go_up( IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
 
   template< typename TIndex, typename TSpec >
+      void
+    go_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
+
+  template< typename TIndex, typename TSpec >
       bool
     go_right( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
@@ -112,6 +116,9 @@ namespace psi {
       friend bool
         go_up< TIndex >(
             IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
+
+      friend void
+        go_root< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
       friend bool
         go_right< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
@@ -368,6 +375,21 @@ namespace psi {
       return goUp( iterator );
     }
 
+  template< typename TIndex, typename TSpec >
+      inline void
+    go_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
+    {
+      seqan::goRoot( iterator.iter_ );
+      iterator.boffset = 0;
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline void
+    go_root( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+    {
+      goRoot( iterator );
+    }
+
   /**
    *  @brief  Go right (a sibling node) in the virtual suffix tree.
    *
@@ -448,6 +470,20 @@ namespace psi {
     rep_length( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       return repLength( iterator );
+    }
+
+  template< typename TIndex, typename TSpec >
+      typename seqan::Size< TIndex >::Type
+    count_occurrences( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
+    {
+      return countOccurrences( iterator.get_iter_() );
+    }
+
+  template< typename TIndex, typename TSpec >
+      inline auto
+    get_occurrences( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
+    {
+      return getOccurrences( iterator.get_iter_() );
     }
   /* Typedefs  ------------------------------------------------------------------- */
 
@@ -804,7 +840,7 @@ namespace psi {
           if ( !go_down( snd_itr, seed[plen] ) ) break;
         }
         if ( plen == k ) {
-          auto count = countOccurrences( fst_itr.get_iter_() );
+          auto count = count_occurrences( fst_itr );
           if ( count <= gocc_threshold ) {
             collect_stats( count, false );
             _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
