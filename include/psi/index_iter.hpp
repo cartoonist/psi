@@ -857,6 +857,7 @@ namespace psi {
                IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > >& idx_itr,
                const TRecords* pathset,
                unsigned int minlen,
+               unsigned int context,
                TCallback callback,
                unsigned int gocc_threshold = 0 )
     {
@@ -868,30 +869,33 @@ namespace psi {
 
       unsigned int start = 0;
       unsigned int plen = 0;
-      while( plen < minlen || countOccurrences( idx_itr.get_iter_() ) > gocc_threshold ) {
-        if ( start + plen >= pattern.size() ) return;
-        if ( !go_down( idx_itr, pattern[ start + plen ] ) ) {
+      bool has_hit = false;
+      while( start + plen < pattern.size() ) {
+        if ( plen >= minlen && count_occurrences( idx_itr ) <= gocc_threshold ) {
+          using seqan::length;
+
+          has_hit = true;
+          auto const& occs = get_occurrences( idx_itr );
+          Seed<> hit;
+          for ( unsigned int i = 0; i < length( occs ); ++i ) {
+            auto oc = _map_occurrences( occs[i], plen, TPathDir() );
+            hit.node_id = position_to_id( *pathset, oc );
+            hit.node_offset = position_to_offset( *pathset, oc );
+            hit.read_offset = start;
+            hit.match_len = plen;
+            hit.gocc = length( occs );
+            callback( hit );
+          }
+        }
+        if ( has_hit /*|| plen > context*/ ||
+             !go_down( idx_itr, pattern[ start + plen ] ) ) {
           go_root( idx_itr );
           start = start + plen + 1;
           plen = 0;
+          has_hit = false;
           continue;
         }
         ++plen;
-      }
-
-      using seqan::length;
-
-      auto const& occs = get_occurrences_stree( idx_itr );
-
-      Seed<> hit;
-      for ( unsigned int i = 0; i < length( occs ); ++i ) {
-          auto oc = _map_occurrences( occs[i], plen, TPathDir() );
-          hit.node_id = position_to_id( *pathset, oc );
-          hit.node_offset = position_to_offset( *pathset, oc );
-          hit.read_offset = start;
-          hit.match_len = plen;
-          hit.gocc = length( occs );
-          callback( hit );
       }
     }
 

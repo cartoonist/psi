@@ -1100,7 +1100,8 @@ namespace psi {
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-paths" );
 
             TPIterator piter( this->pindex.index );
-            find_mems( sequence, piter, &this->pindex, this->seed_len, callback,
+            auto context = this->pindex.get_context();
+            find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
                        this->gocc_threshold );
           }
 
