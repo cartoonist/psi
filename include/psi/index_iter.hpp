@@ -866,9 +866,17 @@ namespace psi {
         gocc_threshold = std::numeric_limits< decltype( gocc_threshold ) >::max();
       }
 
+      unsigned int start = 0;
       unsigned int plen = 0;
       while( plen < minlen || countOccurrences( idx_itr.get_iter_() ) > gocc_threshold ) {
-        if ( !go_down( idx_itr, pattern[ plen ] ) ) return;
+        if ( start + plen >= pattern.size() ) return;
+        if ( !go_down( idx_itr, pattern[ start + plen ] ) ) {
+          go_root( idx_itr );
+          start = start + plen + 1;
+          plen = 0;
+          continue;
+        }
+        ++plen;
       }
 
       using seqan::length;
@@ -880,7 +888,7 @@ namespace psi {
           auto oc = _map_occurrences( occs[i], plen, TPathDir() );
           hit.node_id = position_to_id( *pathset, oc );
           hit.node_offset = position_to_offset( *pathset, oc );
-          hit.read_offset = 0;
+          hit.read_offset = start;
           hit.match_len = plen;
           hit.gocc = length( occs );
           callback( hit );
