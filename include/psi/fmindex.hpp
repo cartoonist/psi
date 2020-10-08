@@ -526,6 +526,146 @@ namespace seqan {
       finder.clear();
     }
 
+  template< typename TIndex, typename TSpec >
+    class IterHistory;
+
+  template< typename TIndex >
+    class IterHistory< TIndex, TopDown< ParentLinks<> > > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef TIndex index_type;
+        typedef typename index_type::savalue_type savalue_type;
+        typedef typename index_type::range_type range_type;
+        typedef range_type value_type;
+        typedef std::vector< value_type > container_type;
+        typedef typename container_type::size_type size_type;
+        typedef typename container_type::const_reference const_reference;
+        typedef typename container_type::reference reference;
+        /* ====================  METHODS       ======================================= */
+          inline size_type
+        size( ) const
+        {
+          return this->stack.size();
+        }
+
+          inline bool
+        empty( ) const
+        {
+          return this->size() == 0;
+        }
+
+          inline const_reference
+        back( ) const
+        {
+          return this->stack.back();
+        }
+
+          inline reference
+        back( )
+        {
+          return this->stack.back();
+        }
+
+          inline void
+        push_back( value_type const& range )
+        {
+          this->stack.push_back( range );
+        }
+
+          inline void
+        pop_back( )
+        {
+          this->stack.pop_back();
+        }
+
+          inline void
+        reserve( size_type size )
+        {
+          this->stack.reserve( size );
+        }
+
+          inline void
+        clear( )
+        {
+          this->stack.clear();
+        }
+
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        container_type stack;
+    };
+
+  template< typename TIndex >
+    class IterHistory< TIndex, TopDown<> > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef TIndex index_type;
+        typedef typename index_type::savalue_type savalue_type;
+        typedef typename index_type::range_type range_type;
+        typedef range_type value_type;
+        typedef IterHistory container_type;
+        typedef std::size_t size_type;
+        typedef value_type const& const_reference;
+        typedef value_type& reference;
+        /* ====================  CONSTANTS     ======================================= */
+        constexpr static range_type EMPTY_RANGE = { 1, 0 };
+        /* ====================  LIFECYCLE     ======================================= */
+        IterHistory( ) : last( IterHistory::EMPTY_RANGE ) { }
+        /* ====================  METHODS       ======================================= */
+          inline bool
+        empty( ) const
+        {
+          return last.first > last.second;
+        }
+
+          inline size_type
+        size( ) const
+        {
+          return static_cast< size_type >( !this->empty() );
+        }
+
+          inline const_reference
+        back( ) const
+        {
+          assert( !this->empty() );
+          return last;
+        }
+
+          inline reference
+        back( )
+        {
+          assert( !this->empty() );
+          return last;
+        }
+
+          inline void
+        push_back( value_type const& range )
+        {
+          this->last = range;
+        }
+
+          constexpr inline void
+        pop_back( )
+        {
+          assert( !this->empty() );
+          this->last = IterHistory::EMPTY_RANGE;
+        }
+
+          inline void
+        reserve( size_type )
+        { /* noop */ }
+
+          inline void
+        clear( )
+        {
+          this->last = IterHistory::EMPTY_RANGE;
+        }
+
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        range_type last;
+    };
+
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
     class Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
       public:
@@ -540,6 +680,7 @@ namespace seqan {
         typedef typename index_type::comp_char_type comp_char_type;
         typedef typename index_type::range_type range_type;
         typedef typename std::vector< pos_type > occs_type;
+        typedef IterHistory< index_type, TopDown< TSpec > > history_type;
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
@@ -773,7 +914,7 @@ namespace seqan {
         savalue_type occ_end;
         savalue_type depth;
         bool initialized;
-        std::vector< range_type > history;
+        history_type history;
     };
 
   template< typename TIterator, typename TSAValue >
