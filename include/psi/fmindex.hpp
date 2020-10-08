@@ -88,6 +88,7 @@ namespace seqan {
         typedef typename value_type::index_category index_category;
         typedef char char_type;
         typedef typename value_type::comp_char_type comp_char_type;
+        typedef typename std::pair< savalue_type, savalue_type > range_type;
         /* ====================  LIFECYCLE     ======================================= */
         Index ( )
           : text_p( nullptr ), owner( true ) { }
@@ -376,6 +377,7 @@ namespace seqan {
         typedef typename index_type::index_category index_category;
         typedef typename index_type::char_type char_type;
         typedef typename index_type::comp_char_type comp_char_type;
+        typedef typename index_type::range_type range_type;
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
@@ -530,8 +532,8 @@ namespace seqan {
         typedef typename index_type::index_category index_category;
         typedef typename index_type::char_type char_type;
         typedef typename index_type::comp_char_type comp_char_type;
+        typedef typename index_type::range_type range_type;
         typedef typename std::vector< pos_type > occs_type;
-        typedef typename std::pair< savalue_type, savalue_type > range_type;
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
