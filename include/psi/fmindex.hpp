@@ -380,7 +380,8 @@ namespace seqan {
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
         Finder( index_type const* i_p )
-          : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), initiated( false ) {}
+          : index_p( i_p ), occ_cur( 0 ), occ_end( this->index_p->size()-1 ),
+            initiated( false ) {}
         Finder( index_type const& i )
           : Finder( &i ) {}
         /* ====================  OPERATORS     ======================================= */
@@ -415,7 +416,7 @@ namespace seqan {
         clear( )
         {
           this->occ_cur = 0;
-          this->occ_end = 0;
+          this->occ_end = this->index_p->size()-1;
           this->initiated = false;
         }
 
@@ -438,16 +439,28 @@ namespace seqan {
           backward_search( TIter pt_begin, TIter pt_end )
           {
             indexRequire( *(this->index_p), FibreSALF() );
-            this->occ_cur = 0;
-            this->occ_end = this->index_p->size()-1;
             while ( pt_begin < pt_end && this->occ_cur <= this->occ_end ) {
               --pt_end;
-              sdsl::backward_search( this->index_p->fm, this->occ_cur, this->occ_end,
-                  (char)*pt_end, this->occ_cur, this->occ_end);
+              this->_backward_search( (char)*pt_end );
             }
             this->initiated = true;
           }
+
+          inline void
+        backward_search( char c )
+        {
+          indexRequire( *(this->index_p), FibreSALF() );
+          this->_backward_search( c );
+          this->initiated = true;
+        }
       private:
+        /* ====================  METHODS       ======================================= */
+          inline void
+        _backward_search( char c )
+        {
+          sdsl::backward_search( this->index_p->fm, this->occ_cur, this->occ_end,
+                                 c, this->occ_cur, this->occ_end);
+        }
         /* ====================  DATA MEMBERS  ======================================= */
         index_type const* index_p;
         savalue_type occ_cur;
