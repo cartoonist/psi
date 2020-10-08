@@ -94,6 +94,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
 
       SeedFinder< WithStats, finder_traits_type > finder( graph, k );
       finder.pick_paths( nof_paths, true, k );
+      finder.index_paths();
 
       THEN( "Starting loci must have at least one uncovered " + std::to_string( k ) + "-path" )
       {
@@ -111,6 +112,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     {
       SeedFinder< NoStats, finder_traits_type > finder( graph, k );
       finder.pick_paths( nof_paths, true, k );
+      finder.index_paths();
 
       THEN( "All loci should be covered by path index" )
       {
@@ -126,6 +128,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     {
       SeedFinder< NoStats, finder_traits_type > finder( graph, k );
       finder.pick_paths( nof_paths, false );
+      finder.index_paths();
 
       THEN( "All loci should be covered by path index" )
       {

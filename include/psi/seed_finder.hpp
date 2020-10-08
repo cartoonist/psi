@@ -263,6 +263,10 @@ namespace psi {
           std::cout << "\n====  "
                     << "Received \"" << strsignal( signo ) << "\" (" << signo << ")"
                     << "  ====" << std::endl;
+          if ( SeedFinderStats::get_instance_ptr() == nullptr ) {
+            std::cout << "No tracking seed finder!" << std::endl;
+            return;
+          }
           std::cout << "PSI seed finder last status: "
                     << SeedFinderStats::get_instance_ptr()->get_progress_str() << std::endl;
           auto const& threads_stats = SeedFinderStats::get_instance_ptr()->get_threads_stats();
@@ -324,6 +328,13 @@ namespace psi {
             id( random::random_string( SeedFinderStats::CLS_ID_LEN ) )
         {
           SeedFinderStats::set_instance_ptr( this );  // keep the last instance as tracked one
+        }
+
+        ~SeedFinderStats( ) noexcept
+        {
+          if ( SeedFinderStats::get_instance_ptr() == this ) {
+            SeedFinderStats::set_instance_ptr( nullptr );
+          }
         }
 
         /* === ACCESSORS === */
@@ -598,6 +609,13 @@ namespace psi {
         SeedFinderStats( seedfinder_type const* )
         {
           SeedFinderStats::set_instance_ptr( this );
+        }
+
+        ~SeedFinderStats( ) noexcept
+        {
+          if ( SeedFinderStats::get_instance_ptr() == this ) {
+            SeedFinderStats::set_instance_ptr( nullptr );
+          }
         }
 
         /* === ACCESSORS === */

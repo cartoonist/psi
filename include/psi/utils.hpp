@@ -352,17 +352,18 @@ namespace psi {
   }
 
     inline std::string
-  get_tmpfile( )
+  get_tmpfile( char const* directory="" )
   {
-    std::string tmpfile_templ = get_tmpdir() + PSI_TMPFILE_TEMPLATE;
-    char* tmpl = new char [ tmpfile_templ.size() + 1 ];
-    std::strcpy( tmpl, tmpfile_templ.c_str() );
+    assert( directory == "" || starts_with( directory, "/" ) );
+    std::string tfpath = get_tmpdir() + directory + PSI_TMPFILE_TEMPLATE;
+    char* tmpl = new char [ tfpath.size() + 1 ];
+    std::strcpy( tmpl, tfpath.c_str() );
     int fd = mkstemp( tmpl );
-    tmpfile_templ = tmpl;
+    tfpath = tmpl;
 
     ::close( fd );
     delete[] tmpl;
-    return tmpfile_templ;
+    return tfpath;
   }
 
 
