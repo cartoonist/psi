@@ -68,7 +68,7 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
         }
       }
 
-      WHEN( "Another existing pattern is searched using that Finder" )
+      WHEN( "A non-existing pattern is searched using that Finder" )
       {
         std::string pattern( "misissipian" );
         std::set< index_type::savalue_type > true_occs;
@@ -125,7 +125,7 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
         }
       }
 
-      WHEN( "Another existing pattern is searched using that Finder" )
+      WHEN( "A non-existing pattern is searched using that Finder" )
       {
         std::string pattern( "misissipian" );
         std::set< index_type::savalue_type > true_occs;
@@ -191,7 +191,7 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
         }
       }
 
-      WHEN( "Another existing pattern is searched using that Finder" )
+      WHEN( "A non-existing pattern is searched using that Finder" )
       {
         std::string pattern( "pieano" );
         std::set< index_type::pos_type > true_occs;
@@ -254,7 +254,7 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
         }
       }
 
-      WHEN( "Another existing pattern is searched using that Finder" )
+      WHEN( "A non-existing pattern is searched using that Finder" )
       {
         std::string pattern( "pieano" );
         std::set< index_type::pos_type > true_occs;
@@ -608,12 +608,14 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
   }
 }
 
-SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fmindex][iterator]" )
+TEMPLATE_SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fmindex][iterator]",
+                   ( seqan::TopDown< seqan::ParentLinks<> > ), ( seqan::TopDown<> ) )
 {
   GIVEN( "An index based on a disk-based string" )
   {
     typedef YaString< DiskBased > string_type;
     typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef TestType spec_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
@@ -621,7 +623,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
 
     GIVEN( "A top-down iterator for virtual prefix tree of the string" )
     {
-      typedef typename seqan::Iterator< index_type, seqan::TopDown<> >::Type iterator_type;
+      typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
 
       iterator_type it( index );
 
@@ -778,11 +780,13 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
 
             THEN( "It should point root node" )
             {
-              REQUIRE( isRoot( it ) );
-              REQUIRE( !goUp( it ) );
-              REQUIRE( !goRight( it ) );
-              REQUIRE( parentEdgeLength( it ) == 0 );
-              REQUIRE( parentEdgeLabel( it ) == "" );
+              if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+                REQUIRE( isRoot( it ) );
+                REQUIRE( !goUp( it ) );
+                REQUIRE( !goRight( it ) );
+                REQUIRE( parentEdgeLength( it ) == 0 );
+                REQUIRE( parentEdgeLabel( it ) == "" );
+              }
             }
           }
         }
@@ -794,6 +798,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
   {
     typedef YaString< InMemory > string_type;
     typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef TestType spec_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
@@ -801,7 +806,7 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
 
     GIVEN( "A top-down iterator for virtual prefix tree of the string" )
     {
-      typedef typename seqan::Iterator< index_type, seqan::TopDown< seqan::ParentLinks<> > >::Type iterator_type;
+      typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
 
       iterator_type it( index );
 
@@ -958,11 +963,13 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
 
             THEN( "It should point root node" )
             {
-              REQUIRE( isRoot( it ) );
-              REQUIRE( !goUp( it ) );
-              REQUIRE( !goRight( it ) );
-              REQUIRE( parentEdgeLength( it ) == 0 );
-              REQUIRE( parentEdgeLabel( it ) == "" );
+              if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+                REQUIRE( isRoot( it ) );
+                REQUIRE( !goUp( it ) );
+                REQUIRE( !goRight( it ) );
+                REQUIRE( parentEdgeLength( it ) == 0 );
+                REQUIRE( parentEdgeLabel( it ) == "" );
+              }
             }
           }
         }
@@ -971,12 +978,14 @@ SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fm
   }
 }
 
-SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", "[fmindex][iterator]" )
+TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", "[fmindex][iterator]",
+                   ( seqan::TopDown< seqan::ParentLinks<> > ), ( seqan::TopDown<> ) )
 {
   GIVEN( "An index based on a disk-based string set serialized to the disk" )
   {
     typedef seqan::StringSet< DiskString > stringset_type;
     typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef TestType spec_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -997,7 +1006,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
 
       GIVEN( "A top-down iterator for virtual prefix tree of the string" )
       {
-        typedef typename seqan::Iterator< index_type, seqan::TopDown<> >::Type iterator_type;
+        typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
 
         iterator_type it( index2 );
 
@@ -1153,11 +1162,13 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
 
               THEN( "It should point root node" )
               {
-                REQUIRE( isRoot( it ) );
-                REQUIRE( !goUp( it ) );
-                REQUIRE( !goRight( it ) );
-                REQUIRE( parentEdgeLength( it ) == 0 );
-                REQUIRE( parentEdgeLabel( it ) == "" );
+                if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+                  REQUIRE( isRoot( it ) );
+                  REQUIRE( !goUp( it ) );
+                  REQUIRE( !goRight( it ) );
+                  REQUIRE( parentEdgeLength( it ) == 0 );
+                  REQUIRE( parentEdgeLabel( it ) == "" );
+                }
               }
             }
           }
@@ -1170,6 +1181,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
   {
     typedef seqan::StringSet< MemString > stringset_type;
     typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef TestType spec_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -1190,7 +1202,7 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
 
       GIVEN( "A top-down iterator for virtual prefix tree of the string" )
       {
-        typedef typename seqan::Iterator< index_type, seqan::TopDown<> >::Type iterator_type;
+        typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
 
         iterator_type it( index2 );
 
@@ -1346,11 +1358,13 @@ SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", 
 
               THEN( "It should point root node" )
               {
-                REQUIRE( isRoot( it ) );
-                REQUIRE( !goUp( it ) );
-                REQUIRE( !goRight( it ) );
-                REQUIRE( parentEdgeLength( it ) == 0 );
-                REQUIRE( parentEdgeLabel( it ) == "" );
+                if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+                  REQUIRE( isRoot( it ) );
+                  REQUIRE( !goUp( it ) );
+                  REQUIRE( !goRight( it ) );
+                  REQUIRE( parentEdgeLength( it ) == 0 );
+                  REQUIRE( parentEdgeLabel( it ) == "" );
+                }
               }
             }
           }
