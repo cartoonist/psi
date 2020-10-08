@@ -587,7 +587,7 @@ namespace seqan {
           inline savalue_type
         get_raw_position( savalue_type i )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           const Iter* _this = this;
           return _this->get_raw_position( i );
         }
@@ -602,7 +602,7 @@ namespace seqan {
           inline pos_type
         get_position( savalue_type i )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           const Iter* _this = this;
           return _this->get_position( i );
         }
@@ -664,13 +664,13 @@ namespace seqan {
           inline savalue_type
         count( )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           const Iter* _this = this;
           return _this->count();
         }
 
           inline void
-        init( )
+        go_root( )
         {
           indexRequire( *(this->index_p), FibreSALF() );
           this->occ_cur = 0;
@@ -689,7 +689,7 @@ namespace seqan {
           inline savalue_type
         go_down( char_type c )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           this->history_push();
           savalue_type no = sdsl::backward_search( this->index_p->fm,
               this->occ_cur, this->occ_end, (char)c,
@@ -781,7 +781,7 @@ namespace seqan {
     goRoot( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
       if ( isRoot( iter ) ) return;
-      iter.init();
+      iter.go_root();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
