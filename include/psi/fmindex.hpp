@@ -455,6 +455,12 @@ namespace seqan {
           this->_backward_search( c );
           this->initiated = true;
         }
+
+          inline range_type
+        range( ) const
+        {
+          return range_type( this->occ_cur, this->occ_end );
+        }
       private:
         /* ====================  METHODS       ======================================= */
           inline void
@@ -728,6 +734,12 @@ namespace seqan {
         {
           auto a_loc = this->get_raw_position( 0 );
           return extract( this->index_p->fm, a_loc, a_loc + this->rep_length() - 1 );
+        }
+
+          inline range_type
+        range( ) const
+        {
+          return range_type( this->occ_cur, this->occ_end );
         }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
