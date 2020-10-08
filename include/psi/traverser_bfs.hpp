@@ -100,6 +100,8 @@ namespace psi {
               hit.node_offset = state.spos.offset();
               hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
               hit.read_offset = position_to_offset( *(this->reads), saPositions[i] );  // Position in the read.
+              hit.match_len = this->seed_len;
+              hit.gocc = length( saPositions );
               callback( hit );
             }
           }

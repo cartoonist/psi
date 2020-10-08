@@ -71,6 +71,10 @@ namespace psi {
     go_up( IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
 
   template< typename TIndex, typename TSpec >
+      void
+    go_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
+
+  template< typename TIndex, typename TSpec >
       bool
     go_right( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
@@ -112,6 +116,9 @@ namespace psi {
       friend bool
         go_up< TIndex >(
             IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
+
+      friend void
+        go_root< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
       friend bool
         go_right< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
@@ -368,6 +375,21 @@ namespace psi {
       return goUp( iterator );
     }
 
+  template< typename TIndex, typename TSpec >
+      inline void
+    go_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
+    {
+      seqan::goRoot( iterator.iter_ );
+      iterator.boffset = 0;
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline void
+    go_root( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+    {
+      goRoot( iterator );
+    }
+
   /**
    *  @brief  Go right (a sibling node) in the virtual suffix tree.
    *
@@ -448,6 +470,20 @@ namespace psi {
     rep_length( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       return repLength( iterator );
+    }
+
+  template< typename TIndex, typename TSpec >
+      typename seqan::Size< TIndex >::Type
+    count_occurrences( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
+    {
+      return countOccurrences( iterator.get_iter_() );
+    }
+
+  template< typename TIndex, typename TSpec >
+      inline auto
+    get_occurrences( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
+    {
+      return getOccurrences( iterator.get_iter_() );
     }
   /* Typedefs  ------------------------------------------------------------------- */
 
@@ -626,13 +662,16 @@ namespace psi {
   template< typename TOccurrence1, typename TOccurrence2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_seed( TOccurrence1 oc1, TOccurrence2 oc2,
-        const TRecords1* rec1, const TRecords2* rec2, TCallback callback )
+        const TRecords1* rec1, const TRecords2* rec2, unsigned int len, unsigned int gocc,
+        TCallback callback )
     {
       Seed<> hit;
       hit.node_id = position_to_id( *rec1, oc1 );
       hit.node_offset = position_to_offset( *rec1, oc1 );
       hit.read_id = position_to_id( *rec2, oc2.i1 );
       hit.read_offset = position_to_offset( *rec2, oc2 );
+      hit.match_len = len;
+      hit.gocc = gocc;
 
       callback( hit );
     }
@@ -644,13 +683,48 @@ namespace psi {
       return TOccurrence( oc );
     }
 
+  /**
+   *  @brief  Adjust occurrence positions based on the text direction of the underlying index.
+   *
+   *  @param oc  occurrence position of a pattern.
+   *  @param len the length of the occurrence.
+   *  @param tag Reverse direction tag.
+   *
+   *  The occurrence position of a pattern in the path set would be a pair `(i, o)`
+   *  where the pattern occurs in path with id `i` at offset `o`. If the path sequences
+   *  are reversed, the position points at the end of pattern occurrence in reversed
+   *  sequence; e.g.:
+   *
+   *  The pattern 'ttc' is found in the reversed sequence:
+   *         0123 456 7890123
+   *         acga ctt taggtcc
+   *
+   *  The reported occurrence offset would be 4 while the actual offset would be 7; i.e.
+   *
+   *     offset_{fwd,start} = | sequence | - offset_{rev,end} + 1
+   *     offset_{fwd,start} = 14 - 6 - 1 = 7
+   *
+   *  where
+   *
+   *     offset_{rev,end} = offset_{rev,start} + | pattern | - 1
+   *     offset_{rev,end} = 4 + 3 - 1 = 6
+   *
+   *  The first part are calculated in `position_to_offset` interface functions since
+   *  the length of the sequence is only known there. The second part is done in this
+   *  function.
+   *
+   *  NOTE: If the text direction is forward, nothing needs to be done.
+   */
   template< typename TOccurrence >
       inline TOccurrence
-    _map_occurrences( TOccurrence const& oc, unsigned int k, Reversed )
+    _map_occurrences( TOccurrence const& oc, unsigned int len, Reversed /* tag */ )
     {
-      return TOccurrence( oc.i1, oc.i2 + k - 1 );  /**< @brief End position of the occurrence. */
+      return TOccurrence( oc.i1, oc.i2 + len - 1 );  /**< @brief End position of the occurrence. */
     }
 
+  /**
+   * NOTE: itr1 should be index iterator of the genome.
+   */
   template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords1* rec1,
@@ -666,7 +740,7 @@ namespace psi {
       for ( unsigned int i = 0; i < length( occurrences1 ); ++i ) {
         for ( unsigned int j = 0; j < length( occurrences2 ); ++j ) {
           auto oc = _map_occurrences( occurrences1[i], k, TPathDir() );
-          _add_seed( oc, occurrences2[j], rec1, rec2, callback );
+          _add_seed( oc, occurrences2[j], rec1, rec2, k, length( occurrences1 ), callback );
         }
       }
     }
@@ -766,7 +840,7 @@ namespace psi {
           if ( !go_down( snd_itr, seed[plen] ) ) break;
         }
         if ( plen == k ) {
-          auto count = countOccurrences( fst_itr.get_iter_() );
+          auto count = count_occurrences( fst_itr );
           if ( count <= gocc_threshold ) {
             collect_stats( count, false );
             _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
@@ -775,6 +849,54 @@ namespace psi {
         }
         plen = increment_kmer( seed, plen, true );
       } while ( plen + 1 > 0 );
+    }
+
+  template< typename TString, typename TIndex, typename TRecords, typename TCallback >
+      inline void
+    find_mems( TString const& pattern,
+               IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > >& idx_itr,
+               const TRecords* pathset,
+               unsigned int minlen,
+               unsigned int context,
+               TCallback callback,
+               unsigned int gocc_threshold = 0 )
+    {
+      typedef typename Direction< TRecords >::Type TPathDir;
+
+      if ( gocc_threshold == 0 ) {
+        gocc_threshold = std::numeric_limits< decltype( gocc_threshold ) >::max();
+      }
+
+      unsigned int start = 0;
+      unsigned int plen = 0;
+      bool has_hit = false;
+      while( start + plen < pattern.size() ) {
+        if ( plen >= minlen && count_occurrences( idx_itr ) <= gocc_threshold ) {
+          using seqan::length;
+
+          has_hit = true;
+          auto const& occs = get_occurrences( idx_itr );
+          Seed<> hit;
+          for ( unsigned int i = 0; i < length( occs ); ++i ) {
+            auto oc = _map_occurrences( occs[i], plen, TPathDir() );
+            hit.node_id = position_to_id( *pathset, oc );
+            hit.node_offset = position_to_offset( *pathset, oc );
+            hit.read_offset = start;
+            hit.match_len = plen;
+            hit.gocc = length( occs );
+            callback( hit );
+          }
+        }
+        if ( has_hit /*|| plen > context*/ ||
+             !go_down( idx_itr, pattern[ start + plen ] ) ) {
+          go_root( idx_itr );
+          start = start + plen + 1;
+          plen = 0;
+          has_hit = false;
+          continue;
+        }
+        ++plen;
+      }
     }
 
   template< typename TIndex, typename TRecords1, typename TRecordsIter, typename TCallback >
@@ -788,8 +910,9 @@ namespace psi {
       seqan::Finder< TIndex > paths_finder( paths_index );
       while ( !at_end( seeds_itr ) ) {
         while ( find( paths_finder, *seeds_itr ) ) {
+          // TODO: set `gocc` value for the hit
           _add_seed( beginPosition( paths_finder ), get_position( seeds_itr ), pathset,
-              seeds_itr.get_records_ptr(), callback );
+              seeds_itr.get_records_ptr(), length( paths_finder ), 0, callback );
         }
         ++seeds_itr;
         clear( paths_finder );
@@ -810,7 +933,9 @@ namespace psi {
       seqan::Finder< TIndex > paths_finder( paths_index );
       for ( size_type i = 0; i < length( *reads ); ++i ) {
         while ( find( paths_finder, reads->str[i] ) ) {
-          _add_seed( beginPosition( paths_finder ), pos_type( { i, 0 } ), pathset, reads, callback );
+          // TODO: set `gocc` value for the hit
+          _add_seed( beginPosition( paths_finder ), pos_type( { i, 0 } ), pathset, reads,
+              length( paths_finder ), 0, callback );
         }
         clear( paths_finder );
       }

@@ -76,6 +76,7 @@ namespace psi {
       index_chunk,
       find_on_paths,
       find_off_paths,
+      find_mems,
     };
 
     constexpr static const char* thread_progress_table[] = {
@@ -85,6 +86,7 @@ namespace psi {
       "Indexing a read chunk",
       "Finding seeds on paths",
       "Finding seeds off paths",
+      "Finding MEMs on paths",
     };
   };  /* --- end of template class SeedFinderStats --- */
 
@@ -1083,6 +1085,28 @@ namespace psi {
 
             kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len,
                                 callback, this->gocc_threshold, collect_stats );
+          }
+
+          template< typename TString >
+          inline void
+          seeds_on_paths( TString const& sequence,
+                          std::function< void(typename traverser_type::output_type const &) > callback ) const
+          {
+            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
+            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+
+            this->stats_ptr->set_progress( progress_type::ready );
+            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
+            thread_stats.set_progress( thread_progress_type::find_mems );
+
+            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-paths" );
+
+            TPIterator piter( this->pindex.index );
+            auto context = this->pindex.get_context();
+            find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
+                       this->gocc_threshold );
           }
 
             inline void
