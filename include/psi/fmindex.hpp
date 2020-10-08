@@ -634,9 +634,15 @@ namespace seqan {
         }
 
           inline void
+        history_push( range_type range )
+        {
+          this->history.push_back( range );
+        }
+
+          inline void
         history_push( )
         {
-          this->history.push_back( std::make_pair( this->occ_cur, this->occ_end ) );
+          this->history_push( { this->occ_cur, this->occ_end } );
         }
 
           inline void
@@ -677,6 +683,7 @@ namespace seqan {
           this->occ_end = this->index_size() - 1;
           this->depth = 0;
           this->initialized = true;
+          this->history.clear();
         }
 
           inline char_type
@@ -690,13 +697,17 @@ namespace seqan {
         go_down( char_type c )
         {
           if ( !this->is_initialized() ) this->go_root();
-          this->history_push();
+          range_type save( this->occ_cur, this->occ_end );
           savalue_type no = sdsl::backward_search( this->index_p->fm,
               this->occ_cur, this->occ_end, (char)c,
               this->occ_cur, this->occ_end );
 
-          if ( no == 0 ) this->history_pop();
+          if ( no == 0 ) {
+            this->occ_cur = save.first;
+            this->occ_end = save.second;
+          }
           else {
+            this->history.push_back( save );
             ++this->depth;
           }
           return no;
@@ -711,6 +722,15 @@ namespace seqan {
             if ( no != 0 ) return no;
           }
           return 0;
+        }
+
+          inline bool
+        go_up( )
+        {
+          if ( this->is_root() || this->history.empty() ) return false;
+          this->history_pop();
+          --this->depth;
+          return true;
         }
 
           inline savalue_type
@@ -796,9 +816,7 @@ namespace seqan {
       inline bool
     goUp( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
-      if ( isRoot( iter ) ) return false;
-      iter.history_pop();
-      return true;
+      return iter.go_up();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
