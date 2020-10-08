@@ -76,6 +76,7 @@ namespace psi {
       index_chunk,
       find_on_paths,
       find_off_paths,
+      find_mems,
     };
 
     constexpr static const char* thread_progress_table[] = {
@@ -85,6 +86,7 @@ namespace psi {
       "Indexing a read chunk",
       "Finding seeds on paths",
       "Finding seeds off paths",
+      "Finding MEMs on paths",
     };
   };  /* --- end of template class SeedFinderStats --- */
 
@@ -1094,6 +1096,8 @@ namespace psi {
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
 
             this->stats_ptr->set_progress( progress_type::ready );
+            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
+            thread_stats.set_progress( thread_progress_type::find_mems );
 
             if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 
