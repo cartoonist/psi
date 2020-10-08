@@ -626,13 +626,16 @@ namespace psi {
   template< typename TOccurrence1, typename TOccurrence2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_seed( TOccurrence1 oc1, TOccurrence2 oc2,
-        const TRecords1* rec1, const TRecords2* rec2, TCallback callback )
+        const TRecords1* rec1, const TRecords2* rec2, unsigned int len, unsigned int gocc,
+        TCallback callback )
     {
       Seed<> hit;
       hit.node_id = position_to_id( *rec1, oc1 );
       hit.node_offset = position_to_offset( *rec1, oc1 );
       hit.read_id = position_to_id( *rec2, oc2.i1 );
       hit.read_offset = position_to_offset( *rec2, oc2 );
+      hit.match_len = len;
+      hit.gocc = gocc;
 
       callback( hit );
     }
@@ -683,6 +686,9 @@ namespace psi {
       return TOccurrence( oc.i1, oc.i2 + len - 1 );  /**< @brief End position of the occurrence. */
     }
 
+  /**
+   * NOTE: itr1 should be index iterator of the genome.
+   */
   template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords1* rec1,
@@ -698,7 +704,7 @@ namespace psi {
       for ( unsigned int i = 0; i < length( occurrences1 ); ++i ) {
         for ( unsigned int j = 0; j < length( occurrences2 ); ++j ) {
           auto oc = _map_occurrences( occurrences1[i], k, TPathDir() );
-          _add_seed( oc, occurrences2[j], rec1, rec2, callback );
+          _add_seed( oc, occurrences2[j], rec1, rec2, k, length( occurrences1 ), callback );
         }
       }
     }
@@ -856,8 +862,9 @@ namespace psi {
       seqan::Finder< TIndex > paths_finder( paths_index );
       while ( !at_end( seeds_itr ) ) {
         while ( find( paths_finder, *seeds_itr ) ) {
+          // TODO: set `gocc` value for the hit
           _add_seed( beginPosition( paths_finder ), get_position( seeds_itr ), pathset,
-              seeds_itr.get_records_ptr(), callback );
+              seeds_itr.get_records_ptr(), length( paths_finder ), 0, callback );
         }
         ++seeds_itr;
         clear( paths_finder );
@@ -878,7 +885,9 @@ namespace psi {
       seqan::Finder< TIndex > paths_finder( paths_index );
       for ( size_type i = 0; i < length( *reads ); ++i ) {
         while ( find( paths_finder, reads->str[i] ) ) {
-          _add_seed( beginPosition( paths_finder ), pos_type( { i, 0 } ), pathset, reads, callback );
+          // TODO: set `gocc` value for the hit
+          _add_seed( beginPosition( paths_finder ), pos_type( { i, 0 } ), pathset, reads,
+              length( paths_finder ), 0, callback );
         }
         clear( paths_finder );
       }
