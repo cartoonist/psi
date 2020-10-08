@@ -544,7 +544,7 @@ namespace seqan {
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
         Iter( index_type const* i_p )
-          : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), initialized( false ) { }
+          : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), depth( 0 ), initialized( false ) { }
         Iter( index_type const& i )
           : Iter( &i ) { }
         /* ====================  METHODS       ======================================= */
@@ -571,6 +571,7 @@ namespace seqan {
         {
           this->occ_cur = 0;
           this->occ_end = 0;
+          this->depth = 0;
           this->initialized = false;
           this->history.clear();
         }
@@ -674,6 +675,7 @@ namespace seqan {
           indexRequire( *(this->index_p), FibreSALF() );
           this->occ_cur = 0;
           this->occ_end = this->index_size() - 1;
+          this->depth = 0;
           this->initialized = true;
         }
 
@@ -694,6 +696,9 @@ namespace seqan {
               this->occ_cur, this->occ_end );
 
           if ( no == 0 ) this->history_pop();
+          else {
+            ++this->depth;
+          }
           return no;
         }
 
@@ -711,7 +716,7 @@ namespace seqan {
           inline savalue_type
         rep_length( ) const
         {
-          return this->history_size();
+          return this->depth;
         }
 
           inline savalue_type
@@ -746,6 +751,7 @@ namespace seqan {
         index_type const* index_p;
         savalue_type occ_cur;
         savalue_type occ_end;
+        savalue_type depth;
         bool initialized;
         std::vector< range_type > history;
     };
