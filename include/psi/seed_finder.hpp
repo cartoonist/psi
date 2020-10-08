@@ -1092,7 +1092,7 @@ namespace psi {
           seeds_on_paths( TString const& sequence,
                           std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
-            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
+            typedef TopDownFine<> TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
 
             this->stats_ptr->set_progress( progress_type::ready );

@@ -851,10 +851,10 @@ namespace psi {
       } while ( plen + 1 > 0 );
     }
 
-  template< typename TString, typename TIndex, typename TRecords, typename TCallback >
+  template< typename TString, typename TIndex, typename TSpec, typename TRecords, typename TCallback >
       inline void
     find_mems( TString const& pattern,
-               IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > >& idx_itr,
+               IndexIter< TIndex, TopDownFine< TSpec > >& idx_itr,
                const TRecords* pathset,
                unsigned int minlen,
                unsigned int context,
