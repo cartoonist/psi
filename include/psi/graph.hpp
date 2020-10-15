@@ -53,7 +53,7 @@ namespace psi {
 
     template< class TGraph >
     inline typename TGraph::offset_type
-    total_nof_loci( TGraph const& graph )
+    total_nof_loci( TGraph const& graph, gum::Dynamic )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
@@ -67,6 +67,20 @@ namespace psi {
             return true;
           } );
       return total;
+    }
+
+    template< class TGraph >
+    inline typename TGraph::offset_type
+    total_nof_loci( TGraph const& graph, gum::Succinct )
+    {
+      return gum::util::length_sum( graph.get_node_prop().sequences() );
+    }
+
+    template< class TGraph >
+    inline typename TGraph::offset_type
+    total_nof_loci( TGraph const& graph )
+    {
+      return total_nof_loci( graph, typename TGraph::spec_type() );
     }
 
     template< class TGraph, typename TNodeIter, typename TEdgeIter >
