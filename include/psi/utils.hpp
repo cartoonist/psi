@@ -354,7 +354,7 @@ namespace psi {
     inline std::string
   get_tmpfile( char const* directory="" )
   {
-    assert( directory == "" || starts_with( directory, "/" ) );
+    assert( std::strlen( directory ) == 0 || starts_with( directory, "/" ) );
     std::string tfpath = get_tmpdir() + directory + PSI_TMPFILE_TEMPLATE;
     char* tmpl = new char [ tfpath.size() + 1 ];
     std::strcpy( tmpl, tfpath.c_str() );

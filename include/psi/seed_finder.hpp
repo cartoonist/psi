@@ -974,6 +974,7 @@ namespace psi {
          *  @param  n The number of paths.
          *  @param  patched Whether patch the selected paths or not.
          *  @param  context The context size for patching.
+         *  @param  step_size  The step size for starting loci sampling.
          *  @param  progress A callback function reporting the progress of path selection.
          */
         inline void
@@ -992,9 +993,9 @@ namespace psi {
                 };
           }
           this->pick_paths( n, patched, context, progress, info, warn );
-          info( "Indexing the selected paths..." );
+          if ( info ) info( "Indexing the selected paths..." );
           this->index_paths();
-          info( "Detecting uncovered loci..." );
+          if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
         }
 
