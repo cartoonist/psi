@@ -29,7 +29,6 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
-#include <gum/seqgraph.hpp>
 
 #include "graph.hpp"
 #include "traverser.hpp"

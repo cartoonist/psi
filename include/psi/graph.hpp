@@ -24,6 +24,7 @@
 #include <random>
 #include <cstdint>
 
+#include <gum/graph.hpp>
 #include <vg/vg.pb.h>
 #include <vg/io/stream.hpp>
 
@@ -280,6 +281,69 @@ namespace psi {
       }
 
       return equally_covered ? 0 : lc_id;
+    }
+
+    /**
+     *  @brief  Get the adjacency matrix of the graph in CRS format.
+     *
+     *  @param[in]  graph The graph.
+     *  @return  The adjacency matrix.
+     *
+     *  Calculate coverage for all adjacent nodes and find the smallest one.
+     */
+    template< class TGraph, typename TCsrTraits >
+    inline typename TCsrTraits::crsMat_t
+    adjacency_matrix( TGraph const& graph, TCsrTraits /* tag */ )
+    {
+      typedef TGraph graph_type;
+      typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::offset_type offset_type;
+      typedef typename graph_type::rank_type rank_type;
+      typedef typename graph_type::linktype_type linktype_type;
+
+      typedef typename TCsrTraits::lno_t lno_t;
+      typedef typename TCsrTraits::size_type size_type;
+      typedef typename TCsrTraits::lno_nnz_view_t lno_nnz_view_t;
+      typedef typename TCsrTraits::scalar_view_t scalar_view_t;
+      typedef typename TCsrTraits::lno_view_t lno_view_t;
+
+      lno_t nrows = total_nof_loci( graph );
+      size_type nnz = nrows - graph.get_node_count() + graph.get_edge_count();
+
+      lno_nnz_view_t entries( "entries", nnz );
+      scalar_view_t values( "values", nnz );
+      lno_view_t rowmap( "rowmap", nrows + 1 );
+
+      for ( size_type i = 0; i < nnz; i++ ) {
+        values( i ) = 1;  //boolean
+      }
+
+      offset_type cursor = 0;
+      size_type i = 0;
+      size_type irow = 0;
+      rowmap( irow++ ) = i;
+      graph.for_each_node(
+          [&graph, &entries, &rowmap, &cursor, &i, &irow]( rank_type rank, id_type id ) {
+            assert( gum::util::id_to_charorder( graph, id ) == cursor );
+            for ( offset_type offset = 1; offset < graph.node_length( id ); ++offset ) {
+              entries( i++ ) = ++cursor;
+              rowmap( irow++ ) = i;
+            }
+            ++cursor;
+            graph.for_each_edges_out(
+                id,
+                [&graph, &entries, &i]( id_type to, linktype_type ) {
+                  entries( i++ ) = gum::util::id_to_charorder( graph, to );
+                  return true;
+                } );
+            rowmap( irow++ ) = i;
+            return true;
+          } );
+      assert( i == nnz );
+      assert( irow == static_cast< unsigned int >( nrows + 1 ) );
+
+      return typename TCsrTraits::crsMat_t( "adjacency matrix",
+                                            nrows, nrows, nnz, values, rowmap, entries );
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */

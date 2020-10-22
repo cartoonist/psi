@@ -109,6 +109,7 @@ endif(BUILD_TESTING)
 # Registering tests.
 include(CTest)
 add_test(NAME TestUtils COMMAND psi-tests "[utils]")
+add_test(NAME TestGraph COMMAND psi-tests "[graph]")
 add_test(NAME TestGraphIter COMMAND psi-tests "[graph][iterator]")
 add_test(NAME TestStats COMMAND psi-tests "[stats]")
 add_test(NAME TestSequence COMMAND psi-tests "[sequence]")
