@@ -129,6 +129,7 @@ template< class TGraph, typename TReadsIndexSpec >
       log->info( "Picked paths in {}.", stats.get_timer( "pick-paths", tid ).str() );
       log->info( "Indexed paths in {}.", stats.get_timer( "index-paths", tid ).str() );
       log->info( "Found uncovered loci in {}.", stats.get_timer( "find-uncovered", tid ).str() );
+      log->info( "Created distance index in {}.", stats.get_timer( "index-distances", tid ).str() );
       log->info( "Saving path index..." );
       /* Serialize the indexed paths. */
       if ( params.pindex_path.empty() ) {
@@ -137,6 +138,7 @@ template< class TGraph, typename TReadsIndexSpec >
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
         log->info( "Saved path index in {}.", stats.get_timer( "save-pindex", tid ).str() );
+        log->info( "Saved distance index in {}.", stats.get_timer( "save-dindex", tid ).str() );
       }
     }
     log->info( "Number of starting loci (in {} nodes of total {}): {}",
@@ -185,6 +187,7 @@ template< class TGraph, typename TReadsIndexSpec >
         finder.seeds_all( seeds, seeds_index, traverser, write_callback );
         log->info( "Found seeds on paths in {}.", stats.get_timer( "seeds-on-paths", tid ).str() );
         log->info( "Found seeds off paths in {}.", stats.get_timer( "seeds-off-paths", tid ).str() );
+        log->info( "Verified distance constraints in {}.", stats.get_timer( "query-dindex", tid ).str() );
       }
     }
     log->info( "Found seed in {}.", timer_type::get_duration_str( "seed-finding" ) );

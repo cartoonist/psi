@@ -29,6 +29,8 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
+#include <pairg/reachability.hpp>
+#include <KokkosKernels_IOUtils.hpp>
 
 #include "graph.hpp"
 #include "traverser.hpp"
@@ -47,11 +49,14 @@ namespace psi {
       instantiated,
       load_pindex,
       load_starts,
+      load_dindex,
       select_paths,
       create_pindex,
       find_uncovered,
+      create_dindex,
       write_pindex,
       write_starts,
+      write_dindex,
       ready,
     };
 
@@ -60,11 +65,14 @@ namespace psi {
       "Just instantiated",
       "Loading path index",
       "Loading starting loci",
+      "Loading distance index",
       "Selecting paths from input graph",
       "Indexing paths sequences",
       "Finding uncovered loci",
+      "Creating distance index",
       "Writing path index",
       "Writing starting loci",
+      "Writing distance index",
       "Ready for seed finding",
     };
 
@@ -76,6 +84,7 @@ namespace psi {
       find_on_paths,
       find_off_paths,
       find_mems,
+      query_dindex,
     };
 
     constexpr static const char* thread_progress_table[] = {
@@ -86,6 +95,7 @@ namespace psi {
       "Finding seeds on paths",
       "Finding seeds off paths",
       "Finding MEMs on paths",
+      "Querying distance index",
     };
   };  /* --- end of template class SeedFinderStats --- */
 
@@ -763,6 +773,8 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
+        typedef pairg::matrixOps csr_traits_type;
+        typedef typename csr_traits_type::crsMat_t csrmat_type;
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
@@ -770,9 +782,37 @@ namespace psi {
             unsigned char mismatches = 0 )
           : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
           seed_mismatches( mismatches ),
-          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
+          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ), finaliser( true ),
           stats_ptr( std::make_unique< stats_type >( this ) )
-        { }
+        {
+          /* Ensure no concurrent dtor is running */
+          ReaderLock constructor( SeedFinder::get_final_lock() );
+          if ( !Kokkos::is_initialized() ) {
+            /* Ensure only one of the concurrent ctor gets the lock */
+            UniqWriterLock initialiser( SeedFinder::get_init_lock() );
+            if ( initialiser ) {
+              /* Initialise Kokkos */
+              Kokkos::initialize();
+            }
+          }
+          /* Sync ctors with the initialiser ctor to ensure the object is ready after instantiating */
+          WriterLock sync( SeedFinder::get_init_lock() );
+        }
+
+        ~SeedFinder( ) noexcept
+        {
+          /* Ensure no concurrent ctor or dtor is running */
+          WriterLock lock( SeedFinder::get_final_lock() );
+          /* Finalise Kokkos if we are responsible/finaliser */
+          /* NOTE: No SeedFinder can be instantiated after finalizing. */
+          if ( Kokkos::is_initialized() && this->is_finaliser() ) SeedFinder::finalise();
+        }
+        /* ====================  STATIC MEMBERS  ===================================== */
+          static inline void
+        finalise( )
+        {
+          Kokkos::finalize();
+        }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for graph_ptr.
@@ -817,6 +857,15 @@ namespace psi {
         get_gocc_threshold( ) const
         {
           return this->gocc_threshold;
+        }
+
+        /**
+         *  @brief  getter function for finaliser.
+         */
+          inline bool
+        is_finaliser( ) const
+        {
+          return this->finaliser;
         }
 
         /**
@@ -894,6 +943,18 @@ namespace psi {
         set_gocc_threshold( unsigned int value )
         {
           this->gocc_threshold = value;
+        }
+
+          inline void
+        set_as_finaliser( )
+        {
+          this->finaliser = true;
+        }
+
+          inline void
+        unset_as_finaliser( )
+        {
+          this->finaliser = false;
         }
 
           inline readsrecord_type
@@ -988,6 +1049,64 @@ namespace psi {
           this->pindex.create_index();
         }
 
+        inline void
+        create_distance_index( unsigned int dlen=0, unsigned int drad=0 )
+        {
+          if ( dlen == 0 || dlen < drad ) return;  // not constructible
+
+          this->stats_ptr->set_progress( progress_type::create_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
+
+          auto adj_mat = util::adjacency_matrix( *this->graph_ptr, csr_traits_type() );
+          this->distance_mat =
+              pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad );
+        }
+
+        inline bool
+        save_distance_index( std::string prefix, unsigned int dlen=0, unsigned int drad=0 ) const
+        {
+          if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
+
+          auto fname = prefix + "_dist_mat_" + "d" + std::to_string( dlen ) +
+              "±" + std::to_string( drad ) + ".crs";
+          if ( !writable( fname ) ) return false;
+
+          this->stats_ptr->set_progress( progress_type::write_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-dindex" );
+
+          KokkosKernels::Impl::write_kokkos_crst_matrix( this->distance_mat, fname.c_str() );
+          return true;
+        }
+
+        inline bool
+        open_distance_index( std::string prefix, unsigned int dlen=0, unsigned int drad=0 )
+        {
+          auto fname = prefix + "_dist_mat_" + "d" + std::to_string( dlen ) +
+              "±" + std::to_string( drad ) + ".crs";
+          if ( !readable( fname ) ) return false;
+
+          this->stats_ptr->set_progress( progress_type::load_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-dindex" );
+
+          this->distance_mat =
+              KokkosKernels::Impl::read_kokkos_crst_matrix< csrmat_type >( fname.c_str() );
+          return true;
+        }
+
+        inline bool
+        verify_distance( id_type v, offset_type o, id_type u, offset_type p ) const
+        {
+          this->stats_ptr->set_progress( progress_type::ready );
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::query_dindex );
+
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-dindex" );
+
+          auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
+          auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
+          return csr_traits_type::queryValue( this->distance_mat, v_charid, u_charid );
+        }
+
         /**
          *  @brief  Create path index.
          *
@@ -995,11 +1114,14 @@ namespace psi {
          *  @param  patched Whether patch the selected paths or not.
          *  @param  context The context size for patching.
          *  @param  step_size  The step size for starting loci sampling.
+         *  @param  dlen  The distance index path length.
+         *  @param  drad  The distance index path radius.
          *  @param  progress A callback function reporting the progress of path selection.
          */
         inline void
         create_path_index( unsigned int n, bool patched=true,
             unsigned int context=0, unsigned int step_size=1,
+            unsigned int dlen=0, unsigned int drad=0,
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1017,6 +1139,8 @@ namespace psi {
           this->index_paths();
           if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
+          if ( info ) info( "Constructing distance index for pair distance queries..." );
+          this->create_distance_index( dlen, drad );
         }
 
         inline bool
@@ -1035,10 +1159,12 @@ namespace psi {
          *
          */
         inline bool
-        serialize_path_index( std::string const& fpath, unsigned int step_size=1 )
+        serialize_path_index( std::string const& fpath, unsigned int step_size=1,
+                              unsigned int dlen=0, unsigned int drad=0 )
         {
           return this->serialize_path_index_only( fpath ) &&
-                this->save_starts( fpath, this->seed_len, step_size );
+              this->save_starts( fpath, this->seed_len, step_size ) &&
+              this->save_distance_index( fpath, dlen, drad );
         }
 
         /**
@@ -1059,12 +1185,16 @@ namespace psi {
 
         inline bool
         load_path_index( std::string const& fpath, unsigned int context=0,
-                         unsigned int step_size=1 )
+                         unsigned int step_size=1, unsigned int dlen=0, unsigned int drad=0 )
         {
           if ( !this->load_path_index_only( fpath, context ) ) return false;
           if ( !this->open_starts( fpath, this->seed_len, step_size ) ) {
             this->add_uncovered_loci( step_size );
             this->save_starts( fpath, this->seed_len, step_size );
+          }
+          if ( !this->open_distance_index( fpath, dlen, drad ) ) {
+            this->create_distance_index( dlen, drad );
+            this->save_distance_index( fpath, dlen, drad );
           }
           return true;
         }
@@ -1417,10 +1547,26 @@ namespace psi {
         const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
+        csrmat_type distance_mat;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
+        bool finaliser;
         std::unique_ptr< stats_type > stats_ptr;
+        /* ====================  STATIC MEMBERS  ===================================== */
+        static inline RWSpinLock<>&
+        get_init_lock( )
+        {
+          static RWSpinLock<> init_lock;
+          return init_lock;
+        }
+
+        static inline RWSpinLock<>&
+        get_final_lock( )
+        {
+          static RWSpinLock<> final_lock;
+          return final_lock;
+        }
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Set the context size for patching.
