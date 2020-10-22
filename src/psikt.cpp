@@ -136,7 +136,7 @@ template< class TGraph, typename TReadsIndexSpec >
       } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size ) ) {
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
-        log->info( "Saved path index in {}.", stats.get_timer( "save-paths", tid ).str() );
+        log->info( "Saved path index in {}.", stats.get_timer( "save-pindex", tid ).str() );
       }
     }
     log->info( "Number of starting loci (in {} nodes of total {}): {}",

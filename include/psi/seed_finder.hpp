@@ -49,9 +49,9 @@ namespace psi {
       load_pindex,
       load_starts,
       select_paths,
-      create_index,
+      create_pindex,
       find_uncovered,
-      write_index,
+      write_pindex,
       write_starts,
       ready,
     };
@@ -812,6 +812,15 @@ namespace psi {
         }
 
         /**
+         *  @brief  getter function for gocc_threshold.
+         */
+          inline unsigned int
+        get_gocc_threshold( ) const
+        {
+          return this->gocc_threshold;
+        }
+
+        /**
          *  @brief  getter function for pindex.
          */
           inline pathindex_type const&
@@ -879,6 +888,15 @@ namespace psi {
           this->seed_mismatches = value;
         }
 
+        /**
+         *  @brief setter function for gocc_threshold
+         */
+          inline void
+        set_gocc_threshold( unsigned int value )
+        {
+          this->gocc_threshold = value;
+        }
+
           inline readsrecord_type
         create_readrecord( ) const
         {
@@ -891,6 +909,7 @@ namespace psi {
           this->stats_ptr->get_this_thread_stats().set_progress(
               thread_progress_type::index_chunk );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-reads" );
+
           return readsindex_type( reads.str );
         }
 
@@ -902,6 +921,7 @@ namespace psi {
           this->stats_ptr->get_this_thread_stats().set_progress(
               thread_progress_type::seed_chunk );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeding" );
+
           seeding( seeds, reads, this->seed_len, distance );
         }
 
@@ -938,9 +958,9 @@ namespace psi {
               std::function< void( std::string const& ) > info=nullptr,
               std::function< void( std::string const& ) > warn=nullptr )
           {
-            this->stats_ptr->set_progress( progress_type::select_paths );
-
             if ( n == 0 ) return;
+
+            this->stats_ptr->set_progress( progress_type::select_paths );
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "pick-paths" );
 
             this->pindex.reserve( n * this->graph_ptr->get_path_count() );
@@ -963,8 +983,9 @@ namespace psi {
         inline void
         index_paths( )
         {
-          this->stats_ptr->set_progress( progress_type::create_index );
+          this->stats_ptr->set_progress( progress_type::create_pindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-paths" );
+
           this->pindex.create_index();
         }
 
@@ -1002,9 +1023,11 @@ namespace psi {
         inline bool
         serialize_path_index_only( std::string const& fpath )
         {
-          this->stats_ptr->set_progress( progress_type::write_index );
           if ( fpath.empty() ) return false;
-          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-paths" );
+
+          this->stats_ptr->set_progress( progress_type::write_pindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-pindex" );
+
           return this->pindex.serialize( fpath );
         }
 
@@ -1026,8 +1049,11 @@ namespace psi {
         inline bool
         load_path_index_only( std::string const& fpath, unsigned int context=0 )
         {
-          this->stats_ptr->set_progress( progress_type::load_pindex );
           if ( fpath.empty() ) return false;
+
+          this->stats_ptr->set_progress( progress_type::load_pindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-pindex" );
+
           this->pindex.set_context( context );
           return this->pindex.load( fpath );
         }
@@ -1063,16 +1089,16 @@ namespace psi {
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
-            this->stats_ptr->set_progress( progress_type::ready );
-            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
-            thread_stats.set_progress( thread_progress_type::find_on_paths );
-
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
               throw std::runtime_error( "seed length should not be larger than context size" );
             }
 
             if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+
+            this->stats_ptr->set_progress( progress_type::ready );
+            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
+            thread_stats.set_progress( thread_progress_type::find_on_paths );
 
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeds-on-paths" );
 
@@ -1096,11 +1122,11 @@ namespace psi {
             typedef TopDownFine<> TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
 
+            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+
             this->stats_ptr->set_progress( progress_type::ready );
             auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
             thread_stats.set_progress( thread_progress_type::find_mems );
-
-            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-paths" );
 
@@ -1113,8 +1139,6 @@ namespace psi {
             inline void
           add_uncovered_loci( unsigned int step=1 )
           {
-            this->stats_ptr->set_progress( progress_type::find_uncovered );
-
             auto&& pathset = this->pindex.get_paths_set();
             if ( pathset.size() == 0 )
             {
@@ -1122,6 +1146,7 @@ namespace psi {
               return;
             }
 
+            this->stats_ptr->set_progress( progress_type::find_uncovered );
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "find-uncovered" );
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
@@ -1178,6 +1203,7 @@ namespace psi {
           // TODO: Add documentation.
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph.
+          this->stats_ptr->set_progress( progress_type::find_uncovered );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "find-uncovered" );
 
           auto bfs_itr = begin( *this->graph_ptr,  BFS() );
@@ -1270,11 +1296,13 @@ namespace psi {
         open_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          this->stats_ptr->set_progress( progress_type::load_starts );
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
+
+          this->stats_ptr->set_progress( progress_type::load_starts );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-starts" );
 
           std::function< void( vg::Position& ) > push_back =
               [this]( vg::Position& pos ) {
@@ -1296,11 +1324,13 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          this->stats_ptr->set_progress( progress_type::write_starts );
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
+
+          this->stats_ptr->set_progress( progress_type::write_starts );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
           std::function< vg::Position( uint64_t ) > lambda =
               [this]( uint64_t i ) {
