@@ -1,5 +1,6 @@
 # When SeqAn is not found
 if(NOT SeqAn_FOUND)
+  message(STATUS "Using bundled SeqAn library")
   set(SEQAN_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/seqan)
   set(SEQAN_BUILD_SYSTEM "SEQAN_RELEASE_LIBRARY" CACHE STRING "Only install SeqAn library")
   set(SEQAN_NO_DOX ON CACHE BOOL "No dox for SeqAn")
@@ -24,6 +25,7 @@ endif()
 
 # When `gum` is not found
 if(NOT TARGET gum::gum)
+  message(STATUS "Using bundled gum library")
   set(GUM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/gum)
   execute_process(
     COMMAND git submodule update --init --recursive -- ${GUM_SOURCE_DIR}
@@ -36,6 +38,7 @@ endif()
 
 # When `kseq++` is not found
 if(NOT TARGET kseq++::kseq++)
+  message(STATUS "Using bundled kseq++ library")
   set(KSEQPP_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/kseq++)
   execute_process(
     COMMAND git submodule update --init --recursive -- ${KSEQPP_SOURCE_DIR}
@@ -44,4 +47,20 @@ if(NOT TARGET kseq++::kseq++)
   set(BUILD_TESTING OFF)
   add_subdirectory(${KSEQPP_SOURCE_DIR})
   set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
+endif()
+
+# When `PairG` is not found
+if(NOT TARGET pairg::libpairg)
+  message(STATUS "Using bundled PairG library")
+  set(PairG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/PairG)
+  execute_process(
+    COMMAND git submodule update --init --recursive -- ${PairG_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
+  set(BUILD_LIBRARY_ONLY_SAVED "${BUILD_LIBRARY_ONLY}")
+  set(BUILD_TESTING OFF)
+  set(BUILD_LIBRARY_ONLY ON)
+  add_subdirectory(${PairG_SOURCE_DIR})
+  set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
+  set(BUILD_LIBRARY_ONLY "${BUILD_LIBRARY_ONLY_SAVED}")
 endif()

@@ -16,3 +16,6 @@
 [submodule "ext/gum"]
 	path = ext/gum
 	url = https://github.com/cartoonist/gum.git
+[submodule "ext/PairG"]
+	path = ext/PairG
+	url = https://github.com/cartoonist/PairG.git

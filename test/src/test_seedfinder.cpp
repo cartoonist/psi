@@ -41,6 +41,7 @@ SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
     gum::util::extend( graph, vgpath );
 
     SeedFinder< NoStats, finder_traits_type > finder( graph, 30 );
+    finder.unset_as_finaliser();
 
     unsigned int nof_paths = 4;
     WHEN( "Some paths " + std::to_string( nof_paths ) + " are picked using a SeedFinder" )
@@ -93,6 +94,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
       auto truth_itr = truth.begin();
 
       SeedFinder< WithStats, finder_traits_type > finder( graph, k );
+      finder.unset_as_finaliser();
       finder.pick_paths( nof_paths, true, k );
       finder.index_paths();
 
@@ -111,6 +113,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
       SeedFinder< NoStats, finder_traits_type > finder( graph, k );
+      finder.unset_as_finaliser();
       finder.pick_paths( nof_paths, true, k );
       finder.index_paths();
 
@@ -127,6 +130,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
       SeedFinder< NoStats, finder_traits_type > finder( graph, k );
+      finder.unset_as_finaliser();
       finder.pick_paths( nof_paths, false );
       finder.index_paths();
 
@@ -156,6 +160,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
       int k = 12;
       int e = 10;
       SeedFinder< WithStats, finder_traits_type > finder( graph, k );
+      finder.unset_as_finaliser();
 
       for ( int i = 325; i > 0; i -= 4 ) {
         finder.add_start( i, i % 17 );
@@ -182,4 +187,112 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
       }
     }
   }
+}
+
+SCENARIO( "Distance constraints verification", "[seedfinder]" )
+{
+  GIVEN ( "A tiny variation graph" )
+  {
+    typedef gum::SeqGraph< gum::Succinct > graph_type;
+    typedef typename graph_type::id_type id_type;
+    typedef typename graph_type::offset_type offset_type;
+    typedef SeedFinderTraits< gum::Succinct, Dna5QStringSet<>, seqan::IndexEsa<>, InMemory > finder_traits_type;
+    typedef SeedFinder< NoStats, finder_traits_type > finder_type;
+    typedef std::tuple< id_type, offset_type, id_type, offset_type > ends_type;
+
+    std::string vgpath = test_data_dir + "/tiny/tiny.vg";
+    graph_type graph;
+    gum::util::load( graph, vgpath );
+
+    unsigned int dlen = 10;
+    unsigned int drad = 2;
+    unsigned int seedlen = 30;
+    finder_type finder( graph, seedlen );
+    finder.unset_as_finaliser();
+
+    auto ibyc =
+        [&graph]( id_type cid ) {
+          return graph.id_by_coordinate( cid );
+        };
+
+    std::vector< ends_type > distant =
+        { { ibyc( 1 ), 0, ibyc( 1 ), 0 },
+          { ibyc( 1 ), 0, ibyc( 1 ), 1 },
+          { ibyc( 1 ), 0, ibyc( 1 ), 3 },
+          { ibyc( 1 ), 0, ibyc( 1 ), 6 },
+          { ibyc( 1 ), 0, ibyc( 1 ), 7 },
+          { ibyc( 1 ), 0, ibyc( 7 ), 0 },
+          { ibyc( 2 ), 0, ibyc( 9 ), 10 },
+          { ibyc( 9 ), 1, ibyc( 9 ), 14 },
+          { ibyc( 9 ), 5, ibyc( 9 ), 18 },
+          { ibyc( 9 ), 18, ibyc( 11 ), 0 },
+          { ibyc( 9 ), 18, ibyc( 11 ), 3 },
+          { ibyc( 9 ), 18, ibyc( 15 ), 0 },
+          { ibyc( 9 ), 18, ibyc( 15 ), 6 },
+        };
+
+    std::vector< ends_type > closed =
+        { { ibyc( 1 ), 0, ibyc( 2 ), 0 },
+          { ibyc( 1 ), 0, ibyc( 6 ), 0 },
+          { ibyc( 1 ), 0, ibyc( 6 ), 2 },
+          { ibyc( 9 ), 0, ibyc( 9 ), 8 },
+          { ibyc( 9 ), 1, ibyc( 9 ), 13 },
+          { ibyc( 9 ), 10, ibyc( 9 ), 18 },
+          { ibyc( 9 ), 6, ibyc( 9 ), 18 },
+          { ibyc( 9 ), 18, ibyc( 15 ), 1 },
+          { ibyc( 9 ), 18, ibyc( 15 ), 5 },
+        };
+
+    WHEN( "Creating distance index" )
+    {
+      finder.create_distance_index( dlen, drad );
+
+      THEN( "It should rejects nodes not complying with distance constraints" )
+      {
+        for ( auto ends : distant ) {
+          REQUIRE( !finder.verify_distance( std::get<0>( ends ), std::get<1>( ends ),
+                                            std::get<2>( ends ), std::get<3>( ends ) ) );
+        }
+      }
+
+      THEN( "It should accept nodes complying with distance constraints" )
+      {
+        for ( auto ends : closed ) {
+          REQUIRE( finder.verify_distance( std::get<0>( ends ), std::get<1>( ends ),
+                                           std::get<2>( ends ), std::get<3>( ends ) ) );
+        }
+      }
+
+      AND_WHEN( "It the index is loaded from disk" )
+      {
+        std::string prefix = get_tmpfile();
+        finder.save_distance_index( prefix, dlen, drad );
+        finder_type finder2( graph, seedlen );
+        finder2.unset_as_finaliser();
+        finder2.open_distance_index( prefix, dlen, drad );
+
+        THEN( "It should rejects nodes not complying with distance constraints" )
+        {
+          for ( auto ends : distant ) {
+            REQUIRE( !finder2.verify_distance( std::get<0>( ends ), std::get<1>( ends ),
+                                               std::get<2>( ends ), std::get<3>( ends ) ) );
+          }
+        }
+
+        THEN( "It should accept nodes complying with distance constraints" )
+        {
+          for ( auto ends : closed ) {
+            REQUIRE( finder2.verify_distance( std::get<0>( ends ), std::get<1>( ends ),
+                                              std::get<2>( ends ), std::get<3>( ends ) ) );
+          }
+        }
+      }
+    }
+  }
+}
+
+/* NOTE: Put all test scenarios before this one! */
+SCENARIO( "Finalise SeedFinder" )
+{
+  SeedFinder<>::finalise();
 }

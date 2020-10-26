@@ -73,6 +73,8 @@ namespace psi {
     unsigned int path_num;
     unsigned int context;
     unsigned int gocc_threshold;
+    unsigned int dindex_length;
+    unsigned int dindex_radius;
     IndexType index;
     std::string rf_path;
     std::string fq_path;

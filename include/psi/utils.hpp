@@ -354,7 +354,7 @@ namespace psi {
     inline std::string
   get_tmpfile( char const* directory="" )
   {
-    assert( directory == "" || starts_with( directory, "/" ) );
+    assert( std::strlen( directory ) == 0 || starts_with( directory, "/" ) );
     std::string tfpath = get_tmpdir() + directory + PSI_TMPFILE_TEMPLATE;
     char* tmpl = new char [ tfpath.size() + 1 ];
     std::strcpy( tmpl, tfpath.c_str() );
@@ -892,6 +892,29 @@ namespace psi {
         }
       }
 
+      /**  @brief Acquire the lock outracing writers by ignoring `writer_waiting` flag.
+       *
+       *  NOTE: Writers might get starved.
+       */
+        inline void
+      acquire_reader_greedy()
+      {
+        auto retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( peek_readers != HAS_WRITER ) {  /* ignores waiting writers */
+            if ( this->readers.compare_exchange_weak(
+                    peek_readers, peek_readers + 1,
+                    std::memory_order_release,
+                    std::memory_order_relaxed ) ) return;
+          }
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
         inline void
       release_reader()
       {
@@ -974,6 +997,25 @@ namespace psi {
       }
 
       ~ReaderLock( ) noexcept
+      {
+        this->lock.release_reader();
+      }
+  };
+
+  template< typename TLock >
+  class GreedyReaderLock {
+    private:
+      /* === DATA MEMBERS === */
+      TLock& lock;
+
+    public:
+      /* === LIFECYCLE === */
+      GreedyReaderLock( TLock& l ) : lock( l )
+      {
+        this->lock.acquire_reader_greedy();
+      }
+
+      ~GreedyReaderLock( ) noexcept
       {
         this->lock.release_reader();
       }

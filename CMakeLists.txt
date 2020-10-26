@@ -16,6 +16,7 @@ find_package(OpenMP)          # required by SeqAn
 find_package(SeqAn QUIET)
 find_package(gum QUIET)
 find_package(kseq++ QUIET)
+find_package(pairg QUIET)
 # Include external dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 
@@ -60,11 +61,13 @@ target_link_libraries(psi
   INTERFACE gum::gum
   INTERFACE kseq++::kseq++
   INTERFACE SeqAn::SeqAn
+  INTERFACE pairg::libpairg
   INTERFACE "atomic")
 target_link_libraries(psi_novg
   INTERFACE gum::gum_novg
   INTERFACE kseq++::kseq++
   INTERFACE SeqAn::SeqAn
+  INTERFACE pairg::libpairg
   INTERFACE "atomic")
 # Define `PSI_DEBUG`
 if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
@@ -106,6 +109,7 @@ endif(BUILD_TESTING)
 # Registering tests.
 include(CTest)
 add_test(NAME TestUtils COMMAND psi-tests "[utils]")
+add_test(NAME TestGraph COMMAND psi-tests "[graph]")
 add_test(NAME TestGraphIter COMMAND psi-tests "[graph][iterator]")
 add_test(NAME TestStats COMMAND psi-tests "[stats]")
 add_test(NAME TestSequence COMMAND psi-tests "[sequence]")
