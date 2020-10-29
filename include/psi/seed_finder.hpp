@@ -775,44 +775,80 @@ namespace psi {
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         typedef pairg::matrixOps csr_traits_type;
         typedef typename csr_traits_type::crsMat_t csrmat_type;
+
+        class KokkosHandler {
+        public:
+          /* === LIFECYCLE === */
+          KokkosHandler( bool fin=true ) : finaliser( fin )
+          {
+            /* Ensure no concurrent dtor is running */
+            ReaderLock constructor( KokkosHandler::get_final_lock() );
+            if ( !Kokkos::is_initialized() ) {
+              /* Ensure only one of the concurrent ctor gets the lock */
+              UniqWriterLock initialiser( KokkosHandler::get_init_lock() );
+              if ( initialiser ) {
+                /* Initialise Kokkos */
+                Kokkos::initialize();
+              }
+            }
+            /* Sync ctors with the initialiser ctor to ensure that the object is ready */
+            WriterLock sync( KokkosHandler::get_init_lock() );
+          }
+
+          ~KokkosHandler() noexcept
+          {
+            /* Ensure no concurrent ctor or dtor is running */
+            WriterLock lock( KokkosHandler::get_final_lock() );
+            /* Finalise Kokkos if we are responsible/finaliser */
+            /* NOTE: No initialisation can be done after finalising. */
+            if ( Kokkos::is_initialized() && this->finaliser ) KokkosHandler::finalise();
+          }
+          /* === OPERATORS === */
+          inline
+          operator bool() const
+          {
+            return this->finaliser;
+          }
+
+          inline KokkosHandler&
+          operator=( bool value )
+          {
+            this->finaliser = value;
+            return *this;
+          }
+          /* === STATIC MEMBERS === */
+          static inline void
+          finalise( )
+          {
+            Kokkos::finalize();
+          }
+
+          static inline RWSpinLock<>&
+          get_init_lock( )
+          {
+            static RWSpinLock<> init_lock;
+            return init_lock;
+          }
+
+          static inline RWSpinLock<>&
+          get_final_lock( )
+          {
+            static RWSpinLock<> final_lock;
+            return final_lock;
+          }
+          /* === DATA MEMBERS === */
+          bool finaliser;
+        };
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned int gocc_thr = 0,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
+          : graph_ptr( &g ), pindex( g, true ), handler( true ), seed_len( len ),
           seed_mismatches( mismatches ),
-          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ), finaliser( true ),
+          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
-        {
-          /* Ensure no concurrent dtor is running */
-          ReaderLock constructor( SeedFinder::get_final_lock() );
-          if ( !Kokkos::is_initialized() ) {
-            /* Ensure only one of the concurrent ctor gets the lock */
-            UniqWriterLock initialiser( SeedFinder::get_init_lock() );
-            if ( initialiser ) {
-              /* Initialise Kokkos */
-              Kokkos::initialize();
-            }
-          }
-          /* Sync ctors with the initialiser ctor to ensure the object is ready after instantiating */
-          WriterLock sync( SeedFinder::get_init_lock() );
-        }
-
-        ~SeedFinder( ) noexcept
-        {
-          /* Ensure no concurrent ctor or dtor is running */
-          WriterLock lock( SeedFinder::get_final_lock() );
-          /* Finalise Kokkos if we are responsible/finaliser */
-          /* NOTE: No SeedFinder can be instantiated after finalizing. */
-          if ( Kokkos::is_initialized() && this->is_finaliser() ) SeedFinder::finalise();
-        }
-        /* ====================  STATIC MEMBERS  ===================================== */
-          static inline void
-        finalise( )
-        {
-          Kokkos::finalize();
-        }
+        { }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for graph_ptr.
@@ -860,12 +896,12 @@ namespace psi {
         }
 
         /**
-         *  @brief  getter function for finaliser.
+         *  @brief  getter function for `handler.finaliser`.
          */
           inline bool
         is_finaliser( ) const
         {
-          return this->finaliser;
+          return this->handler;
         }
 
         /**
@@ -948,13 +984,13 @@ namespace psi {
           inline void
         set_as_finaliser( )
         {
-          this->finaliser = true;
+          this->handler = true;
         }
 
           inline void
         unset_as_finaliser( )
         {
-          this->finaliser = false;
+          this->handler = false;
         }
 
           inline readsrecord_type
@@ -1547,26 +1583,12 @@ namespace psi {
         const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
+        KokkosHandler handler;
         csrmat_type distance_mat;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
-        bool finaliser;
         std::unique_ptr< stats_type > stats_ptr;
-        /* ====================  STATIC MEMBERS  ===================================== */
-        static inline RWSpinLock<>&
-        get_init_lock( )
-        {
-          static RWSpinLock<> init_lock;
-          return init_lock;
-        }
-
-        static inline RWSpinLock<>&
-        get_final_lock( )
-        {
-          static RWSpinLock<> final_lock;
-          return final_lock;
-        }
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Set the context size for patching.

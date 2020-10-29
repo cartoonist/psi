@@ -289,10 +289,11 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
       }
     }
   }
-}
 
-/* NOTE: Put all test scenarios before this one! */
-SCENARIO( "Finalise SeedFinder" )
-{
-  SeedFinder<>::finalise();
+  /* NOTE: Put all test scenarios before this one! */
+  THEN( "Finalise SeedFinder" )
+  {
+    gum::SeqGraph< gum::Succinct > graph;
+    SeedFinder<> last_finder( graph, 30 );
+  }
 }
