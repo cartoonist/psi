@@ -914,6 +914,15 @@ namespace psi {
         }
 
         /**
+         *  @brief  getter function for distance index matrix.
+         */
+          inline csrmat_type const&
+        get_distance_matrix( ) const
+        {
+          return this->distance_mat;
+        }
+
+        /**
          * @brief  getter function for stats_ptr.
          */
           inline stats_type const&
