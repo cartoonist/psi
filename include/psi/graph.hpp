@@ -52,9 +52,18 @@ namespace psi {
       return max;
     }
 
+    /**
+     *  @brief  Compute total number of loci in the subgraph indicated by node ranks
+     *          [lower, upper).
+     *
+     *  @param[in]  graph The input graph.
+     *  @param[in]  lower The minimum node rank in the subgraph.
+     *  @param[in]  upper The maximum node rank in the subgraph.
+     */
     template< class TGraph >
     inline typename TGraph::offset_type
-    total_nof_loci( TGraph const& graph, gum::Dynamic )
+    total_nof_loci( TGraph const& graph, typename TGraph::rank_type lower,
+                    typename TGraph::rank_type upper=0 )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
@@ -63,11 +72,20 @@ namespace psi {
 
       offset_type total = 0;
       graph.for_each_node(
-          [&graph, &total]( rank_type rank, id_type id ) {
+          [&graph, &total, &upper]( rank_type rank, id_type id ) {
             total += graph.node_length( id );
+            if ( rank + 1 == upper ) return false;
             return true;
-          } );
+          },
+          lower );
       return total;
+    }
+
+    template< class TGraph >
+    inline typename TGraph::offset_type
+    total_nof_loci( TGraph const& graph, gum::Dynamic )
+    {
+      return total_nof_loci( graph, 1 /* from the first node to the end */ );
     }
 
     template< class TGraph >
@@ -284,16 +302,63 @@ namespace psi {
     }
 
     /**
+     *  @brief  Count the nodes of a subgraph in the graph or of the whole graph.
+     *
+     *  The subgraph is indicated by the node range [lower, upper).
+     */
+    template< class TGraph >
+    inline typename TGraph::rank_type
+    node_count( TGraph const& graph, typename TGraph::rank_type lower=1,
+                typename TGraph::rank_type upper=0 )
+    {
+      if ( upper == 0 ) upper = graph.get_node_count() + 1;
+      assert( lower <= graph.get_node_count() && lower > 0 );
+      assert( upper <= graph.get_node_count()+1 && upper > lower );
+      return upper - lower;
+    }
+
+    /**
+     *  @brief  Count the edges of a graph component or of the whole graph.
+     *
+     *  The component is indicated by the node range [lower, upper).
+     */
+    template< class TGraph >
+    inline typename TGraph::rank_type
+    edge_count( TGraph const& graph, typename TGraph::rank_type lower=1,
+                typename TGraph::rank_type upper=0 )
+    {
+      typedef typename TGraph::id_type id_type;
+      typedef typename TGraph::rank_type rank_type;
+
+      rank_type edge_count = 0;
+      graph.for_each_node(
+          [&graph, &edge_count, &upper]( rank_type rank, id_type id ){
+            edge_count += graph.outdegree( id );
+            if ( rank + 1 == upper ) return false;
+            return true;
+          },
+          lower );
+      return edge_count;
+    }
+
+    /**
      *  @brief  Get the adjacency matrix of the graph in CRS format.
      *
      *  @param[in]  graph The graph.
+     *  @param[in]  tag  The CRS trait tag.
+     *  @param[in]  lower  The lower node rank (inclusive).
+     *  @param[in]  upper  The upper node rank (exclusive).
      *  @return  The adjacency matrix.
      *
-     *  Calculate coverage for all adjacent nodes and find the smallest one.
+     *  Compute adjacency matrix of a component in the given `graph` or of the whole
+     *  graph. The component is indicated by nodes whose ranks are in the range [lower,
+     *  upper). The resulting adjacency matrix is stored in CRS format.
      */
-    template< class TGraph, typename TCsrTraits >
-    inline typename TCsrTraits::crsMat_t
-    adjacency_matrix( TGraph const& graph, TCsrTraits /* tag */ )
+    template< class TGraph, typename TCrsTraits >
+    inline typename TCrsTraits::crsMat_t
+    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */,
+                      typename TGraph::rank_type lower=1,
+                      typename TGraph::rank_type upper=0 )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
@@ -301,14 +366,16 @@ namespace psi {
       typedef typename graph_type::rank_type rank_type;
       typedef typename graph_type::linktype_type linktype_type;
 
-      typedef typename TCsrTraits::lno_t lno_t;
-      typedef typename TCsrTraits::size_type size_type;
-      typedef typename TCsrTraits::lno_nnz_view_t lno_nnz_view_t;
-      typedef typename TCsrTraits::scalar_view_t scalar_view_t;
-      typedef typename TCsrTraits::lno_view_t lno_view_t;
+      typedef typename TCrsTraits::lno_t lno_t;
+      typedef typename TCrsTraits::size_type size_type;
+      typedef typename TCrsTraits::lno_nnz_view_t lno_nnz_view_t;
+      typedef typename TCrsTraits::scalar_view_t scalar_view_t;
+      typedef typename TCrsTraits::lno_view_t lno_view_t;
 
+      if ( upper == 0 ) upper = graph.get_node_count() + 1;
       lno_t nrows = total_nof_loci( graph );
-      size_type nnz = nrows - graph.get_node_count() + graph.get_edge_count();
+      size_type nnz = total_nof_loci( graph, lower, upper ) -
+          node_count( graph, lower, upper ) + edge_count( graph, lower, upper );
 
       lno_nnz_view_t entries( "entries", nnz );
       scalar_view_t values( "values", nnz );
@@ -323,26 +390,29 @@ namespace psi {
       size_type irow = 0;
       rowmap( irow++ ) = i;
       graph.for_each_node(
-          [&graph, &entries, &rowmap, &cursor, &i, &irow]( rank_type rank, id_type id ) {
+          [&]( rank_type rank, id_type id ) {
             assert( gum::util::id_to_charorder( graph, id ) == cursor );
             for ( offset_type offset = 1; offset < graph.node_length( id ); ++offset ) {
-              entries( i++ ) = ++cursor;
+              ++cursor;
+              if ( lower <= rank && rank < upper ) entries( i++ ) = cursor;
               rowmap( irow++ ) = i;
             }
             ++cursor;
-            graph.for_each_edges_out(
-                id,
-                [&graph, &entries, &i]( id_type to, linktype_type ) {
-                  entries( i++ ) = gum::util::id_to_charorder( graph, to );
-                  return true;
-                } );
+            if ( lower <= rank && rank < upper ) {
+              graph.for_each_edges_out(
+                  id,
+                  [&graph, &entries, &i]( id_type to, linktype_type ) {
+                    entries( i++ ) = gum::util::id_to_charorder( graph, to );
+                    return true;
+                  } );
+            }
             rowmap( irow++ ) = i;
             return true;
           } );
       assert( i == nnz );
       assert( irow == static_cast< unsigned int >( nrows + 1 ) );
 
-      return typename TCsrTraits::crsMat_t( "adjacency matrix",
+      return typename TCrsTraits::crsMat_t( "adjacency matrix",
                                             nrows, nrows, nnz, values, rowmap, entries );
     }
   }  /* --- end of namespace util --- */

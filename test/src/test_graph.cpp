@@ -26,6 +26,55 @@
 
 using namespace psi;
 
+TEMPLATE_SCENARIO( "Get graph statistics", "[graph][interface]", gum::Dynamic, gum::Succinct )
+{
+  typedef TestType spec_type;
+  typedef gum::SeqGraph< spec_type > graph_type;
+
+  GIVEN( "A tiny variation graph" )
+  {
+    std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
+    graph_type graph;
+    gum::util::load( graph, vgpath );
+
+    WHEN( "Total number of loci in the graph is counted" )
+    {
+      auto nof_loci = util::total_nof_loci( graph );
+      THEN( "It should be equal to the sum of node label lengths" )
+      {
+        REQUIRE( nof_loci == 55 );
+      }
+    }
+
+    WHEN( "Total number of loci in a subgraph is counted" )
+    {
+      auto nof_loci = util::total_nof_loci( graph, 5, 10 );
+      THEN( "It should be equal to the sum of node label lengths of the subgraph" )
+      {
+        REQUIRE( nof_loci == 25 );
+      }
+    }
+
+    WHEN( "Total number of nodes in a subgraph is counted" )
+    {
+      auto nof_nodes = util::node_count( graph, 5, 10 );
+      THEN( "It should be equal to the number of nodes in the subgraph" )
+      {
+        REQUIRE( nof_nodes == 5 );
+      }
+    }
+
+    WHEN( "Total number of edges in a component is counted" )
+    {
+      auto nof_edges = util::edge_count( graph, 5 );
+      THEN( "It should be equal to the number of edges in the component" )
+      {
+        REQUIRE( nof_edges == 13 );
+      }
+    }
+  }
+}
+
 SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 {
   typedef gum::SeqGraph< gum::Succinct > graph_type;
@@ -48,6 +97,65 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
     WHEN( "The adjacency matrix of its corresponding character graph is build" )
     {
       auto matrix = util::adjacency_matrix( graph, traits_type() );
+
+      THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
+      {
+        REQUIRE( matrix.numCols() == nof_nodes );
+        REQUIRE( matrix.numRows() == nof_nodes );
+        REQUIRE( matrix.graph.row_map.extent( 0 ) == nof_nodes + 1 );
+      }
+
+      THEN( "The number of entries/values should be equal to the numbers edges" )
+      {
+        REQUIRE( matrix.graph.entries.extent( 0 ) == nof_edges );
+        REQUIRE( matrix.values.extent( 0 ) == nof_edges );
+      }
+
+      THEN( "The matrix entries should be valid" )
+      {
+        graph.for_each_node(
+            [&graph, &matrix, nof_nodes]( rank_type rank, id_type id ) {
+              offset_type char_id = gum::util::id_to_charorder( graph, id );
+              for ( offset_type i = 1; i < graph.node_length( id ); ++i, ++char_id ) {
+                for ( offset_type col = 0; col < nof_nodes; ++col ) {
+                  if ( col == char_id + 1 ) {
+                    REQUIRE( traits_type::queryValue( matrix, char_id, col ) );
+                  }
+                  else {
+                    REQUIRE( !traits_type::queryValue( matrix, char_id, col ) );
+                  }
+                }
+              }
+              offset_type prev = 0;
+              graph.for_each_edges_out(
+                  id,
+                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                    auto to_char_id = gum::util::id_to_charorder( graph, to );
+                    REQUIRE( traits_type::queryValue( matrix, char_id, to_char_id ) );
+                    for ( ; prev < to_char_id; ++prev ) {
+                      REQUIRE( !traits_type::queryValue( matrix, char_id, prev ) );
+                    }
+                    ++prev;
+                    return true;
+                  } );
+              return true;
+            } );
+      }
+    }
+  }
+
+  GIVEN( "A variation graph with multiple components" )
+  {
+    std::string vgpath = test_data_dir + "/multi/multi.gfa";
+    graph_type graph;
+    gum::util::load( graph, vgpath );
+    auto nof_nodes = util::total_nof_loci( graph );
+    auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
+
+    WHEN( "The adjacency matrix of its corresponding character graph is build" )
+    {
+      auto matrix = traits_type::addMatrices( util::adjacency_matrix( graph, traits_type(), 1, 16 ),
+                                              util::adjacency_matrix( graph, traits_type(), 16 ));
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {

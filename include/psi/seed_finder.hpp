@@ -773,46 +773,82 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
-        typedef pairg::matrixOps csr_traits_type;
-        typedef typename csr_traits_type::crsMat_t csrmat_type;
+        typedef pairg::matrixOps crs_traits_type;
+        typedef typename crs_traits_type::crsMat_t crsmat_type;
+
+        class KokkosHandler {
+        public:
+          /* === LIFECYCLE === */
+          KokkosHandler( bool fin=true ) : finaliser( fin )
+          {
+            /* Ensure no concurrent dtor is running */
+            ReaderLock constructor( KokkosHandler::get_final_lock() );
+            if ( !Kokkos::is_initialized() ) {
+              /* Ensure only one of the concurrent ctor gets the lock */
+              UniqWriterLock initialiser( KokkosHandler::get_init_lock() );
+              if ( initialiser ) {
+                /* Initialise Kokkos */
+                Kokkos::initialize();
+              }
+            }
+            /* Sync ctors with the initialiser ctor to ensure that the object is ready */
+            WriterLock sync( KokkosHandler::get_init_lock() );
+          }
+
+          ~KokkosHandler() noexcept
+          {
+            /* Ensure no concurrent ctor or dtor is running */
+            WriterLock lock( KokkosHandler::get_final_lock() );
+            /* Finalise Kokkos if we are responsible/finaliser */
+            /* NOTE: No initialisation can be done after finalising. */
+            if ( Kokkos::is_initialized() && this->finaliser ) KokkosHandler::finalise();
+          }
+          /* === OPERATORS === */
+          inline
+          operator bool() const
+          {
+            return this->finaliser;
+          }
+
+          inline KokkosHandler&
+          operator=( bool value )
+          {
+            this->finaliser = value;
+            return *this;
+          }
+          /* === STATIC MEMBERS === */
+          static inline void
+          finalise( )
+          {
+            Kokkos::finalize();
+          }
+
+          static inline RWSpinLock<>&
+          get_init_lock( )
+          {
+            static RWSpinLock<> init_lock;
+            return init_lock;
+          }
+
+          static inline RWSpinLock<>&
+          get_final_lock( )
+          {
+            static RWSpinLock<> final_lock;
+            return final_lock;
+          }
+          /* === DATA MEMBERS === */
+          bool finaliser;
+        };
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned int gocc_thr = 0,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
+          : graph_ptr( &g ), pindex( g, true ), handler( true ), seed_len( len ),
           seed_mismatches( mismatches ),
-          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ), finaliser( true ),
+          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
-        {
-          /* Ensure no concurrent dtor is running */
-          ReaderLock constructor( SeedFinder::get_final_lock() );
-          if ( !Kokkos::is_initialized() ) {
-            /* Ensure only one of the concurrent ctor gets the lock */
-            UniqWriterLock initialiser( SeedFinder::get_init_lock() );
-            if ( initialiser ) {
-              /* Initialise Kokkos */
-              Kokkos::initialize();
-            }
-          }
-          /* Sync ctors with the initialiser ctor to ensure the object is ready after instantiating */
-          WriterLock sync( SeedFinder::get_init_lock() );
-        }
-
-        ~SeedFinder( ) noexcept
-        {
-          /* Ensure no concurrent ctor or dtor is running */
-          WriterLock lock( SeedFinder::get_final_lock() );
-          /* Finalise Kokkos if we are responsible/finaliser */
-          /* NOTE: No SeedFinder can be instantiated after finalizing. */
-          if ( Kokkos::is_initialized() && this->is_finaliser() ) SeedFinder::finalise();
-        }
-        /* ====================  STATIC MEMBERS  ===================================== */
-          static inline void
-        finalise( )
-        {
-          Kokkos::finalize();
-        }
+        { }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for graph_ptr.
@@ -860,12 +896,12 @@ namespace psi {
         }
 
         /**
-         *  @brief  getter function for finaliser.
+         *  @brief  getter function for `handler.finaliser`.
          */
           inline bool
         is_finaliser( ) const
         {
-          return this->finaliser;
+          return this->handler;
         }
 
         /**
@@ -875,6 +911,15 @@ namespace psi {
         get_pindex( ) const
         {
           return this->pindex;
+        }
+
+        /**
+         *  @brief  getter function for distance index matrix.
+         */
+          inline crsmat_type const&
+        get_distance_matrix( ) const
+        {
+          return this->distance_mat;
         }
 
         /**
@@ -948,13 +993,13 @@ namespace psi {
           inline void
         set_as_finaliser( )
         {
-          this->finaliser = true;
+          this->handler = true;
         }
 
           inline void
         unset_as_finaliser( )
         {
-          this->finaliser = false;
+          this->handler = false;
         }
 
           inline readsrecord_type
@@ -1049,26 +1094,63 @@ namespace psi {
           this->pindex.create_index();
         }
 
+      /**
+       *  @brief  Create distance index matrix.
+       *
+       *  NOTE: This function assumes that the graph is augmented by one path per region
+       *        and nothing more.
+       */
         inline void
-        create_distance_index( unsigned int dlen=0, unsigned int drad=0 )
+        create_distance_index( unsigned int dmin=0, unsigned int dmax=0,
+                               std::function< void( std::string const& ) > info=nullptr,
+                               std::function< void( std::string const& ) > warn=nullptr )
         {
-          if ( dlen == 0 || dlen < drad ) return;  // not constructible
+          if ( dmin == 0 || dmax < dmin ) return;  // not constructible
+          if ( dmax == 0 ) dmax = dmin;
 
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
 
-          auto adj_mat = util::adjacency_matrix( *this->graph_ptr, csr_traits_type() );
-          this->distance_mat =
-              pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad );
+          /* Extract component boundary nodes */
+          std::vector< rank_type > comp_bounds;
+          this->graph_ptr->for_each_path(
+              [this, &comp_bounds]( auto path_rank, auto path_id ) {
+                id_type sid = *this->graph_ptr->path( path_id ).begin();
+                comp_bounds.push_back( this->graph_ptr->id_to_rank( sid ) );
+                return true;
+              } );
+          comp_bounds.push_back( 0 );  // add the upper bound of the last component
+
+          if ( info ) {
+            info( "Constructing distance index for " +
+                  std::to_string( comp_bounds.size()-1 ) + " regions..." );
+          }
+
+          for ( std::size_t idx = 0; idx < comp_bounds.size()-1; ++idx ) {
+            auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
+                                                   comp_bounds[idx], comp_bounds[idx+1] );
+            if ( this->distance_mat.numCols() == 0 ) {
+              this->distance_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
+            }
+            else {
+              this->distance_mat = crs_traits_type::addMatrices(
+                  this->distance_mat,
+                  pairg::buildValidPairsMatrix( adj_mat, dmin, dmax ) );
+            }
+            if ( info ) {
+              info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
+            }
+          }
         }
 
         inline bool
-        save_distance_index( std::string prefix, unsigned int dlen=0, unsigned int drad=0 ) const
+        save_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 ) const
         {
           if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
+          if ( dmax == 0 ) dmax = dmin;
 
-          auto fname = prefix + "_dist_mat_" + "d" + std::to_string( dlen ) +
-              "±" + std::to_string( drad ) + ".crs";
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
+              "M" + std::to_string( dmax ) + ".crs";
           if ( !writable( fname ) ) return false;
 
           this->stats_ptr->set_progress( progress_type::write_dindex );
@@ -1079,17 +1161,19 @@ namespace psi {
         }
 
         inline bool
-        open_distance_index( std::string prefix, unsigned int dlen=0, unsigned int drad=0 )
+        open_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 )
         {
-          auto fname = prefix + "_dist_mat_" + "d" + std::to_string( dlen ) +
-              "±" + std::to_string( drad ) + ".crs";
+          if ( dmax == 0 ) dmax = dmin;
+
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
+              "M" + std::to_string( dmax ) + ".crs";
           if ( !readable( fname ) ) return false;
 
           this->stats_ptr->set_progress( progress_type::load_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-dindex" );
 
           this->distance_mat =
-              KokkosKernels::Impl::read_kokkos_crst_matrix< csrmat_type >( fname.c_str() );
+              KokkosKernels::Impl::read_kokkos_crst_matrix< crsmat_type >( fname.c_str() );
           return true;
         }
 
@@ -1104,7 +1188,7 @@ namespace psi {
 
           auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
           auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
-          return csr_traits_type::queryValue( this->distance_mat, v_charid, u_charid );
+          return crs_traits_type::queryValue( this->distance_mat, v_charid, u_charid );
         }
 
         /**
@@ -1114,14 +1198,14 @@ namespace psi {
          *  @param  patched Whether patch the selected paths or not.
          *  @param  context The context size for patching.
          *  @param  step_size  The step size for starting loci sampling.
-         *  @param  dlen  The distance index path length.
-         *  @param  drad  The distance index path radius.
+         *  @param  dmin  The distance index minimum read insert size.
+         *  @param  dmax  The distance index maximum read insert size.
          *  @param  progress A callback function reporting the progress of path selection.
          */
         inline void
         create_path_index( unsigned int n, bool patched=true,
             unsigned int context=0, unsigned int step_size=1,
-            unsigned int dlen=0, unsigned int drad=0,
+            unsigned int dmin=0, unsigned int dmax=0,
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1140,7 +1224,7 @@ namespace psi {
           if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
           if ( info ) info( "Constructing distance index for pair distance queries..." );
-          this->create_distance_index( dlen, drad );
+          this->create_distance_index( dmin, dmax );
         }
 
         inline bool
@@ -1160,11 +1244,11 @@ namespace psi {
          */
         inline bool
         serialize_path_index( std::string const& fpath, unsigned int step_size=1,
-                              unsigned int dlen=0, unsigned int drad=0 )
+                              unsigned int dmin=0, unsigned int dmax=0 )
         {
           return this->serialize_path_index_only( fpath ) &&
               this->save_starts( fpath, this->seed_len, step_size ) &&
-              this->save_distance_index( fpath, dlen, drad );
+              this->save_distance_index( fpath, dmin, dmax );
         }
 
         /**
@@ -1185,16 +1269,16 @@ namespace psi {
 
         inline bool
         load_path_index( std::string const& fpath, unsigned int context=0,
-                         unsigned int step_size=1, unsigned int dlen=0, unsigned int drad=0 )
+                         unsigned int step_size=1, unsigned int dmin=0, unsigned int dmax=0 )
         {
           if ( !this->load_path_index_only( fpath, context ) ) return false;
           if ( !this->open_starts( fpath, this->seed_len, step_size ) ) {
             this->add_uncovered_loci( step_size );
             this->save_starts( fpath, this->seed_len, step_size );
           }
-          if ( !this->open_distance_index( fpath, dlen, drad ) ) {
-            this->create_distance_index( dlen, drad );
-            this->save_distance_index( fpath, dlen, drad );
+          if ( !this->open_distance_index( fpath, dmin, dmax ) ) {
+            this->create_distance_index( dmin, dmax );
+            this->save_distance_index( fpath, dmin, dmax );
           }
           return true;
         }
@@ -1547,26 +1631,12 @@ namespace psi {
         const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
-        csrmat_type distance_mat;
+        KokkosHandler handler;
+        crsmat_type distance_mat;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
-        bool finaliser;
         std::unique_ptr< stats_type > stats_ptr;
-        /* ====================  STATIC MEMBERS  ===================================== */
-        static inline RWSpinLock<>&
-        get_init_lock( )
-        {
-          static RWSpinLock<> init_lock;
-          return init_lock;
-        }
-
-        static inline RWSpinLock<>&
-        get_final_lock( )
-        {
-          static RWSpinLock<> final_lock;
-          return final_lock;
-        }
         /* ====================  METHODS       ======================================= */
         /**
          *  @brief  Set the context size for patching.
