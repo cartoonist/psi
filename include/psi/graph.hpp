@@ -346,13 +346,19 @@ namespace psi {
      *
      *  @param[in]  graph The graph.
      *  @param[in]  tag  The CRS trait tag.
+     *  @param[in]  lower  The lower node rank (inclusive).
+     *  @param[in]  upper  The upper node rank (exclusive).
      *  @return  The adjacency matrix.
      *
-     *  Compute adjacency matrix of the given `graph` in CRS format.
+     *  Compute adjacency matrix of a component in the given `graph` or of the whole
+     *  graph. The component is indicated by nodes whose ranks are in the range [lower,
+     *  upper). The resulting adjacency matrix is stored in CRS format.
      */
     template< class TGraph, typename TCrsTraits >
     inline typename TCrsTraits::crsMat_t
-    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */ )
+    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */,
+                      typename TGraph::rank_type lower=1,
+                      typename TGraph::rank_type upper=0 )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
@@ -366,8 +372,10 @@ namespace psi {
       typedef typename TCrsTraits::scalar_view_t scalar_view_t;
       typedef typename TCrsTraits::lno_view_t lno_view_t;
 
+      if ( upper == 0 ) upper = graph.get_node_count() + 1;
       lno_t nrows = total_nof_loci( graph );
-      size_type nnz = nrows - graph.get_node_count() + graph.get_edge_count();
+      size_type nnz = total_nof_loci( graph, lower, upper ) -
+          node_count( graph, lower, upper ) + edge_count( graph, lower, upper );
 
       lno_nnz_view_t entries( "entries", nnz );
       scalar_view_t values( "values", nnz );
@@ -382,19 +390,22 @@ namespace psi {
       size_type irow = 0;
       rowmap( irow++ ) = i;
       graph.for_each_node(
-          [&graph, &entries, &rowmap, &cursor, &i, &irow]( rank_type rank, id_type id ) {
+          [&]( rank_type rank, id_type id ) {
             assert( gum::util::id_to_charorder( graph, id ) == cursor );
             for ( offset_type offset = 1; offset < graph.node_length( id ); ++offset ) {
-              entries( i++ ) = ++cursor;
+              ++cursor;
+              if ( lower <= rank && rank < upper ) entries( i++ ) = cursor;
               rowmap( irow++ ) = i;
             }
             ++cursor;
-            graph.for_each_edges_out(
-                id,
-                [&graph, &entries, &i]( id_type to, linktype_type ) {
-                  entries( i++ ) = gum::util::id_to_charorder( graph, to );
-                  return true;
-                } );
+            if ( lower <= rank && rank < upper ) {
+              graph.for_each_edges_out(
+                  id,
+                  [&graph, &entries, &i]( id_type to, linktype_type ) {
+                    entries( i++ ) = gum::util::id_to_charorder( graph, to );
+                    return true;
+                  } );
+            }
             rowmap( irow++ ) = i;
             return true;
           } );

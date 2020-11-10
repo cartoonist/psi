@@ -1094,17 +1094,54 @@ namespace psi {
           this->pindex.create_index();
         }
 
+      /**
+       *  @brief  Create distance index matrix.
+       *
+       *  NOTE: This function assumes that the graph is augmented by one path per region
+       *        and nothing more.
+       */
         inline void
-        create_distance_index( unsigned int dlen=0, unsigned int drad=0 )
+        create_distance_index( unsigned int dlen=0, unsigned int drad=0,
+                               std::function< void( std::string const& ) > info=nullptr,
+                               std::function< void( std::string const& ) > warn=nullptr )
         {
           if ( dlen == 0 || dlen < drad ) return;  // not constructible
 
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
 
-          auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type() );
-          this->distance_mat =
-              pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad );
+          /* Extract component boundary nodes */
+          std::vector< rank_type > comp_bounds;
+          this->graph_ptr->for_each_path(
+              [this, &comp_bounds]( auto path_rank, auto path_id ) {
+                id_type sid = *this->graph_ptr->path( path_id ).begin();
+                comp_bounds.push_back( this->graph_ptr->id_to_rank( sid ) );
+                return true;
+              } );
+          comp_bounds.push_back( 0 );  // add the upper bound of the last component
+
+          if ( info ) {
+            info( "Constructing distance index for " +
+                  std::to_string( comp_bounds.size()-1 ) + " regions..." );
+          }
+
+          for ( std::size_t idx = 0; idx < comp_bounds.size()-1; ++idx ) {
+            auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
+                                                   comp_bounds[idx], comp_bounds[idx+1] );
+            if ( this->distance_mat.numCols() == 0 ) {
+              this->distance_mat =
+                  pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad );
+            }
+            else {
+              this->distance_mat =
+                  crs_traits_type::addMatrices(
+                      this->distance_mat,
+                      pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad ) );
+            }
+            if ( info ) {
+              info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
+            }
+          }
         }
 
         inline bool
