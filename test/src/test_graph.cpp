@@ -54,6 +54,24 @@ TEMPLATE_SCENARIO( "Get graph statistics", "[graph][interface]", gum::Dynamic, g
         REQUIRE( nof_loci == 25 );
       }
     }
+
+    WHEN( "Total number of nodes in a subgraph is counted" )
+    {
+      auto nof_nodes = util::node_count( graph, 5, 10 );
+      THEN( "It should be equal to the number of nodes in the subgraph" )
+      {
+        REQUIRE( nof_nodes == 5 );
+      }
+    }
+
+    WHEN( "Total number of edges in a component is counted" )
+    {
+      auto nof_edges = util::edge_count( graph, 5 );
+      THEN( "It should be equal to the number of edges in the component" )
+      {
+        REQUIRE( nof_edges == 13 );
+      }
+    }
   }
 }
 

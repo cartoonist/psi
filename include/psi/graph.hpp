@@ -302,6 +302,46 @@ namespace psi {
     }
 
     /**
+     *  @brief  Count the nodes of a subgraph in the graph or of the whole graph.
+     *
+     *  The subgraph is indicated by the node range [lower, upper).
+     */
+    template< class TGraph >
+    inline typename TGraph::rank_type
+    node_count( TGraph const& graph, typename TGraph::rank_type lower=1,
+                typename TGraph::rank_type upper=0 )
+    {
+      if ( upper == 0 ) upper = graph.get_node_count() + 1;
+      assert( lower <= graph.get_node_count() && lower > 0 );
+      assert( upper <= graph.get_node_count()+1 && upper > lower );
+      return upper - lower;
+    }
+
+    /**
+     *  @brief  Count the edges of a graph component or of the whole graph.
+     *
+     *  The component is indicated by the node range [lower, upper).
+     */
+    template< class TGraph >
+    inline typename TGraph::rank_type
+    edge_count( TGraph const& graph, typename TGraph::rank_type lower=1,
+                typename TGraph::rank_type upper=0 )
+    {
+      typedef typename TGraph::id_type id_type;
+      typedef typename TGraph::rank_type rank_type;
+
+      rank_type edge_count = 0;
+      graph.for_each_node(
+          [&graph, &edge_count, &upper]( rank_type rank, id_type id ){
+            edge_count += graph.outdegree( id );
+            if ( rank + 1 == upper ) return false;
+            return true;
+          },
+          lower );
+      return edge_count;
+    }
+
+    /**
      *  @brief  Get the adjacency matrix of the graph in CRS format.
      *
      *  @param[in]  graph The graph.
