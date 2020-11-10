@@ -1101,11 +1101,12 @@ namespace psi {
        *        and nothing more.
        */
         inline void
-        create_distance_index( unsigned int dlen=0, unsigned int drad=0,
+        create_distance_index( unsigned int dmin=0, unsigned int dmax=0,
                                std::function< void( std::string const& ) > info=nullptr,
                                std::function< void( std::string const& ) > warn=nullptr )
         {
-          if ( dlen == 0 || dlen < drad ) return;  // not constructible
+          if ( dmin == 0 || dmax < dmin ) return;  // not constructible
+          if ( dmax == 0 ) dmax = dmin;
 
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
@@ -1129,14 +1130,12 @@ namespace psi {
             auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
                                                    comp_bounds[idx], comp_bounds[idx+1] );
             if ( this->distance_mat.numCols() == 0 ) {
-              this->distance_mat =
-                  pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad );
+              this->distance_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
             }
             else {
-              this->distance_mat =
-                  crs_traits_type::addMatrices(
-                      this->distance_mat,
-                      pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad ) );
+              this->distance_mat = crs_traits_type::addMatrices(
+                  this->distance_mat,
+                  pairg::buildValidPairsMatrix( adj_mat, dmin, dmax ) );
             }
             if ( info ) {
               info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
@@ -1145,12 +1144,13 @@ namespace psi {
         }
 
         inline bool
-        save_distance_index( std::string prefix, unsigned int dlen=0, unsigned int drad=0 ) const
+        save_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 ) const
         {
           if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
+          if ( dmax == 0 ) dmax = dmin;
 
-          auto fname = prefix + "_dist_mat_" + "d" + std::to_string( dlen ) +
-              "±" + std::to_string( drad ) + ".crs";
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
+              "M" + std::to_string( dmax ) + ".crs";
           if ( !writable( fname ) ) return false;
 
           this->stats_ptr->set_progress( progress_type::write_dindex );
@@ -1161,10 +1161,12 @@ namespace psi {
         }
 
         inline bool
-        open_distance_index( std::string prefix, unsigned int dlen=0, unsigned int drad=0 )
+        open_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 )
         {
-          auto fname = prefix + "_dist_mat_" + "d" + std::to_string( dlen ) +
-              "±" + std::to_string( drad ) + ".crs";
+          if ( dmax == 0 ) dmax = dmin;
+
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
+              "M" + std::to_string( dmax ) + ".crs";
           if ( !readable( fname ) ) return false;
 
           this->stats_ptr->set_progress( progress_type::load_dindex );
@@ -1196,14 +1198,14 @@ namespace psi {
          *  @param  patched Whether patch the selected paths or not.
          *  @param  context The context size for patching.
          *  @param  step_size  The step size for starting loci sampling.
-         *  @param  dlen  The distance index path length.
-         *  @param  drad  The distance index path radius.
+         *  @param  dmin  The distance index minimum read insert size.
+         *  @param  dmax  The distance index maximum read insert size.
          *  @param  progress A callback function reporting the progress of path selection.
          */
         inline void
         create_path_index( unsigned int n, bool patched=true,
             unsigned int context=0, unsigned int step_size=1,
-            unsigned int dlen=0, unsigned int drad=0,
+            unsigned int dmin=0, unsigned int dmax=0,
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1222,7 +1224,7 @@ namespace psi {
           if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
           if ( info ) info( "Constructing distance index for pair distance queries..." );
-          this->create_distance_index( dlen, drad );
+          this->create_distance_index( dmin, dmax );
         }
 
         inline bool
@@ -1242,11 +1244,11 @@ namespace psi {
          */
         inline bool
         serialize_path_index( std::string const& fpath, unsigned int step_size=1,
-                              unsigned int dlen=0, unsigned int drad=0 )
+                              unsigned int dmin=0, unsigned int dmax=0 )
         {
           return this->serialize_path_index_only( fpath ) &&
               this->save_starts( fpath, this->seed_len, step_size ) &&
-              this->save_distance_index( fpath, dlen, drad );
+              this->save_distance_index( fpath, dmin, dmax );
         }
 
         /**
@@ -1267,16 +1269,16 @@ namespace psi {
 
         inline bool
         load_path_index( std::string const& fpath, unsigned int context=0,
-                         unsigned int step_size=1, unsigned int dlen=0, unsigned int drad=0 )
+                         unsigned int step_size=1, unsigned int dmin=0, unsigned int dmax=0 )
         {
           if ( !this->load_path_index_only( fpath, context ) ) return false;
           if ( !this->open_starts( fpath, this->seed_len, step_size ) ) {
             this->add_uncovered_loci( step_size );
             this->save_starts( fpath, this->seed_len, step_size );
           }
-          if ( !this->open_distance_index( fpath, dlen, drad ) ) {
-            this->create_distance_index( dlen, drad );
-            this->save_distance_index( fpath, dlen, drad );
+          if ( !this->open_distance_index( fpath, dmin, dmax ) ) {
+            this->create_distance_index( dmin, dmax );
+            this->save_distance_index( fpath, dmin, dmax );
           }
           return true;
         }
