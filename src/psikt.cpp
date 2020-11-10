@@ -109,8 +109,8 @@ template< class TGraph, typename TReadsIndexSpec >
     if ( finder.load_path_index( params.pindex_path,
                                  params.context,
                                  params.step_size,
-                                 params.dindex_length,
-                                 params.dindex_radius ) ) {
+                                 params.dindex_min_ris,
+                                 params.dindex_max_ris ) ) {
       log->info( "The path index has been found and loaded." );
     }
     /* No genome-wide path index requested. */
@@ -122,7 +122,7 @@ template< class TGraph, typename TReadsIndexSpec >
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
       finder.create_path_index( params.path_num, params.patched,
                                 params.context, params.step_size,
-                                params.dindex_length, params.dindex_radius,
+                                params.dindex_min_ris, params.dindex_max_ris,
                                 [&log]( std::string const& msg ) {
                                   log->info( msg );
                                 },
@@ -138,7 +138,7 @@ template< class TGraph, typename TReadsIndexSpec >
       if ( params.pindex_path.empty() ) {
         log->warn( "No path index file is specified. Skipping..." );
       } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size,
-                                                params.dindex_length, params.dindex_radius ) ) {
+                                                params.dindex_min_ris, params.dindex_max_ris ) ) {
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
         log->info( "Saved path index in {}.", stats.get_timer( "save-pindex", tid ).str() );
@@ -214,8 +214,8 @@ startup( const Options & options )
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
   log->info( "- Seed genome occurrence count threshold: {}", options.gocc_threshold );
-  log->info( "- Distance index path length: {}", options.dindex_length );
-  log->info( "- Distance index path radius: {}", options.dindex_radius );
+  log->info( "- Distance index minimum read insert size: {}", options.dindex_min_ris );
+  log->info( "- Distance index maximum read insert size: {}", options.dindex_max_ris );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
   log->info( "- Output file: '{}'", options.output_path );
 
@@ -337,18 +337,18 @@ setup_argparser( seqan::ArgumentParser& parser )
                                     "Seed genome occurrence count threshold (no threshold by default).",
                                     seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "r", 0 );
-  // distance index length
+  // distance index minimum read insert size
   addOption( parser,
-             seqan::ArgParseOption( "s", "dindex-length",
-                                    "Distance index path length (no distance indexing by default).",
+             seqan::ArgParseOption( "m", "min-insert-size",
+                                    "Distance index minimum read insert size (no distance indexing by default).",
                                     seqan::ArgParseArgument::INTEGER, "INT" ) );
-  setDefaultValue( parser, "s", 0 );
-  // distance index radius
+  setDefaultValue( parser, "m", 0 );
+  // distance index maximum read insert size
   addOption( parser,
-             seqan::ArgParseOption( "R", "dindex-radius",
-                                    "Distance index path radius (zero by default).",
+             seqan::ArgParseOption( "M", "max-insert-size",
+                                    "Distance index maximum read insert size (minimum insert size by default).",
                                     seqan::ArgParseArgument::INTEGER, "INT" ) );
-  setDefaultValue( parser, "R", 0 );
+  setDefaultValue( parser, "M", 0 );
   // index
   addOption( parser,
       seqan::ArgParseOption( "i", "index",
@@ -403,8 +403,8 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   getOptionValue( options.gocc_threshold, parser, "gocc-threshold" );
-  getOptionValue( options.dindex_length, parser, "dindex-length" );
-  getOptionValue( options.dindex_radius, parser, "dindex-radius" );
+  getOptionValue( options.dindex_min_ris, parser, "min-insert-size" );
+  getOptionValue( options.dindex_max_ris, parser, "max-insert-size" );
   options.patched = !isSet( parser, "no-patched" );
   getOptionValue( options.pindex_path, parser, "path-index" );
   getOptionValue( indexname, parser, "index" );
@@ -419,6 +419,7 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
 
   options.index = index_from_str( indexname );
   if ( options.distance == 0 ) options.distance = options.seed_len;
+  if ( options.dindex_max_ris == 0 ) options.dindex_max_ris = options.dindex_min_ris;
 }
 
 
