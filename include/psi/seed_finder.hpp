@@ -773,8 +773,8 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
-        typedef pairg::matrixOps csr_traits_type;
-        typedef typename csr_traits_type::crsMat_t csrmat_type;
+        typedef pairg::matrixOps crs_traits_type;
+        typedef typename crs_traits_type::crsMat_t crsmat_type;
 
         class KokkosHandler {
         public:
@@ -916,7 +916,7 @@ namespace psi {
         /**
          *  @brief  getter function for distance index matrix.
          */
-          inline csrmat_type const&
+          inline crsmat_type const&
         get_distance_matrix( ) const
         {
           return this->distance_mat;
@@ -1102,7 +1102,7 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
 
-          auto adj_mat = util::adjacency_matrix( *this->graph_ptr, csr_traits_type() );
+          auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type() );
           this->distance_mat =
               pairg::buildValidPairsMatrix( adj_mat, dlen - drad, dlen + drad );
         }
@@ -1134,7 +1134,7 @@ namespace psi {
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-dindex" );
 
           this->distance_mat =
-              KokkosKernels::Impl::read_kokkos_crst_matrix< csrmat_type >( fname.c_str() );
+              KokkosKernels::Impl::read_kokkos_crst_matrix< crsmat_type >( fname.c_str() );
           return true;
         }
 
@@ -1149,7 +1149,7 @@ namespace psi {
 
           auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
           auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
-          return csr_traits_type::queryValue( this->distance_mat, v_charid, u_charid );
+          return crs_traits_type::queryValue( this->distance_mat, v_charid, u_charid );
         }
 
         /**
@@ -1593,7 +1593,7 @@ namespace psi {
         std::vector< vg::Position > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         KokkosHandler handler;
-        csrmat_type distance_mat;
+        crsmat_type distance_mat;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */

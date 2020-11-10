@@ -287,13 +287,14 @@ namespace psi {
      *  @brief  Get the adjacency matrix of the graph in CRS format.
      *
      *  @param[in]  graph The graph.
+     *  @param[in]  tag  The CRS trait tag.
      *  @return  The adjacency matrix.
      *
-     *  Calculate coverage for all adjacent nodes and find the smallest one.
+     *  Compute adjacency matrix of the given `graph` in CRS format.
      */
-    template< class TGraph, typename TCsrTraits >
-    inline typename TCsrTraits::crsMat_t
-    adjacency_matrix( TGraph const& graph, TCsrTraits /* tag */ )
+    template< class TGraph, typename TCrsTraits >
+    inline typename TCrsTraits::crsMat_t
+    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */ )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
@@ -301,11 +302,11 @@ namespace psi {
       typedef typename graph_type::rank_type rank_type;
       typedef typename graph_type::linktype_type linktype_type;
 
-      typedef typename TCsrTraits::lno_t lno_t;
-      typedef typename TCsrTraits::size_type size_type;
-      typedef typename TCsrTraits::lno_nnz_view_t lno_nnz_view_t;
-      typedef typename TCsrTraits::scalar_view_t scalar_view_t;
-      typedef typename TCsrTraits::lno_view_t lno_view_t;
+      typedef typename TCrsTraits::lno_t lno_t;
+      typedef typename TCrsTraits::size_type size_type;
+      typedef typename TCrsTraits::lno_nnz_view_t lno_nnz_view_t;
+      typedef typename TCrsTraits::scalar_view_t scalar_view_t;
+      typedef typename TCrsTraits::lno_view_t lno_view_t;
 
       lno_t nrows = total_nof_loci( graph );
       size_type nnz = nrows - graph.get_node_count() + graph.get_edge_count();
@@ -342,7 +343,7 @@ namespace psi {
       assert( i == nnz );
       assert( irow == static_cast< unsigned int >( nrows + 1 ) );
 
-      return typename TCsrTraits::crsMat_t( "adjacency matrix",
+      return typename TCrsTraits::crsMat_t( "adjacency matrix",
                                             nrows, nrows, nnz, values, rowmap, entries );
     }
   }  /* --- end of namespace util --- */
