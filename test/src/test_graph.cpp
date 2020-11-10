@@ -26,6 +26,37 @@
 
 using namespace psi;
 
+TEMPLATE_SCENARIO( "Get graph statistics", "[graph][interface]", gum::Dynamic, gum::Succinct )
+{
+  typedef TestType spec_type;
+  typedef gum::SeqGraph< spec_type > graph_type;
+
+  GIVEN( "A tiny variation graph" )
+  {
+    std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
+    graph_type graph;
+    gum::util::load( graph, vgpath );
+
+    WHEN( "Total number of loci in the graph is counted" )
+    {
+      auto nof_loci = util::total_nof_loci( graph );
+      THEN( "It should be equal to the sum of node label lengths" )
+      {
+        REQUIRE( nof_loci == 55 );
+      }
+    }
+
+    WHEN( "Total number of loci in a subgraph is counted" )
+    {
+      auto nof_loci = util::total_nof_loci( graph, 5, 10 );
+      THEN( "It should be equal to the sum of node label lengths of the subgraph" )
+      {
+        REQUIRE( nof_loci == 25 );
+      }
+    }
+  }
+}
+
 SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 {
   typedef gum::SeqGraph< gum::Succinct > graph_type;

@@ -52,9 +52,18 @@ namespace psi {
       return max;
     }
 
+    /**
+     *  @brief  Compute total number of loci in the subgraph indicated by node ranks
+     *          [lower, upper).
+     *
+     *  @param[in]  graph The input graph.
+     *  @param[in]  lower The minimum node rank in the subgraph.
+     *  @param[in]  upper The maximum node rank in the subgraph.
+     */
     template< class TGraph >
     inline typename TGraph::offset_type
-    total_nof_loci( TGraph const& graph, gum::Dynamic )
+    total_nof_loci( TGraph const& graph, typename TGraph::rank_type lower,
+                    typename TGraph::rank_type upper=0 )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::id_type id_type;
@@ -63,11 +72,20 @@ namespace psi {
 
       offset_type total = 0;
       graph.for_each_node(
-          [&graph, &total]( rank_type rank, id_type id ) {
+          [&graph, &total, &upper]( rank_type rank, id_type id ) {
             total += graph.node_length( id );
+            if ( rank + 1 == upper ) return false;
             return true;
-          } );
+          },
+          lower );
       return total;
+    }
+
+    template< class TGraph >
+    inline typename TGraph::offset_type
+    total_nof_loci( TGraph const& graph, gum::Dynamic )
+    {
+      return total_nof_loci( graph, 1 /* from the first node to the end */ );
     }
 
     template< class TGraph >
