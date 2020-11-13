@@ -263,13 +263,13 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
         }
       }
 
-      AND_WHEN( "It the index is loaded from disk" )
+      AND_WHEN( "The index is loaded from disk" )
       {
         std::string prefix = get_tmpfile();
-        finder.save_distance_index( prefix, dmin, dmax );
+        REQUIRE( finder.save_distance_index( prefix, dmin, dmax ) );
         finder_type finder2( graph, seedlen );
         finder2.unset_as_finaliser();
-        finder2.open_distance_index( prefix, dmin, dmax );
+        REQUIRE( finder2.open_distance_index( prefix, dmin, dmax ) );
 
         THEN( "It should rejects nodes not complying with distance constraints" )
         {
@@ -362,7 +362,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
         }
       }
 
-      AND_WHEN( "It the index is loaded from disk" )
+      AND_WHEN( "The index is loaded from disk" )
       {
         std::string prefix = get_tmpfile();
         finder.save_distance_index( prefix, dmin, dmax );

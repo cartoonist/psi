@@ -38,6 +38,7 @@
 #include "index.hpp"
 #include "index_iter.hpp"
 #include "pathindex.hpp"
+#include "crs_matrix.hpp"
 #include "utils.hpp"
 #include "stats.hpp"
 
@@ -774,7 +775,7 @@ namespace psi {
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         typedef pairg::matrixOps crs_traits_type;
-        typedef typename crs_traits_type::crsMat_t crsmat_type;
+        typedef CRSMatrix<> crsmat_type;
 
         class KokkosHandler {
         public:
@@ -1097,6 +1098,9 @@ namespace psi {
       /**
        *  @brief  Create distance index matrix.
        *
+       *  NOTE: This method assumes that the input graph is sorted such that node rank
+       *  ranges in components are disjoint.
+       *
        *  NOTE: This function assumes that the graph is augmented by one path per region
        *        and nothing more.
        */
@@ -1111,36 +1115,34 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
 
-          /* Extract component boundary nodes */
-          std::vector< rank_type > comp_bounds;
-          this->graph_ptr->for_each_path(
-              [this, &comp_bounds]( auto path_rank, auto path_id ) {
-                id_type sid = *this->graph_ptr->path( path_id ).begin();
-                comp_bounds.push_back( this->graph_ptr->id_to_rank( sid ) );
-                return true;
-              } );
-          comp_bounds.push_back( 0 );  // add the upper bound of the last component
+          auto provider = [this, dmin, dmax, info]( auto callback ) {
+            /* Extract component boundary nodes */
+            auto comp_ranks = util::components_ranks( *this->graph_ptr );
+            comp_ranks.push_back( 0 );  // add the upper bound of the last component
 
-          if ( info ) {
-            info( "Constructing distance index for " +
-                  std::to_string( comp_bounds.size()-1 ) + " regions..." );
-          }
-
-          for ( std::size_t idx = 0; idx < comp_bounds.size()-1; ++idx ) {
-            auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
-                                                   comp_bounds[idx], comp_bounds[idx+1] );
-            if ( this->distance_mat.numCols() == 0 ) {
-              this->distance_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
-            }
-            else {
-              this->distance_mat = crs_traits_type::addMatrices(
-                  this->distance_mat,
-                  pairg::buildValidPairsMatrix( adj_mat, dmin, dmax ) );
-            }
             if ( info ) {
-              info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
+              info( "Constructing distance index for " +
+                    std::to_string( comp_ranks.size()-1 ) + " regions..." );
             }
-          }
+
+            auto snnz = 0;
+            for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
+              auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
+                                                     comp_ranks[idx], comp_ranks[idx+1] );
+              auto dist_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
+              auto sid = this->graph_ptr->rank_to_id( comp_ranks[idx] );
+              auto srow = gum::util::id_to_charorder( *this->graph_ptr, sid );
+              callback( dist_mat, srow, srow, snnz );
+              snnz += dist_mat.nnz();
+              if ( info ) {
+                info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
+              }
+            }
+          };
+          auto nrows = util::total_nof_loci( *this->graph_ptr );
+          auto nnz = nrows - this->graph_ptr->get_node_count() +
+              this->graph_ptr->get_edge_count();
+          this->distance_mat = crsmat_type( nrows, nrows, nnz * ( dmax - dmin ), provider );
         }
 
         inline bool
@@ -1150,13 +1152,14 @@ namespace psi {
           if ( dmax == 0 ) dmax = dmin;
 
           auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
-              "M" + std::to_string( dmax ) + ".crs";
-          if ( !writable( fname ) ) return false;
+              "M" + std::to_string( dmax );
+          std::ofstream ofs( fname, std::ofstream::out | std::ofstream::binary );
+          if ( !ofs ) return false;
 
           this->stats_ptr->set_progress( progress_type::write_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-dindex" );
 
-          KokkosKernels::Impl::write_kokkos_crst_matrix( this->distance_mat, fname.c_str() );
+          this->distance_mat.serialize( ofs );
           return true;
         }
 
@@ -1166,14 +1169,14 @@ namespace psi {
           if ( dmax == 0 ) dmax = dmin;
 
           auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
-              "M" + std::to_string( dmax ) + ".crs";
-          if ( !readable( fname ) ) return false;
+              "M" + std::to_string( dmax );
+          std::ifstream ifs( fname, std::ifstream::in | std::ifstream::binary );
+          if ( !ifs ) return false;
 
           this->stats_ptr->set_progress( progress_type::load_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-dindex" );
 
-          this->distance_mat =
-              KokkosKernels::Impl::read_kokkos_crst_matrix< crsmat_type >( fname.c_str() );
+          this->distance_mat.load( ifs );
           return true;
         }
 
@@ -1188,7 +1191,7 @@ namespace psi {
 
           auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
           auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
-          return crs_traits_type::queryValue( this->distance_mat, v_charid, u_charid );
+          return this->distance_mat( v_charid, u_charid );
         }
 
         /**
