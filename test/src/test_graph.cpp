@@ -154,8 +154,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 
     WHEN( "The adjacency matrix of its corresponding character graph is build" )
     {
-      auto matrix = traits_type::addMatrices( util::adjacency_matrix( graph, traits_type(), 1, 16 ),
-                                              util::adjacency_matrix( graph, traits_type(), 16 ));
+      auto matrix = util::adjacency_matrix( graph, traits_type() );
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {

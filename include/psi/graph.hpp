@@ -371,49 +371,47 @@ namespace psi {
       typedef typename TCrsTraits::lno_nnz_view_t lno_nnz_view_t;
       typedef typename TCrsTraits::scalar_view_t scalar_view_t;
       typedef typename TCrsTraits::lno_view_t lno_view_t;
+      typedef typename TCrsTraits::crsMat_t crsMat_t;
 
       if ( upper == 0 ) upper = graph.get_node_count() + 1;
-      lno_t nrows = total_nof_loci( graph );
-      size_type nnz = total_nof_loci( graph, lower, upper ) -
-          node_count( graph, lower, upper ) + edge_count( graph, lower, upper );
+      lno_t nrows = total_nof_loci( graph, lower, upper );
+      size_type nnz = nrows - node_count( graph, lower, upper ) +
+          edge_count( graph, lower, upper );
 
       lno_nnz_view_t entries( "entries", nnz );
       scalar_view_t values( "values", nnz );
       lno_view_t rowmap( "rowmap", nrows + 1 );
 
-      for ( size_type i = 0; i < nnz; i++ ) {
-        values( i ) = 1;  //boolean
-      }
+      for ( size_type i = 0; i < nnz; ++i ) values( i ) = 1;  // boolean
 
       offset_type cursor = 0;
+      offset_type start = gum::util::id_to_charorder( graph, graph.rank_to_id( lower ) );
       size_type i = 0;
       size_type irow = 0;
       rowmap( irow++ ) = i;
       graph.for_each_node(
           [&]( rank_type rank, id_type id ) {
-            assert( gum::util::id_to_charorder( graph, id ) == cursor );
+            assert( gum::util::id_to_charorder( graph, id ) == cursor + start );
             for ( offset_type offset = 1; offset < graph.node_length( id ); ++offset ) {
-              ++cursor;
-              if ( lower <= rank && rank < upper ) entries( i++ ) = cursor;
+              entries( i++ ) = ++cursor;
               rowmap( irow++ ) = i;
             }
             ++cursor;
-            if ( lower <= rank && rank < upper ) {
-              graph.for_each_edges_out(
-                  id,
-                  [&graph, &entries, &i]( id_type to, linktype_type ) {
-                    entries( i++ ) = gum::util::id_to_charorder( graph, to );
-                    return true;
-                  } );
-            }
+            graph.for_each_edges_out(
+                id,
+                [&graph, &entries, &i, start]( id_type to, linktype_type ) {
+                  entries( i++ ) = gum::util::id_to_charorder( graph, to ) - start;
+                  return true;
+                } );
             rowmap( irow++ ) = i;
+            if ( rank + 1 == upper ) return false;
             return true;
-          } );
+          },
+          lower );
       assert( i == nnz );
       assert( irow == static_cast< unsigned int >( nrows + 1 ) );
 
-      return typename TCrsTraits::crsMat_t( "adjacency matrix",
-                                            nrows, nrows, nnz, values, rowmap, entries );
+      return crsMat_t( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */
