@@ -23,6 +23,7 @@
 #include <functional>
 #include <random>
 #include <cstdint>
+#include <vector>
 
 #include <gum/graph.hpp>
 #include <vg/vg.pb.h>
@@ -339,6 +340,33 @@ namespace psi {
           },
           lower );
       return edge_count;
+    }
+
+    /**
+     *  @brief Get component node rank boundaries of the given graph.
+     *
+     *  @param[in]  graph The graph.
+     *  @return A sorted vector containing the smallest node rank in each component.
+     *
+     *  NOTE: This method assumes that the input graph is sorted such that node rank
+     *  ranges of components are disjoint.
+     *
+     *  NOTE: This function assumes that the graph is augmented by one path per region
+     *        and nothing more.
+     */
+    template< class TGraph >
+    inline std::vector< typename TGraph::rank_type >
+    components_ranks( TGraph const& graph )
+    {
+      std::vector< typename TGraph::rank_type > result;
+      graph.for_each_path(
+          [&graph, &result]( auto path_rank, auto path_id ) {
+            auto sid = *graph.path( path_id ).begin();
+            result.push_back( graph.id_to_rank( sid ) );
+            return true;
+          } );
+      std::sort( result.begin(), result.end() );
+      return result;
     }
 
     /**

@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include <psi/graph.hpp>
+#include <psi/crs_matrix.hpp>
 #include <gum/io_utils.hpp>
 #include <pairg/spgemm_utility.hpp>
 
@@ -192,6 +193,71 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
                     REQUIRE( traits_type::queryValue( matrix, char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
                       REQUIRE( !traits_type::queryValue( matrix, char_id, prev ) );
+                    }
+                    ++prev;
+                    return true;
+                  } );
+              return true;
+            } );
+      }
+    }
+
+    WHEN( "The adjacency matrix of its corresponding character graph is build component by component" )
+    {
+      auto provider = [&graph]( auto callback ) {
+        /* Extract component boundary nodes */
+        auto comp_ranks = util::components_ranks( graph );
+        comp_ranks.push_back( 0 );  // add the upper bound of the last component
+
+        auto snnz = 0;
+        for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
+          auto adj_mat = util::adjacency_matrix( graph, traits_type(),
+                                                 comp_ranks[idx], comp_ranks[idx+1] );
+          auto sid = graph.rank_to_id( comp_ranks[idx] );
+          auto srow = gum::util::id_to_charorder( graph, sid );
+          callback( adj_mat, srow, srow, snnz );
+          snnz += adj_mat.nnz();
+        }
+      };
+
+      auto nof_nodes = util::total_nof_loci( graph );
+      auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
+      CRSMatrix<> matrix( nof_nodes, nof_nodes, nof_edges, provider );
+
+      THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
+      {
+        REQUIRE( matrix.numCols() == nof_nodes );
+        REQUIRE( matrix.numRows() == nof_nodes );
+      }
+
+      THEN( "The number of non-zero values should be equal to the numbers edges" )
+      {
+        REQUIRE( matrix.nnz() == nof_edges );
+      }
+
+      THEN( "The matrix entries should be valid" )
+      {
+        graph.for_each_node(
+            [&graph, &matrix, nof_nodes]( rank_type rank, id_type id ) {
+              offset_type char_id = gum::util::id_to_charorder( graph, id );
+              for ( offset_type i = 1; i < graph.node_length( id ); ++i, ++char_id ) {
+                for ( offset_type col = 0; col < nof_nodes; ++col ) {
+                  if ( col == char_id + 1 ) {
+                    REQUIRE( matrix( char_id, col ) );
+                  }
+                  else {
+                    REQUIRE( !matrix( char_id, col ) );
+                  }
+                }
+              }
+              offset_type prev = 0;
+              graph.for_each_edges_out(
+                  id,
+                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                    auto to_char_id = gum::util::id_to_charorder( graph, to );
+                    REQUIRE( matrix( char_id, to_char_id ) );
+                    for ( ; prev < to_char_id; ++prev ) {
+                      REQUIRE( !matrix( char_id, prev ) );
                     }
                     ++prev;
                     return true;
