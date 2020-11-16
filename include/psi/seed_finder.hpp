@@ -1227,7 +1227,7 @@ namespace psi {
           if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
           if ( info ) info( "Constructing distance index for pair distance queries..." );
-          this->create_distance_index( dmin, dmax );
+          this->create_distance_index( dmin, dmax, info, warn );
         }
 
         inline bool
