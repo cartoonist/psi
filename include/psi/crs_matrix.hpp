@@ -49,8 +49,9 @@ namespace psi {
     /* === TYPE MEMBERS === */
     typedef crs_matrix::Dynamic spec_type;
     typedef bool value_type;
-    typedef TOrdinal size_type;
-    typedef std::vector< size_type > entries_type;
+    typedef TOrdinal ordinal_type;
+    typedef std::vector< ordinal_type > entries_type;
+    typedef typename entries_type::size_type size_type;
     typedef std::vector< size_type > rowmap_type;
     typedef entries_type mutable_entries_type;
     typedef rowmap_type mutable_rowmap_type;
@@ -70,12 +71,12 @@ namespace psi {
      *        components.
      */
     template< typename TCallback >
-    CRSMatrix( size_type nrows, size_type ncols, size_type nnz, TCallback callback )
+    CRSMatrix( ordinal_type nrows, ordinal_type ncols, size_type nnz, TCallback callback )
       : rowmap( nrows + 1 ), num_cols( ncols )
     {
       this->entries.reserve( nnz );
       auto partial_ctor =
-          [this]( auto&& mat, size_type srow, size_type scol, size_type snnz ) {
+          [this]( auto&& mat, ordinal_type srow, ordinal_type scol, size_type snnz ) {
             size_type new_nnz = snnz + mat.nnz();
             this->entries.resize( new_nnz );
             this->fill_partial( mat, srow, scol, snnz );
@@ -84,7 +85,7 @@ namespace psi {
     }
     /* === OPERATORS === */
     inline value_type
-    operator()( size_type i, size_type j ) const
+    operator()( ordinal_type i, ordinal_type j ) const
     {
       if ( i >= this->numRows() || j >= this->numCols() ) {
         throw std::runtime_error( "index out of range" );
@@ -94,13 +95,13 @@ namespace psi {
                                  this->entries.begin() + this->rowmap[ i + 1 ], j );
     }
     /* === METHODS === */
-    inline size_type
+    inline ordinal_type
     numCols( ) const
     {
       return this->num_cols;
     }
 
-    inline size_type
+    inline ordinal_type
     numRows( ) const
     {
       return this->rowmap.size() - 1;
@@ -142,7 +143,7 @@ namespace psi {
     /* === DATA MEMBERS === */
     entries_type entries;
     rowmap_type rowmap;
-    size_type num_cols;
+    ordinal_type num_cols;
     /* === METHODS === */
     /**
      *  @brief  Populate a component in the matrix by an external matrix.
@@ -178,7 +179,7 @@ namespace psi {
      */
     template< typename TCrsMatrix >
     inline void
-    fill_partial( TCrsMatrix const& ex, size_type srow=0, size_type scol=0, size_type snnz=0 )
+    fill_partial( TCrsMatrix const& ex, ordinal_type srow=0, ordinal_type scol=0, size_type snnz=0 )
     {
       this->rowmap[0] = 0;
       _fill_entries_partial( ex, scol, snnz );
@@ -187,18 +188,18 @@ namespace psi {
 
     template< typename TCrsMatrix >
     inline void
-    _fill_entries_partial( TCrsMatrix const& ex, size_type scol=0, size_type snnz=0 )
+    _fill_entries_partial( TCrsMatrix const& ex, ordinal_type scol=0, size_type snnz=0 )
     {
       auto size = ex.graph.entries.extent( 0 );
       auto start = this->entries.begin() + snnz;
       std::copy( ex.graph.entries.data(), ex.graph.entries.data() + size, start );
       std::transform( start, start + size, start,
-                      [scol]( size_type e ) { return e + scol; } );
+                      [scol]( ordinal_type e ) { return e + scol; } );
     }
 
     template< typename TCrsMatrix >
     inline void
-    _fill_rowmap_partial( TCrsMatrix const& ex, size_type srow=0, size_type snnz=0 )
+    _fill_rowmap_partial( TCrsMatrix const& ex, ordinal_type srow=0, size_type snnz=0 )
     {
       auto size = ex.graph.row_map.extent( 0 );
       auto start = this->rowmap.begin() + srow + 1;
@@ -214,8 +215,9 @@ namespace psi {
     /* === TYPE MEMBERS === */
     typedef crs_matrix::Dynamic spec_type;
     typedef bool value_type;
-    typedef TOrdinal size_type;
+    typedef TOrdinal ordinal_type;
     typedef sdsl::enc_vector< sdsl::coder::elias_delta > entries_type;
+    typedef typename entries_type::size_type size_type;
     typedef sdsl::bit_vector rowmap_type;
     typedef entries_type::int_vector_type mutable_entries_type;
     typedef rowmap_type mutable_rowmap_type;
@@ -241,14 +243,14 @@ namespace psi {
      *        components.
      */
     template< typename TCallback >
-    CRSMatrix( size_type nrows, size_type ncols, size_type nnz, TCallback callback )
+    CRSMatrix( ordinal_type nrows, ordinal_type ncols, size_type nnz, TCallback callback )
       : num_cols( ncols )
     {
       mutable_entries_type mut_entries( nnz );
       mutable_rowmap_type mut_rowmap( nnz + nrows );
       auto partial_ctor =
           [this, &mut_entries, &mut_rowmap, nrows]
-          ( auto&& mat, size_type srow, size_type scol, size_type snnz ) {
+          ( auto&& mat, ordinal_type srow, ordinal_type scol, size_type snnz ) {
             size_type new_nnz = snnz + mat.nnz();
             mut_entries.resize( new_nnz );
             mut_rowmap.resize( new_nnz + nrows );
@@ -299,7 +301,7 @@ namespace psi {
     }
 
     inline bool
-    operator()( size_type i, size_type j ) const
+    operator()( ordinal_type i, ordinal_type j ) const
     {
       if ( i >= this->numRows() || j >= this->numCols() ) {
         throw std::runtime_error( "index out of range" );
@@ -309,13 +311,13 @@ namespace psi {
                                  this->entries.begin() + this->row_map( i + 1 ), j );
     }
     /* === METHODS === */
-    inline size_type
+    inline ordinal_type
     numCols( ) const
     {
       return this->num_cols;
     }
 
-    inline size_type
+    inline ordinal_type
     numRows( ) const
     {
       return this->rowmap.size() - this->entries.size();
@@ -360,10 +362,10 @@ namespace psi {
     entries_type entries;
     rowmap_type rowmap;
     select_type select;
-    size_type num_cols;
+    ordinal_type num_cols;
     /* === METHODS === */
     inline size_type
-    row_map( size_type i ) const
+    row_map( ordinal_type i ) const
     {
       if ( i == 0 ) return 0;
       return this->select( i ) + 1 - i /* subtract i number of 1s */;
@@ -386,7 +388,7 @@ namespace psi {
     template< typename TCrsMatrix >
     inline void
     fill_partial( mutable_entries_type& mut_entries, mutable_rowmap_type& mut_rowmap,
-                  TCrsMatrix const& ex, size_type srow=0, size_type scol=0, size_type snnz=0 )
+                  TCrsMatrix const& ex, ordinal_type srow=0, ordinal_type scol=0, size_type snnz=0 )
     {
       _fill_entries_partial( mut_entries, ex, scol, snnz );
       _fill_rowmap_partial( mut_rowmap, ex, srow, snnz );
@@ -395,24 +397,24 @@ namespace psi {
     template< typename TCrsMatrix >
     inline void
     _fill_entries_partial( mutable_entries_type& mut_entries, TCrsMatrix const& ex,
-                           size_type scol=0, size_type snnz=0 )
+                           ordinal_type scol=0, size_type snnz=0 )
     {
       auto size = ex.graph.entries.extent( 0 );
       auto start = mut_entries.begin() + snnz;
       std::copy( ex.graph.entries.data(), ex.graph.entries.data() + size, start );
       std::transform( start, start + size, start,
-                      [scol]( size_type e ) { return e + scol; } );
+                      [scol]( ordinal_type e ) { return e + scol; } );
     }
 
     template< typename TCrsMatrix >
     inline void
     _fill_rowmap_partial( mutable_rowmap_type& mut_rowmap, TCrsMatrix const& ex,
-                          size_type srow=0, size_type snnz=0 )
+                          ordinal_type srow=0, size_type snnz=0 )
     {
       auto size = ex.graph.row_map.extent( 0 );
-      auto start = snnz + srow;
-      for ( size_type i = 0; i < size-1; ++i ) {
-        for ( size_type j = 0; j < ex.graph.row_map( i+1 ) - ex.graph.row_map( i ); ++j ) {
+      size_type start = snnz + srow;
+      for ( ordinal_type i = 0; i < size-1; ++i ) {
+        for ( ordinal_type j = 0; j < ex.graph.row_map( i+1 ) - ex.graph.row_map( i ); ++j ) {
           mut_rowmap[ start++ ] = 0;
         }
         mut_rowmap[ start++ ] = 1;

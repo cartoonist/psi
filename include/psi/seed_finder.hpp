@@ -1125,7 +1125,7 @@ namespace psi {
                     std::to_string( comp_ranks.size()-1 ) + " regions..." );
             }
 
-            auto snnz = 0;
+            uint64_t snnz = 0;
             for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
               auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
                                                      comp_ranks[idx], comp_ranks[idx+1] );
