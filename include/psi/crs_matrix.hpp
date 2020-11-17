@@ -34,7 +34,8 @@ namespace psi {
 
   template< typename TSpec = crs_matrix::Succinct,
             typename TValue = bool,
-            typename TOrdinal = uint32_t >
+            typename TOrdinal = uint32_t,
+            typename TSize = uint64_t >
   class CRSMatrix;
 
   template< typename ...TArgs >
@@ -43,18 +44,18 @@ namespace psi {
   template< typename ...TArgs >
   using SuccinctCRSMatrix = CRSMatrix< crs_matrix::Succinct, TArgs... >;
 
-  template< typename TOrdinal >
-  class CRSMatrix< crs_matrix::Dynamic, bool, TOrdinal > {
+  template< typename TOrdinal, typename TSize >
+  class CRSMatrix< crs_matrix::Dynamic, bool, TOrdinal, TSize > {
   public:
     /* === TYPE MEMBERS === */
     typedef crs_matrix::Dynamic spec_type;
     typedef bool value_type;
     typedef TOrdinal ordinal_type;
     typedef std::vector< ordinal_type > entries_type;
-    typedef typename entries_type::size_type size_type;
     typedef std::vector< size_type > rowmap_type;
     typedef entries_type mutable_entries_type;
     typedef rowmap_type mutable_rowmap_type;
+    typedef TSize size_type;
     /* === LIFECYCLE === */
     CRSMatrix( ) : num_cols( 0 ) { }
 
@@ -209,15 +210,15 @@ namespace psi {
     }
   };
 
-  template< typename TOrdinal >
-  class CRSMatrix< crs_matrix::Succinct, bool, TOrdinal > {
+  template< typename TOrdinal, typename TSize >
+  class CRSMatrix< crs_matrix::Succinct, bool, TOrdinal, TSize > {
   public:
     /* === TYPE MEMBERS === */
-    typedef crs_matrix::Dynamic spec_type;
+    typedef crs_matrix::Succinct spec_type;
     typedef bool value_type;
     typedef TOrdinal ordinal_type;
+    typedef TSize size_type;
     typedef sdsl::enc_vector< sdsl::coder::elias_delta > entries_type;
-    typedef typename entries_type::size_type size_type;
     typedef sdsl::bit_vector rowmap_type;
     typedef entries_type::int_vector_type mutable_entries_type;
     typedef rowmap_type mutable_rowmap_type;
