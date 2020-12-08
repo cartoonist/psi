@@ -775,7 +775,8 @@ namespace psi {
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         typedef pairg::matrixOps crs_traits_type;
-        typedef CRSMatrix<> crsmat_type;
+        typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
+        typedef crs_matrix::Buffered mutable_crsmat_spec_type;
 
         class KokkosHandler {
         public:
@@ -1125,24 +1126,23 @@ namespace psi {
                     std::to_string( comp_ranks.size()-1 ) + " regions..." );
             }
 
-            uint64_t snnz = 0;
             for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
               auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
                                                      comp_ranks[idx], comp_ranks[idx+1] );
               auto dist_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
               auto sid = this->graph_ptr->rank_to_id( comp_ranks[idx] );
               auto srow = gum::util::id_to_charorder( *this->graph_ptr, sid );
-              callback( dist_mat, srow, srow, snnz );
-              snnz += dist_mat.nnz();
+              callback( dist_mat, srow, srow );
               if ( info ) {
                 info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
               }
             }
           };
           auto nrows = util::total_nof_loci( *this->graph_ptr );
-          auto nnz = nrows - this->graph_ptr->get_node_count() +
-              this->graph_ptr->get_edge_count();
-          this->distance_mat = crsmat_type( nrows, nrows, nnz * ( dmax - dmin ), provider );
+          auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
+                           this->graph_ptr->get_edge_count() ) * ( dmax - dmin );
+          this->distance_mat =
+              crsmat_type( nrows, nrows, provider, nnz_est, mutable_crsmat_spec_type() );
         }
 
         inline bool

@@ -209,20 +209,18 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
         auto comp_ranks = util::components_ranks( graph );
         comp_ranks.push_back( 0 );  // add the upper bound of the last component
 
-        auto snnz = 0;
         for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
           auto adj_mat = util::adjacency_matrix( graph, traits_type(),
                                                  comp_ranks[idx], comp_ranks[idx+1] );
           auto sid = graph.rank_to_id( comp_ranks[idx] );
           auto srow = gum::util::id_to_charorder( graph, sid );
-          callback( adj_mat, srow, srow, snnz );
-          snnz += adj_mat.nnz();
+          callback( adj_mat, srow, srow );
         }
       };
 
       auto nof_nodes = util::total_nof_loci( graph );
       auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
-      CRSMatrix<> matrix( nof_nodes, nof_nodes, nof_edges, provider );
+      CRSMatrix<> matrix( nof_nodes, nof_nodes, provider, nof_edges );
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {
