@@ -33,6 +33,7 @@
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
+#include <sdsl/int_vector_buffer.hpp>
 
 #include "base.hpp"
 
@@ -502,11 +503,25 @@ namespace psi {
    *
    *  A wraper to `serialize` member function of `enc_vector`.
    */
-  template< typename TCoder >
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
     inline void
-  serialize( std::ostream& out, const sdsl::enc_vector< TCoder >& ev )
+  serialize( std::ostream& out, const sdsl::enc_vector< TCoder, TDens, TWidth >& ev )
   {
     ev.serialize( out );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Serialize an `int_vector_buffer` to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  ivb The `int_vector_buffer`.
+   */
+  template< uint8_t TWidth >
+  inline void
+  serialize( std::ostream& out, const sdsl::int_vector_buffer< TWidth >& ivb )
+  {
+    throw std::runtime_error( "`sdsl::int_vector_buffer` cannot be serialised" );
   }  /* -----  end of template function serialize  ----- */
 
 
@@ -577,10 +592,10 @@ namespace psi {
    *  This function does the same as `std::find` but it searches the container backward
    *  from the end.
    */
-  template< typename TCoder >
-      inline typename sdsl::enc_vector< TCoder >::const_iterator
-    rfind( const sdsl::enc_vector< TCoder >& container,
-        typename sdsl::enc_vector< TCoder >::value_type value )
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
+      inline typename sdsl::enc_vector< TCoder, TDens, TWidth >::const_iterator
+    rfind( const sdsl::enc_vector< TCoder, TDens, TWidth >& container,
+        typename sdsl::enc_vector< TCoder, TDens, TWidth >::value_type value )
     {
       for ( auto it = container.end(); it != container.begin(); --it ) {
         if ( *( it - 1 ) == value ) return it;
@@ -604,11 +619,11 @@ namespace psi {
    *        find with this difference that the second iterator set assumed to be
    *        forward iterator and it scans that iterator reversely.
    */
-  template< typename TCoder, typename TIter >
+  template< typename TCoder, typename TIter, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline bool
     requal( TIter rbegin1, TIter rend1,
-        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rbegin2,
-        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rend2 )
+        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder, TDens, TWidth > > rbegin2,
+        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder, TDens, TWidth > > rend2 )
     {
       typedef std::make_unsigned_t< typename TIter::value_type > value_type;
 
@@ -679,9 +694,9 @@ namespace psi {
    *
    *  @overload for `sdsl::enc_vector`.
    */
-  template< typename TCoder, typename TContainer >
+  template< typename TCoder, typename TContainer, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
-    assign( sdsl::enc_vector< TCoder >& a, const TContainer& b )
+    assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       sdsl::util::assign( a, b );
     }
@@ -727,12 +742,26 @@ namespace psi {
    *  A wrapper function to provide an interface to `clean` member function of
    *  `sdsl::enc_vector`.
    */
-  template< typename TCoder >
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
-    clear( sdsl::enc_vector< TCoder >& ev )
+    clear( sdsl::enc_vector< TCoder, TDens, TWidth >& ev )
     {
       sdsl::util::clear( ev );
     }
+
+
+  /**
+   *  @brief  Clear the given container.
+   *
+   *  @param  ivb The container to be cleaned.
+   *
+   */
+  template< uint8_t TWidth >
+  inline void
+  clear( sdsl::int_vector_buffer< TWidth >& ivb )
+  {
+    ivb.reset();
+  }
 
   /**
    *  @brief  Reserve the required memory for the vector of size `size`.
@@ -805,12 +834,126 @@ namespace psi {
    *
    *  Do nothing.
    */
-  template< typename TCoder, typename TSize >
+  template< typename TCoder, typename TSize, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
-    reserve( sdsl::enc_vector< TCoder >&, const TSize )
+    reserve( sdsl::enc_vector< TCoder, TDens, TWidth >&, const TSize )
     {
       /* NOOP */
     }
+
+
+  /**
+   *  @overload The `sdsl::int_vector_buffer` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  Do nothing.
+   */
+  template< uint8_t TWidth, typename TSize >
+  inline void
+  reserve( sdsl::int_vector_buffer< TWidth >&, const TSize )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @overload The `sdsl::int_vector` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   */
+  template< uint8_t TWidth, typename TSize >
+  inline void
+  reserve( sdsl::int_vector< TWidth >&, const TSize )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @brief The shrink to fit interface function.
+   *
+   *  It acts a wrapper for `shrink_to_fit` member function.
+   */
+  template< typename TContainer >
+  inline void
+  shrink_to_fit( TContainer& container )
+  {
+    container.shrink_to_fit();
+  }
+
+
+  /**
+   *  @overload The shrink to fit interface function.
+   */
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
+  inline void
+  shrink_to_fit( sdsl::enc_vector< TCoder, TDens, TWidth >& )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @overload The shrink to fit interface function.
+   */
+  template< uint8_t TWidth >
+  inline void
+  shrink_to_fit( sdsl::int_vector_buffer< TWidth >& )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @brief  Resize the container to the given `size`.
+   *
+   *  @param  container The container.
+   *  @param  size Size to resize.
+   *
+   *  It calls resize member function of the container.
+   */
+  template< typename TContainer, typename TSize >
+  inline void
+  resize( TContainer& container, const TSize size )
+  {
+    container.resize( size );
+  }
+
+
+  /**
+   *  @overload The `sdsl::int_vector_buffer` cannot be resized.
+   *
+   *  @param  container The container.
+   *  @param  size Size to resize.
+   *
+   *  Do nothing.
+   */
+  template< typename TCoder, typename TSize, uint32_t TDens = 128, uint8_t TWidth=0 >
+  inline void
+  resize( sdsl::enc_vector< TCoder, TDens, TWidth >&, const TSize )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @overload The `sdsl::int_vector_buffer` cannot be resized.
+   *
+   *  @param  container The container.
+   *  @param  size Size to resize.
+   *
+   *  Do nothing.
+   */
+  template< uint8_t TWidth, typename TSize >
+  inline void
+  resize( sdsl::int_vector_buffer< TWidth >& ivb, const TSize size )
+  {
+    ivb[ size - 1 ] = 0;
+  }
 
 
   /**
@@ -851,12 +994,20 @@ namespace psi {
     deserialize( in, container, std::back_inserter( container ) );
   }  /* -----  end of template function deserialize  ----- */
 
-  template< typename TCoder >
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
     inline void
-  deserialize( std::istream& in, sdsl::enc_vector< TCoder >& ev )
+  deserialize( std::istream& in, sdsl::enc_vector< TCoder, TDens, TWidth >& ev )
   {
     ev.load( in );
   }  /* -----  end of template function deserialize  ----- */
+
+  template< uint8_t TWidth >
+    inline void
+  deserialize( std::istream& in, sdsl::int_vector_buffer< TWidth >& ivb )
+  {
+    throw std::runtime_error( "`sdsl::int_vector_buffer` cannot be deserialised" );
+  }  /* -----  end of template function serialize  ----- */
+
 
   /**
    * Inspired by: https://yizhang82.dev/lock-free-rw-lock
