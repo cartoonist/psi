@@ -414,9 +414,11 @@ namespace psi {
     _fill_entries_partial( TCrsMatrix const& ex, ordinal_type scol=0 )
     {
       auto size = ex.graph.entries.extent( 0 );
-      auto start = this->entries.end() - size;
-      std::transform( ex.graph.entries.data(), ex.graph.entries.data() + size, start,
-                      [scol]( ordinal_type e ) { return e + scol; } );
+      auto start = this->entries.size() - size;
+      auto ptr = ex.graph.entries.data();
+      for ( size_type i = 0; i < size; ++i, ++ptr ) {
+        this->entries[ start++ ] = *ptr + scol;
+      }
     }
 
     template< typename TCrsMatrix >
@@ -424,10 +426,12 @@ namespace psi {
     _fill_rowmap_partial( TCrsMatrix const& ex, ordinal_type srow=0 )
     {
       auto size = ex.graph.row_map.extent( 0 );
-      auto start = this->rowmap.begin() + srow + 1;
+      auto start = srow + 1;
       size_type snnz = this->nnz() - ex.nnz();  /* Assumed entries are already resized */
-      std::transform( ex.graph.row_map.data() + 1, ex.graph.row_map.data() + size, start,
-                      [snnz]( size_type e ) { return e + snnz; } );
+      auto ptr = ex.graph.row_map.data() + 1;
+      for ( size_type i = 1; i < size; ++i, ++ptr ) {
+        this->rowmap[ start++ ] = *ptr + snnz;
+      }
     }
 
     inline ordinal_type
