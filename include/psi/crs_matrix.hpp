@@ -284,6 +284,18 @@ namespace psi {
       return this->entries.size();
     }
 
+    inline ordinal_type
+    entry( size_type i ) const
+    {
+      return this->entries[ i ];
+    }
+
+    inline size_type
+    rowMap( ordinal_type i ) const
+    {
+      return this->rowmap[ i ];
+    }
+
     inline void
     reserve( size_type nnz )
     {
