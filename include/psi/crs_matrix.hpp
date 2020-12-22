@@ -284,6 +284,18 @@ namespace psi {
       return this->entries.size();
     }
 
+    inline ordinal_type
+    entry( size_type i ) const
+    {
+      return this->entries[ i ];
+    }
+
+    inline size_type
+    rowMap( ordinal_type i ) const
+    {
+      return this->rowmap[ i ];
+    }
+
     inline void
     reserve( size_type nnz )
     {
@@ -463,6 +475,13 @@ namespace psi {
     /* === LIFECYCLE === */
     CRSMatrix( ) : base_type( ) { }
 
+    CRSMatrix( ordinal_type ncols, entries_type e_entries, rowmap_type e_rowmap )
+      : base_type( ncols )
+    {
+      this->entries = std::move( e_entries );
+      this->rowmap = std::move( e_rowmap );
+    }
+
     /**
      *  @brief Construct by an external `KokkosSparse::CrsMatrix`-like matrix.
      */
@@ -548,6 +567,13 @@ namespace psi {
     /* === LIFECYCLE === */
     CRSMatrix( ) : base_type( ) { }
 
+    CRSMatrix( ordinal_type ncols, entries_type&& e_entries, rowmap_type e_rowmap )
+      : base_type( ncols )
+    {
+      this->entries = std::move( e_entries );
+      this->rowmap = std::move( e_rowmap );
+    }
+
     /**
      *  @brief Construct by an external `KokkosSparse::CrsMatrix`-like matrix.
      */
@@ -621,6 +647,13 @@ namespace psi {
     /* === LIFECYCLE === */
     CRSMatrix( ) : base_type( ) { }
 
+    CRSMatrix( ordinal_type ncols, entries_type&& e_entries, rowmap_type&& e_rowmap )
+      : base_type( ncols )
+    {
+      this->entries = std::move( e_entries );
+      this->rowmap = std::move( e_rowmap );
+    }
+
     /**
      *  @brief Construct by an external `KokkosSparse::CrsMatrix`-like matrix.
      */
@@ -693,6 +726,13 @@ namespace psi {
     friend class CRSMatrix;
     /* === LIFECYCLE === */
     CRSMatrix( ) : base_type( ) { }
+
+    CRSMatrix( ordinal_type ncols, entries_type e_entries, rowmap_type e_rowmap )
+      : base_type( ncols )
+    {
+      this->entries = std::move( e_entries );
+      this->rowmap = std::move( e_rowmap );
+    }
 
     /**
      *  @brief Construct by an external `KokkosSparse::CrsMatrix`-like matrix.

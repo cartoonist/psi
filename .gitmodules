@@ -4,9 +4,6 @@
 [submodule "src/ext/spdlog"]
 	path = src/ext/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "src/ext/cxxopts"]
-	path = src/ext/cxxopts
-	url = https://github.com/jarro2783/cxxopts.git
 [submodule "ext/seqan"]
 	path = ext/seqan
 	url = https://github.com/seqan/seqan
@@ -19,3 +16,6 @@
 [submodule "ext/PairG"]
 	path = ext/PairG
 	url = https://github.com/cartoonist/PairG.git
+[submodule "tools/ext/cxxopts"]
+	path = tools/ext/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git

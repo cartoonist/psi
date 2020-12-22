@@ -1,5 +1,5 @@
 /**
- *    @file  loci_stats.cc
+ *    @file  loci_stats.cpp
  *   @brief  Report statistics about starting loci.
  *
  *  This program reads the starting loci file as a part of path index and report

@@ -1,5 +1,5 @@
 /**
- *    @file  ggsim.cc
+ *    @file  ggsim.cpp
  *   @brief  Graph genome haplotype and reads simulator
  *
  *  Simulate haplotypes or reads from a graph genome.

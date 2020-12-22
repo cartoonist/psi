@@ -1,5 +1,5 @@
 /**
- *    @file  pathindex_stats.cc
+ *    @file  pathindex_stats.cpp
  *   @brief  Report statistics about path index.
  *
  *  This program reads the path index and report some statistics about the paths.

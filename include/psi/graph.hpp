@@ -441,6 +441,49 @@ namespace psi {
 
       return crsMat_t( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
     }
+
+    template< typename TCRSMatrixBuffer,
+              typename TCRSMatrix,
+              typename TGraph >
+    inline TCRSMatrix
+    compress_distance_index( TCRSMatrix const& dindex, TGraph const& graph )
+    {
+      typedef TGraph graph_type;
+      typedef typename graph_type::rank_type rank_type;
+
+      typedef TCRSMatrixBuffer crsmat_buffer_type;
+      typedef TCRSMatrix crsmat_type;
+      typedef typename crsmat_type::ordinal_type ordinal_type;
+
+      typename crsmat_buffer_type::entries_type entries;
+      typename crsmat_buffer_type::rowmap_type rowmap;
+      crsmat_buffer_type::base_type::traits_type::init( entries );
+      crsmat_buffer_type::base_type::traits_type::init( rowmap );
+      rank_type cnode_rank = 0;  // current node rank
+      ordinal_type start = 0;    // row start index
+      ordinal_type end;          // row end index
+      ordinal_type nloc = 0;     // next node loci index
+      for ( ordinal_type nrow = 0; nrow < dindex.numRows(); ++nrow ) {
+        rowmap.push_back( entries.size() );
+        if ( nrow == nloc) {
+          ++cnode_rank;
+          nloc = nrow + graph.node_length( graph.rank_to_id( cnode_rank ) );
+        }
+        assert( nrow < nloc );
+        end = dindex.rowMap( nrow + 1 );
+        for ( ; start < end; ++start ) {
+          if ( nrow < dindex.entry( start ) && dindex.entry( start ) < nloc ) continue;
+          else entries.push_back( dindex.entry( start ) );
+        }
+      }
+      rowmap.push_back( entries.size() );
+
+      crsmat_buffer_type buffered( dindex.numCols(), std::move( entries ),
+                                     std::move( rowmap ) );
+      crsmat_type result;
+      result.assign( buffered );
+      return result;
+    }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */
 
