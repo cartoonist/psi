@@ -15,370 +15,314 @@
  *  See LICENSE file for more information.
  */
 
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-
-#include <cxxopts/cxxopts.h>
-#include <kseq++/kseq++.h>
-
-#include "vargraph.h"
+#include "ggsim.hpp"
 
 
-using namespace grem;
-
-constexpr const char* LONG_DESC = "Simulate haplotypes or reads from a graph genome";
-constexpr const char CHAR_BP_DELETED = '-';
-constexpr const char DEFAULT_QUAL_SCORE = 'I';
-constexpr int MAX_TRIES = 100;
-// Default values for command line arguments
-constexpr const char* DEFAULT_RNDSEED = "0";
-constexpr const char* DEFAULT_OUTPUT = "-";  // stdout
-constexpr const char* DEFAULT_PLOIDY = "2";
-constexpr const char* DEFAULT_SUBRATE = "0.0";
-constexpr const char* DEFAULT_INDRATE = "0.0";
-constexpr const char* DEFAULT_FORWARD = "false";
-constexpr const char* DEFAULT_ALLOWNS = "false";
-
-
-namespace fmt {
-  struct Fasta {
-    constexpr static const char* extension = ".fasta";
-    constexpr static const char* short_extension = ".fa";
-    constexpr static const char* extension_repr = ".fasta'/'.fa";
-    constexpr static const char* type_string = "fasta";
-    constexpr static unsigned char type_code = 1;
-  };
-
-  struct Fastq {
-    constexpr static const char* extension = ".fastq";
-    constexpr static const char* short_extension = ".fq";
-    constexpr static const char* extension_repr = ".fastq'/'.fq";
-    constexpr static const char* type_string = "fastq";
-    constexpr static unsigned char type_code = 2;
-  };
-
-  struct Seq {
-    constexpr static const char* extension = ".seq";
-    constexpr static const char* short_extension = ".seq";
-    constexpr static const char* extension_repr = ".seq";
-    constexpr static const char* type_string = "sequence";
-    constexpr static unsigned char type_code = 3;
-  };
-
-  class Type {
-    public:
-      Type( ) : code( 0 )
-      { }
-
-      Type( std::string const type_str )
-      {
-        this->set( type_str );
-      }
-
-        void
-      set( std::string const type_str )
-      {
-        if ( type_str == Fasta::type_string ) {
-          this->code = Fasta::type_code;
+template< typename TGraph >
+inline void
+simulate_haplotypes( TGraph const& graph, unsigned int ploidy, unsigned int seed,
+                     std::function< void( std::string, Path< TGraph > ) > callback )
+{
+  // NOTE: This function assumes that there is a path corresponding to each region.
+  auto hap_itr = begin( graph, Haplotyper< Random >() );
+  auto hap_end = end( graph, Haplotyper< Random >() );
+  Path< TGraph > hap_path( &graph );
+  graph.for_each_path(
+      [&]( auto path_rank, auto path_id ) {
+        auto path_name = graph.path_name( path_id );
+        typename TGraph::id_type start = *graph.path( path_id ).begin();
+        hap_itr.reset( start, seed );
+        for ( unsigned int i = 0; i < ploidy; ++i ) {
+          get_rnd_full_haplotype( hap_path, hap_itr, hap_end );
+          psi::initialize( hap_path );
+          callback( path_name + "-" + std::to_string( i + 1 ), std::move( hap_path ) );
+          hap_path.clear();
         }
-        else if ( type_str == Fastq::type_string ) {
-          this->code = Fastq::type_code;
-        }
-        else if ( type_str == Seq::type_string ) {
-          this->code = Seq::type_code;
-        }
-      }
-
-        inline
-      operator bool( ) const
-      {
-        return this->code != 0;
-      }
-
-      template< typename TFormat >
-          inline bool
-        operator==( TFormat ) const
-        {
-          return this->code == TFormat::type_code;
-        }
-
-          inline bool
-        operator==( Type const& t ) const
-        {
-          return this->code == t.code;
-        }
-    private:
-      unsigned char code;
-  };
-
-  template< typename TFormat >
-      inline bool
-    operator==( TFormat, Type const& t )
-    {
-      return t.operator==( TFormat() );
-    }
-
-    std::istream&
-  operator>>( std::istream& is, Type& t )
-  {
-    std::string type_str;
-    is >> type_str;
-    t.set( type_str );
-    return is;
-  }
-
-  template< typename TFormat >
-      inline static bool
-    check_extension( std::string const& filename, TFormat )
-    {
-      return ends_with( filename, TFormat::extension ) ||
-        ends_with( filename, TFormat::short_extension );
-    }
-
-    inline fmt::Type
-  get_type( std::string const& output )
-  {
-    if ( fmt::check_extension( output, fmt::Seq() ) ) {
-      return fmt::Type( "sequence" );
-    }
-    if ( fmt::check_extension( output, fmt::Fastq() ) ) {
-      return fmt::Type( "fastq" );
-    }
-    if ( fmt::check_extension( output, fmt::Fasta() ) ) {
-      return fmt::Type( "fasta" );
-    }
-
-    std::string msg = std::string( "Output file extension must be either '" ) +
-      fmt::Fasta::extension_repr + "' for haplotypes, or '" +
-      fmt::Fastq::extension_repr + "' or'" +
-      fmt::Seq::extension_repr + "' for reads";
-    throw cxxopts::OptionParseException( msg );
-  }
-
-  template< typename TResult >
-      inline fmt::Type
-    get_type( TResult const& result )
-    {
-      fmt::Type type;
-      if ( result.count( "type" ) ) {
-        type = result[ "type" ].template as< fmt::Type >();
-      }
-      if ( type ) return type;
-      return get_type( result[ "output" ].template as< std::string >() );
-    }
-
-    inline bool
-  is_reads( fmt::Type const& type )
-  {
-    return type == fmt::Seq() || type == fmt::Fastq();
-  }
-}  /* -----  end of namespace format  ----- */
-
-  inline bool
-has_n( std::string const& seq )
-{
-  return seq.find( 'N' ) != std::string::npos;
+        return true;
+      } );
 }
 
-  inline void
-simulate_haplotype( VarGraph const& vargraph, unsigned int ploidy,
-    unsigned int seed, std::vector< klibpp::KSeq >& hapseqs )
+template< typename TReadType >
+inline std::size_t
+read_span( unsigned int readlen )
 {
-  using TIterator = seqan::Iterator< VarGraph, Haplotyper< Random > >::Type;
-
-  hapseqs.reserve( ploidy );
-  TIterator hap_itr( &vargraph );
-  Path< VarGraph > haplotype( &vargraph );
-  for ( std::size_t rank = 1; rank <= vargraph.max_path_rank(); ++rank ) {
-    const auto& pathname = vargraph.path_name( rank );
-    VarGraph::nodeid_type start = vargraph.node_at_path_position( pathname, 0 );
-    go_begin( hap_itr, start, seed );
-    klibpp::KSeq record;
-    for ( unsigned int i = 0; i < ploidy; ++i ) {
-      get_rnd_full_haplotype( haplotype, hap_itr );
-      record.name = pathname + "-" + std::to_string( i + 1 );
-      record.seq = sequence( haplotype );
-      hapseqs.push_back( std::move( record ) );
-      haplotype.clear();
-      record.clear();
-    }
-  }
+  std::size_t is_paired = std::is_same< TReadType, PairedEnd >::value;
+  return ( 1 + is_paired ) * readlen + is_paired /* min one-base inner distance if paired */;
 }
 
-  inline void
-impose_errors( klibpp::KSeq& hap, unsigned int seed,
-    double errorrate, double indelrate )
+template< typename TReadType, typename TGraph >
+inline std::vector< unsigned long int >
+reads_dist( std::unordered_map< std::string, Path< TGraph > > const& haplotypes,
+                    unsigned int readlen, unsigned long int numreads )
 {
-  std::random_device rd;         // Will be used to obtain a seed for the random no. engine
-  if ( seed == 0 ) seed = rd();  // use random_device to generate a seed if seed is not provided
-  std::mt19937 gen( seed );      // Standard mersenne_twister_engine seeded with seed
-  std::uniform_real_distribution<> dis( 0.0, 1.0 );
-  char bases[4] = { 'A', 'C', 'G', 'T' };
-
-  for ( std::size_t i = 0; i < hap.seq.length(); ++i ) {
-    if ( dis(gen) < errorrate ) {
-      if ( dis(gen) < indelrate ) {  // indel
-        hap.seq[ i ] = CHAR_BP_DELETED;
-      }
-      else {  // substitution
-        int alt = static_cast< int >( dis(gen) * 4 );
-        if ( bases[ alt ] == hap.seq[ i ] ) alt = ( alt + 1 ) % 4;
-        hap.seq[ i ] = bases[ alt ];
-      }
-    }
-  }
-  // Remove all indels
-  hap.seq.erase( std::remove( hap.seq.begin(), hap.seq.end(), CHAR_BP_DELETED ),
-      hap.seq.end() );
-}
-
-  inline void
-impose_errors( std::vector< klibpp::KSeq >& haps, unsigned int seed,
-    double errorrate, double indelrate )
-{
-  if ( errorrate == 0 ) return;
-  for ( auto&& h : haps ) impose_errors( h, seed, errorrate, indelrate );
-}
-
-  inline std::string
-simulate_read( std::string const& haplotype, std::size_t pos,
-    unsigned int readlen, bool fwd )
-{
-  /* FIXME: This is assumed that pos + readlen won't exceed the sequence. */
-  std::string candidate;
-  candidate.reserve( readlen );
-  std::size_t cursor;
-  if ( fwd ) cursor = pos;
-  else if ( haplotype.size() > pos + readlen ) {
-    cursor = haplotype.size() - pos - readlen;
-  }
-  else cursor = 0;
-  unsigned int len = 0;
-  for ( ; len < readlen && cursor < haplotype.size(); ++cursor ) {
-    if ( haplotype[ cursor ] == CHAR_BP_DELETED ) continue;
-    candidate += haplotype[ cursor ];
-    len++;
-  }
-  if ( !fwd ) {
-    candidate = complement( candidate );
-    std::reverse( candidate.begin(), candidate.end() );
-  }
-  return candidate;
-}
-
-  inline void
-simulate_all_reads( std::vector< klibpp::KSeq > const& haps, unsigned int seed,
-    unsigned int readlen, unsigned int numreads, bool fwd, bool allow_ns,
-    std::vector< klibpp::KSeq >& seqs )
-{
-  std::random_device rd;         // Will be used to obtain a seed for the random no. engine
-  if ( seed == 0 ) seed = rd();  // use random_device to generate a seed if seed is not provided
-  std::mt19937 gen( seed );      // Standard mersenne_twister_engine seeded with seed
-
-  seqs.reserve( numreads );
-  klibpp::KSeq candidate;
-  std::size_t count = 0;
-  bool dir = true;
-  double genome_size = 0;
-  for ( const auto& h : haps ) genome_size += h.seq.length();
-  for ( const auto& h : haps ) {
-    std::size_t ubound = ( h.seq.size() > readlen ? h.seq.size() - readlen : 0 );
-    std::uniform_int_distribution<> dis( 0, ubound );
-    unsigned long int reads_per_hap = ceil( numreads * h.seq.length() / genome_size );
-    for ( unsigned int i = 0; i < reads_per_hap; ++i ) {
-      int tries = MAX_TRIES;
-      std::size_t pos;
-      do {
-        pos = dis( gen );
-        candidate.seq = simulate_read( h.seq, pos, readlen, fwd || dir );
-      } while ( !allow_ns && tries-- && has_n( candidate.seq ) );
-
-      if ( tries == 0 ) {
-        std::cerr << "Reads may contain 'N' since nothing found after "
-                  << MAX_TRIES << " attemps!" << std::endl;
-      }
-
-      candidate.name = "read-" + std::to_string( count++ );
-      candidate.comment = h.name + "@" + std::to_string( pos ) + " " +
-        ( fwd || dir ? "F" : "R" );
-      candidate.qual = std::string( candidate.seq.size(), DEFAULT_QUAL_SCORE );
-      seqs.push_back( std::move( candidate ) );
-      candidate.clear();
-      dir = !dir;
-    }
-  }
-  assert( seqs.size() >= numreads );
-  auto extra = seqs.size() - numreads;
-  for ( unsigned long int i = 0; i < extra; ++i ) {
-    std::uniform_int_distribution<> dis( 0, seqs.size() - 1 );
-    seqs.erase( seqs.begin() + dis( gen ) );
-  }
-}
-
-  inline void
-simulate( VarGraph const& vargraph, unsigned int ploidy, unsigned int seed,
-    unsigned int readlen, unsigned int numreads, double errorrate,
-    double indelrate, bool fwd, bool allow_ns, fmt::Type type,
-    std::vector< klibpp::KSeq >& seqs )
-{
-  std::vector< klibpp::KSeq > haps_tmp;
-  std::vector< klibpp::KSeq >* haps_ptr;
-  if ( is_reads( type ) ) haps_ptr = &haps_tmp;
-  else haps_ptr = &seqs;
-  simulate_haplotype( vargraph, ploidy, seed, *haps_ptr );
-  if ( !is_reads( type ) ) return;
-  impose_errors( haps_tmp, seed, errorrate, indelrate );
-  simulate_all_reads( haps_tmp, seed, readlen, numreads, fwd, allow_ns, seqs );
-}
-
-template< typename TType >
-    inline void
-  write_output( std::string const& output,
-      std::vector< klibpp::KSeq > const& seqs, TType )
-  {
-    std::unique_ptr< klibpp::SeqStreamOut > oss_p;
-    if ( output == "-" ) {
-      oss_p = std::make_unique< klibpp::SeqStreamOut >( fileno( stdout ) );
+  std::vector< unsigned long int > dist;
+  unsigned long int genome_size = 0;
+  for ( const auto& hs : haplotypes ) {
+    auto length = hs.second.get_sequence_len();
+    if ( length >= read_span< TReadType >( readlen ) ) {
+      genome_size += length;
+      dist.push_back( length );
     }
     else {
-      oss_p = std::make_unique< klibpp::SeqStreamOut >( output.c_str() );
+      std::cerr << "Skipped haplotype '" << hs.first << "' due to its length."
+                << std::endl;
+      dist.push_back( 0 );
     }
-    for ( const auto& rec : seqs ) (*oss_p) << rec;
   }
 
-  inline void
-write_output( std::string const& output,
-    std::vector< klibpp::KSeq > const& seqs, fmt::Seq )
-{
-  std::streambuf* buf;
-  std::ofstream ofs;
-  if ( output == "-" ) {
-    buf = std::cout.rdbuf();
+  unsigned long int sum = 0;
+  for ( auto& d : dist ) {
+    d = numreads * d / genome_size;
+    sum += d;
   }
-  else {
-    ofs.open( output, ofstream::out | ofstream::binary );
-    buf = ofs.rdbuf();
-  }
-  std::ostream out( buf );
-  for ( const auto& rec : seqs ) out << rec.seq << endl;
+  assert( numreads >= sum );
+  auto extra = numreads - sum;
+  assert( extra < haplotypes.size() );
+  for ( unsigned long int i = 0; i < extra; ++i ) ++dist[i];
+  assert( std::accumulate( dist.begin(), dist.end(), 0 ) == numreads );
+  return dist;
 }
 
-  inline void
-write_output( std::string const& output,
-    std::vector< klibpp::KSeq > const& seqs, fmt::Type const& t )
+template< typename TInputIter, typename TOutputIter >
+inline std::pair< bool, TOutputIter >
+impose_error( TInputIter first, TInputIter last, TOutputIter output, vg::Mapping* map_ptr,
+              double errorrate, double indelrate, bool fwd, bool allow_ns, bool forced )
 {
-  if ( t == fmt::Seq() ) {
-    write_output( output, seqs, fmt::Seq() );
+  std::uniform_real_distribution<> dis( 0.0, 1.0 );
+  char bases[4] = { 'A', 'C', 'G', 'T' };
+  event::Event e;
+  int alt;
+
+  auto count = last - first;
+  auto edit_ptr = map_ptr->add_edit();
+  while ( count --> 0 ) {
+    assert( first != last );
+    if ( dis( ::rnd::get_gen() ) < errorrate ) {
+      if ( dis( ::rnd::get_gen() ) < indelrate ) {  // indel
+        if ( dis( ::rnd::get_gen() ) < 0.5 || first == last - 1 ) {  // insertion
+          alt = static_cast< int >( dis( ::rnd::get_gen() ) * 4 );
+          --first;
+          *output++ = bases[ alt ];
+          e = event::insertion;
+        }
+        else {
+          *output++ = *( ++first );  // deletion
+          e = event::deletion;
+        }
+      }
+      else {  // substitution
+        alt = static_cast< int >( dis( ::rnd::get_gen() ) * 4 );
+        if ( bases[ alt ] == *first ) alt = ( alt + 1 ) % 4;
+        *output++ = bases[ alt ];
+        e = event::mismatch;
+      }
+    }
+    else {
+      *output++ = *first++;  // no error
+      e = event::match;
+    }
+
+    auto last_char = *( output - 1 );
+    if ( !allow_ns && !forced && last_char == 'N' ) return { false, output };
+
+    if ( e == event::match ) {
+      if ( edit_ptr == nullptr ) edit_ptr = map_ptr->add_edit();
+      edit_ptr->set_from_length( edit_ptr->from_length() + 1 );
+      edit_ptr->set_to_length( edit_ptr->to_length() + 1 );
+    }
+    else if ( e == event::mismatch ) {
+      edit_ptr = map_ptr->add_edit();
+      edit_ptr->set_from_length( 1 );
+      edit_ptr->set_to_length( 1 );
+      edit_ptr->set_sequence( std::string( 1, last_char ) );
+      edit_ptr = nullptr;
+    }
+    else if ( e == event::deletion ) {
+      edit_ptr = map_ptr->add_edit();
+      edit_ptr->set_to_length( 1 );
+      edit_ptr = nullptr;
+    }
+    else if ( e == event::insertion ) {
+      edit_ptr = map_ptr->add_edit();
+      edit_ptr->set_from_length( 1 );
+      edit_ptr->set_sequence( std::string( 1, last_char ) );
+      edit_ptr = nullptr;
+    }
   }
-  else if ( t == fmt::Fasta() ) {
-    write_output( output, seqs, fmt::Fasta() );
+
+  if ( !fwd ) {
+    std::reverse( map_ptr->mutable_edit()->begin(), map_ptr->mutable_edit()->end() );
   }
-  else if ( t == fmt::Fastq() ) {
-    write_output( output, seqs, fmt::Fastq() );
+  return { true, output };
+}
+
+template< typename TGraph >
+  inline bool
+_simulate_read( klibpp::KSeq& read, vg::Path& read_path, klibpp::KSeq const& hapseq,
+                Path< TGraph > const& haplotype, std::size_t pos, unsigned int readlen,
+                double errorrate, double indelrate, bool fwd, bool allow_ns, bool forced,
+                SingleEnd )
+{
+  /* NOTE: This is assumed that `pos + readlen` won't exceed the sequence size. */
+  assert( pos + readlen <= hapseq.seq.size() );
+
+  auto graph_ptr = haplotype.get_graph_ptr();
+  if ( !fwd ) pos = hapseq.seq.size() - pos - readlen;
+
+  auto cursor = pos;
+  vg::Mapping* map_ptr = nullptr;
+  read.seq.resize( readlen );
+  auto output = read.seq.begin();
+  auto remaining = read.seq.size();
+  auto start = hapseq.seq.begin() + pos;
+  auto next = start;
+  while ( remaining > 0 ) {
+    auto id = position_to_id( haplotype, cursor );
+    auto offset = position_to_offset( haplotype, cursor );
+    auto label_len = graph_ptr->node_length( id );
+    auto range = std::min< std::size_t >( label_len - offset, remaining );
+    assert( hapseq.seq.end() - start >= range );
+    next = start + range;
+    map_ptr = read_path.add_mapping();
+    vg::Position* p = map_ptr->mutable_position();
+    p->set_node_id( graph_ptr->coordinate_id( id ) );
+    if ( fwd ) p->set_offset( offset );
+    else if ( cursor == pos /* first node when not forward */ ) p->set_offset( 0 );
+    else p->set_offset( label_len - range );
+    p->set_is_reverse( !fwd );
+    bool success;
+    std::tie( success, output ) = impose_error( start, next, output, map_ptr, errorrate,
+                                                indelrate, fwd, allow_ns, forced );
+    if ( !success ) return false;
+    start = next;
+    cursor += range;
+    remaining = read.seq.end() - output;
   }
+  if ( !fwd ) {
+    read.seq = complement( read.seq );
+    std::reverse( read.seq.begin(), read.seq.end() );
+    std::reverse( read_path.mutable_mapping()->begin(), read_path.mutable_mapping()->end() );
+  }
+
+  auto mappings_ptr = read_path.mutable_mapping();
+  std::size_t rank = 0;
+  for ( auto it = mappings_ptr->begin(); it != mappings_ptr->end(); ++it ) {
+    it->set_rank( ++rank );
+  }
+
+  read.name = random::random_string( READ_NAME_LENGTH );
+  read.comment = ( hapseq.name + READ_COMMENT_DELIMITER +
+                   std::to_string( pos ) + READ_COMMENT_DELIMITER +
+                   ( fwd ? "F" : "R" ) );
+  read.qual = std::string( read.seq.size(), DEFAULT_QUAL_SCORE );
+  return true;
+}
+
+template< typename TGraph >
+inline bool
+_simulate_read( klibpp::KSeq& read, vg::Path& read_path, klibpp::KSeq const& hapseq,
+                Path< TGraph > const& haplotype, std::size_t pos, unsigned int readlen,
+                double errorrate, double indelrate, bool fwd, bool allow_ns, bool forced,
+                PairedEnd )
+{
+  return false;
+}
+
+template< typename TReadType, typename TGraph, typename TCallback >
+inline void
+simulate_reads( std::string const& name, Path< TGraph > const& haplotype,
+                unsigned int readlen, unsigned long int n_reads, double errorrate,
+                double indelrate, bool fwd, bool allow_ns, TCallback callback )
+{
+  if ( n_reads == 0 ) return;
+
+  auto hapseq = to< klibpp::KSeq >( haplotype, name );
+  assert( hapseq.seq.size() >= read_span< TReadType >( readlen ) );
+
+  std::size_t ubound = hapseq.seq.size() - read_span< TReadType >( readlen );
+  std::uniform_int_distribution<> dis( 0, ubound );
+  klibpp::KSeq read;
+  vg::Path read_path;
+  bool dir = true;
+  for ( unsigned long int i = 0; i < n_reads; ++i ) {
+    int tries = MAX_TRIES;
+    std::size_t pos;
+    bool success = false;
+    do {
+      pos = dis( ::rnd::get_gen() );
+      success = _simulate_read( read, read_path, hapseq, haplotype, pos, readlen,
+                                errorrate, indelrate, fwd || dir, allow_ns,
+                                !static_cast< bool >( tries ), TReadType() );
+    } while ( tries-- > 0 && !success );
+    if ( tries < 0 ) std::cerr << "Reads may contain 'N' since nothing found after "
+                               << MAX_TRIES << " attemps!" << std::endl;
+    callback( std::move( read ), std::move( read_path ) );
+    read.clear();
+    read_path.Clear();
+    dir = !dir;
+  }
+}
+
+template< typename TReadType, typename TType, typename TGraph >
+inline void
+_simulate( TGraph const& graph, Parameters const& params )
+{
+  typedef Writer< TType > writer_type;
+  typedef typename writer_type::value_type value_type;
+
+  ::rnd::init_gen( params.seed );
+
+  writer_type writer( params.output );
+  std::unordered_map< std::string, Path< TGraph > > haplotypes;
+
+  // Simulate haplotypes
+  haplotypes.reserve( params.ploidy * graph.get_path_count() /* == no. of regions */ );
+  simulate_haplotypes< TGraph >(
+      graph, params.ploidy, params.seed,
+      [&haplotypes]( std::string name, Path< TGraph > path ) -> void {
+        [[maybe_unused]] auto res = haplotypes.insert( { name, std::move( path ) } );
+        assert( res.second );
+      } );
+
+  if ( params.numreads == 0 ) {  // Output haplotypes
+    for ( auto const& h : haplotypes ) writer << to< value_type >( h.second, h.first );
+  }
+  else {  // Output reads
+    // Compute reads distribution across haplotypes
+    auto dist = reads_dist< TReadType >( haplotypes, params.readlen, params.numreads );
+    assert( dist.size() == haplotypes.size() );
+    // Simulate the reads
+    auto h_it = haplotypes.begin();
+    auto d_it = dist.begin();
+    for ( ; h_it != haplotypes.end() /* && d_it != dist.end() */; ++h_it, ++d_it ) {
+      simulate_reads< TReadType >(
+          h_it->first, h_it->second, params.readlen, *d_it, params.errorrate,
+          params.indelrate, params.fwd, params.allow_ns,
+          [&writer]( klibpp::KSeq record, vg::Path path ) {
+            writer << to< value_type >( std::move( record ), std::move( path ) );
+          }
+        );
+    }
+  }
+}
+
+template< typename TReadType, typename ...TArgs >
+inline void
+simulate( fmt::Type const& type, TArgs&&... args )
+{
+  if ( type == fmt::Seq() ) {
+    _simulate< TReadType, fmt::Seq >( std::forward< TArgs >( args )... );
+  }
+  else if ( type == fmt::Fasta() ) {
+    _simulate< TReadType, fmt::Fasta >( std::forward< TArgs >( args )... );
+  }
+  else if ( type == fmt::Fastq() ) {
+    _simulate< TReadType, fmt::Fastq >( std::forward< TArgs >( args )... );
+  }
+  else if ( type == fmt::Gam() ) {
+    _simulate< TReadType, fmt::Gam >( std::forward< TArgs >( args )... );
+  }
+  else assert( false );
 }
 
   void
@@ -386,33 +330,36 @@ config_parser( cxxopts::Options& options )
 {
   options.positional_help( "GRAPH" );
   options.add_options()
-    ( "o, output", "Write to this file instead of standard output",
-      cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
-    ( "t, type", "Output type indicating whether haplotypes or reads should be"
-      " simulated (inferred from file extension if not provided). Values are: "
-      "'sequence', 'fastq', or 'fasta'. The 'sequence' format simply puts each"
-      " read in a line and the 'fasta' outputs haplotypes in FASTA format.",
-      cxxopts::value< fmt::Type >() )
-    ( "p, ploidy", "Set the ploidy",
-      cxxopts::value< unsigned int >()->default_value( DEFAULT_PLOIDY ) )
-    ( "l, read-length", "Read length", cxxopts::value< unsigned int >() )
-    ( "n, num-reads", "Number of reads", cxxopts::value< unsigned int >() )
-    ( "e, error-rate", "Base error rate",
-      cxxopts::value< double >()->default_value( DEFAULT_SUBRATE ) )
-    ( "i, indel-rate", "Fraction of indels",
-      cxxopts::value< double >()->default_value( DEFAULT_INDRATE ) )
-    ( "s, random-seed", "Seed for random generator",
-      cxxopts::value< unsigned int >()->default_value( DEFAULT_RNDSEED ) )
-    ( "f, forward-only", "Simulate reads only from forward strand",
-      cxxopts::value< bool >()->default_value( DEFAULT_FORWARD ) )
-    ( "N, allow-Ns", "Allow reads to be sampled from the graph with Ns in them",
-      cxxopts::value< bool >()->default_value( DEFAULT_ALLOWNS ) )
-    ( "h, help", "Print this message and exit" )
-    ;
-
+      ( "o, output", "Write to this file instead of standard output",
+        cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
+      ( "t, type", "Output type (inferred from file extension if not provided). "
+        "Values are: 'plain', 'gam', 'fastq', or 'fasta'.",
+        cxxopts::value< fmt::Type >() )
+      ( "p, ploidy", "Set the ploidy",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_PLOIDY ) )
+      ( "l, read-length", "Read length",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_READLEN ) )
+      ( "n, num-reads", "Number of reads",
+        cxxopts::value< unsigned long int >()->default_value( DEFAULT_NUMREADS ) )
+      ( "e, error-rate", "Base error rate",
+        cxxopts::value< double >()->default_value( DEFAULT_ERRRATE ) )
+      ( "i, indel-rate", "Fraction of indels",
+        cxxopts::value< double >()->default_value( DEFAULT_INDRATE ) )
+      ( "d, distance", "Outer distance between the two ends (implies paired-end reads)",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_DISTANCE ) )
+      ( "s, std-deviation", "Standard deviation (in paired-end reads)",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_DEVIATION ) )
+      ( "S, random-seed", "Seed for random generator",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_RNDSEED ) )
+      ( "f, forward-only", "Simulate reads only from forward strand",
+        cxxopts::value< bool >()->default_value( DEFAULT_FORWARD ) )
+      ( "N, allow-Ns", "Allow reads to be sampled from the graph with Ns in them",
+        cxxopts::value< bool >()->default_value( DEFAULT_ALLOWNS ) )
+      ( "h, help", "Print this message and exit" )
+      ;
   options.add_options( "positional" )
-    ( "graph", "graph file (vg or xg)", cxxopts::value< std::string >() )
-    ;
+      ( "graph", "graph file (vg or gfa)", cxxopts::value< std::string >() )
+      ;
   options.parse_positional( { "graph" } );
 }
 
@@ -420,31 +367,31 @@ config_parser( cxxopts::Options& options )
 parse_opts( cxxopts::Options& options, int& argc, char**& argv )
 {
   auto result = options.parse( argc, argv );
-
+  // help message
   if ( result.count( "help" ) ) {
-    cout << options.help( { "" } ) << endl;
+    std::cout << options.help( { "" } ) << std::endl;
     throw EXIT_SUCCESS;
   }
-
+  // `graph` option (positional)
   if ( ! result.count( "graph" ) ) {
     throw cxxopts::OptionParseException( "Graph file must be specified" );
   }
   if ( ! readable( result[ "graph" ].as< std::string >() ) ) {
     throw cxxopts::OptionParseException( "Graph file not found" );
   }
-
+  // `type` option
   if ( ! result.count( "type" ) &&
       result[ "output" ].as< std::string >() == DEFAULT_OUTPUT ) {
     throw cxxopts::OptionParseException( "File type must be specified" );
   }
-
-  if ( is_reads( fmt::get_type( result ) ) ) {
-    if ( ! result.count( "read-length" ) ) {
-      throw cxxopts::OptionParseException( "Read length must be specified" );
-    }
-    if ( ! result.count( "num-reads" ) ) {
-      throw cxxopts::OptionParseException( "Number of reads must be specified" );
-    }
+  // `read-length` and `num-reads` options
+  bool has_readlen = result[ "read-length" ].as< unsigned int >();
+  bool has_numreads = result[ "num-reads" ].as< unsigned long int >();
+  if ( has_readlen != has_numreads ) {
+    throw cxxopts::OptionParseException(
+        "Options `read-length` and `num-reads` should be either both defined "
+        "indicating to output simulated reads or not defined at all, in which case it "
+        "outputs simulated haplotypes." );
   }
 
   return result;
@@ -459,38 +406,30 @@ main( int argc, char* argv[] )
   try {
     auto res = parse_opts( options, argc, argv );
 
-    std::string graph_path = res[ "graph" ].as< std::string >();
-    std::string output = res[ "output" ].as< std::string >();
+    Parameters params;
     fmt::Type type = fmt::get_type( res );
-    unsigned int ploidy = res[ "ploidy" ].as< unsigned int >();
-    unsigned int readlen = 0;
-    unsigned int numreads = 0;
-    if ( is_reads( type ) ) {
-      readlen = res[ "read-length" ].as< unsigned int >();
-      numreads = res[ "num-reads" ].as< unsigned int >();
-    }
-    double errorrate = res[ "error-rate" ].as< double >();
-    double indelrate = res[ "indel-rate" ].as< double >();
-    unsigned int seed = res[ "random-seed" ].as< unsigned int >();
-    bool forward = res[ "forward-only" ].as< bool >();
-    bool allow_ns = res[ "allow-Ns" ].as< bool >();
+    std::string graph_path = res[ "graph" ].as< std::string >();
 
-    VarGraph vargraph;
-    ifstream ifs( graph_path, ifstream::in | ifstream::binary );
-    if ( ends_with( graph_path, ".vg" ) ) {
-      vargraph.from_stream( ifs );
-    }
-    else {
-      vargraph.load( ifs );
-    }
+    params.output = res[ "output" ].as< std::string >();
+    params.ploidy = res[ "ploidy" ].as< unsigned int >();
+    params.readlen = res[ "read-length" ].as< unsigned int >();
+    params.numreads = res[ "num-reads" ].as< unsigned long int >();
+    params.errorrate = res[ "error-rate" ].as< double >();
+    params.indelrate = res[ "indel-rate" ].as< double >();
+    params.distance = res[ "distance" ].as< unsigned int >();
+    params.sd = res[ "std-deviation" ].as< unsigned int >();
+    params.seed = res[ "random-seed" ].as< unsigned int >();
+    params.fwd = res[ "forward-only" ].as< bool >();
+    params.allow_ns = res[ "allow-Ns" ].as< bool >();
 
-    std::vector< klibpp::KSeq > seqs;
-    simulate( vargraph, ploidy, seed, readlen, numreads, errorrate, indelrate,
-        forward, allow_ns, type, seqs );
-    write_output( output, seqs, type );
+    gum::SeqGraph< gum::Succinct > graph;
+    gum::util::load( graph, graph_path );
+
+    if ( params.distance != 0 ) simulate< PairedEnd >( type, graph, params );
+    else simulate< SingleEnd >( type, graph, params );
   }
   catch ( const cxxopts::OptionException& e ) {
-    cerr << "Error: " << e.what() << endl;
+    std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
   catch ( const int& rv ) {
