@@ -935,9 +935,7 @@ namespace psi {
     using typename base_type::value_type;
     using typename base_type::level_type;
     using typename base_type::container_type;
-    typedef typename container_type::element_type path_type;
     using typename base_type::set_type;
-    typedef typename set_type::value_type happath_type;
     using typename base_type::state_type;
     using typename base_type::param_type;
 

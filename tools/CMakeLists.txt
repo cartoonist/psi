@@ -19,6 +19,21 @@ if(NOT TARGET cxxopts::cxxopts)
   add_subdirectory(${CXXOPTS_SOURCE_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# Defining target 'ggsim': PSI read simulation tool
+set(GGSIM_SOURCES "src/ggsim.cpp")
+add_executable(ggsim ${GGSIM_SOURCES})
+target_compile_options(ggsim PRIVATE -g -Wall -Wpedantic -Werror)
+target_include_directories(ggsim
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+target_link_libraries(ggsim
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+# Install targets
+install(TARGETS ggsim DESTINATION bin)
+
 # Defining target 'dindexctl': PSI distance index controller tool
 set(DINDEXCTL_SOURCES "src/dindexctl.cpp")
 add_executable(dindexctl ${DINDEXCTL_SOURCES})
