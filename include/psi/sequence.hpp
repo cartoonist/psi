@@ -638,9 +638,9 @@ namespace seqan {
     stringsize_type breakpoint = this->raw_length();
     if ( breakpoint >= this->bv_str_breaks.size() ) {
       sdsl::bit_vector new_bv( psi::roundup64( breakpoint + 1 ), 0 );
-      if ( this->length() != 0 ) psi::bv_icopy( this->bv_str_breaks,
-                                                 new_bv,
-                                                 0, this->bv_str_breaks.size() );
+      if ( this->length() != 0 ) psi::bvcopy( this->bv_str_breaks,
+                                              new_bv,
+                                              0, this->bv_str_breaks.size() );
       sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
     }
     this->bv_str_breaks[ breakpoint ] = 1;
@@ -898,9 +898,9 @@ namespace seqan {
     stringsize_type breakpoint = this->raw_length();
     if ( breakpoint >= this->bv_str_breaks.size() ) {
       sdsl::bit_vector new_bv( psi::roundup64( breakpoint + 1 ), 0 );
-      if ( this->length() != 0 ) psi::bv_icopy( this->bv_str_breaks,
-                                                 new_bv,
-                                                 0, this->bv_str_breaks.size() );
+      if ( this->length() != 0 ) psi::bvcopy( this->bv_str_breaks,
+                                              new_bv,
+                                              0, this->bv_str_breaks.size() );
       sdsl::util::assign( this->bv_str_breaks, std::move( new_bv ) );
     }
     this->bv_str_breaks[ breakpoint ] = 1;
