@@ -269,6 +269,56 @@ namespace psi {
 
 
   /**
+   *  @brief  Copy all bits in the range [first, last) of `src`, to `dst` beginning at
+   *          `first`.
+   *
+   *  @param  src The source bit vector.
+   *  @param  dst The destination bit vector.
+   *  @param  start The start index in `src` to be copied.
+   *  @param  last The last index of the range.
+   *  @param  first The first index at `dst`.
+   *
+   *  Bitvector range copy. The elements in range [start...last) of `src` are copied
+   *  to the range in `dst` starting at `first`.
+   */
+  template< typename TBitVector, uint8_t WLEN=64 >
+      inline void
+    bvcopy( TBitVector const& src, TBitVector& dst, typename TBitVector::size_type start=0,
+            typename TBitVector::size_type len=std::numeric_limits< typename TBitVector::size_type >::max(),
+            typename TBitVector::size_type first=0 )
+    {
+      if ( len == 0 ) return;
+      if ( len == std::numeric_limits< typename TBitVector::size_type >::max() ) {
+        len = src.size() - start;
+      }
+
+      assert( start + len <= src.size() );
+      assert( first + len <= dst.size() );
+
+      auto i = start;
+      auto end = start + len;
+      auto rem = start % WLEN;
+      auto mwi = rem ? start + WLEN - rem : start;  // minimum word-aligned index
+      auto head = std::min( mwi, end ) - i;
+
+      assert( mwi % WLEN == 0 );
+      assert( ( rem == 0 && mwi == i ) || ( rem != 0 && mwi != i ) );
+
+      // copy head
+      if ( head ) dst.set_int( first, src.get_int( i, head ), head );
+      i += head;
+      first += head;
+      // copy words by words in aligned range
+      for ( ; i + WLEN <= end; i += WLEN, first += WLEN ) {
+        dst.set_int( first, src.get_int( i, WLEN ), WLEN );
+      }
+      // copy tail
+      auto tail = end - i;
+      if ( tail ) dst.set_int( first, src.get_int( i, tail ), tail );
+    }  /* -----  end of function bv_icopy  ----- */
+
+
+  /**
    *  @brief  Check if the given file exists and is readable.
    *
    *  @param  file_name The name of the file to be checked.
@@ -1275,7 +1325,7 @@ namespace psi {
       std::generate_n( str.begin(), length, randchar );
       return str;
     }
-  }
+  }  /* --- end of namespace random --- */
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_UTILS_HPP__ --- */
