@@ -43,7 +43,7 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     WHEN( "the eigth haplotypes are generated using Haplotyper" )
     {
@@ -131,7 +131,7 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     WHEN( "the three haplotypes are generated using Haplotyper" )
     {
@@ -200,7 +200,7 @@ SCENARIO( "A Haplotyper graph iterator raise on end", "[graph][iterator][haploty
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
     auto hap_itr = begin( graph, Haplotyper<>() );
     auto hap_end = end( graph, Haplotyper<>() );
     hap_itr.set_raise_on_end( true );
@@ -228,7 +228,7 @@ SCENARIO( "Extend a path to length k using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
     auto hap_itr = begin( graph, Haplotyper<>() );
     auto hap_end = end( graph, Haplotyper<>() );
     unsigned int k = 5;
@@ -273,7 +273,7 @@ SCENARIO( "Get unique patched haplotypes using Haplotyper graph iterator", "[gra
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
     unsigned int context_len = 10;
 
     WHEN( "Generate 32x patched haplotypes are generated using a Haplotyper iterator" )
@@ -306,7 +306,7 @@ SCENARIO( "Traverse a sequence graph using backtracking algorithm", "[graph][ite
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     unsigned int kmer_len = 20;
 
@@ -384,7 +384,7 @@ SCENARIO( "Sequence graph breadth-first traverse (BFS)", "[graph][iterator][bfs]
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     WHEN( "traverse the graph using BFS graph iterator" )
     {
@@ -408,7 +408,7 @@ SCENARIO( "Sequence graph breadth-first traverse (BFS)", "[graph][iterator][bfs]
   {
     std::string vgpath = test_data_dir + "/multi/multi.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     WHEN( "traverse the graph using BFS graph iterator" )
     {

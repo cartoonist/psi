@@ -221,7 +221,11 @@ startup( const Options & options )
 
   log->info( "Loading input graph from file '{}'...", options.rf_path );
   gum::SeqGraph< gum::Succinct > graph;
-  gum::util::load( graph, options.rf_path );
+  gum::util::load( graph, options.rf_path, true );
+  if ( gum::util::ids_in_topological_order( graph ) ) {
+    log->info( "Input graph node IDs are in topological sort order." );
+  }
+  else log->warn( "Input graph node IDs are NOT in topological sort order." );
 
   log->info( "Opening reads file '{}'...", options.fq_path );
   SeqStreamIn reads_iss( options.fq_path.c_str() );

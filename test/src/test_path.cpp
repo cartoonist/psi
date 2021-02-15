@@ -112,7 +112,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     GIVEN( "An empty path" )
     {
@@ -1355,7 +1355,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     GIVEN( "A path in the graph" )
     {
@@ -1869,7 +1869,7 @@ SCENARIO( "Trim a path in a sequence graph", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     GIVEN( "An empty path in the graph" )
     {
@@ -2243,7 +2243,7 @@ SCENARIO( "Trim a path to the length of k", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     GIVEN( "Two paths: one Default and one Dynamic" )
     {
@@ -2674,7 +2674,7 @@ SCENARIO( "Query node coordinates by position in the path", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     WHEN( "A path in the graph" )
     {
