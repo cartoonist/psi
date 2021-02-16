@@ -38,7 +38,7 @@ SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     SeedFinder< NoStats, finder_traits_type > finder( graph, 30 );
     finder.unset_as_finaliser();
@@ -76,7 +76,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     unsigned char k = 12;
     unsigned char nof_paths = 4;
@@ -153,7 +153,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
 
     GIVEN( "A SeedFinder on this graph with known starting loci" )
     {
@@ -202,7 +202,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::load( graph, vgpath );
+    gum::util::load( graph, vgpath, true );
 
     unsigned int dmin = 8;
     unsigned int dmax = 12;
@@ -301,7 +301,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/multi/multi.vg";
     graph_type graph;
-    gum::util::load( graph, vgpath );
+    gum::util::load( graph, vgpath, true );
 
     unsigned int dmin = 8;
     unsigned int dmax = 12;

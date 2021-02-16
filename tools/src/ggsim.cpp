@@ -423,7 +423,10 @@ main( int argc, char* argv[] )
     params.allow_ns = res[ "allow-Ns" ].as< bool >();
 
     gum::SeqGraph< gum::Succinct > graph;
-    gum::util::load( graph, graph_path );
+    gum::util::load( graph, graph_path, true );
+    std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
+    std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
+              << std::endl;
 
     if ( params.distance != 0 ) simulate< PairedEnd >( type, graph, params );
     else simulate< SingleEnd >( type, graph, params );

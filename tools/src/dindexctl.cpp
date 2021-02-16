@@ -165,7 +165,10 @@ compress( cxxopts::ParseResult& res )
       "M" + std::to_string( max_size );
 
   std::cout << "Loading input graph..." << std::endl;
-  gum::util::load( graph, graph_path );
+  gum::util::load( graph, graph_path, true );
+  std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
+  std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
+            << std::endl;
 
   std::cout << "Loading distance index..." << std::endl;
   std::ifstream ifs( index_path, std::ifstream::in | std::ifstream::binary );

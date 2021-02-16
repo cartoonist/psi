@@ -45,7 +45,7 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, true );
     std::string readspath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     seqan::SeqFileIn reads_file;
     if ( !open( reads_file, readspath.c_str() ) ) {
