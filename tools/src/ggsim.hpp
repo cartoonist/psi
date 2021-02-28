@@ -257,23 +257,23 @@ public:
   typedef std::size_t size_type;
   /* === LIFECYCLE === */
   Writer( std::string const& output )
-    : ost( fileno( stdout ) )
   {
-    if ( output != "-" ) this->ost = klibpp::SeqStreamOut( output.c_str() );
-    if ( std::is_same< TType, fmt::Fastq >::value ) this->ost << klibpp::format::fastq;
-    else if ( std::is_same< TType, fmt::Fasta >::value ) this->ost << klibpp::format::fasta;
+    if ( output != "-" ) this->ost = std::make_unique< klibpp::SeqStreamOut >( output.c_str() );
+    else this->ost = std::make_unique< klibpp::SeqStreamOut >( fileno( stdout ) );
+    if ( std::is_same< TType, fmt::Fastq >::value ) *this->ost << klibpp::format::fastq;
+    else if ( std::is_same< TType, fmt::Fasta >::value ) *this->ost << klibpp::format::fasta;
     else assert( false );
   }
   /* === METHODS === */
   Writer&
   operator<<( value_type const& record )
   {
-    this->ost << record;
+    *this->ost << record;
     return *this;
   }
 private:
   /* === DATA MEMBERS === */
-  klibpp::SeqStreamOut ost;
+  std::unique_ptr< klibpp::SeqStreamOut > ost;
 };
 
 template<>
