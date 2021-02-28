@@ -1310,7 +1310,7 @@ namespace psi {
               throw std::runtime_error( "seed length should not be larger than context size" );
             }
 
-            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+            if ( length( this->pindex.index ) == 0 ) return;
 
             this->stats_ptr->set_progress( progress_type::ready );
             auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
