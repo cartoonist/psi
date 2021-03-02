@@ -312,6 +312,20 @@ namespace seqan {
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::savalue_type
+    length( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index )
+    {
+      return index.size();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::savalue_type
+    length( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > const& index )
+    {
+      return index.size();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
     open( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         const std::string& file_name )

@@ -266,7 +266,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
       AND_WHEN( "The index is loaded from disk" )
       {
         std::string prefix = get_tmpfile();
-        REQUIRE( finder.save_distance_index( prefix, dmin, dmax ) );
+        REQUIRE( finder.save_distance_index( prefix ) );
         finder_type finder2( graph, seedlen );
         finder2.unset_as_finaliser();
         REQUIRE( finder2.open_distance_index( prefix, dmin, dmax ) );
@@ -365,7 +365,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
       AND_WHEN( "The index is loaded from disk" )
       {
         std::string prefix = get_tmpfile();
-        finder.save_distance_index( prefix, dmin, dmax );
+        finder.save_distance_index( prefix );
         finder_type finder2( graph, seedlen );
         finder2.unset_as_finaliser();
         finder2.open_distance_index( prefix, dmin, dmax );

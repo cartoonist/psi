@@ -76,6 +76,17 @@ namespace psi {
   template< typename TNativeCRSMatrix >
   using make_fully_buffered_t = typename make_fully_buffered< TNativeCRSMatrix >::type;
 
+  template< typename TSpec, typename TNativeCRSMatrix >
+  struct make_spec;
+
+  template< typename TSpec1, typename TSpec2, typename ...TArgs >
+  struct make_spec< TSpec1, CRSMatrix< TSpec2, TArgs... > > {
+    typedef CRSMatrix< TSpec1, TArgs... > type;
+  };
+
+  template< typename TSpec, typename TNativeCRSMatrix >
+  using make_spec_t = typename make_spec< TSpec, TNativeCRSMatrix >::type;
+
   template< typename TSpec, typename TValue, typename TOrdinal, typename TSize >
   struct CRSMatrixTraits;
 
@@ -290,8 +301,28 @@ namespace psi {
       return this->entries[ i ];
     }
 
+    /**
+     *  NOTE: Buffered containers used in Buffered specialisations do not have constant
+     *        iterator.
+     */
+    inline ordinal_type
+    entry( size_type i )
+    {
+      return this->entries[ i ];
+    }
+
     inline size_type
     rowMap( ordinal_type i ) const
+    {
+      return this->rowmap[ i ];
+    }
+
+    /**
+     *  NOTE: Buffered containers used in Buffered specialisations do not have constant
+     *        iterator.
+     */
+    inline size_type
+    rowMap( ordinal_type i )
     {
       return this->rowmap[ i ];
     }

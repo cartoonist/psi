@@ -442,47 +442,59 @@ namespace psi {
       return crsMat_t( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
     }
 
-    template< typename TCRSMatrixBuffer,
+    /**
+     *  @brief Compress a distance index by removing intra-node loci pairs
+     *
+     *  @param  dindex input distance index
+     *  @param  graph underlying graph
+     *  @return a mutable compressed distance index of type `TMutableCRSMatrix`
+     *
+     *  NOTE: The resulting mutable matrix can be assigned to a immutable compressed
+     *        matrix afterwards.
+     *
+     *  NOTE: The input uncompressed distance index is passed by non-const reference,
+     *        since containers in const Buffered specialisations cannot be iterated.
+     */
+    template< typename TMutableCRSMatrix,
               typename TCRSMatrix,
               typename TGraph >
-    inline TCRSMatrix
-    compress_distance_index( TCRSMatrix const& dindex, TGraph const& graph )
+    inline TMutableCRSMatrix
+    compress_distance_index( TCRSMatrix& dindex, TGraph const& graph )
     {
       typedef TGraph graph_type;
       typedef typename graph_type::rank_type rank_type;
 
-      typedef TCRSMatrixBuffer crsmat_buffer_type;
+      typedef TMutableCRSMatrix crsmat_mutable_type;
       typedef TCRSMatrix crsmat_type;
       typedef typename crsmat_type::ordinal_type ordinal_type;
 
-      typename crsmat_buffer_type::entries_type entries;
-      typename crsmat_buffer_type::rowmap_type rowmap;
-      crsmat_buffer_type::base_type::traits_type::init( entries );
-      crsmat_buffer_type::base_type::traits_type::init( rowmap );
+      typename crsmat_mutable_type::entries_type entries;
+      typename crsmat_mutable_type::rowmap_type rowmap;
+      crsmat_mutable_type::base_type::traits_type::init( entries );
+      crsmat_mutable_type::base_type::traits_type::init( rowmap );
       rank_type cnode_rank = 0;  // current node rank
       ordinal_type start = 0;    // row start index
       ordinal_type end;          // row end index
+      ordinal_type cloc = 0;     // current node loci index
       ordinal_type nloc = 0;     // next node loci index
       for ( ordinal_type nrow = 0; nrow < dindex.numRows(); ++nrow ) {
         rowmap.push_back( entries.size() );
-        if ( nrow == nloc) {
+        if ( nrow == nloc ) {
           ++cnode_rank;
-          nloc = nrow + graph.node_length( graph.rank_to_id( cnode_rank ) );
+          cloc = nloc;
+          nloc += graph.node_length( graph.rank_to_id( cnode_rank ) );
         }
         assert( nrow < nloc );
         end = dindex.rowMap( nrow + 1 );
         for ( ; start < end; ++start ) {
-          if ( nrow < dindex.entry( start ) && dindex.entry( start ) < nloc ) continue;
+          if ( cloc <= dindex.entry( start ) && dindex.entry( start ) < nloc ) continue;
           else entries.push_back( dindex.entry( start ) );
         }
       }
       rowmap.push_back( entries.size() );
+      assert( start == dindex.nnz() );
 
-      crsmat_buffer_type buffered( dindex.numCols(), std::move( entries ),
-                                     std::move( rowmap ) );
-      crsmat_type result;
-      result.assign( buffered );
-      return result;
+      return crsmat_mutable_type( dindex.numCols(), std::move( entries ), std::move( rowmap ) );
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */
