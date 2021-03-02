@@ -290,8 +290,28 @@ namespace psi {
       return this->entries[ i ];
     }
 
+    /**
+     *  NOTE: Buffered containers used in Buffered specialisations do not have constant
+     *        iterator.
+     */
+    inline ordinal_type
+    entry( size_type i )
+    {
+      return this->entries[ i ];
+    }
+
     inline size_type
     rowMap( ordinal_type i ) const
+    {
+      return this->rowmap[ i ];
+    }
+
+    /**
+     *  NOTE: Buffered containers used in Buffered specialisations do not have constant
+     *        iterator.
+     */
+    inline size_type
+    rowMap( ordinal_type i )
     {
       return this->rowmap[ i ];
     }
