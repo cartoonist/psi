@@ -777,6 +777,7 @@ namespace psi {
         typedef pairg::matrixOps crs_traits_type;
         typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
         typedef crs_matrix::Buffered mutable_crsmat_spec_type;
+        typedef make_spec_t< mutable_crsmat_spec_type, crsmat_type > mutable_crsmat_type;
 
         class KokkosHandler {
         public:
@@ -1141,18 +1142,20 @@ namespace psi {
           auto nrows = util::total_nof_loci( *this->graph_ptr );
           auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
                            this->graph_ptr->get_edge_count() ) * ( dmax - dmin );
-          this->distance_mat =
-              crsmat_type( nrows, nrows, provider, nnz_est, mutable_crsmat_spec_type() );
+          mutable_crsmat_type udindex( nrows, nrows, provider, nnz_est );
+          this->distance_mat.assign(
+              util::compress_distance_index< mutable_crsmat_type >( udindex,
+                                                                    *this->graph_ptr ) );
+          this->d = std::make_pair( dmin, dmax );
         }
 
         inline bool
-        save_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 ) const
+        save_distance_index( std::string prefix ) const
         {
           if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
-          if ( dmax == 0 ) dmax = dmin;
 
-          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
-              "M" + std::to_string( dmax );
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
+              "M" + std::to_string( this->d.second );
           std::ofstream ofs( fname, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 
@@ -1167,9 +1170,10 @@ namespace psi {
         open_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 )
         {
           if ( dmax == 0 ) dmax = dmin;
+          this->d = std::make_pair( dmin, dmax );
 
-          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( dmin ) +
-              "M" + std::to_string( dmax );
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
+              "M" + std::to_string( this->d.second );
           std::ifstream ifs( fname, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
@@ -1189,8 +1193,14 @@ namespace psi {
 
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-dindex" );
 
+          if ( v == u ) {  // intra-node distance
+            if ( o > p ) std::swap( o, p );
+            return this->d.first <= ( p - o ) && ( p - o ) <= this->d.second;
+          }
+          // inter-node distance
           auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
           auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
+          if ( v_charid > u_charid ) std::swap( v_charid, u_charid );
           return this->distance_mat( v_charid, u_charid );
         }
 
@@ -1246,12 +1256,11 @@ namespace psi {
          *
          */
         inline bool
-        serialize_path_index( std::string const& fpath, unsigned int step_size=1,
-                              unsigned int dmin=0, unsigned int dmax=0 )
+        serialize_path_index( std::string const& fpath, unsigned int step_size=1 )
         {
           return this->serialize_path_index_only( fpath ) &&
               this->save_starts( fpath, this->seed_len, step_size ) &&
-              this->save_distance_index( fpath, dmin, dmax );
+              this->save_distance_index( fpath );
         }
 
         /**
@@ -1281,7 +1290,7 @@ namespace psi {
           }
           if ( !this->open_distance_index( fpath, dmin, dmax ) ) {
             this->create_distance_index( dmin, dmax );
-            this->save_distance_index( fpath, dmin, dmax );
+            this->save_distance_index( fpath );
           }
           return true;
         }
@@ -1639,6 +1648,7 @@ namespace psi {
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
+        std::pair< unsigned int, unsigned int > d; /**< @brief distance constraints. */
         std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */
         /**

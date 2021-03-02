@@ -137,8 +137,7 @@ template< class TGraph, typename TReadsIndexSpec >
       /* Serialize the indexed paths. */
       if ( params.pindex_path.empty() ) {
         log->warn( "No path index file is specified. Skipping..." );
-      } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size,
-                                                params.dindex_min_ris, params.dindex_max_ris ) ) {
+      } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size ) ) {
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
         log->info( "Saved path index in {}.", stats.get_timer( "save-pindex", tid ).str() );

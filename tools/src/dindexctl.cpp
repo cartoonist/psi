@@ -145,6 +145,10 @@ verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph con
       else return false;
     }
   }
+  assert( start == udi.nnz() );
+  assert( cstart == cdi.nnz() );
+  std::cout << "Reduced the distance matrix by " << start - cstart << " elements."
+            << std::endl;
   return true;
 }
 
@@ -174,9 +178,16 @@ compress( cxxopts::ParseResult& res )
   std::ifstream ifs( index_path, std::ifstream::in | std::ifstream::binary );
   if ( !ifs ) throw std::runtime_error( "distance matrix cannot be opened" );
   dindex.load( ifs );
+  std::cout << "Loaded distance index ("
+            << dindex.numRows() << "x" << dindex.numCols() << ") has " << dindex.nnz()
+            << " non-zero elements." << std::endl;
 
   std::cout << "Compressing distance index..." << std::endl;
-  auto cindex = util::compress_distance_index< crsmat_buffer_type >( dindex, graph );
+  crsmat_type cindex;
+  cindex.assign( util::compress_distance_index< crsmat_buffer_type >( dindex, graph ) );
+  std::cout << "Compressed distance index ("
+            << cindex.numRows() << "x" << cindex.numCols() << ") has " << cindex.nnz()
+            << " non-zero elements." << std::endl;
 
   std::cout << "Verifying compressed distance index..." << std::endl;
   if ( !verify_distance_matrix( cindex, dindex, graph ) ) {
