@@ -271,7 +271,7 @@ setup_argparser( seqan::ArgumentParser& parser )
 
   // graph file -- positional argument.
   seqan::ArgParseArgument vgfile_arg( seqan::ArgParseArgument::INPUT_FILE, POSARG1 );
-  setValidValues( vgfile_arg, "vg xg" );
+  setValidValues( vgfile_arg, "vg gfa" );
   addArgument( parser, vgfile_arg );
 
   // Options
