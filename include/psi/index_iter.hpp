@@ -888,6 +888,7 @@ namespace psi {
           }
         }
         if ( has_hit /*|| plen > context*/ ||
+             pattern[ start + plen ] == 'N' ||
              !go_down( idx_itr, pattern[ start + plen ] ) ) {
           go_root( idx_itr );
           start = start + plen + 1;
