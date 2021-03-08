@@ -63,6 +63,10 @@ namespace psi {
         TraverserBFS( const graph_type* g, unsigned int len )
           : base_type( g, len )
         { }
+
+        TraverserBFS( )
+          : base_type( )
+        { }
         /* ====================  METHODS       ======================================= */
           inline void
         run( std::function< void( output_type const& ) > callback )

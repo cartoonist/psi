@@ -315,6 +315,10 @@ namespace psi {
         TraverserBase( const graph_type* g, unsigned int len )
           : TraverserBase( g, nullptr, nullptr, len )
         { }
+
+        TraverserBase( )
+          : TraverserBase( nullptr, nullptr, nullptr, 0 )
+        { }
         /* ====================  ACCESSORS      ====================================== */
         /**
          *  @brief  getter function for graph_ptr.
