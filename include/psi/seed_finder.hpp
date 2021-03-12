@@ -1194,13 +1194,12 @@ namespace psi {
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-dindex" );
 
           if ( v == u ) {  // intra-node distance
-            if ( o > p ) std::swap( o, p );
+            if ( o > p ) return false;
             return this->d.first <= ( p - o ) && ( p - o ) <= this->d.second;
           }
           // inter-node distance
           auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
           auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
-          if ( v_charid > u_charid ) std::swap( v_charid, u_charid );
           return this->distance_mat( v_charid, u_charid );
         }
 
