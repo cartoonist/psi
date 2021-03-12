@@ -457,7 +457,7 @@ namespace psi {
     _fill_entries_partial( TCrsMatrix const& ex, ordinal_type scol=0 )
     {
       auto size = ex.graph.entries.extent( 0 );
-      auto start = this->entries.end() - size;
+      auto start = this->entries.begin() + ( this->entries.size()  - size );
       std::transform( ex.graph.entries.data(), ex.graph.entries.data() + size, start,
                       [scol]( ordinal_type e ) { return e + scol; } );
     }
