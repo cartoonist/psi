@@ -722,16 +722,86 @@ namespace psi {
       return TOccurrence( oc.i1, oc.i2 + len - 1 );  /**< @brief End position of the occurrence. */
     }
 
+  template< typename TOccurrence >
+      inline TOccurrence
+    _map_end_occurrences( TOccurrence const& oc, unsigned int len, Forward /* tag */ )
+    {
+      return TOccurrence( oc.i1, oc.i2 + len - 1 );  /**< @brief End position of the occurrence. */
+    }
+
+  template< typename TOccurrence >
+      inline TOccurrence
+    _map_end_occurrences( TOccurrence const& oc, unsigned int k, Reversed /* tag */ )
+    {
+      return TOccurrence( oc );
+    }
+
+  /**
+   *  @brief  Call the callback function on the two input co-occurrences.
+   *
+   *  @param oc1 the first occurrence (on paths)
+   *  @param oc2 the second occurrence (on reads)
+   *  @param rec1 the first records container
+   *  @param rec2 the second records container
+   *  @param len the length of the occurrences
+   *  @param gocc genome occurrences threshold
+   *  @param callback the callback function
+   *  @param reversed_on_odds whether consider reads with odd IDs as reversed or not
+   *
+   *  The first occurrence is on paths returned by the index aggregated in the
+   *  `PathIndex`. It can points to the end of the pattern found on the reversed string
+   *  depending on the index type. The position passed to `position_to_id` on
+   *  `PathIndex` should be the start of the occurrence on the text of the underlying
+   *  index no matter which direction it is (reversed or forward). The `position_to_id`
+   *  takes care of the conversion on the forward path if the underlying text is
+   *  reversed. The `_map_occurrences` return the start of the occurrence based on the
+   *  direction in which the paths are indexed.
+   *
+   *  If the read is reversed the end of the occurrence should be reported. This is the
+   *  case for reads with odd IDs when `reversed_on_odds` is enabled.
+   */
+  template< typename TOccurrence1,
+            typename TOccurrence2,
+            typename TRecords1,
+            typename TRecords2,
+            typename TCallback >
+      inline void
+    add_seed( TOccurrence1 oc1, TOccurrence2 oc2,
+              const TRecords1* rec1, const TRecords2* rec2, unsigned int len,
+              unsigned int gocc, TCallback callback, bool reversed_on_odds=false )
+    {
+      typedef typename Direction< TRecords1 >::Type TPathDir;
+
+      Seed<> hit;
+      bool reversed;
+
+      hit.read_id = position_to_id( *rec2, oc2.i1 );
+      reversed = reversed_on_odds && ( hit.read_id % 2 == 1 );
+      hit.read_offset = ( reversed ?
+                          position_to_offset( *rec2, oc2 ) + len - 1 :
+                          position_to_offset( *rec2, oc2 ) );
+
+      auto occ = ( reversed ?
+                   _map_end_occurrences( oc1, len, TPathDir() ) :
+                   _map_occurrences( oc1, len, TPathDir() ) );
+
+      hit.node_id = position_to_id( *rec1, occ );
+      hit.node_offset = position_to_offset( *rec1, occ );
+      hit.match_len = len;
+      hit.gocc = gocc;
+
+      callback( hit );
+    }
+
   /**
    * NOTE: itr1 should be index iterator of the genome.
    */
   template< typename TIter1, typename TIter2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
     _add_occurrences( TIter1& itr1, TIter2& itr2, const TRecords1* rec1,
-        const TRecords2* rec2, unsigned int k, TCallback callback )
+        const TRecords2* rec2, unsigned int k, TCallback callback,
+        bool reversed_on_odds=false )
     {
-      typedef typename Direction< TRecords1 >::Type TPathDir;
-
       using seqan::length;
 
       const auto& occurrences1 = get_occurrences_stree( itr1 );
@@ -739,8 +809,8 @@ namespace psi {
 
       for ( unsigned int i = 0; i < length( occurrences1 ); ++i ) {
         for ( unsigned int j = 0; j < length( occurrences2 ); ++j ) {
-          auto oc = _map_occurrences( occurrences1[i], k, TPathDir() );
-          _add_seed( oc, occurrences2[j], rec1, rec2, k, length( occurrences1 ), callback );
+          add_seed( occurrences1[i], occurrences2[j], rec1, rec2, k,
+                    length( occurrences1 ), callback, reversed_on_odds );
         }
       }
     }
@@ -815,6 +885,7 @@ namespace psi {
         unsigned int k,
         TCallback callback,
         unsigned int gocc_threshold = 0,
+        bool reversed_on_odds = false,
         TStats collect_stats=[]( std::size_t, bool )->void{} )
     {
       static_assert( ( is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
@@ -843,7 +914,8 @@ namespace psi {
           auto count = count_occurrences( fst_itr );
           if ( count <= gocc_threshold ) {
             collect_stats( count, false );
-            _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k, callback );
+            _add_occurrences( fst_itr.get_iter_(), snd_itr.get_iter_(), rec1, rec2, k,
+                              callback, reversed_on_odds );
           } else collect_stats( count, true );
           --plen;
         }
@@ -859,7 +931,8 @@ namespace psi {
                unsigned int minlen,
                unsigned int context,
                TCallback callback,
-               unsigned int gocc_threshold = 0 )
+               unsigned int gocc_threshold = 0,
+               bool reversed = false )
     {
       typedef typename Direction< TRecords >::Type TPathDir;
 
@@ -878,10 +951,12 @@ namespace psi {
           auto const& occs = get_occurrences( idx_itr );
           Seed<> hit;
           for ( unsigned int i = 0; i < length( occs ); ++i ) {
-            auto oc = _map_occurrences( occs[i], plen, TPathDir() );
+            auto oc = ( reversed ?
+                        _map_end_occurrences( occs[i], plen, TPathDir() ) :
+                        _map_occurrences( occs[i], plen, TPathDir() ) );
             hit.node_id = position_to_id( *pathset, oc );
             hit.node_offset = position_to_offset( *pathset, oc );
-            hit.read_offset = start;
+            hit.read_offset = ( reversed ? start + plen - 1 : start );
             hit.match_len = plen;
             hit.gocc = length( occs );
             callback( hit );

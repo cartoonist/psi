@@ -1307,7 +1307,8 @@ namespace psi {
          */
             inline void
           seeds_on_paths( readsrecord_type const& reads, readsindex_type& reads_index,
-                          std::function< void(typename traverser_type::output_type const &) > callback ) const
+                          std::function< void(typename traverser_type::output_type const &) > callback,
+                          bool reversed_on_odds=false ) const
           {
             typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
@@ -1335,13 +1336,14 @@ namespace psi {
                 };
 
             kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len,
-                                callback, this->gocc_threshold, collect_stats );
+                                callback, this->gocc_threshold, reversed_on_odds, collect_stats );
           }
 
           template< typename TString >
           inline void
           seeds_on_paths( TString const& sequence,
-                          std::function< void(typename traverser_type::output_type const &) > callback ) const
+                          std::function< void(typename traverser_type::output_type const &) > callback,
+                          bool reversed=false ) const
           {
             typedef TopDownFine<> TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
@@ -1357,7 +1359,7 @@ namespace psi {
             TPIterator piter( this->pindex.index );
             auto context = this->pindex.get_context();
             find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
-                       this->gocc_threshold );
+                       this->gocc_threshold, reversed );
           }
 
             inline void
@@ -1582,9 +1584,9 @@ namespace psi {
         }
 
           inline traverser_type
-        create_traverser( ) const
+        create_traverser( bool reversed_on_odds=false ) const
         {
-          return traverser_type( this->graph_ptr, this->seed_len );
+          return traverser_type( this->graph_ptr, this->seed_len, reversed_on_odds );
         }
 
           inline void
@@ -1618,9 +1620,10 @@ namespace psi {
 
           inline void
         seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
-                   std::function< void(typename traverser_type::output_type const &) > callback ) const
+                   std::function< void(typename traverser_type::output_type const &) > callback,
+                   bool reversed_on_odds=false ) const
         {
-          this->seeds_on_paths( reads, reads_index, callback );
+          this->seeds_on_paths( reads, reads_index, callback, reversed_on_odds );
           this->setup_traverser( traverser, reads, reads_index );
           this->seeds_off_paths( traverser, callback );
           this->stats_ptr->get_this_thread_stats().inc_chunks_done( );
@@ -1629,9 +1632,10 @@ namespace psi {
           inline void
         seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
                    std::function< void(typename traverser_type::output_type const &) > callback1,
-                   std::function< void(typename traverser_type::output_type const &) > callback2 ) const
+                   std::function< void(typename traverser_type::output_type const &) > callback2,
+                   bool reversed_on_odds=false ) const
         {
-          this->seeds_on_paths( reads, reads_index, callback1 );
+          this->seeds_on_paths( reads, reads_index, callback1, reversed_on_odds );
           this->setup_traverser( traverser, reads, reads_index );
           this->seeds_off_paths( traverser, callback2 );
           this->stats_ptr->get_this_thread_stats().inc_chunks_done( );

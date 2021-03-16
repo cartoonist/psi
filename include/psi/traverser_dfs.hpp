@@ -56,16 +56,16 @@ namespace psi {
         typedef typename base_type::stats_type stats_type;
         /* ====================  LIFECYCLE     ======================================= */
         TraverserDFS( const graph_type* g, const records_type* r, TIndex* index,
-            unsigned int len )
-          : base_type( g, r, index, len ), cstate( index, 0, 0, 0, 0 )
+            unsigned int len, bool rv_on_odds=false )
+          : base_type( g, r, index, len, rv_on_odds ), cstate( index, 0, 0, 0, 0 )
         { }
 
-        TraverserDFS( const graph_type* g, unsigned int len )
-          : base_type( g, len ), cstate( nullptr, 0, 0, 0, 0 )
+        TraverserDFS( const graph_type* g, unsigned int len, bool rv_on_odds=false )
+          : base_type( g, len, rv_on_odds ), cstate( nullptr, 0, 0, 0, 0 )
         { }
 
-        TraverserDFS( )
-          : base_type( ), cstate( nullptr, 0, 0, 0, 0 )
+        TraverserDFS( bool rv_on_odds=false )
+          : base_type( rv_on_odds ), cstate( nullptr, 0, 0, 0, 0 )
         { }
         /* ====================  METHODS       ======================================= */
           inline void
@@ -92,10 +92,22 @@ namespace psi {
             for ( i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;
-              hit.node_id = cstate.spos.node_id();
-              hit.node_offset = cstate.spos.offset();
               hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
-              hit.read_offset = position_to_offset( *(this->reads), saPositions[i] );  // Position in the read.
+              auto reversed = this->reversed_on_odds && ( hit.read_id % 2 == 1 );
+              auto start_offset = position_to_offset( *(this->reads), saPositions[i] );
+
+              if ( !reversed ) {
+                hit.read_offset = start_offset;
+                hit.node_id = cstate.spos.node_id();
+                hit.node_offset = cstate.spos.offset();
+              }
+              else {
+                hit.read_offset = start_offset + this->seed_len - 1;
+                hit.node_id = cstate.cpos.node_id();
+                assert( cstate.cpos.offset() != 0 );
+                hit.node_offset = cstate.cpos.offset() - 1;
+              }
+
               hit.match_len = this->seed_len;
               hit.gocc = length( saPositions );
               callback( hit );

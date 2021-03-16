@@ -308,16 +308,17 @@ namespace psi {
         static const auto max_mismatches = traits_type::max_mismatches;
         /* ====================  LIFECYCLE      ====================================== */
         TraverserBase( const graph_type* g, const records_type* r, TIndex* index,
-            unsigned int len )
-          : graph_ptr( g ), reads( r ), reads_index( index ), seed_len( len )
+            unsigned int len, bool rv_on_odds=false )
+          : graph_ptr( g ), reads( r ), reads_index( index ), seed_len( len ),
+            reversed_on_odds( rv_on_odds )
         { }
 
-        TraverserBase( const graph_type* g, unsigned int len )
-          : TraverserBase( g, nullptr, nullptr, len )
+        TraverserBase( const graph_type* g, unsigned int len, bool rv_on_odds=false )
+          : TraverserBase( g, nullptr, nullptr, len, rv_on_odds )
         { }
 
-        TraverserBase( )
-          : TraverserBase( nullptr, nullptr, nullptr, 0 )
+        TraverserBase( bool rv_on_odds=false )
+          : TraverserBase( nullptr, nullptr, nullptr, 0, rv_on_odds )
         { }
         /* ====================  ACCESSORS      ====================================== */
         /**
@@ -425,6 +426,7 @@ namespace psi {
         TIndex* reads_index;           /**< @brief Pointer to reads index. */
         unsigned int seed_len;         /**< @brief Seed length. */
         std::vector< typename traits_type::TState > states;
+        bool reversed_on_odds;
     };  /* --- end of template class TraverserBase --- */
 }  /* --- end of namespace psi --- */
 
