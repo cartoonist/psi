@@ -48,3 +48,33 @@ target_link_libraries(dindexctl
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
 install(TARGETS dindexctl DESTINATION bin)
+
+# Defining target 'pindexctl': PSI path index controller tool
+set(PINDEXCTL_SOURCES "src/pindexctl.cpp")
+add_executable(pindexctl ${PINDEXCTL_SOURCES})
+target_compile_options(pindexctl PRIVATE -g -Wall -Wpedantic -Werror)
+target_include_directories(pindexctl
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+target_link_libraries(pindexctl
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+# Install targets
+install(TARGETS pindexctl DESTINATION bin)
+
+# Defining target 'loci_stats': PSI starting loci inspector
+set(LOCI_STATS_SOURCES "src/loci_stats.cpp")
+add_executable(loci_stats ${LOCI_STATS_SOURCES})
+target_compile_options(loci_stats PRIVATE -g -Wall -Wpedantic -Werror)
+target_include_directories(loci_stats
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+target_link_libraries(loci_stats
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+# Install targets
+install(TARGETS loci_stats DESTINATION bin)
