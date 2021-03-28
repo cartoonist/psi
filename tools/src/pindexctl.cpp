@@ -45,7 +45,6 @@ config_parser( cxxopts::Options& options )
       ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
       ( "t, context", "Context size", cxxopts::value< unsigned int >()->default_value( "0" ) )
       ( "L, no-loci", "Do not include starting loci as SNP", cxxopts::value<bool>()->default_value( "false" ) )
-      ( "F, forward", "Set if the path index is NOT from reversed sequence", cxxopts::value<bool>()->default_value( "false" ) )
       ( "m, max-nodes", "Maximum number of nodes allowed in a `vg::Graph` message", cxxopts::value< unsigned int >()->default_value( "1000" ) )
       ( "o, output", "Output GAM/vg file", cxxopts::value< std::string >()->default_value( "pathindex.gam" ) )
       ( "g, graph", "Corresponding graph (vg or gfa)", cxxopts::value< std::string >() )
@@ -93,10 +92,10 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   return result;
 }
 
-template< typename TGraph, typename TMapper >
+template< typename TGraph, typename TFinder >
     void
-  to_gam( PathSet< Path< TGraph, Compact > > const& pathset, TMapper const& mapper,
-      bool noloci, std::string const& output )
+  to_gam( PathSet< Path< TGraph, Compact > > const& pathset, TGraph const& graph,
+      TFinder const& finder, bool noloci, std::string const& output )
   {
     std::vector< vg::Alignment > paths;
     vg::Alignment p;
@@ -125,16 +124,17 @@ template< typename TGraph, typename TMapper >
     std::cout << "Done." << std::endl;
   }
 
-template< typename TGraph, typename TMapper >
+template< typename TGraph, typename TFinder >
     void
-  to_vg( PathSet< Path< TGraph, Compact > > const& pathset, TGraph const* vargraph,
-      TMapper const& /*mapper*/, bool /*noloci*/, unsigned int max_nodes,
+  to_vg( PathSet< Path< TGraph, Compact > > const& pathset, TGraph const& graph,
+      TFinder const& /*finder*/, bool /*noloci*/, unsigned int max_nodes,
       std::string const& output )
   {
-    using nodeid_type = typename TGraph::nodeid_type;
+    using id_type = typename TGraph::id_type;
+    using link_type = typename TGraph::link_type;
 
-    std::vector< nodeid_type > nodes;
-    std::vector< std::tuple< nodeid_type, nodeid_type, char > > edges;
+    std::vector< id_type > nodes;
+    std::vector< link_type > edges;
     std::vector< vg::Graph > graphset;
     std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
 
@@ -150,46 +150,46 @@ template< typename TGraph, typename TMapper >
     psi::induced_graph( pathset.begin(), pathset.end(), nodes, edges );
     std::cout << "Converting the induced graph to a set of `vg::Graph` messages... "
               << std::endl;
-    vargraph->induced_graph( nodes.begin(), nodes.end(), edges.begin(), edges.end(),
-        accumulate, max_nodes );
+    psi::util::induced_graph( graph, nodes.begin(), nodes.end(), edges.begin(),
+                              edges.end(), accumulate, max_nodes );
     std::cout << "Writing the induced graph to a vg file... " << std::endl;
     vg::io::write( ofs, graphset.size(), graph_at );
     std::cout << "Done." << std::endl;
   }
 
-template< typename TSequenceDirection, typename TGraph, typename TMapper >
+template< typename TGraph, typename TFinder >
     void
-  inspect_pathindex( const TGraph* vargraph, TMapper& mapper,
+  inspect_pathindex( TGraph const& graph, TFinder& finder,
       const std::string& pindex_prefix, const std::string& output, unsigned int ctx,
       unsigned int seedlen, unsigned int stepsize, unsigned int max_nodes, bool noloci )
   {
-    PathIndex< TGraph, DiskString, grem::FMIndex<>, TSequenceDirection > pindex( ctx, false );
-    if ( !pindex.load( pindex_prefix, vargraph ) ) {
+    if ( !finder.load_path_index_only( pindex_prefix, ctx ) ) {
       throw cxxopts::OptionException( "Index file seems corrupted" );
     }
 
-    if ( !mapper.open_starts( pindex_prefix, seedlen, stepsize ) ) {
+    if ( !finder.open_starts( pindex_prefix, seedlen, stepsize ) ) {
       throw cxxopts::OptionException( "Starting loci file seems corrupted" );
     }
 
+    auto const& pindex = finder.get_pindex();
     auto nofpaths = pindex.get_paths_set().size();
     std::cout << "Number of paths: " << nofpaths << std::endl;
     auto totseqlen = getFibre( pindex.index, seqan::FibreText() ).raw_length();
     std::cout << "Total sequence length: " << totseqlen << std::endl;
     std::cout << "Context size: " << pindex.get_context() << std::endl;
-    std::cout << "Number of uncovered loci: " << mapper.get_starting_loci().size()
+    std::cout << "Number of uncovered loci: " << finder.get_starting_loci().size()
               << std::endl;
-    std::cout << "Number of total loci: " << vargraph->get_total_nof_loci()
+    std::cout << "Number of total loci: " << psi::util::total_nof_loci( graph )
               << std::endl;
-//    auto nofuckmers = mapper.nof_uncovered_kmers( pindex.get_paths_set(), seedlen );
+//    auto nofuckmers = finder.nof_uncovered_kmers( pindex.get_paths_set(), seedlen );
 //    std::cout << "Number of uncovered k-mers: " << nofuckmers << std::endl;
     std::cout << std::endl;
 
     if ( ends_with( output, ".vg" ) ) {
-      to_vg( pindex.get_paths_set(), vargraph, mapper, noloci, max_nodes, output );
+      to_vg( pindex.get_paths_set(), graph, finder, noloci, max_nodes, output );
     }
     else if ( ends_with( output, ".gam" ) ) {
-      to_gam( pindex.get_paths_set(), mapper, noloci, output );
+      to_gam( pindex.get_paths_set(), graph, finder, noloci, output );
     }
     else {
       std::runtime_error( "Unsupported output format" );
@@ -204,42 +204,27 @@ main( int argc, char* argv[] )
 
   try {
     auto res = parse_opts( options, argc, argv );
-    /* Configure loggers */
-    config_logger( false, false, false, true, true, "" );
 
-    typedef seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> > TIndex;
-    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
-    typedef Mapper< TTraverser > TMapper;
+    typedef SeedFinder<> TFinder;
 
     std::string graph_path = res[ "graph" ].as< std::string >();
     std::string pindex_prefix = res[ "prefix" ].as< std::string >();
     std::string output = res[ "output" ].as< std::string >();
     unsigned int context = res["context"].as< unsigned int >();
     bool noloci = res["no-loci"].as< bool >();
-    bool forward = res["forward"].as< bool >();
     unsigned int max_nodes = res[ "max-nodes" ].as< unsigned int >();
     unsigned int seedlen = res["seed-length"].as< unsigned int >();
     unsigned int stepsize = res["step-size"].as< unsigned int >();
 
-    VarGraph vargraph;
-    ifstream ifs( graph_path, ifstream::in | ifstream::binary );
-    if ( ends_with( graph_path, ".vg" ) ) {
-      vargraph.from_stream( ifs );
-    }
-    else {
-      vargraph.load( ifs );
-    }
+    gum::SeqGraph< gum::Succinct > graph;
+    gum::util::load( graph, graph_path, true );
+    std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
+    std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
+              << std::endl;
+    TFinder finder( graph, seedlen );
 
-    TMapper mapper( &vargraph, seedlen );
-
-    if ( forward ) {
-      inspect_pathindex< Forward >( &vargraph, mapper, pindex_prefix, output, context,
-          seedlen, stepsize, max_nodes, noloci );
-    }
-    else {
-      inspect_pathindex< Reversed >( &vargraph, mapper, pindex_prefix, output, context,
-          seedlen, stepsize, max_nodes, noloci );
-    }
+    inspect_pathindex( graph, finder, pindex_prefix, output, context, seedlen, stepsize,
+                       max_nodes, noloci );
   }
   catch ( const cxxopts::OptionException& e ) {
     std::cerr << "ERROR: " << e.what() << std::endl;
