@@ -1,5 +1,5 @@
 /**
- *    @file  pathindex_stats.cpp
+ *    @file  pindexctl.cpp
  *   @brief  Report statistics about path index.
  *
  *  This program reads the path index and report some statistics about the paths.
@@ -23,41 +23,38 @@
 #include <string>
 #include <functional>
 
-#include "cxxopts/cxxopts.h"
-#include "stream.hpp"
-
-#include "vargraph.h"
-#include "pathindex.h"
-#include "traverser.h"
-#include "mapper.h"
-#include "logger.h"
-#include "utils.h"
-
-using namespace std;
-using namespace grem;
+#include <cxxopts.hpp>
+#include <vg/io/stream.hpp>
+#include <gum/graph.hpp>
+#include <gum/io_utils.hpp>
+#include <psi/seed_finder.hpp>
+#include <psi/utils.hpp>
 
 
-const char * const LONG_DESC = "Report statistics about path index";
+using namespace psi;
+
+/* ====== Constants ====== */
+constexpr const char* const LONG_DESC = "Report statistics about path index";
 
   void
 config_parser( cxxopts::Options& options )
 {
   options.positional_help( "INDEX_PREFIX" );
   options.add_options()
-    ( "l, seed-length", "Seed length", cxxopts::value< unsigned int >() )
-    ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
-    ( "t, context", "Context size", cxxopts::value< unsigned int >()->default_value( "0" ) )
-    ( "L, no-loci", "Do not include starting loci as SNP", cxxopts::value<bool>()->default_value( "false" ) )
-    ( "F, forward", "Set if the path index is NOT from reversed sequence", cxxopts::value<bool>()->default_value( "false" ) )
-    ( "m, max-nodes", "Maximum number of nodes allowed in a `vg::Graph` message", cxxopts::value< unsigned int >()->default_value( "1000" ) )
-    ( "o, output", "Output GAM/vg file", cxxopts::value< string >()->default_value( "pathindex.gam" ) )
-    ( "g, graph", "Corresponding graph (vg or xg)", cxxopts::value< string >() )
-    ( "h, help", "Print this message and exit" )
-    ;
+      ( "l, seed-length", "Seed length", cxxopts::value< unsigned int >() )
+      ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
+      ( "t, context", "Context size", cxxopts::value< unsigned int >()->default_value( "0" ) )
+      ( "L, no-loci", "Do not include starting loci as SNP", cxxopts::value<bool>()->default_value( "false" ) )
+      ( "F, forward", "Set if the path index is NOT from reversed sequence", cxxopts::value<bool>()->default_value( "false" ) )
+      ( "m, max-nodes", "Maximum number of nodes allowed in a `vg::Graph` message", cxxopts::value< unsigned int >()->default_value( "1000" ) )
+      ( "o, output", "Output GAM/vg file", cxxopts::value< std::string >()->default_value( "pathindex.gam" ) )
+      ( "g, graph", "Corresponding graph (vg or gfa)", cxxopts::value< std::string >() )
+      ( "h, help", "Print this message and exit" )
+      ;
 
   options.add_options( "positional" )
-    ( "prefix", "Path index prefix", cxxopts::value< string >() )
-    ;
+      ( "prefix", "Path index prefix", cxxopts::value< std::string >() )
+      ;
   options.parse_positional( { "prefix" } );
 }
 
@@ -67,21 +64,21 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   auto result = options.parse( argc, argv );
 
   if ( result.count( "help" ) ) {
-    cout << options.help( { "" } ) << endl;
+    std::cout << options.help( { "" } ) << std::endl;
     throw EXIT_SUCCESS;
   }
 
   if ( !result.count( "prefix" ) ) {
     throw cxxopts::OptionParseException( "Index prefix must be specified" );
   }
-  if ( !readable( result[ "prefix" ].as< string >() ) ) {
+  if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
     throw cxxopts::OptionParseException( "Index file not found" );
   }
 
   if ( !result.count( "graph" ) ) {
     throw cxxopts::OptionParseException( "Graph must be specified" );
   }
-  if ( !readable( result[ "graph" ].as< string >() ) ) {
+  if ( !readable( result[ "graph" ].as< std::string >() ) ) {
     throw cxxopts::OptionParseException( "Graph file not found" );
   }
 
@@ -99,70 +96,71 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
 template< typename TGraph, typename TMapper >
     void
   to_gam( PathSet< Path< TGraph, Compact > > const& pathset, TMapper const& mapper,
-      bool noloci, string const& output )
+      bool noloci, std::string const& output )
   {
-    vector< vg::Alignment > paths;
+    std::vector< vg::Alignment > paths;
     vg::Alignment p;
-    string pathname;
+    std::string pathname;
     for ( size_t i = 0; i < pathset.size(); ++i ) {
-      pathname = "path" + to_string( i + 1 );
+      pathname = "path" + std::to_string( i + 1 );
       p.set_name( pathname );
-      cout << "\rConverted " << to_string( i + 1 ) << "/" << to_string( pathset.size() )
-           << " paths to vg::Path.";
+      std::cout << "\rConverted " << std::to_string( i + 1 ) << "/"
+                << std::to_string( pathset.size() ) << " paths to vg::Path.";
       if ( noloci ) {
-        grem::convert( pathset[i], p.mutable_path() );
+        psi::convert( pathset[i], p.mutable_path() );
       }
       else {
-        grem::convert( pathset[i], p.mutable_path(), mapper.get_starting_loci() );
+        psi::convert( pathset[i], p.mutable_path(), mapper.get_starting_loci() );
       }
       p.mutable_path()->set_name( pathname );
-      paths.push_back( move( p ) );
+      paths.push_back( std::move( p ) );
       p.Clear();
     }
 
-    ofstream ofs( output, ofstream::out | ofstream::binary );
-    function< vg::Alignment( uint64_t ) > lambda =
+    std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
+    std::function< vg::Alignment( uint64_t ) > lambda =
       [&paths]( uint64_t i ) { return paths.at( i ); };
-    cout << "\nWriting all paths to a GAM file... ";
-    stream::write( ofs, paths.size(), lambda );
-    cout << "Done." << endl;
+    std::cout << "\nWriting all paths to a GAM file... ";
+    vg::io::write( ofs, paths.size(), lambda );
+    std::cout << "Done." << std::endl;
   }
 
 template< typename TGraph, typename TMapper >
     void
   to_vg( PathSet< Path< TGraph, Compact > > const& pathset, TGraph const* vargraph,
       TMapper const& /*mapper*/, bool /*noloci*/, unsigned int max_nodes,
-      string const& output )
+      std::string const& output )
   {
     using nodeid_type = typename TGraph::nodeid_type;
 
-    vector< nodeid_type > nodes;
-    vector< tuple< nodeid_type, nodeid_type, char > > edges;
-    vector< vg::Graph > graphset;
-    ofstream ofs( output, ofstream::out | ofstream::binary );
+    std::vector< nodeid_type > nodes;
+    std::vector< std::tuple< nodeid_type, nodeid_type, char > > edges;
+    std::vector< vg::Graph > graphset;
+    std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
 
-    function< vg::Graph( uint64_t ) > graph_at =
+    std::function< vg::Graph( uint64_t ) > graph_at =
       [&graphset]( uint64_t i ) { return graphset.at( i ); };
 
-    function< void( vg::Graph& ) > accumulate =
+    std::function< void( vg::Graph& ) > accumulate =
       [&graphset]( vg::Graph& g ) {
         graphset.push_back( std::move( g ) );
       };
 
-    cout << "Calculating the graph induced by paths set... " << endl;
-    grem::induced_graph( pathset.begin(), pathset.end(), nodes, edges );
-    cout << "Converting the induced graph to a set of `vg::Graph` messages... " << endl;
+    std::cout << "Calculating the graph induced by paths set... " << std::endl;
+    psi::induced_graph( pathset.begin(), pathset.end(), nodes, edges );
+    std::cout << "Converting the induced graph to a set of `vg::Graph` messages... "
+              << std::endl;
     vargraph->induced_graph( nodes.begin(), nodes.end(), edges.begin(), edges.end(),
         accumulate, max_nodes );
-    cout << "Writing the induced graph to a vg file... " << endl;
-    stream::write( ofs, graphset.size(), graph_at );
-    cout << "Done." << endl;
+    std::cout << "Writing the induced graph to a vg file... " << std::endl;
+    vg::io::write( ofs, graphset.size(), graph_at );
+    std::cout << "Done." << std::endl;
   }
 
 template< typename TSequenceDirection, typename TGraph, typename TMapper >
     void
   inspect_pathindex( const TGraph* vargraph, TMapper& mapper,
-      const string& pindex_prefix, const string& output, unsigned int ctx,
+      const std::string& pindex_prefix, const std::string& output, unsigned int ctx,
       unsigned int seedlen, unsigned int stepsize, unsigned int max_nodes, bool noloci )
   {
     PathIndex< TGraph, DiskString, grem::FMIndex<>, TSequenceDirection > pindex( ctx, false );
@@ -175,15 +173,17 @@ template< typename TSequenceDirection, typename TGraph, typename TMapper >
     }
 
     auto nofpaths = pindex.get_paths_set().size();
-    cout << "Number of paths: " << nofpaths << endl;
+    std::cout << "Number of paths: " << nofpaths << std::endl;
     auto totseqlen = getFibre( pindex.index, seqan::FibreText() ).raw_length();
-    cout << "Total sequence length: " << totseqlen << endl;
-    cout << "Context size: " << pindex.get_context() << endl;
-    cout << "Number of uncovered loci: " << mapper.get_starting_loci().size() << endl;
-    cout << "Number of total loci: " << vargraph->get_total_nof_loci() << endl;
+    std::cout << "Total sequence length: " << totseqlen << std::endl;
+    std::cout << "Context size: " << pindex.get_context() << std::endl;
+    std::cout << "Number of uncovered loci: " << mapper.get_starting_loci().size()
+              << std::endl;
+    std::cout << "Number of total loci: " << vargraph->get_total_nof_loci()
+              << std::endl;
 //    auto nofuckmers = mapper.nof_uncovered_kmers( pindex.get_paths_set(), seedlen );
-//    cout << "Number of uncovered k-mers: " << nofuckmers << endl;
-    cout << endl;
+//    std::cout << "Number of uncovered k-mers: " << nofuckmers << std::endl;
+    std::cout << std::endl;
 
     if ( ends_with( output, ".vg" ) ) {
       to_vg( pindex.get_paths_set(), vargraph, mapper, noloci, max_nodes, output );
@@ -192,7 +192,7 @@ template< typename TSequenceDirection, typename TGraph, typename TMapper >
       to_gam( pindex.get_paths_set(), mapper, noloci, output );
     }
     else {
-      runtime_error( "Unsupported output format" );
+      std::runtime_error( "Unsupported output format" );
     }
   }
 
@@ -211,9 +211,9 @@ main( int argc, char* argv[] )
     typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
     typedef Mapper< TTraverser > TMapper;
 
-    string graph_path = res[ "graph" ].as< string >();
-    string pindex_prefix = res[ "prefix" ].as< string >();
-    string output = res[ "output" ].as< string >();
+    std::string graph_path = res[ "graph" ].as< std::string >();
+    std::string pindex_prefix = res[ "prefix" ].as< std::string >();
+    std::string output = res[ "output" ].as< std::string >();
     unsigned int context = res["context"].as< unsigned int >();
     bool noloci = res["no-loci"].as< bool >();
     bool forward = res["forward"].as< bool >();
@@ -242,7 +242,7 @@ main( int argc, char* argv[] )
     }
   }
   catch ( const cxxopts::OptionException& e ) {
-    cerr << "Error: " << e.what() << endl;
+    std::cerr << "ERROR: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
   catch ( const int& rv ) {
