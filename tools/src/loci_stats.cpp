@@ -20,35 +20,36 @@
 #include <iostream>
 #include <string>
 
-#include "cxxopts/cxxopts.h"
+#include <cxxopts.hpp>
+#include <gum/graph.hpp>
+#include <gum/io_utils.hpp>
+#include <psi/seed_finder.hpp>
+#include <psi/utils.hpp>
 
-#include "mapper.h"
-#include "traverser.h"
-#include "utils.h"
-
-using namespace std;
-using namespace grem;
+using namespace psi;
 
 
-const char * const LONG_DESC = "Report statistics about starting loci";
+/* ====== Constants ====== */
+constexpr const char* const LONG_DESC = "Report statistics about starting loci";
 
   void
 config_parser( cxxopts::Options& options )
 {
   options.positional_help( "INDEX_PREFIX" );
   options.add_options()
-    ( "l, seed-length", "Seed length", cxxopts::value< unsigned int >() )
-    ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
-    ( "s, start-node", "Start node", cxxopts::value< int64_t >()->default_value( "1" ) )
-    ( "t, end-node", "End node [0 means last node]", cxxopts::value< int64_t >()->default_value( "0" ) )
-    ( "n, number", "Number of loci to be reported [0 means all]",
-      cxxopts::value< unsigned int >()->default_value( "0" ) )
-    ( "h, help", "Print this message and exit" )
-    ;
+      ( "l, seed-length", "Seed length", cxxopts::value< unsigned int >() )
+      ( "e, step-size", "Step size", cxxopts::value< unsigned int >() )
+      ( "s, start-node", "Start node", cxxopts::value< int64_t >()->default_value( "1" ) )
+      ( "t, end-node", "End node [0 means last node]", cxxopts::value< int64_t >()->default_value( "0" ) )
+      ( "n, number", "Number of loci to be reported [0 means all]",
+        cxxopts::value< unsigned int >()->default_value( "0" ) )
+      ( "g, graph", "Corresponding graph (vg or gfa)", cxxopts::value< std::string >() )
+      ( "h, help", "Print this message and exit" )
+      ;
 
   options.add_options( "positional" )
-    ( "prefix", "Path index prefix", cxxopts::value< string >() )
-    ;
+      ( "prefix", "Path index prefix", cxxopts::value< std::string >() )
+      ;
   options.parse_positional( { "prefix" } );
 }
 
@@ -58,15 +59,22 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   auto result = options.parse( argc, argv );
 
   if ( result.count( "help" ) ) {
-    cout << options.help( { "" } ) << endl;
+    std::cout << options.help( { "" } ) << std::endl;
     throw EXIT_SUCCESS;
   }
 
   if ( ! result.count( "prefix" ) ) {
     throw cxxopts::OptionParseException( "Index prefix must be specified" );
   }
-  if ( !readable( result[ "prefix" ].as< string >() ) ) {
+  if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
     throw cxxopts::OptionParseException( "Index file not found" );
+  }
+
+  if ( !result.count( "graph" ) ) {
+    throw cxxopts::OptionParseException( "Graph must be specified" );
+  }
+  if ( !readable( result[ "graph" ].as< std::string >() ) ) {
+    throw cxxopts::OptionParseException( "Graph file not found" );
   }
 
   if ( ! result.count( "seed-length" ) ) {
@@ -89,39 +97,48 @@ main( int argc, char* argv[] )
   try {
     auto res = parse_opts( options, argc, argv );
 
-    typedef seqan::Index< Dna5QStringSet<>, seqan::IndexWotd<> > TIndex;
-    typedef typename Traverser< TIndex, BFS, ExactMatching >::Type TTraverser;
-    typedef Mapper< TTraverser > TMapper;
+    typedef SeedFinder<> TFinder;
+
+    std::string graph_path = res[ "graph" ].as< std::string >();
     unsigned int seedlen = res["seed-length"].as< unsigned int >();
     unsigned int stepsize = res["step-size"].as< unsigned int >();
     int64_t start = res["start-node"].as< int64_t >();
     int64_t end = res["end-node"].as< int64_t >();
     unsigned int num = res["number"].as< unsigned int >();
-    TMapper mapper( NULL, seedlen );
-    if ( ! mapper.open_starts( res["prefix"].as< string >(), seedlen, stepsize ) )
+    std::string prefix = res["prefix"].as< std::string >();
+
+    gum::SeqGraph< gum::Succinct > graph;
+    gum::util::load( graph, graph_path, true );
+    std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
+    std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
+              << std::endl;
+    TFinder finder( graph, seedlen );
+
+    if ( ! finder.open_starts( prefix, seedlen, stepsize ) )
       throw cxxopts::OptionException( "Index file seems corrupted" );
 
-    cout << "Number of loci: " << mapper.get_starting_loci().size() << endl;
+    std::cout << "Number of loci: " << finder.get_starting_loci().size() << std::endl;
 
-    if ( ! mapper.get_starting_loci().empty() ) {
+    if ( ! finder.get_starting_loci().empty() ) {
       unsigned int i = 1;
       bool found = false;
-      cout << endl
-        << "---------------" << endl
-        << "num: id, offset" << endl
-        << "---------------" << endl;
-      for ( const auto& locus : mapper.get_starting_loci() ) {
-        if ( !found && locus.node_id() >= start ) found = true;
+      std::cout << std::endl
+                << "---------------" << std::endl
+                << "num: id, offset" << std::endl
+                << "---------------" << std::endl;
+      for ( const auto& locus : finder.get_starting_loci() ) {
+        auto id = graph.coordinate_id( locus.node_id() );
+        if ( !found && id >= start ) found = true;
         if ( found ){
-          if ( ( num && i > num ) || ( end && locus.node_id() > end ) ) break;
-          cout << i++ << ": " << locus.node_id() << ", " << locus.offset() << endl;
+          if ( ( num && i > num ) || ( end && id > end ) ) break;
+          std::cout << i++ << ": " << id << ", " << locus.offset() << std::endl;
         }
       }
-      cout << "---------------" << endl;
+      std::cout << "---------------" << std::endl;
     }
   }
   catch ( const cxxopts::OptionException& e ) {
-    cerr << "Error: " << e.what() << endl;
+    std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
   catch ( const int& rv ) {
