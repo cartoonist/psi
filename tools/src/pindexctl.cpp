@@ -100,16 +100,17 @@ template< typename TGraph, typename TFinder >
     std::vector< vg::Alignment > paths;
     vg::Alignment p;
     std::string pathname;
+    auto coord = [&graph]( auto id ) { return graph.coordinate_id( id ); };
     for ( size_t i = 0; i < pathset.size(); ++i ) {
       pathname = "path" + std::to_string( i + 1 );
       p.set_name( pathname );
       std::cout << "\rConverted " << std::to_string( i + 1 ) << "/"
                 << std::to_string( pathset.size() ) << " paths to vg::Path.";
       if ( noloci ) {
-        psi::convert( pathset[i], p.mutable_path() );
+        psi::convert( pathset[i], p.mutable_path(), coord );
       }
       else {
-        psi::convert( pathset[i], p.mutable_path(), mapper.get_starting_loci() );
+        psi::convert( pathset[i], p.mutable_path(), finder.get_starting_loci(), coord );
       }
       p.mutable_path()->set_name( pathname );
       paths.push_back( std::move( p ) );
