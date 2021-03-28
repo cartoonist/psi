@@ -146,12 +146,14 @@ template< typename TGraph, typename TFinder >
         graphset.push_back( std::move( g ) );
       };
 
+    auto coord = [&graph]( auto id ) { return graph.coordinate_id( id ); };
+
     std::cout << "Calculating the graph induced by paths set... " << std::endl;
     psi::induced_graph( pathset.begin(), pathset.end(), nodes, edges );
     std::cout << "Converting the induced graph to a set of `vg::Graph` messages... "
               << std::endl;
     psi::util::induced_graph( graph, nodes.begin(), nodes.end(), edges.begin(),
-                              edges.end(), accumulate, max_nodes );
+                              edges.end(), accumulate, max_nodes, coord );
     std::cout << "Writing the induced graph to a vg file... " << std::endl;
     vg::io::write( ofs, graphset.size(), graph_at );
     std::cout << "Done." << std::endl;

@@ -941,15 +941,15 @@ namespace psi {
                          std::vector< typename TGraph::id_type >& nodes,
                          std::vector< typename TGraph::link_type >& edges )
     {
-      TGraph const* graph = path.get_graph_ptr();
+      TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::id_type prev = 0;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
         nodes.push_back( *it );
         if ( prev != 0 ) {
           // :TODO:Sun Apr 14 17:48:\@cartoonist: Path should consider the edge orientation.
-          auto from = graph->end_side( prev );
-          auto to = graph->start_side( *it );
-          edges.push_back( graph.make_link( from, to ) );
+          auto from = graph_ptr->end_side( prev );
+          auto to = graph_ptr->start_side( *it );
+          edges.push_back( graph_ptr->make_link( from, to ) );
         }
         prev = *it;
       }
