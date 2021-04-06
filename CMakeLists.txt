@@ -3,12 +3,14 @@ project(psi VERSION 0.9.1 LANGUAGES CXX)
 
 # Options
 option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
-option(BUILD_AUX_TOOLS "Build auxiliary tools" OFF)
+option(BUILD_PSI_AUX_TOOLS "Build PSI auxiliary tools" OFF)
 option(BUILD_TESTING "Build test programs" OFF)
 option(BUILD_DOC "Build documentation" OFF)
 
+# Include external modules
+include(GNUInstallDirs)
 # Adding CMake module path.
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 # Finding dependencies.
 find_package(ZLIB REQUIRED)   # required by SeqAn
 find_package(BZip2 REQUIRED)  # required by SeqAn
@@ -24,10 +26,11 @@ include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 if(BUILD_DOC)
   include(BuildDoxygen)
 endif(BUILD_DOC)
+
 # Load `CheckGitRevision` module
 include(CheckGitRevision)
 
-# Defining the configure header file
+# Generating the configure header file
 if(GIT_REVISION)
   set(PSI_GIT_REVISION ${GIT_REVISION})
 endif(GIT_REVISION)
@@ -45,8 +48,7 @@ target_sources(psi INTERFACE "$<BUILD_INTERFACE:${HEADER_FILES}>")
 target_sources(psi_novg INTERFACE "$<BUILD_INTERFACE:${HEADER_FILES}>")
 # Defining include directories
 target_include_directories(psi
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  SYSTEM INTERFACE $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
   INTERFACE gum::gum
   INTERFACE kseq++::kseq++
   INTERFACE SeqAn::SeqAn)
@@ -88,8 +90,8 @@ add_library(psi::psi_novg ALIAS psi_novg)
 # Generating pkgconfig file
 configure_file(psi.pc.in ${PROJECT_SOURCE_DIR}/psi.pc @ONLY)
 # Install targets
-install(FILES ${HEADER_FILES} DESTINATION include/psi)
-install(FILES psi.pc DESTINATION lib/pkgconfig)
+install(FILES ${HEADER_FILES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/psi)
+install(FILES psi.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 # Adding `psikt` submodule
 if(BUILD_PSIKT)
@@ -97,9 +99,9 @@ if(BUILD_PSIKT)
 endif(BUILD_PSIKT)
 
 # Adding auxiliary tools submodule
-if(BUILD_AUX_TOOLS)
+if(BUILD_PSI_AUX_TOOLS)
   add_subdirectory(tools)
-endif(BUILD_AUX_TOOLS)
+endif(BUILD_PSI_AUX_TOOLS)
 
 # Adding test submodule
 if(BUILD_TESTING)
