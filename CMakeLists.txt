@@ -15,6 +15,7 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 find_package(ZLIB REQUIRED)   # required by SeqAn
 find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
+# Bundled dependencies
 find_package(SeqAn QUIET)
 find_package(gum QUIET)
 find_package(kseq++ QUIET)
@@ -39,23 +40,27 @@ if(GIT_COMMIT_DATE)
 endif(GIT_COMMIT_DATE)
 configure_file(include/psi/config.hpp.in ${PROJECT_SOURCE_DIR}/include/psi/config.hpp @ONLY)
 # Setting header files
-file(GLOB HEADER_FILES "${PROJECT_SOURCE_DIR}/include/psi/*.hpp")
+file(GLOB HEADER_FILES RELATIVE "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/psi/*.hpp")
+list(TRANSFORM HEADER_FILES PREPEND "${PROJECT_SOURCE_DIR}/include/" OUTPUT_VARIABLE BUILD_HEADER_FILES)
+list(TRANSFORM HEADER_FILES PREPEND "${CMAKE_INSTALL_FULL_INCLUDEDIR}/" OUTPUT_VARIABLE INSTALL_HEADER_FILES)
 # Creating an INTERFACE library
 add_library(psi INTERFACE)
 # Defining target sources
-target_sources(psi INTERFACE "$<BUILD_INTERFACE:${HEADER_FILES}>")
+target_sources(psi
+  INTERFACE "$<BUILD_INTERFACE:${BUILD_HEADER_FILES}>;$<INSTALL_INTERFACE:${INSTALL_HEADER_FILES}>")
 # Defining include directories
 target_include_directories(psi
   INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
-  INTERFACE gum::gum
-  INTERFACE kseq++::kseq++
-  INTERFACE SeqAn::SeqAn)
+  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/gum::gum>;$<INSTALL_INTERFACE:gum::gum>
+  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
+  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
+  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>)
 # Defining link libraries
 target_link_libraries(psi
-  INTERFACE gum::gum
-  INTERFACE kseq++::kseq++
-  INTERFACE SeqAn::SeqAn
-  INTERFACE pairg::libpairg
+  INTERFACE $<BUILD_INTERFACE:gum::gum>;$<INSTALL_INTERFACE:gum::gum>
+  INTERFACE $<BUILD_INTERFACE:kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
+  INTERFACE $<BUILD_INTERFACE:SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
+  INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>
   INTERFACE "atomic")
 # Define `PSI_DEBUG`
 if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
@@ -72,7 +77,7 @@ add_library(psi::psi ALIAS psi)
 # Generating pkgconfig file
 configure_file(psi.pc.in ${PROJECT_SOURCE_DIR}/psi.pc @ONLY)
 # Install targets
-install(FILES ${HEADER_FILES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/psi)
+install(FILES ${BUILD_HEADER_FILES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/psi)
 install(FILES psi.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 # Adding `psikt` submodule
