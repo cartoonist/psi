@@ -182,7 +182,7 @@ template< typename TGraph, typename TFinder >
     std::cout << "Context size: " << pindex.get_context() << std::endl;
     std::cout << "Number of uncovered loci: " << finder.get_starting_loci().size()
               << std::endl;
-    std::cout << "Number of total loci: " << psi::util::total_nof_loci( graph )
+    std::cout << "Number of total loci: " << gum::util::total_nof_loci( graph )
               << std::endl;
 //    auto nofuckmers = finder.nof_uncovered_kmers( pindex.get_paths_set(), seedlen );
 //    std::cout << "Number of uncovered k-mers: " << nofuckmers << std::endl;

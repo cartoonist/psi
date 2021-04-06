@@ -38,24 +38,6 @@ TEMPLATE_SCENARIO( "Get graph statistics", "[graph][interface]", gum::Dynamic, g
     graph_type graph;
     gum::util::load( graph, vgpath );
 
-    WHEN( "Total number of loci in the graph is counted" )
-    {
-      auto nof_loci = util::total_nof_loci( graph );
-      THEN( "It should be equal to the sum of node label lengths" )
-      {
-        REQUIRE( nof_loci == 55 );
-      }
-    }
-
-    WHEN( "Total number of loci in a subgraph is counted" )
-    {
-      auto nof_loci = util::total_nof_loci( graph, 5, 10 );
-      THEN( "It should be equal to the sum of node label lengths of the subgraph" )
-      {
-        REQUIRE( nof_loci == 25 );
-      }
-    }
-
     WHEN( "Total number of nodes in a subgraph is counted" )
     {
       auto nof_nodes = util::node_count( graph, 5, 10 );
@@ -92,7 +74,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
     gum::util::load( graph, vgpath );
-    auto nof_nodes = util::total_nof_loci( graph );
+    auto nof_nodes = gum::util::total_nof_loci( graph );
     auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
 
     WHEN( "The adjacency matrix of its corresponding character graph is build" )
@@ -150,7 +132,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
     std::string vgpath = test_data_dir + "/multi/multi.gfa";
     graph_type graph;
     gum::util::load( graph, vgpath );
-    auto nof_nodes = util::total_nof_loci( graph );
+    auto nof_nodes = gum::util::total_nof_loci( graph );
     auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
 
     WHEN( "The adjacency matrix of its corresponding character graph is build" )
@@ -218,7 +200,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
         }
       };
 
-      auto nof_nodes = util::total_nof_loci( graph );
+      auto nof_nodes = gum::util::total_nof_loci( graph );
       auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
       CRSMatrix<> matrix( nof_nodes, nof_nodes, provider, nof_edges );
 
