@@ -42,20 +42,12 @@ configure_file(include/psi/config.hpp.in ${PROJECT_SOURCE_DIR}/include/psi/confi
 file(GLOB HEADER_FILES "${PROJECT_SOURCE_DIR}/include/psi/*.hpp")
 # Creating an INTERFACE library
 add_library(psi INTERFACE)
-add_library(psi_novg INTERFACE)
 # Defining target sources
 target_sources(psi INTERFACE "$<BUILD_INTERFACE:${HEADER_FILES}>")
-target_sources(psi_novg INTERFACE "$<BUILD_INTERFACE:${HEADER_FILES}>")
 # Defining include directories
 target_include_directories(psi
   INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
   INTERFACE gum::gum
-  INTERFACE kseq++::kseq++
-  INTERFACE SeqAn::SeqAn)
-target_include_directories(psi_novg
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-  SYSTEM INTERFACE $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
-  INTERFACE gum::gum_novg
   INTERFACE kseq++::kseq++
   INTERFACE SeqAn::SeqAn)
 # Defining link libraries
@@ -65,28 +57,18 @@ target_link_libraries(psi
   INTERFACE SeqAn::SeqAn
   INTERFACE pairg::libpairg
   INTERFACE "atomic")
-target_link_libraries(psi_novg
-  INTERFACE gum::gum_novg
-  INTERFACE kseq++::kseq++
-  INTERFACE SeqAn::SeqAn
-  INTERFACE pairg::libpairg
-  INTERFACE "atomic")
 # Define `PSI_DEBUG`
 if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
-  target_compile_definitions(psi_novg INTERFACE PSI_DEBUG)
 endif()
 # Define `PSI_STATS`
 if(PSI_STATS)
   target_compile_definitions(psi INTERFACE PSI_STATS)
-  target_compile_definitions(psi_novg INTERFACE PSI_STATS)
 endif(PSI_STATS)
 # Use C++17
 target_compile_features(psi INTERFACE cxx_std_17)
-target_compile_features(psi_novg INTERFACE cxx_std_17)
 # Defining `psi::psi` alias
 add_library(psi::psi ALIAS psi)
-add_library(psi::psi_novg ALIAS psi_novg)
 # Generating pkgconfig file
 configure_file(psi.pc.in ${PROJECT_SOURCE_DIR}/psi.pc @ONLY)
 # Install targets
