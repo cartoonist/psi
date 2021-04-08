@@ -1,5 +1,10 @@
 # When SeqAn is not found
 if(NOT SeqAn_FOUND)
+  if(NOT USE_BUNDLED_SEQAN)
+    message(FATAL_ERROR "SeqAn library not found. "
+      "Pass in `-DUSE_BUNDLED_SEQAN=on` when running cmake to use the bundled version. "
+      "It will be installed alongside the library.")
+  endif()
   message(STATUS "Using bundled SeqAn library")
   set(SEQAN_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/seqan)
   set(SEQAN_BUILD_SYSTEM "SEQAN_RELEASE_LIBRARY" CACHE STRING "Only install SeqAn library")
@@ -25,6 +30,11 @@ endif()
 
 # When `gum` is not found
 if(NOT TARGET gum::gum)
+  if(NOT USE_BUNDLED_GUM)
+    message(FATAL_ERROR "gum library not found. "
+      "Pass in `-DUSE_BUNDLED_GUM=on` when running cmake to use the bundled version. "
+      "It will be installed alongside the library.")
+  endif()
   message(STATUS "Using bundled gum library")
   set(GUM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/gum)
   execute_process(
@@ -38,6 +48,11 @@ endif()
 
 # When `kseq++` is not found
 if(NOT TARGET kseq++::kseq++)
+  if(NOT USE_BUNDLED_KSEQPP)
+    message(FATAL_ERROR "kseq++ library not found. "
+      "Pass in `-DUSE_BUNDLED_KSEQPP=on` when running cmake to use the bundled version. "
+      "It will be installed alongside the library.")
+  endif()
   message(STATUS "Using bundled kseq++ library")
   set(KSEQPP_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/kseq++)
   execute_process(
@@ -51,6 +66,11 @@ endif()
 
 # When `PairG` is not found
 if(NOT TARGET pairg::libpairg)
+  if(NOT USE_BUNDLED_PAIRG)
+    message(FATAL_ERROR "PairG library not found. "
+      "Pass in `-DUSE_BUNDLED_PAIRG=on` when running cmake to use the bundled version. "
+      "It will be installed alongside the library.")
+  endif()
   message(STATUS "Using bundled PairG library")
   set(PairG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/PairG)
   execute_process(

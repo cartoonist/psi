@@ -6,6 +6,18 @@ option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
 option(BUILD_PSI_AUX_TOOLS "Build PSI auxiliary tools" OFF)
 option(BUILD_TESTING "Build test programs" OFF)
 option(BUILD_DOC "Build documentation" OFF)
+option(USE_BUNDLED_SEQAN "Use bundled SeqAn library" OFF)
+option(USE_BUNDLED_GUM "Use bundled gum library" OFF)
+option(USE_BUNDLED_KSEQPP "Use bundled kseq++ library" OFF)
+option(USE_BUNDLED_PAIRG "Use bundled PairG library" OFF)
+option(USE_BUNDLED_ALL "Use all bundled dependencies" OFF)
+
+if(USE_BUNDLED_ALL)
+  set(USE_BUNDLED_SEQAN on)
+  set(USE_BUNDLED_GUM on)
+  set(USE_BUNDLED_KSEQPP on)
+  set(USE_BUNDLED_PAIRG on)
+endif(USE_BUNDLED_ALL)
 
 # Include external modules
 include(GNUInstallDirs)
@@ -17,10 +29,10 @@ find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
-find_package(gum QUIET)
-find_package(kseq++ QUIET)
-find_package(pairg QUIET)
-# Include external dependencies
+find_package(gum 0.1.1 QUIET)
+find_package(kseq++ 0.2.3 QUIET)
+find_package(pairg 0.2.0 QUIET)
+# Handle bundled dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 
 # Load `BuildDoxygen` module
