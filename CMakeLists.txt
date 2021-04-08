@@ -43,23 +43,8 @@ endif(BUILD_DOC)
 # Load `CheckGitRevision` module
 include(CheckGitRevision)
 
-# Generating the configure header file
-if(GIT_REVISION)
-  set(PSI_GIT_REVISION ${GIT_REVISION})
-endif(GIT_REVISION)
-if(GIT_COMMIT_DATE)
-  set(PSI_GIT_COMMIT_DATE ${GIT_COMMIT_DATE})
-endif(GIT_COMMIT_DATE)
-configure_file(include/psi/config.hpp.in ${PROJECT_SOURCE_DIR}/include/psi/config.hpp @ONLY)
-# Setting header files
-file(GLOB HEADER_FILES RELATIVE "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/psi/*.hpp")
-list(TRANSFORM HEADER_FILES PREPEND "${PROJECT_SOURCE_DIR}/include/" OUTPUT_VARIABLE BUILD_HEADER_FILES)
-list(TRANSFORM HEADER_FILES PREPEND "${CMAKE_INSTALL_FULL_INCLUDEDIR}/" OUTPUT_VARIABLE INSTALL_HEADER_FILES)
-# Creating an INTERFACE library
+# Creating the INTERFACE library
 add_library(psi INTERFACE)
-# Defining target sources
-target_sources(psi
-  INTERFACE "$<BUILD_INTERFACE:${BUILD_HEADER_FILES}>;$<INSTALL_INTERFACE:${INSTALL_HEADER_FILES}>")
 # Defining include directories
 target_include_directories(psi
   INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
@@ -84,10 +69,25 @@ if(PSI_STATS)
 endif(PSI_STATS)
 # Use C++17
 target_compile_features(psi INTERFACE cxx_std_17)
-# Defining `psi::psi` alias
-add_library(psi::psi ALIAS psi)
+# Generating the configure header file
+if(GIT_REVISION)
+  set(PSI_GIT_REVISION ${GIT_REVISION})
+endif(GIT_REVISION)
+if(GIT_COMMIT_DATE)
+  set(PSI_GIT_COMMIT_DATE ${GIT_COMMIT_DATE})
+endif(GIT_COMMIT_DATE)
+configure_file(include/psi/config.hpp.in ${PROJECT_SOURCE_DIR}/include/psi/config.hpp @ONLY)
 # Generating pkgconfig file
 configure_file(psi.pc.in ${PROJECT_SOURCE_DIR}/psi.pc @ONLY)
+# Setting header files
+file(GLOB HEADER_FILES RELATIVE "${PROJECT_SOURCE_DIR}/include" "${PROJECT_SOURCE_DIR}/include/psi/*.hpp")
+list(TRANSFORM HEADER_FILES PREPEND "${PROJECT_SOURCE_DIR}/include/" OUTPUT_VARIABLE BUILD_HEADER_FILES)
+list(TRANSFORM HEADER_FILES PREPEND "${CMAKE_INSTALL_FULL_INCLUDEDIR}/" OUTPUT_VARIABLE INSTALL_HEADER_FILES)
+# Defining target sources
+target_sources(psi
+  INTERFACE "$<BUILD_INTERFACE:${BUILD_HEADER_FILES}>;$<INSTALL_INTERFACE:${INSTALL_HEADER_FILES}>")
+# Defining `psi::psi` alias
+add_library(psi::psi ALIAS psi)
 # Install targets
 install(FILES ${BUILD_HEADER_FILES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/psi)
 install(FILES psi.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
