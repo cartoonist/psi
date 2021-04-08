@@ -21,6 +21,7 @@ endif(USE_BUNDLED_ALL)
 
 # Include external modules
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 # Adding CMake module path.
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 # Finding dependencies.
@@ -91,6 +92,22 @@ add_library(psi::psi ALIAS psi)
 # Install targets
 install(FILES ${BUILD_HEADER_FILES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/psi)
 install(FILES psi.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+# Exporting targets
+install(TARGETS psi EXPORT psi-targets)
+install(EXPORT psi-targets NAMESPACE psi:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
+# Creating the package configuration file
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/psi-config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
+# Generating the version file for the configuration file
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/psi-config-version.cmake"
+  VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}"
+  COMPATIBILITY AnyNewerVersion)
+# Install generated configuration files
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/psi-config-version.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 
 # Adding `psikt` submodule
 if(BUILD_PSIKT)

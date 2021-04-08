@@ -1,0 +1,19 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(ZLIB REQUIRED)
+find_dependency(BZip2 REQUIRED)
+find_dependency(OpenMP)
+find_dependency(SeqAn REQUIRED)
+find_dependency(gum REQUIRED)
+find_dependency(kseq++ REQUIRED)
+find_dependency(pairg REQUIRED)
+
+if(NOT TARGET psi::psi)
+  include("${CMAKE_CURRENT_LIST_DIR}/psi-targets.cmake")
+endif()
+
+check_required_components(psi)
+
+include("${CMAKE_CURRENT_LIST_DIR}/psi-config-version.cmake")
+message(STATUS "Found psi (version ${PACKAGE_VERSION})")
