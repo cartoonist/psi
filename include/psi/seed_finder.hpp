@@ -1139,7 +1139,7 @@ namespace psi {
               }
             }
           };
-          auto nrows = util::total_nof_loci( *this->graph_ptr );
+          auto nrows = gum::util::total_nof_loci( *this->graph_ptr );
           auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
                            this->graph_ptr->get_edge_count() ) * ( dmax - dmin );
           mutable_crsmat_type udindex( nrows, nrows, provider, nnz_est );

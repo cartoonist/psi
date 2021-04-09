@@ -1,3 +1,6 @@
+# Include external modules
+include(GNUInstallDirs)
+
 # Setting the build type if it is not already set
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -23,4 +26,4 @@ target_link_libraries(psikt
   PRIVATE psi::psi
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
-install(TARGETS psikt DESTINATION bin)
+install(TARGETS psikt DESTINATION ${CMAKE_INSTALL_BINDIR})

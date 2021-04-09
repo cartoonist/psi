@@ -1,3 +1,6 @@
+# Include external modules
+include(GNUInstallDirs)
+
 # Setting the build type if it is not already set
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -32,7 +35,7 @@ target_link_libraries(ggsim
   PRIVATE cxxopts::cxxopts
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
-install(TARGETS ggsim DESTINATION bin)
+install(TARGETS ggsim DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Defining target 'dindexctl': PSI distance index controller tool
 set(DINDEXCTL_SOURCES "src/dindexctl.cpp")
@@ -47,7 +50,7 @@ target_link_libraries(dindexctl
   PRIVATE cxxopts::cxxopts
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
-install(TARGETS dindexctl DESTINATION bin)
+install(TARGETS dindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Defining target 'pindexctl': PSI path index controller tool
 set(PINDEXCTL_SOURCES "src/pindexctl.cpp")
@@ -62,7 +65,7 @@ target_link_libraries(pindexctl
   PRIVATE cxxopts::cxxopts
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
-install(TARGETS pindexctl DESTINATION bin)
+install(TARGETS pindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Defining target 'loci_stats': PSI starting loci inspector
 set(LOCI_STATS_SOURCES "src/loci_stats.cpp")
@@ -77,4 +80,4 @@ target_link_libraries(loci_stats
   PRIVATE cxxopts::cxxopts
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
-install(TARGETS loci_stats DESTINATION bin)
+install(TARGETS loci_stats DESTINATION ${CMAKE_INSTALL_BINDIR})
