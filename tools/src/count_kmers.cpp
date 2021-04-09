@@ -1,5 +1,5 @@
 /**
- *    @file  count_kmers.cc
+ *    @file  count_kmers.cpp
  *   @brief  Count kmers in a graph.
  *
  *  This is a tool for counting k-mers in a variation graph.

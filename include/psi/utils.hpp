@@ -33,6 +33,7 @@
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
+#include <sdsl/int_vector_buffer.hpp>
 
 #include "base.hpp"
 
@@ -268,6 +269,56 @@ namespace psi {
 
 
   /**
+   *  @brief  Copy all bits in the range [first, last) of `src`, to `dst` beginning at
+   *          `first`.
+   *
+   *  @param  src The source bit vector.
+   *  @param  dst The destination bit vector.
+   *  @param  start The start index in `src` to be copied.
+   *  @param  last The last index of the range.
+   *  @param  first The first index at `dst`.
+   *
+   *  Bitvector range copy. The elements in range [start...last) of `src` are copied
+   *  to the range in `dst` starting at `first`.
+   */
+  template< typename TBitVector, uint8_t WLEN=64 >
+      inline void
+    bvcopy( TBitVector const& src, TBitVector& dst, typename TBitVector::size_type start=0,
+            typename TBitVector::size_type len=std::numeric_limits< typename TBitVector::size_type >::max(),
+            typename TBitVector::size_type first=0 )
+    {
+      if ( len == 0 ) return;
+      if ( len == std::numeric_limits< typename TBitVector::size_type >::max() ) {
+        len = src.size() - start;
+      }
+
+      assert( start + len <= src.size() );
+      assert( first + len <= dst.size() );
+
+      auto i = start;
+      auto end = start + len;
+      auto rem = start % WLEN;
+      auto mwi = rem ? start + WLEN - rem : start;  // minimum word-aligned index
+      auto head = std::min( mwi, end ) - i;
+
+      assert( mwi % WLEN == 0 );
+      assert( ( rem == 0 && mwi == i ) || ( rem != 0 && mwi != i ) );
+
+      // copy head
+      if ( head ) dst.set_int( first, src.get_int( i, head ), head );
+      i += head;
+      first += head;
+      // copy words by words in aligned range
+      for ( ; i + WLEN <= end; i += WLEN, first += WLEN ) {
+        dst.set_int( first, src.get_int( i, WLEN ), WLEN );
+      }
+      // copy tail
+      auto tail = end - i;
+      if ( tail ) dst.set_int( first, src.get_int( i, tail ), tail );
+    }  /* -----  end of function bv_icopy  ----- */
+
+
+  /**
    *  @brief  Check if the given file exists and is readable.
    *
    *  @param  file_name The name of the file to be checked.
@@ -352,17 +403,18 @@ namespace psi {
   }
 
     inline std::string
-  get_tmpfile( )
+  get_tmpfile( char const* directory="" )
   {
-    std::string tmpfile_templ = get_tmpdir() + PSI_TMPFILE_TEMPLATE;
-    char* tmpl = new char [ tmpfile_templ.size() + 1 ];
-    std::strcpy( tmpl, tmpfile_templ.c_str() );
+    assert( std::strlen( directory ) == 0 || starts_with( directory, "/" ) );
+    std::string tfpath = get_tmpdir() + directory + PSI_TMPFILE_TEMPLATE;
+    char* tmpl = new char [ tfpath.size() + 1 ];
+    std::strcpy( tmpl, tfpath.c_str() );
     int fd = mkstemp( tmpl );
-    tmpfile_templ = tmpl;
+    tfpath = tmpl;
 
     ::close( fd );
     delete[] tmpl;
-    return tmpfile_templ;
+    return tfpath;
   }
 
 
@@ -501,11 +553,25 @@ namespace psi {
    *
    *  A wraper to `serialize` member function of `enc_vector`.
    */
-  template< typename TCoder >
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
     inline void
-  serialize( std::ostream& out, const sdsl::enc_vector< TCoder >& ev )
+  serialize( std::ostream& out, const sdsl::enc_vector< TCoder, TDens, TWidth >& ev )
   {
     ev.serialize( out );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   *  @brief  Serialize an `int_vector_buffer` to an output stream.
+   *
+   *  @param[out]  out Output stream.
+   *  @param[in]  ivb The `int_vector_buffer`.
+   */
+  template< uint8_t TWidth >
+  inline void
+  serialize( std::ostream& out, const sdsl::int_vector_buffer< TWidth >& ivb )
+  {
+    throw std::runtime_error( "`sdsl::int_vector_buffer` cannot be serialised" );
   }  /* -----  end of template function serialize  ----- */
 
 
@@ -576,10 +642,10 @@ namespace psi {
    *  This function does the same as `std::find` but it searches the container backward
    *  from the end.
    */
-  template< typename TCoder >
-      inline typename sdsl::enc_vector< TCoder >::const_iterator
-    rfind( const sdsl::enc_vector< TCoder >& container,
-        typename sdsl::enc_vector< TCoder >::value_type value )
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
+      inline typename sdsl::enc_vector< TCoder, TDens, TWidth >::const_iterator
+    rfind( const sdsl::enc_vector< TCoder, TDens, TWidth >& container,
+        typename sdsl::enc_vector< TCoder, TDens, TWidth >::value_type value )
     {
       for ( auto it = container.end(); it != container.begin(); --it ) {
         if ( *( it - 1 ) == value ) return it;
@@ -603,11 +669,11 @@ namespace psi {
    *        find with this difference that the second iterator set assumed to be
    *        forward iterator and it scans that iterator reversely.
    */
-  template< typename TCoder, typename TIter >
+  template< typename TCoder, typename TIter, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline bool
     requal( TIter rbegin1, TIter rend1,
-        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rbegin2,
-        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder > > rend2 )
+        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder, TDens, TWidth > > rbegin2,
+        sdsl::random_access_const_iterator< sdsl::enc_vector< TCoder, TDens, TWidth > > rend2 )
     {
       typedef std::make_unsigned_t< typename TIter::value_type > value_type;
 
@@ -678,9 +744,9 @@ namespace psi {
    *
    *  @overload for `sdsl::enc_vector`.
    */
-  template< typename TCoder, typename TContainer >
+  template< typename TCoder, typename TContainer, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
-    assign( sdsl::enc_vector< TCoder >& a, const TContainer& b )
+    assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       sdsl::util::assign( a, b );
     }
@@ -726,12 +792,26 @@ namespace psi {
    *  A wrapper function to provide an interface to `clean` member function of
    *  `sdsl::enc_vector`.
    */
-  template< typename TCoder >
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
-    clear( sdsl::enc_vector< TCoder >& ev )
+    clear( sdsl::enc_vector< TCoder, TDens, TWidth >& ev )
     {
       sdsl::util::clear( ev );
     }
+
+
+  /**
+   *  @brief  Clear the given container.
+   *
+   *  @param  ivb The container to be cleaned.
+   *
+   */
+  template< uint8_t TWidth >
+  inline void
+  clear( sdsl::int_vector_buffer< TWidth >& ivb )
+  {
+    ivb.reset();
+  }
 
   /**
    *  @brief  Reserve the required memory for the vector of size `size`.
@@ -804,12 +884,126 @@ namespace psi {
    *
    *  Do nothing.
    */
-  template< typename TCoder, typename TSize >
+  template< typename TCoder, typename TSize, uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
-    reserve( sdsl::enc_vector< TCoder >&, const TSize )
+    reserve( sdsl::enc_vector< TCoder, TDens, TWidth >&, const TSize )
     {
       /* NOOP */
     }
+
+
+  /**
+   *  @overload The `sdsl::int_vector_buffer` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   *  Do nothing.
+   */
+  template< uint8_t TWidth, typename TSize >
+  inline void
+  reserve( sdsl::int_vector_buffer< TWidth >&, const TSize )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @overload The `sdsl::int_vector` cannot be reserved.
+   *
+   *  @param  container The container.
+   *  @param  size Size to reserve.
+   *
+   */
+  template< uint8_t TWidth, typename TSize >
+  inline void
+  reserve( sdsl::int_vector< TWidth >&, const TSize )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @brief The shrink to fit interface function.
+   *
+   *  It acts a wrapper for `shrink_to_fit` member function.
+   */
+  template< typename TContainer >
+  inline void
+  shrink_to_fit( TContainer& container )
+  {
+    container.shrink_to_fit();
+  }
+
+
+  /**
+   *  @overload The shrink to fit interface function.
+   */
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
+  inline void
+  shrink_to_fit( sdsl::enc_vector< TCoder, TDens, TWidth >& )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @overload The shrink to fit interface function.
+   */
+  template< uint8_t TWidth >
+  inline void
+  shrink_to_fit( sdsl::int_vector_buffer< TWidth >& )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @brief  Resize the container to the given `size`.
+   *
+   *  @param  container The container.
+   *  @param  size Size to resize.
+   *
+   *  It calls resize member function of the container.
+   */
+  template< typename TContainer, typename TSize >
+  inline void
+  resize( TContainer& container, const TSize size )
+  {
+    container.resize( size );
+  }
+
+
+  /**
+   *  @overload The `sdsl::int_vector_buffer` cannot be resized.
+   *
+   *  @param  container The container.
+   *  @param  size Size to resize.
+   *
+   *  Do nothing.
+   */
+  template< typename TCoder, typename TSize, uint32_t TDens = 128, uint8_t TWidth=0 >
+  inline void
+  resize( sdsl::enc_vector< TCoder, TDens, TWidth >&, const TSize )
+  {
+    /* NOOP */
+  }
+
+
+  /**
+   *  @overload The `sdsl::int_vector_buffer` cannot be resized.
+   *
+   *  @param  container The container.
+   *  @param  size Size to resize.
+   *
+   *  Do nothing.
+   */
+  template< uint8_t TWidth, typename TSize >
+  inline void
+  resize( sdsl::int_vector_buffer< TWidth >& ivb, const TSize size )
+  {
+    ivb[ size - 1 ] = 0;
+  }
 
 
   /**
@@ -850,12 +1044,234 @@ namespace psi {
     deserialize( in, container, std::back_inserter( container ) );
   }  /* -----  end of template function deserialize  ----- */
 
-  template< typename TCoder >
+  template< typename TCoder, uint32_t TDens = 128, uint8_t TWidth=0 >
     inline void
-  deserialize( std::istream& in, sdsl::enc_vector< TCoder >& ev )
+  deserialize( std::istream& in, sdsl::enc_vector< TCoder, TDens, TWidth >& ev )
   {
     ev.load( in );
   }  /* -----  end of template function deserialize  ----- */
+
+  template< uint8_t TWidth >
+    inline void
+  deserialize( std::istream& in, sdsl::int_vector_buffer< TWidth >& ivb )
+  {
+    throw std::runtime_error( "`sdsl::int_vector_buffer` cannot be deserialised" );
+  }  /* -----  end of template function serialize  ----- */
+
+
+  /**
+   * Inspired by: https://yizhang82.dev/lock-free-rw-lock
+   */
+  template< typename TOrdinal = uint8_t,
+            TOrdinal HAS_WRITER = std::numeric_limits< TOrdinal >::max() >
+  class RWSpinLock {
+    private:
+      /* === CONSTANTS === */
+      constexpr static const unsigned int RETRY_THRESHOLD = 4;
+
+    public:
+      /* === LIFECYCLE === */
+      RWSpinLock( ) : readers( 0 ), writer_waiting( false ) { }
+
+      /* === METHODS === */
+        inline void
+      acquire_reader()
+      {
+        auto retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( !this->writer_waiting.load() && peek_readers != HAS_WRITER ) {
+            if ( this->readers.compare_exchange_weak(
+                     peek_readers, peek_readers + 1,
+                     std::memory_order_release,
+                     std::memory_order_relaxed ) ) return;
+          }
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+      /**  @brief Acquire the lock outracing writers by ignoring `writer_waiting` flag.
+       *
+       *  NOTE: Writers might get starved.
+       */
+        inline void
+      acquire_reader_greedy()
+      {
+        auto retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( peek_readers != HAS_WRITER ) {  /* ignores waiting writers */
+            if ( this->readers.compare_exchange_weak(
+                    peek_readers, peek_readers + 1,
+                    std::memory_order_release,
+                    std::memory_order_relaxed ) ) return;
+          }
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+        inline void
+      release_reader()
+      {
+        assert( this->readers.load() != HAS_WRITER );
+        --this->readers;
+      }
+
+      /**
+       * Strongly tries to acquire writer lock.
+       */
+        inline void
+      acquire_writer()
+      {
+        unsigned int retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( peek_readers == 0 ) {
+            if ( this->readers.compare_exchange_weak(
+                     peek_readers, HAS_WRITER,
+                     std::memory_order_release,
+                     std::memory_order_relaxed ) ) return;
+          }
+          this->writer_waiting.store( true );
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+      /**
+       * Give up if there is another writer.
+       */
+        inline bool
+      acquire_writer_weak()
+      {
+        unsigned int retry = RETRY_THRESHOLD;
+        while ( true ) {
+          auto peek_readers = this->readers.load();
+          if ( peek_readers == 0 ) {
+            if ( this->readers.compare_exchange_weak(
+                     peek_readers, HAS_WRITER,
+                     std::memory_order_release,
+                     std::memory_order_relaxed ) ) return true;
+          }
+          else if ( peek_readers == HAS_WRITER ) return false;
+          this->writer_waiting.store( true );
+          if ( --retry == 0 ) {
+            retry = RETRY_THRESHOLD;
+            std::this_thread::yield();
+          }
+        }
+      }
+
+        inline void
+      release_writer()
+      {
+        assert( this->readers.load() == HAS_WRITER );
+        this->writer_waiting.store( false );
+        this->readers.store( 0 );
+      }
+
+    private:
+      /* === DATA MEMBERS === */
+      std::atomic< TOrdinal > readers;
+      std::atomic< bool > writer_waiting;
+  };
+
+  template< typename TLock >
+  class ReaderLock {
+    private:
+      /* === DATA MEMBERS === */
+      TLock& lock;
+
+    public:
+      /* === LIFECYCLE === */
+      ReaderLock( TLock& l ) : lock( l )
+      {
+        this->lock.acquire_reader();
+      }
+
+      ~ReaderLock( ) noexcept
+      {
+        this->lock.release_reader();
+      }
+  };
+
+  template< typename TLock >
+  class GreedyReaderLock {
+    private:
+      /* === DATA MEMBERS === */
+      TLock& lock;
+
+    public:
+      /* === LIFECYCLE === */
+      GreedyReaderLock( TLock& l ) : lock( l )
+      {
+        this->lock.acquire_reader_greedy();
+      }
+
+      ~GreedyReaderLock( ) noexcept
+      {
+        this->lock.release_reader();
+      }
+  };
+
+  template< typename TLock >
+  class WriterLock {
+    private:
+      /* === DATA MEMBERS === */
+      TLock& lock;
+
+    public:
+      /* === LIFECYCLE === */
+      WriterLock( TLock& l ) : lock( l )
+      {
+        this->lock.acquire_writer();
+      }
+
+      ~WriterLock( ) noexcept
+      {
+        this->lock.release_writer();
+      }
+  };
+
+  template< typename TLock >
+  class UniqWriterLock {
+  private:
+    /* === DATA MEMBERS === */
+    TLock& lock;
+    bool locked;
+
+  public:
+    /* === LIFECYCLE === */
+    UniqWriterLock( TLock& l ) : lock( l )
+    {
+      this->locked = this->lock.acquire_writer_weak();
+    }
+
+    ~UniqWriterLock( ) noexcept
+    {
+      if ( this->locked ) this->lock.release_writer();
+    }
+
+    /* === OPERATORS === */
+    operator bool() const {
+      return this->locked;
+    }
+
+    /* === METHODS === */
+    inline bool
+    is_locked( ) const
+    {
+      return this->locked;
+    }
+  };
 
   /* Meta-functions */
   template< typename T1, typename T2 >
@@ -909,7 +1325,7 @@ namespace psi {
       std::generate_n( str.begin(), length, randchar );
       return str;
     }
-  }
+  }  /* --- end of namespace random --- */
 }  /* --- end of namespace psi --- */
 
 #endif  /* --- #ifndef PSI_UTILS_HPP__ --- */

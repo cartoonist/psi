@@ -56,18 +56,22 @@ template< typename TSeedFinder, typename TSet >
     void
   report( TSeedFinder& finder, TSet& covered_reads, unsigned long long int found )
   {
+    typedef typename TSeedFinder::stats_type::timer_type timer_type;
+
     /* Get the main logger. */
     auto log = get_logger( "main" );
     log->info( "Total number of starting loci: {}", finder.get_starting_loci().size() );
     log->info( "Total number of seeds found: {}", found );
+    log->info( "-> of which found off paths: {}",
+      TSeedFinder::traverser_type::stats_type::get_total_seeds_off_paths() );
     log->info( "Total number of reads covered: {}", covered_reads.size() );
     log->info( "Total number of 'godown' operations: {}",
       TSeedFinder::traverser_type::stats_type::get_total_nof_godowns() );
 
     log->info( "All Timers" );
     log->info( "----------" );
-    for ( const auto& timer : Timer<>::get_timers() ) {
-      log->info( "{}: {}", timer.first, Timer<>::get_duration_str( timer.first ) );
+    for ( const auto& timer : timer_type::get_timers() ) {
+      log->info( "{}: {}", timer.first, timer.second.str() );
     }
   }
 
@@ -92,18 +96,21 @@ template< class TGraph, typename TReadsIndexSpec >
 
     /* Get the main logger. */
     auto log = get_logger( "main" );
-    auto thread_id = get_thread_id();
+    auto tid = get_thread_id();
     /* Install seed finder singal handler for getting progress report. */
     std::signal( SIGUSR1, finder_type::stats_type::signal_handler );
 
     /* The seed finder for the input graph. */
-    finder_type finder( graph, params.seed_len );
+    finder_type finder( graph, params.seed_len, params.gocc_threshold );
+    auto const& stats = finder.get_stats();
     /* Prepare (load or create) genome-wide paths. */
     log->info( "Looking for an existing path index..." );
     /* Load the genome-wide path index for the graph if available. */
     if ( finder.load_path_index( params.pindex_path,
                                  params.context,
-                                 params.step_size ) ) {
+                                 params.step_size,
+                                 params.dindex_min_ris,
+                                 params.dindex_max_ris ) ) {
       log->info( "The path index has been found and loaded." );
     }
     /* No genome-wide path index requested. */
@@ -115,24 +122,17 @@ template< class TGraph, typename TReadsIndexSpec >
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
       finder.create_path_index( params.path_num, params.patched,
                                 params.context, params.step_size,
+                                params.dindex_min_ris, params.dindex_max_ris,
                                 [&log]( std::string const& msg ) {
                                   log->info( msg );
                                 },
                                 [&log]( std::string const& msg ) {
                                   log->warn( msg );
                                 } );
-      log->info( "Picked paths in {}.",
-                 timer_type::get_duration_str(
-                     stats_type::get_instance_const_ptr()->get_timer( "pick-paths",
-                                                                      thread_id ) ) );
-      log->info( "Indexed paths in {}.",
-                 timer_type::get_duration_str(
-                     stats_type::get_instance_const_ptr()->get_timer( "index-paths",
-                                                                      thread_id ) ) );
-      log->info( "Found uncovered loci in {}.",
-                 timer_type::get_duration_str(
-                     stats_type::get_instance_const_ptr()->get_timer( "find-uncovered",
-                                                                      thread_id ) ) );
+      log->info( "Picked paths in {}.", stats.get_timer( "pick-paths", tid ).str() );
+      log->info( "Indexed paths in {}.", stats.get_timer( "index-paths", tid ).str() );
+      log->info( "Found uncovered loci in {}.", stats.get_timer( "find-uncovered", tid ).str() );
+      log->info( "Created distance index in {}.", stats.get_timer( "index-distances", tid ).str() );
       log->info( "Saving path index..." );
       /* Serialize the indexed paths. */
       if ( params.pindex_path.empty() ) {
@@ -140,10 +140,8 @@ template< class TGraph, typename TReadsIndexSpec >
       } else if ( !finder.serialize_path_index( params.pindex_path, params.step_size ) ) {
         log->warn( "Specified path index file is not writable. Skipping..." );
       } else {
-        log->info( "Saved path index in {}.",
-                   timer_type::get_duration_str(
-                       stats_type::get_instance_const_ptr()->get_timer( "save-paths",
-                                                                        thread_id ) ) );
+        log->info( "Saved path index in {}.", stats.get_timer( "save-pindex", tid ).str() );
+        log->info( "Saved distance index in {}.", stats.get_timer( "save-dindex", tid ).str() );
       }
     }
     log->info( "Number of starting loci (in {} nodes of total {}): {}",
@@ -156,7 +154,6 @@ template< class TGraph, typename TReadsIndexSpec >
     }
 
     unsigned long long int found = 0;
-    unsigned long long int total_found = 0;
     std::unordered_set< Records< readsstringset_type >::TPosition > covered_reads;
     std::function< void(typename traverser_type::output_type const &) > write_callback =
       [&found, &output_file, &covered_reads]
@@ -175,48 +172,29 @@ template< class TGraph, typename TReadsIndexSpec >
       auto seeds = finder.create_readrecord();
       auto traverser = finder.create_traverser();
       log->info( "Finding seeds..." );
-      auto timer = Timer<>( "seed-finding" );
+      [[maybe_unused]] auto timer = timer_type( "seed-finding" );
       while ( true ) {
         log->info( "Loading a read chunk..." );
         {
-          auto timer = Timer<>( "load-chunk" );
+          [[maybe_unused]] auto timer = timer_type( "load-chunk" );
           /* Load a chunk from reads set. */
           if ( !readRecords( chunk, reads_iss, params.chunk_size ) ) break;
         }
         log->info( "Fetched {} reads in {}.", length( chunk ),
-            Timer<>::get_duration_str( "load-chunk" ) );
+                   timer_type::get_duration_str( "load-chunk" ) );
         /* Give the current chunk to the finder. */
         finder.get_seeds( seeds, chunk, params.distance );
         auto seeds_index = finder.index_reads( seeds );
-        log->info( "Seeding done in {}.",
-                   timer_type::get_duration_str(
-                       stats_type::get_instance_const_ptr()->get_timer( "seeding",
-                                                                        thread_id ) ) );
-        log->info( "Finding seeds on paths..." );
-        /* Find seeds on genome-wide paths. */
-        finder.seeds_on_paths( seeds, seeds_index, write_callback );
-        log->info( "Found seeds on paths in {}.",
-                   timer_type::get_duration_str(
-                       stats_type::get_instance_const_ptr()->get_timer( "seeds-on-paths",
-                                                                        thread_id ) ) );
-        log->info( "Total number of seeds found on paths: {}", found );
-        total_found += found;
-        found = 0;
-        log->info( "Finding seeds off paths..." );
-        /* Find seeds on the graph by traversing starting loci. */
-        finder.setup_traverser( traverser, seeds, seeds_index );
-        finder.seeds_off_paths( traverser, write_callback );
-        log->info( "Found seeds off paths in {}.",
-                   timer_type::get_duration_str(
-                       stats_type::get_instance_const_ptr()->get_timer( "seeds-off-paths",
-                                                                        thread_id ) ) );
-        log->info( "Total number of seeds found off paths: {}", found );
-        total_found += found;
-        found = 0;
+        log->info( "Seeding done in {}.", stats.get_timer( "seeding", tid ).str() );
+        log->info( "Finding all seeds..." );
+        finder.seeds_all( seeds, seeds_index, traverser, write_callback );
+        log->info( "Found seeds on paths in {}.", stats.get_timer( "seeds-on-paths", tid ).str() );
+        log->info( "Found seeds off paths in {}.", stats.get_timer( "seeds-off-paths", tid ).str() );
+        log->info( "Verified distance constraints in {}.", stats.get_timer( "query-dindex", tid ).str() );
       }
     }
-    log->info( "Found seed in {}.", Timer<>::get_duration_str( "seed-finding" ) );
-    report( finder, covered_reads, total_found );
+    log->info( "Found seed in {}.", timer_type::get_duration_str( "seed-finding" ) );
+    report( finder, covered_reads, found );
   }
 
 
@@ -234,12 +212,19 @@ startup( const Options & options )
   log->info( "- Reads chunk size: {}", options.chunk_size );
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
+  log->info( "- Seed genome occurrence count threshold: {}", options.gocc_threshold );
+  log->info( "- Distance index minimum read insert size: {}", options.dindex_min_ris );
+  log->info( "- Distance index maximum read insert size: {}", options.dindex_max_ris );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
   log->info( "- Output file: '{}'", options.output_path );
 
   log->info( "Loading input graph from file '{}'...", options.rf_path );
   gum::SeqGraph< gum::Succinct > graph;
-  gum::util::load( graph, options.rf_path );
+  gum::util::load( graph, options.rf_path, true );
+  if ( gum::util::ids_in_topological_order( graph ) ) {
+    log->info( "Input graph node IDs are in topological sort order." );
+  }
+  else log->warn( "Input graph node IDs are NOT in topological sort order." );
 
   log->info( "Opening reads file '{}'...", options.fq_path );
   SeqStreamIn reads_iss( options.fq_path.c_str() );
@@ -286,7 +271,7 @@ setup_argparser( seqan::ArgumentParser& parser )
 
   // graph file -- positional argument.
   seqan::ArgParseArgument vgfile_arg( seqan::ArgParseArgument::INPUT_FILE, POSARG1 );
-  setValidValues( vgfile_arg, "vg xg" );
+  setValidValues( vgfile_arg, "vg gfa" );
   addArgument( parser, vgfile_arg );
 
   // Options
@@ -349,6 +334,24 @@ setup_argparser( seqan::ArgumentParser& parser )
         "Context length in patching.",
         seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "t", 0 );
+  // seed genome occurrence count threshold
+  addOption( parser,
+             seqan::ArgParseOption( "r", "gocc-threshold",
+                                    "Seed genome occurrence count threshold (no threshold by default).",
+                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "r", 0 );
+  // distance index minimum read insert size
+  addOption( parser,
+             seqan::ArgParseOption( "m", "min-insert-size",
+                                    "Distance index minimum read insert size (no distance indexing by default).",
+                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "m", 0 );
+  // distance index maximum read insert size
+  addOption( parser,
+             seqan::ArgParseOption( "M", "max-insert-size",
+                                    "Distance index maximum read insert size (minimum insert size by default).",
+                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "M", 0 );
   // index
   addOption( parser,
       seqan::ArgParseOption( "i", "index",
@@ -402,6 +405,9 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.distance, parser, "distance" );
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
+  getOptionValue( options.gocc_threshold, parser, "gocc-threshold" );
+  getOptionValue( options.dindex_min_ris, parser, "min-insert-size" );
+  getOptionValue( options.dindex_max_ris, parser, "max-insert-size" );
   options.patched = !isSet( parser, "no-patched" );
   getOptionValue( options.pindex_path, parser, "path-index" );
   getOptionValue( indexname, parser, "index" );
@@ -416,6 +422,7 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
 
   options.index = index_from_str( indexname );
   if ( options.distance == 0 ) options.distance = options.seed_len;
+  if ( options.dindex_max_ris == 0 ) options.dindex_max_ris = options.dindex_min_ris;
 }
 
 

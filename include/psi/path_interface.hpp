@@ -840,9 +840,11 @@ namespace psi {
    *  transform the node label to the path sequence aligned with that node which is a
    *  full-match here.
    */
-  template< typename TGraph, typename TSpec >
+  template< typename TGraph, typename TSpec,
+            typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
+                                                        decltype( vg::Node().id() ) > >
       inline void
-    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath )
+    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath, TCoordinate&& coord={} )
     {
       TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
@@ -856,7 +858,7 @@ namespace psi {
         else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
         else label_len = graph_ptr->node_length( *it );
         vg::Mapping* mapping = vgpath->add_mapping();
-        mapping->mutable_position()->set_node_id( *it );
+        mapping->mutable_position()->set_node_id( coord( *it ) );
         mapping->mutable_position()->set_offset( noff );
         vg::Edit* edit = mapping->add_edit();
         edit->set_from_length( label_len );
@@ -865,25 +867,30 @@ namespace psi {
       }
     }
 
-  template< typename TGraph, typename TSpec >
+  template< typename TGraph, typename TSpec,
+            typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
+                                                        decltype( vg::Node().id() ) > >
       inline void
     convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath,
-        std::vector< vg::Position > const& loci )
+        std::vector< vg::Position > const& loci, TCoordinate&& coord={} )
     {
       TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
 
       auto comp_id =
-        [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
-          return graph_ptr->id_to_rank( elem ) < graph_ptr->id_to_rank( value );
-        };
+          [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+            auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
+            auto value_rank = graph_ptr->id_to_rank( value.node_id() );
+            return elem_rank < value_rank;
+          };
 
       auto comp_both =
-        [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
-          return graph_ptr->id_to_rank( elem ) < graph_ptr->id_to_rank( value ) ||
-            ( graph_ptr->id_to_rank( elem ) == graph_ptr->id_to_rank( value ) &&
-              elem.offset() < value.offset() );
-        };
+          [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+            auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
+            auto value_rank = graph_ptr->id_to_rank( value.node_id() );
+            return elem_rank < value_rank ||
+                ( elem_rank == value_rank && elem.offset() < value.offset() );
+          };
 
       for ( auto it = path.begin(); it != path.end(); ++it ) {
         typename TGraph::offset_type label_len = graph_ptr->node_length( *it );
@@ -891,13 +898,13 @@ namespace psi {
         if ( it == path.begin() ) coffset = path.get_head_offset();
         else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
         vg::Mapping* mapping = vgpath->add_mapping();
-        mapping->mutable_position()->set_node_id( *it );
+        mapping->mutable_position()->set_node_id( coord( *it ) );
         mapping->mutable_position()->set_offset( coffset );
 
         vg::Position cpos;
         cpos.set_node_id( *it );
         cpos.set_offset( coffset );
-        std::vector< vg::Position>::const_iterator nextedit, lastedit;
+        std::vector< vg::Position >::const_iterator nextedit, lastedit;
         if ( it == path.end()-1 ) {
           nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_id );
           lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_both );
@@ -941,15 +948,15 @@ namespace psi {
                          std::vector< typename TGraph::id_type >& nodes,
                          std::vector< typename TGraph::link_type >& edges )
     {
-      TGraph const* graph = path.get_graph_ptr();
+      TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::id_type prev = 0;
       for ( auto it = path.begin(); it != path.end(); ++it ) {
         nodes.push_back( *it );
         if ( prev != 0 ) {
           // :TODO:Sun Apr 14 17:48:\@cartoonist: Path should consider the edge orientation.
-          auto from = graph->end_side( prev );
-          auto to = graph->start_side( *it );
-          edges.push_back( graph.make_link( from, to ) );
+          auto from = graph_ptr->end_side( prev );
+          auto to = graph_ptr->start_side( *it );
+          edges.push_back( graph_ptr->make_link( from, to ) );
         }
         prev = *it;
       }

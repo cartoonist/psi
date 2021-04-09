@@ -29,7 +29,8 @@
 #include <algorithm>
 
 #include <sdsl/bit_vectors.hpp>
-#include <gum/seqgraph.hpp>
+#include <pairg/reachability.hpp>
+#include <KokkosKernels_IOUtils.hpp>
 
 #include "graph.hpp"
 #include "traverser.hpp"
@@ -37,6 +38,7 @@
 #include "index.hpp"
 #include "index_iter.hpp"
 #include "pathindex.hpp"
+#include "crs_matrix.hpp"
 #include "utils.hpp"
 #include "stats.hpp"
 
@@ -48,11 +50,14 @@ namespace psi {
       instantiated,
       load_pindex,
       load_starts,
+      load_dindex,
       select_paths,
-      create_index,
+      create_pindex,
       find_uncovered,
-      write_index,
+      create_dindex,
+      write_pindex,
       write_starts,
+      write_dindex,
       ready,
     };
 
@@ -61,11 +66,14 @@ namespace psi {
       "Just instantiated",
       "Loading path index",
       "Loading starting loci",
+      "Loading distance index",
       "Selecting paths from input graph",
       "Indexing paths sequences",
       "Finding uncovered loci",
+      "Creating distance index",
       "Writing path index",
       "Writing starting loci",
+      "Writing distance index",
       "Ready for seed finding",
     };
 
@@ -76,6 +84,8 @@ namespace psi {
       index_chunk,
       find_on_paths,
       find_off_paths,
+      find_mems,
+      query_dindex,
     };
 
     constexpr static const char* thread_progress_table[] = {
@@ -83,8 +93,10 @@ namespace psi {
       "Zzz",
       "Seeding a read chunk",
       "Indexing a read chunk",
-      "Find seeds on paths",
-      "Find seeds off paths",
+      "Finding seeds on paths",
+      "Finding seeds off paths",
+      "Finding MEMs on paths",
+      "Querying distance index",
     };
   };  /* --- end of template class SeedFinderStats --- */
 
@@ -106,15 +118,25 @@ namespace psi {
 
         struct ThreadStats {
           private:
+            /* === CONSTANTS === */
+            constexpr static const double GOCC_AVG_NONE = -1;
+            constexpr static const unsigned long long int GOCC_UBOUND = ULLONG_MAX / 2;
+
             /* === DATA MEMBERS === */
             thread_progress_type progress;
             unsigned int chunks_done;
             std::size_t locus_idx;
+            unsigned long long int gocc_sum;  /**< @brief Sum of genome occurrence counts */
+            unsigned long long int gocc_tot;  /**< @brief No. of seeds contributed in the sum */
+            double gocc_avg;  /**< @brief Average seed genome occurrence count */
+            unsigned long long int gocc_skips;  /**< @brief No. of skipped seeds because of high gocc */
+
           public:
             /* === LIFECYCLE === */
             ThreadStats( )
               : progress( thread_progress_type::sleeping ), chunks_done( 0 ),
-                locus_idx( 0 )
+                locus_idx( 0 ), gocc_sum( 0 ), gocc_tot( 0 ), gocc_avg( GOCC_AVG_NONE ),
+                gocc_skips( 0 )
             { }
 
             /* === ACCESSORS === */
@@ -142,6 +164,12 @@ namespace psi {
               return this->locus_idx;
             }
 
+              inline unsigned long long int
+            get_gocc_skips( ) const
+            {
+              return this->gocc_skips;
+            }
+
             /* === MUTATORS === */
               inline void
             set_progress( thread_progress_type value )
@@ -156,9 +184,55 @@ namespace psi {
             }
 
               inline void
+            inc_chunks_done( )
+            {
+              ++this->chunks_done;
+            }
+
+              inline void
             set_locus_idx( std::size_t value )
             {
               this->locus_idx = value;
+            }
+
+              inline void
+            set_gocc_skips( unsigned long long int value )
+            {
+              this->gocc_skips = value;
+            }
+
+              inline void
+            inc_gocc_skips( )
+            {
+              ++this->gocc_skips;
+            }
+
+            /* === METHODS === */
+              inline void
+            add_seed_gocc( unsigned long long int count )
+            {
+              if ( this->gocc_sum >= GOCC_UBOUND ) update_avg_seed_gocc();
+              this->gocc_sum += count;
+              this->gocc_tot++;
+            }
+
+              inline void
+            update_avg_seed_gocc()
+            {
+              this->gocc_avg = this->avg_seed_gocc();
+              this->gocc_sum = 0;
+              this->gocc_tot = 0;
+            }
+
+              inline double
+            avg_seed_gocc( ) const
+            {
+              if ( this->gocc_tot != 0 ) {
+                double new_avg = this->gocc_sum / static_cast< double >( this->gocc_tot );
+                if ( this->gocc_avg == GOCC_AVG_NONE ) return new_avg;
+                else return ( this->gocc_avg + new_avg ) / 2.0;
+              }
+              return ( this->gocc_avg != GOCC_AVG_NONE ? this->gocc_avg : 0 );
             }
         };
         typedef std::unordered_map< std::string, ThreadStats > container_type;
@@ -198,21 +272,30 @@ namespace psi {
           static inline void
         signal_handler( int signo )
         {
-          std::cout << "\n---"
-                    <<"Received signal " << strsignal( signo ) << " (" << signo << ")"
-                    << "\n---" << std::endl;
-          std::cout << "Seed finder progress: "
+          std::cout << "\n====  "
+                    << "Received \"" << strsignal( signo ) << "\" (" << signo << ")"
+                    << "  ====" << std::endl;
+          if ( SeedFinderStats::get_instance_ptr() == nullptr ) {
+            std::cout << "No tracking seed finder!" << std::endl;
+            return;
+          }
+          std::cout << "PSI seed finder last status: "
                     << SeedFinderStats::get_instance_ptr()->get_progress_str() << std::endl;
           auto const& threads_stats = SeedFinderStats::get_instance_ptr()->get_threads_stats();
           std::cout << ( threads_stats.empty() ? "No" : std::to_string( threads_stats.size() ) )
-                    << " running thread(s)." << std::endl;
-          uint8_t tid = 0;
+                    << " running thread(s)" << ( threads_stats.empty() ? "." : ":" )
+                    << std::endl;
+          int tid = 0;
           for ( auto const& stats : threads_stats ) {
             std::cout << stats.first << " -- Thread: " << ++tid << std::endl;
-            std::cout << stats.first << " -- Progress: " << stats.second.get_progress_str()
+            std::cout << stats.first << " -- Last status: " << stats.second.get_progress_str()
                       << std::endl;
             std::cout << stats.first << " -- Chunks done: "
                       << stats.second.get_chunks_done() << std::endl;
+            std::cout << stats.first << " -- Average seed genome occurrence count: "
+                      << stats.second.avg_seed_gocc() << std::endl;
+            std::cout << stats.first << " -- Skipped seeds because of high genome occurrence count: "
+                      << stats.second.get_gocc_skips() << std::endl;
             if ( stats.second.get_progress() == thread_progress_type::find_off_paths ) {
               auto loc_idx = stats.second.get_locus_idx();
               auto loc_num = SeedFinderStats::get_instance_ptr()->get_ptr()->get_starting_loci().size();
@@ -229,17 +312,26 @@ namespace psi {
                 stats.first,
                 [&stats]( auto name, auto period ) {
                   std::cout << stats.first << " -- Timer '" << name << "': "
-                            << timer_type::get_lap_str( period ) << std::endl;
+                            << period.get_lap().str() << std::endl;
                   return true;
                 } );
+            std::cout << std::endl;
           }
+          bool first = true;
           SeedFinderStats::get_instance_ptr()->for_each_timer(
-              get_thread_id(),
-              []( auto name, auto period ) {
+              [&first]( auto name, auto period ) {
+                if ( first ) {
+                  std::cout << "All timers" << std::endl;
+                  std::cout << "----------" << std::endl;
+                  first = false;
+                }
                 std::cout << "Timer '" << name << "': "
-                          << timer_type::get_lap_str( period ) << std::endl;
+                          << period.get_lap().str() << std::endl;
                 return true;
               } );
+          if ( !first ) {
+            std::cout << "----------" << std::endl;
+          }
         }
 
         /* === LIFECYCLE === */
@@ -248,6 +340,13 @@ namespace psi {
             id( random::random_string( SeedFinderStats::CLS_ID_LEN ) )
         {
           SeedFinderStats::set_instance_ptr( this );  // keep the last instance as tracked one
+        }
+
+        ~SeedFinderStats( ) noexcept
+        {
+          if ( SeedFinderStats::get_instance_ptr() == this ) {
+            SeedFinderStats::set_instance_ptr( nullptr );
+          }
         }
 
         /* === ACCESSORS === */
@@ -279,12 +378,21 @@ namespace psi {
         }
 
         /**
-         *  @brief  Get the statistics for thread `t`.
+         *  @brief  Get the statistics for the thread with the given `id`.
          */
           inline ThreadStats&
-        get_thread_stats( std::string const& thread_id )
+        get_thread_stats( std::string const& id )
         {
-          return this->tstats[ thread_id ];
+          return this->tstats[ id ];
+        }
+
+        /**
+         *  @brief  Get the statistics for this thread.
+         */
+          inline ThreadStats&
+        get_this_thread_stats( )
+        {
+          return this->get_thread_stats( this->get_this_thread_id() );
         }
 
         /**
@@ -317,6 +425,13 @@ namespace psi {
         timeit( std::string const& name, std::string const& thread_id ) const
         {
           return timer_type( this->id + name + thread_id );
+        }
+
+        /* timeit thread-safe */
+          inline timer_type
+        timeit_ts( std::string const& name ) const
+        {
+          return this->timeit( name, this->get_this_thread_id() );
         }
 
           inline timer_type
@@ -365,6 +480,14 @@ namespace psi {
           }
           return true;
         }
+      private:
+        /* === METHODS === */
+          inline std::string const&
+        get_this_thread_id() const
+        {
+          thread_local static const std::string thread_id = get_thread_id();
+          return thread_id;
+        }
     };  /* --- end of template class SeedFinderStats --- */
 
   /**
@@ -410,6 +533,12 @@ namespace psi {
               return 0;
             }
 
+              constexpr inline unsigned long long int
+            get_gocc_skips( ) const
+            {
+              return 0;
+            }
+
             /* === MUTATORS === */
               constexpr inline void
             set_progress( thread_progress_type )
@@ -420,8 +549,33 @@ namespace psi {
             { /* noop */ }
 
               constexpr inline void
+            inc_chunks_done( )
+            { /* noop */ }
+
+              constexpr inline void
             set_locus_idx( std::size_t )
             { /* noop */ }
+
+              constexpr inline void
+            set_gocc_skips( unsigned long long int )
+            { /* noop */ }
+
+              constexpr inline void
+            inc_gocc_skips( )
+            { /* noop */ }
+
+            /* === METHODS === */
+              constexpr inline void
+            add_seed_gocc( unsigned long long int )
+            { /* noop */}
+
+              constexpr inline void
+            update_avg_seed_gocc()
+            { /* noop  */ }
+
+              constexpr inline double
+            avg_seed_gocc( )
+            { return 0; }
         };
         typedef std::unordered_map< std::string, ThreadStats > container_type;
         typedef typename container_type::size_type size_type;
@@ -430,10 +584,10 @@ namespace psi {
           static inline void
         signal_handler( int signo )
         {
-          std::cout << "\n---"
-                    <<"Received signal " << strsignal( signo ) << " (" << signo << ")"
-                    << "\n---" << std::endl;
-          std::cout << "Seed finder progress: "
+          std::cout << "\n====  "
+                    << "Received \"" << strsignal( signo ) << "\" (" << signo << ")"
+                    << "  ====" << std::endl;
+          std::cout << "PSI seed finder last status: "
                     << base_type::progress_table[ progress_type::finder_off ] << std::endl;
         }
 
@@ -469,6 +623,13 @@ namespace psi {
           SeedFinderStats::set_instance_ptr( this );
         }
 
+        ~SeedFinderStats( ) noexcept
+        {
+          if ( SeedFinderStats::get_instance_ptr() == this ) {
+            SeedFinderStats::set_instance_ptr( nullptr );
+          }
+        }
+
         /* === ACCESSORS === */
           constexpr inline seedfinder_type const*
         get_ptr( ) const
@@ -489,6 +650,12 @@ namespace psi {
 
           inline ThreadStats&
         get_thread_stats( std::string const& )
+        {
+          return this->null_stats;
+        }
+
+          inline ThreadStats&
+        get_this_thread_stats( )
         {
           return this->null_stats;
         }
@@ -517,21 +684,27 @@ namespace psi {
         }
 
           constexpr inline timer_type
+        timeit_ts( std::string const& ) const
+        {
+          return timer_type( );
+        }
+
+          constexpr inline timer_type
         timeit( std::string const& ) const
         {
           return timer_type( );
         }
 
           constexpr inline timer_type::period_type
-        get_timer( std::string const& name ) const
+        get_timer( std::string const& ) const
         {
-          return nullptr;
+          return timer_type::period_type();
         }
 
           constexpr inline timer_type::period_type
-        get_timer( std::string const& name, std::string const& thread_id ) const
+        get_timer( std::string const&, std::string const& ) const
         {
-          return nullptr;
+          return timer_type::period_type();
         }
 
         template< typename TCallback >
@@ -601,12 +774,82 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
+        typedef pairg::matrixOps crs_traits_type;
+        typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
+        typedef crs_matrix::Buffered mutable_crsmat_spec_type;
+        typedef make_spec_t< mutable_crsmat_spec_type, crsmat_type > mutable_crsmat_type;
+
+        class KokkosHandler {
+        public:
+          /* === LIFECYCLE === */
+          KokkosHandler( bool fin=true ) : finaliser( fin )
+          {
+            /* Ensure no concurrent dtor is running */
+            ReaderLock constructor( KokkosHandler::get_final_lock() );
+            if ( !Kokkos::is_initialized() ) {
+              /* Ensure only one of the concurrent ctor gets the lock */
+              UniqWriterLock initialiser( KokkosHandler::get_init_lock() );
+              if ( initialiser ) {
+                /* Initialise Kokkos */
+                Kokkos::initialize();
+              }
+            }
+            /* Sync ctors with the initialiser ctor to ensure that the object is ready */
+            WriterLock sync( KokkosHandler::get_init_lock() );
+          }
+
+          ~KokkosHandler() noexcept
+          {
+            /* Ensure no concurrent ctor or dtor is running */
+            WriterLock lock( KokkosHandler::get_final_lock() );
+            /* Finalise Kokkos if we are responsible/finaliser */
+            /* NOTE: No initialisation can be done after finalising. */
+            if ( Kokkos::is_initialized() && this->finaliser ) KokkosHandler::finalise();
+          }
+          /* === OPERATORS === */
+          inline
+          operator bool() const
+          {
+            return this->finaliser;
+          }
+
+          inline KokkosHandler&
+          operator=( bool value )
+          {
+            this->finaliser = value;
+            return *this;
+          }
+          /* === STATIC MEMBERS === */
+          static inline void
+          finalise( )
+          {
+            Kokkos::finalize();
+          }
+
+          static inline RWSpinLock<>&
+          get_init_lock( )
+          {
+            static RWSpinLock<> init_lock;
+            return init_lock;
+          }
+
+          static inline RWSpinLock<>&
+          get_final_lock( )
+          {
+            static RWSpinLock<> final_lock;
+            return final_lock;
+          }
+          /* === DATA MEMBERS === */
+          bool finaliser;
+        };
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
+            unsigned int gocc_thr = 0,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), seed_len( len ),
+          : graph_ptr( &g ), pindex( g, true ), handler( true ), seed_len( len ),
           seed_mismatches( mismatches ),
+          gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
         { }
         /* ====================  ACCESSORS      ====================================== */
@@ -647,12 +890,48 @@ namespace psi {
         }
 
         /**
+         *  @brief  getter function for gocc_threshold.
+         */
+          inline unsigned int
+        get_gocc_threshold( ) const
+        {
+          return this->gocc_threshold;
+        }
+
+        /**
+         *  @brief  getter function for `handler.finaliser`.
+         */
+          inline bool
+        is_finaliser( ) const
+        {
+          return this->handler;
+        }
+
+        /**
          *  @brief  getter function for pindex.
          */
           inline pathindex_type const&
         get_pindex( ) const
         {
           return this->pindex;
+        }
+
+        /**
+         *  @brief  getter function for distance index matrix.
+         */
+          inline crsmat_type const&
+        get_distance_matrix( ) const
+        {
+          return this->distance_mat;
+        }
+
+        /**
+         * @brief  getter function for stats_ptr.
+         */
+          inline stats_type const&
+        get_stats() const
+        {
+          return *this->stats_ptr;
         }
 
         /* ====================  MUTATORS       ====================================== */
@@ -705,6 +984,27 @@ namespace psi {
           this->seed_mismatches = value;
         }
 
+        /**
+         *  @brief setter function for gocc_threshold
+         */
+          inline void
+        set_gocc_threshold( unsigned int value )
+        {
+          this->gocc_threshold = value;
+        }
+
+          inline void
+        set_as_finaliser( )
+        {
+          this->handler = true;
+        }
+
+          inline void
+        unset_as_finaliser( )
+        {
+          this->handler = false;
+        }
+
           inline readsrecord_type
         create_readrecord( ) const
         {
@@ -714,13 +1014,10 @@ namespace psi {
           inline readsindex_type
         index_reads( readsrecord_type const& reads ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-          thread_local static const std::string timer_id = "index-reads" + thread_id;
-          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::index_chunk );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::index_chunk );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-reads" );
+
           return readsindex_type( reads.str );
         }
 
@@ -729,13 +1026,10 @@ namespace psi {
         get_seeds( readsrecord_type& seeds, readsrecord_type const& reads,
                    T distance ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-          thread_local static const std::string timer_id = "seeding" + thread_id;
-          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::seed_chunk );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::seed_chunk );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeding" );
+
           seeding( seeds, reads, this->seed_len, distance );
         }
 
@@ -772,15 +1066,10 @@ namespace psi {
               std::function< void( std::string const& ) > info=nullptr,
               std::function< void( std::string const& ) > warn=nullptr )
           {
-            thread_local static const std::string timer_id = "pick-paths" + get_thread_id();
+            if ( n == 0 ) return;
 
             this->stats_ptr->set_progress( progress_type::select_paths );
-
-            if ( n == 0 ) return;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "pick-paths" );
 
             this->pindex.reserve( n * this->graph_ptr->get_path_count() );
             auto hp_itr = begin( *this->graph_ptr, Haplotyper<>() );
@@ -802,13 +1091,116 @@ namespace psi {
         inline void
         index_paths( )
         {
-          thread_local static const std::string timer_id = "index-paths" + get_thread_id();
-          this->stats_ptr->set_progress( progress_type::create_index );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          this->stats_ptr->set_progress( progress_type::create_pindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-paths" );
+
           this->pindex.create_index();
+        }
+
+      /**
+       *  @brief  Create distance index matrix.
+       *
+       *  NOTE: This method assumes that the input graph is sorted such that node rank
+       *  ranges in components are disjoint.
+       *
+       *  NOTE: This function assumes that the graph is augmented by one path per region
+       *        and nothing more.
+       */
+        inline void
+        create_distance_index( unsigned int dmin=0, unsigned int dmax=0,
+                               std::function< void( std::string const& ) > info=nullptr,
+                               std::function< void( std::string const& ) > warn=nullptr )
+        {
+          if ( dmin == 0 || dmax < dmin ) return;  // not constructible
+          if ( dmax == 0 ) dmax = dmin;
+
+          this->stats_ptr->set_progress( progress_type::create_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
+
+          auto provider = [this, dmin, dmax, info]( auto callback ) {
+            /* Extract component boundary nodes */
+            auto comp_ranks = util::components_ranks( *this->graph_ptr );
+            comp_ranks.push_back( 0 );  // add the upper bound of the last component
+
+            if ( info ) {
+              info( "Constructing distance index for " +
+                    std::to_string( comp_ranks.size()-1 ) + " regions..." );
+            }
+
+            for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
+              auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
+                                                     comp_ranks[idx], comp_ranks[idx+1] );
+              auto dist_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
+              auto sid = this->graph_ptr->rank_to_id( comp_ranks[idx] );
+              auto srow = gum::util::id_to_charorder( *this->graph_ptr, sid );
+              callback( dist_mat, srow, srow );
+              if ( info ) {
+                info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
+              }
+            }
+          };
+          auto nrows = gum::util::total_nof_loci( *this->graph_ptr );
+          auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
+                           this->graph_ptr->get_edge_count() ) * ( dmax - dmin );
+          mutable_crsmat_type udindex( nrows, nrows, provider, nnz_est );
+          this->distance_mat.assign(
+              util::compress_distance_index< mutable_crsmat_type >( udindex,
+                                                                    *this->graph_ptr ) );
+          this->d = std::make_pair( dmin, dmax );
+        }
+
+        inline bool
+        save_distance_index( std::string prefix ) const
+        {
+          if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
+
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
+              "M" + std::to_string( this->d.second );
+          std::ofstream ofs( fname, std::ofstream::out | std::ofstream::binary );
+          if ( !ofs ) return false;
+
+          this->stats_ptr->set_progress( progress_type::write_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-dindex" );
+
+          this->distance_mat.serialize( ofs );
+          return true;
+        }
+
+        inline bool
+        open_distance_index( std::string prefix, unsigned int dmin=0, unsigned int dmax=0 )
+        {
+          if ( dmax == 0 ) dmax = dmin;
+          this->d = std::make_pair( dmin, dmax );
+
+          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
+              "M" + std::to_string( this->d.second );
+          std::ifstream ifs( fname, std::ifstream::in | std::ifstream::binary );
+          if ( !ifs ) return false;
+
+          this->stats_ptr->set_progress( progress_type::load_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-dindex" );
+
+          this->distance_mat.load( ifs );
+          return true;
+        }
+
+        inline bool
+        verify_distance( id_type v, offset_type o, id_type u, offset_type p ) const
+        {
+          this->stats_ptr->set_progress( progress_type::ready );
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::query_dindex );
+
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-dindex" );
+
+          if ( v == u ) {  // intra-node distance
+            if ( o > p ) return false;
+            return this->d.first <= ( p - o ) && ( p - o ) <= this->d.second;
+          }
+          // inter-node distance
+          auto v_charid = gum::util::id_to_charorder( *this->graph_ptr, v ) + o;
+          auto u_charid = gum::util::id_to_charorder( *this->graph_ptr, u ) + p;
+          return this->distance_mat( v_charid, u_charid );
         }
 
         /**
@@ -817,11 +1209,15 @@ namespace psi {
          *  @param  n The number of paths.
          *  @param  patched Whether patch the selected paths or not.
          *  @param  context The context size for patching.
+         *  @param  step_size  The step size for starting loci sampling.
+         *  @param  dmin  The distance index minimum read insert size.
+         *  @param  dmax  The distance index maximum read insert size.
          *  @param  progress A callback function reporting the progress of path selection.
          */
         inline void
         create_path_index( unsigned int n, bool patched=true,
             unsigned int context=0, unsigned int step_size=1,
+            unsigned int dmin=0, unsigned int dmax=0,
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -835,22 +1231,22 @@ namespace psi {
                 };
           }
           this->pick_paths( n, patched, context, progress, info, warn );
-          info( "Indexing the selected paths..." );
+          if ( info ) info( "Indexing the selected paths..." );
           this->index_paths();
-          info( "Detecting uncovered loci..." );
+          if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
+          if ( info ) info( "Constructing distance index for pair distance queries..." );
+          this->create_distance_index( dmin, dmax, info, warn );
         }
 
         inline bool
         serialize_path_index_only( std::string const& fpath )
         {
-          thread_local static const std::string timer_id = "save-paths" + get_thread_id();
-          this->stats_ptr->set_progress( progress_type::write_index );
           if ( fpath.empty() ) return false;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+
+          this->stats_ptr->set_progress( progress_type::write_pindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-pindex" );
+
           return this->pindex.serialize( fpath );
         }
 
@@ -862,7 +1258,8 @@ namespace psi {
         serialize_path_index( std::string const& fpath, unsigned int step_size=1 )
         {
           return this->serialize_path_index_only( fpath ) &&
-                this->save_starts( fpath, this->seed_len, step_size );
+              this->save_starts( fpath, this->seed_len, step_size ) &&
+              this->save_distance_index( fpath );
         }
 
         /**
@@ -872,20 +1269,27 @@ namespace psi {
         inline bool
         load_path_index_only( std::string const& fpath, unsigned int context=0 )
         {
-          this->stats_ptr->set_progress( progress_type::load_pindex );
           if ( fpath.empty() ) return false;
+
+          this->stats_ptr->set_progress( progress_type::load_pindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-pindex" );
+
           this->pindex.set_context( context );
           return this->pindex.load( fpath );
         }
 
         inline bool
         load_path_index( std::string const& fpath, unsigned int context=0,
-                         unsigned int step_size=1 )
+                         unsigned int step_size=1, unsigned int dmin=0, unsigned int dmax=0 )
         {
           if ( !this->load_path_index_only( fpath, context ) ) return false;
           if ( !this->open_starts( fpath, this->seed_len, step_size ) ) {
             this->add_uncovered_loci( step_size );
             this->save_starts( fpath, this->seed_len, step_size );
+          }
+          if ( !this->open_distance_index( fpath, dmin, dmax ) ) {
+            this->create_distance_index( dmin, dmax );
+            this->save_distance_index( fpath );
           }
           return true;
         }
@@ -909,35 +1313,56 @@ namespace psi {
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
             typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
-            thread_local static const std::string thread_id = get_thread_id();
-            thread_local static const std::string timer_id = "seeds-on-paths" + thread_id;
-            this->stats_ptr->set_progress( progress_type::ready );
-            this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_on_paths );
-
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
               throw std::runtime_error( "seed length should not be larger than context size" );
             }
 
-            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+            if ( length( this->pindex.index ) == 0 ) return;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            this->stats_ptr->set_progress( progress_type::ready );
+            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
+            thread_stats.set_progress( thread_progress_type::find_on_paths );
+
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeds-on-paths" );
 
             TPIterator piter( this->pindex.index );
             TRIterator riter( reads_index );
-            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len, callback );
+            auto collect_stats =
+                [&thread_stats]( std::size_t count, bool skipped ) {
+                  thread_stats.add_seed_gocc( count );
+                  if ( skipped ) thread_stats.inc_gocc_skips();
+                };
+
+            kmer_exact_matches( piter, riter, &this->pindex, &reads, this->seed_len,
+                                callback, this->gocc_threshold, collect_stats );
+          }
+
+          template< typename TString >
+          inline void
+          seeds_on_paths( TString const& sequence,
+                          std::function< void(typename traverser_type::output_type const &) > callback ) const
+          {
+            typedef TopDownFine<> TIterSpec;
+            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+
+            if ( length( indexText( this->pindex.index ) ) == 0 ) return;
+
+            this->stats_ptr->set_progress( progress_type::ready );
+            auto&& thread_stats = this->stats_ptr->get_this_thread_stats();
+            thread_stats.set_progress( thread_progress_type::find_mems );
+
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "query-paths" );
+
+            TPIterator piter( this->pindex.index );
+            auto context = this->pindex.get_context();
+            find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
+                       this->gocc_threshold );
           }
 
             inline void
           add_uncovered_loci( unsigned int step=1 )
           {
-            thread_local static const std::string timer_id = "find-uncovered" + get_thread_id();
-
-            this->stats_ptr->set_progress( progress_type::find_uncovered );
-
             auto&& pathset = this->pindex.get_paths_set();
             if ( pathset.size() == 0 )
             {
@@ -945,10 +1370,8 @@ namespace psi {
               return;
             }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            this->stats_ptr->set_progress( progress_type::find_uncovered );
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "find-uncovered" );
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
             auto bt_end = end( *this->graph_ptr, Backtracker() );
@@ -1004,12 +1427,8 @@ namespace psi {
           // TODO: Add documentation.
           // TODO: mention in the documentation that the `step` is approximately preserved in
           //       the whole graph.
-          thread_local static const std::string timer_id = "find-uncovered" + get_thread_id();
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          this->stats_ptr->set_progress( progress_type::find_uncovered );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "find-uncovered" );
 
           auto bfs_itr = begin( *this->graph_ptr,  BFS() );
           auto bfs_end = end( *this->graph_ptr,  BFS() );
@@ -1051,13 +1470,8 @@ namespace psi {
             inline unsigned long long int
           nof_uncovered_kmers( PathSet< TPath, TSpec >& paths, unsigned int k )
           {
-            thread_local static const std::string timer_id = "count-uncovered-kmer" + get_thread_id();
-
             if ( this->starting_loci.size() == 0 ) return 0;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-            auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+            [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "count-uncovered-kmer" );
 
             auto bt_itr = begin( *this->graph_ptr, Backtracker() );
             auto bt_end = end( *this->graph_ptr, Backtracker() );
@@ -1106,11 +1520,13 @@ namespace psi {
         open_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          this->stats_ptr->set_progress( progress_type::load_starts );
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
+
+          this->stats_ptr->set_progress( progress_type::load_starts );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-starts" );
 
           std::function< void( vg::Position& ) > push_back =
               [this]( vg::Position& pos ) {
@@ -1132,11 +1548,13 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          this->stats_ptr->set_progress( progress_type::write_starts );
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
+
+          this->stats_ptr->set_progress( progress_type::write_starts );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
           std::function< vg::Position( uint64_t ) > lambda =
               [this]( uint64_t i ) {
@@ -1170,7 +1588,8 @@ namespace psi {
         }
 
           inline void
-        setup_traverser( traverser_type& traverser, readsrecord_type const& reads, readsindex_type& reads_index ) const
+        setup_traverser( traverser_type& traverser, readsrecord_type const& reads,
+                         readsindex_type& reads_index ) const
         {
           traverser.set_reads( &reads );
           traverser.set_reads_index( &reads_index );
@@ -1180,15 +1599,11 @@ namespace psi {
         seeds_off_paths( traverser_type& traverser,
                          std::function< void( typename traverser_type::output_type const& ) > callback ) const
         {
-          thread_local static const std::string thread_id = get_thread_id();
-          thread_local static const std::string timer_id = "seeds-off-path" + thread_id;
           this->stats_ptr->set_progress( progress_type::ready );
-          this->stats_ptr->get_thread_stats( thread_id ).set_progress( thread_progress_type::find_off_paths);
+          this->stats_ptr->get_this_thread_stats().set_progress(
+              thread_progress_type::find_off_paths );
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-          auto timer = this->stats_ptr->timeit( timer_id );
-#pragma GCC diagnostic pop
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "seeds-off-path" );
 
           for ( std::size_t idx = 0; idx < this->starting_loci.size(); ++idx )
           {
@@ -1197,16 +1612,42 @@ namespace psi {
             if ( this->starting_loci[ idx + 1 ].node_id() == locus.node_id() ) continue;
 
             traverser.run( callback );
-            this->stats_ptr->get_thread_stats( thread_id ).set_locus_idx( idx );
+            this->stats_ptr->get_this_thread_stats().set_locus_idx( idx );
           }
         }
+
+          inline void
+        seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
+                   std::function< void(typename traverser_type::output_type const &) > callback ) const
+        {
+          this->seeds_on_paths( reads, reads_index, callback );
+          this->setup_traverser( traverser, reads, reads_index );
+          this->seeds_off_paths( traverser, callback );
+          this->stats_ptr->get_this_thread_stats().inc_chunks_done( );
+        }
+
+          inline void
+        seeds_all( readsrecord_type const& reads, readsindex_type& reads_index, traverser_type& traverser,
+                   std::function< void(typename traverser_type::output_type const &) > callback1,
+                   std::function< void(typename traverser_type::output_type const &) > callback2 ) const
+        {
+          this->seeds_on_paths( reads, reads_index, callback1 );
+          this->setup_traverser( traverser, reads, reads_index );
+          this->seeds_off_paths( traverser, callback2 );
+          this->stats_ptr->get_this_thread_stats().inc_chunks_done( );
+        }
+
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* graph_ptr;
         std::vector< vg::Position > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
+        KokkosHandler handler;
+        crsmat_type distance_mat;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
+        unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
+        std::pair< unsigned int, unsigned int > d; /**< @brief distance constraints. */
         std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */
         /**

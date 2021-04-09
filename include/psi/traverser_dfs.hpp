@@ -63,6 +63,10 @@ namespace psi {
         TraverserDFS( const graph_type* g, unsigned int len )
           : base_type( g, len ), cstate( nullptr, 0, 0, 0, 0 )
         { }
+
+        TraverserDFS( )
+          : base_type( ), cstate( nullptr, 0, 0, 0, 0 )
+        { }
         /* ====================  METHODS       ======================================= */
           inline void
         run( std::function< void( output_type const& ) > callback )
@@ -84,6 +88,7 @@ namespace psi {
             // Process the seed hit.
             seqan::String< TSAValue > saPositions = getOccurrences( cstate.iter.get_iter_() );
             typename seqan::Size< decltype( saPositions ) >::Type i;
+            stats_type::inc_total_seeds_off_paths( length( saPositions ) );
             for ( i = 0; i < length( saPositions ); ++i )
             {
               output_type hit;
@@ -91,6 +96,8 @@ namespace psi {
               hit.node_offset = cstate.spos.offset();
               hit.read_id = position_to_id( *(this->reads), saPositions[i].i1 );  // Read ID.
               hit.read_offset = position_to_offset( *(this->reads), saPositions[i] );  // Position in the read.
+              hit.match_len = this->seed_len;
+              hit.gocc = length( saPositions );
               callback( hit );
             }
           }

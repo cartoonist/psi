@@ -1,5 +1,5 @@
 /**
- *    @file  linear.cc
+ *    @file  linear.cpp
  *   @brief  Finding seed hits in a linear sequence.
  *
  *  This program does exactly same algorithm on linear sequence for comparison.

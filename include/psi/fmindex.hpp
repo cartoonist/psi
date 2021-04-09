@@ -88,6 +88,7 @@ namespace seqan {
         typedef typename value_type::index_category index_category;
         typedef char char_type;
         typedef typename value_type::comp_char_type comp_char_type;
+        typedef typename std::pair< savalue_type, savalue_type > range_type;
         /* ====================  LIFECYCLE     ======================================= */
         Index ( )
           : text_p( nullptr ), owner( true ) { }
@@ -311,6 +312,20 @@ namespace seqan {
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::savalue_type
+    length( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index )
+    {
+      return index.size();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
+      inline typename Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >::savalue_type
+    length( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > const& index )
+    {
+      return index.size();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
     open( Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >& index,
         const std::string& file_name )
@@ -376,12 +391,14 @@ namespace seqan {
         typedef typename index_type::index_category index_category;
         typedef typename index_type::char_type char_type;
         typedef typename index_type::comp_char_type comp_char_type;
+        typedef typename index_type::range_type range_type;
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
-        Finder( index_type* i_p )
-          : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), initiated( false ) {}
-        Finder( index_type& i )
+        Finder( index_type const* i_p )
+          : index_p( i_p ), occ_cur( 0 ), occ_end( this->index_p->size()-1 ),
+            initiated( false ) {}
+        Finder( index_type const& i )
           : Finder( &i ) {}
         /* ====================  OPERATORS     ======================================= */
           inline Finder&
@@ -415,7 +432,7 @@ namespace seqan {
         clear( )
         {
           this->occ_cur = 0;
-          this->occ_end = 0;
+          this->occ_end = this->index_p->size()-1;
           this->initiated = false;
         }
 
@@ -438,18 +455,36 @@ namespace seqan {
           backward_search( TIter pt_begin, TIter pt_end )
           {
             indexRequire( *(this->index_p), FibreSALF() );
-            this->occ_cur = 0;
-            this->occ_end = this->index_p->size()-1;
             while ( pt_begin < pt_end && this->occ_cur <= this->occ_end ) {
               --pt_end;
-              sdsl::backward_search( this->index_p->fm, this->occ_cur, this->occ_end,
-                  (char)*pt_end, this->occ_cur, this->occ_end);
+              this->_backward_search( (char)*pt_end );
             }
             this->initiated = true;
           }
+
+          inline void
+        backward_search( char c )
+        {
+          indexRequire( *(this->index_p), FibreSALF() );
+          this->_backward_search( c );
+          this->initiated = true;
+        }
+
+          inline range_type
+        range( ) const
+        {
+          return range_type( this->occ_cur, this->occ_end );
+        }
       private:
+        /* ====================  METHODS       ======================================= */
+          inline void
+        _backward_search( char c )
+        {
+          sdsl::backward_search( this->index_p->fm, this->occ_cur, this->occ_end,
+                                 c, this->occ_cur, this->occ_end);
+        }
         /* ====================  DATA MEMBERS  ======================================= */
-        index_type* index_p;
+        index_type const* index_p;
         savalue_type occ_cur;
         savalue_type occ_end;
         bool initiated;
@@ -505,6 +540,146 @@ namespace seqan {
       finder.clear();
     }
 
+  template< typename TIndex, typename TSpec >
+    class IterHistory;
+
+  template< typename TIndex >
+    class IterHistory< TIndex, TopDown< ParentLinks<> > > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef TIndex index_type;
+        typedef typename index_type::savalue_type savalue_type;
+        typedef typename index_type::range_type range_type;
+        typedef range_type value_type;
+        typedef std::vector< value_type > container_type;
+        typedef typename container_type::size_type size_type;
+        typedef typename container_type::const_reference const_reference;
+        typedef typename container_type::reference reference;
+        /* ====================  METHODS       ======================================= */
+          inline size_type
+        size( ) const
+        {
+          return this->stack.size();
+        }
+
+          inline bool
+        empty( ) const
+        {
+          return this->size() == 0;
+        }
+
+          inline const_reference
+        back( ) const
+        {
+          return this->stack.back();
+        }
+
+          inline reference
+        back( )
+        {
+          return this->stack.back();
+        }
+
+          inline void
+        push_back( value_type const& range )
+        {
+          this->stack.push_back( range );
+        }
+
+          inline void
+        pop_back( )
+        {
+          this->stack.pop_back();
+        }
+
+          inline void
+        reserve( size_type size )
+        {
+          this->stack.reserve( size );
+        }
+
+          inline void
+        clear( )
+        {
+          this->stack.clear();
+        }
+
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        container_type stack;
+    };
+
+  template< typename TIndex >
+    class IterHistory< TIndex, TopDown<> > {
+      public:
+        /* ====================  TYPEDEFS      ======================================= */
+        typedef TIndex index_type;
+        typedef typename index_type::savalue_type savalue_type;
+        typedef typename index_type::range_type range_type;
+        typedef range_type value_type;
+        typedef IterHistory container_type;
+        typedef std::size_t size_type;
+        typedef value_type const& const_reference;
+        typedef value_type& reference;
+        /* ====================  CONSTANTS     ======================================= */
+        constexpr static range_type EMPTY_RANGE = { 1, 0 };
+        /* ====================  LIFECYCLE     ======================================= */
+        IterHistory( ) : last( IterHistory::EMPTY_RANGE ) { }
+        /* ====================  METHODS       ======================================= */
+          inline bool
+        empty( ) const
+        {
+          return last.first > last.second;
+        }
+
+          inline size_type
+        size( ) const
+        {
+          return static_cast< size_type >( !this->empty() );
+        }
+
+          inline const_reference
+        back( ) const
+        {
+          assert( !this->empty() );
+          return last;
+        }
+
+          inline reference
+        back( )
+        {
+          assert( !this->empty() );
+          return last;
+        }
+
+          inline void
+        push_back( value_type const& range )
+        {
+          this->last = range;
+        }
+
+          constexpr inline void
+        pop_back( )
+        {
+          assert( !this->empty() );
+          this->last = IterHistory::EMPTY_RANGE;
+        }
+
+          inline void
+        reserve( size_type )
+        { /* noop */ }
+
+          inline void
+        clear( )
+        {
+          this->last = IterHistory::EMPTY_RANGE;
+        }
+
+      private:
+        /* ====================  DATA MEMBERS  ======================================= */
+        range_type last;
+    };
+
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
     class Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
       public:
@@ -517,13 +692,14 @@ namespace seqan {
         typedef typename index_type::index_category index_category;
         typedef typename index_type::char_type char_type;
         typedef typename index_type::comp_char_type comp_char_type;
+        typedef typename index_type::range_type range_type;
         typedef typename std::vector< pos_type > occs_type;
-        typedef typename std::pair< savalue_type, savalue_type > range_type;
+        typedef IterHistory< index_type, TopDown< TSpec > > history_type;
         /* ====================  ASSERTS       ======================================= */
         static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
         /* ====================  LIFECYCLE     ======================================= */
         Iter( index_type const* i_p )
-          : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), initialized( false ) { }
+          : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), depth( 0 ), initialized( false ) { }
         Iter( index_type const& i )
           : Iter( &i ) { }
         /* ====================  METHODS       ======================================= */
@@ -550,6 +726,7 @@ namespace seqan {
         {
           this->occ_cur = 0;
           this->occ_end = 0;
+          this->depth = 0;
           this->initialized = false;
           this->history.clear();
         }
@@ -565,7 +742,7 @@ namespace seqan {
           inline savalue_type
         get_raw_position( savalue_type i )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           const Iter* _this = this;
           return _this->get_raw_position( i );
         }
@@ -580,7 +757,7 @@ namespace seqan {
           inline pos_type
         get_position( savalue_type i )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           const Iter* _this = this;
           return _this->get_position( i );
         }
@@ -612,9 +789,15 @@ namespace seqan {
         }
 
           inline void
+        history_push( range_type range )
+        {
+          this->history.push_back( range );
+        }
+
+          inline void
         history_push( )
         {
-          this->history.push_back( std::make_pair( this->occ_cur, this->occ_end ) );
+          this->history_push( { this->occ_cur, this->occ_end } );
         }
 
           inline void
@@ -642,18 +825,20 @@ namespace seqan {
           inline savalue_type
         count( )
         {
-          if ( !this->is_initialized() ) this->init();
+          if ( !this->is_initialized() ) this->go_root();
           const Iter* _this = this;
           return _this->count();
         }
 
           inline void
-        init( )
+        go_root( )
         {
           indexRequire( *(this->index_p), FibreSALF() );
           this->occ_cur = 0;
           this->occ_end = this->index_size() - 1;
+          this->depth = 0;
           this->initialized = true;
+          this->history.clear();
         }
 
           inline char_type
@@ -666,13 +851,20 @@ namespace seqan {
           inline savalue_type
         go_down( char_type c )
         {
-          if ( !this->is_initialized() ) this->init();
-          this->history_push();
+          if ( !this->is_initialized() ) this->go_root();
+          range_type save( this->occ_cur, this->occ_end );
           savalue_type no = sdsl::backward_search( this->index_p->fm,
               this->occ_cur, this->occ_end, (char)c,
               this->occ_cur, this->occ_end );
 
-          if ( no == 0 ) this->history_pop();
+          if ( no == 0 ) {
+            this->occ_cur = save.first;
+            this->occ_end = save.second;
+          }
+          else {
+            this->history.push_back( save );
+            ++this->depth;
+          }
           return no;
         }
 
@@ -687,10 +879,19 @@ namespace seqan {
           return 0;
         }
 
+          inline bool
+        go_up( )
+        {
+          if ( this->is_root() || this->history.empty() ) return false;
+          this->history_pop();
+          --this->depth;
+          return true;
+        }
+
           inline savalue_type
         rep_length( ) const
         {
-          return this->history_size();
+          return this->depth;
         }
 
           inline savalue_type
@@ -714,13 +915,20 @@ namespace seqan {
           auto a_loc = this->get_raw_position( 0 );
           return extract( this->index_p->fm, a_loc, a_loc + this->rep_length() - 1 );
         }
+
+          inline range_type
+        range( ) const
+        {
+          return range_type( this->occ_cur, this->occ_end );
+        }
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         index_type const* index_p;
         savalue_type occ_cur;
         savalue_type occ_end;
+        savalue_type depth;
         bool initialized;
-        std::vector< range_type > history;
+        history_type history;
     };
 
   template< typename TIterator, typename TSAValue >
@@ -748,7 +956,7 @@ namespace seqan {
     goRoot( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
       if ( isRoot( iter ) ) return;
-      iter.init();
+      iter.go_root();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
@@ -763,9 +971,7 @@ namespace seqan {
       inline bool
     goUp( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
     {
-      if ( isRoot( iter ) ) return false;
-      iter.history_pop();
-      return true;
+      return iter.go_up();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
@@ -813,6 +1019,20 @@ namespace seqan {
     getOccurrences( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
     {
       return iter.get_occurrences();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    countOccurrences( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > const& iter )
+    {
+      return iter.count();
+    }
+
+  template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
+      inline typename Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >::savalue_type
+    countOccurrences( Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > >& iter )
+    {
+      return iter.count();
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >

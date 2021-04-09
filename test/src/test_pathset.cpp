@@ -102,6 +102,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
         std::iota( nodes.begin(), nodes.end(), 200 );
         path = TPath( &graph, std::move( nodes ) );
         set.push_back( path );
+        set.initialize();
 
         THEN( "It should pass the basic tests" )
         {

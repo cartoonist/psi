@@ -656,6 +656,165 @@ SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
       }
     }
   }
+
+  GIVEN( "A bit vector whose size is less than a word length (64-bit)" )
+  {
+    sdsl::bit_vector sbv( 12, 0 );
+    sbv[ 0 ] = 1;
+    sbv[ 5 ] = 1;
+    sbv[ 11 ] = 1;
+
+    WHEN( "The whole bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 30, 1 );
+      bvcopy( sbv, dbv );
+
+      THEN( "All first bits of length of source bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xfffffffffffff821 );
+      }
+    }
+
+    WHEN( "The bit vector is partially copied to another" )
+    {
+      sdsl::bit_vector dbv( 30, 1 );
+      bvcopy( sbv, dbv, 6, 1, 6 );
+
+      THEN( "That part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffbf );
+      }
+    }
+
+    WHEN( "A suffix of the bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 30, 1 );
+      bvcopy( sbv, dbv, 5, 7, 5 );
+
+      THEN( "The suffix part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xfffffffffffff83f );
+      }
+    }
+  }
+
+  GIVEN( "A bit vector whose size is a multiplier of a word length (64-bit)" )
+  {
+    sdsl::bit_vector sbv( 7872, 0 );
+    sbv.set_int( 542, 0x900000000fafabcd );
+    sbv.set_int( 7808, 0xaaaaaaaaaaaaaaaa );
+
+    WHEN( "The whole bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 7872, 1 );
+      bvcopy( sbv, dbv );
+
+      THEN( "All first bits of length of source bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0x0 );
+        REQUIRE( dbv.get_int( 100 ) == 0x0 );
+        REQUIRE( dbv.get_int( 478 ) == 0x0 );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 893 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7744 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7808 ) == 0xaaaaaaaaaaaaaaaa );
+      }
+    }
+
+    WHEN( "The bit vector is partially copied to another" )
+    {
+      sdsl::bit_vector dbv( 8000, 1 );
+      bvcopy( sbv, dbv, 542, 64, 542 );
+
+      THEN( "That part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+      }
+    }
+
+    WHEN( "A suffix of the bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 8000, 1 );
+      bvcopy( sbv, dbv, 7808, 64, 7808 );
+
+      THEN( "The suffix part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7744 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7808 ) == 0xaaaaaaaaaaaaaaaa );
+      }
+    }
+  }
+
+  GIVEN( "A bit vector whose size is larger than word length (64-bit)" )
+  {
+    sdsl::bit_vector sbv( 7800, 0 );
+    sbv.set_int( 0, 0xdddddddddddddddd );
+    sbv.set_int( 542, 0x900000000fafabcd );
+    sbv.set_int( 7736, 0xaaaaaaaaaaaaaaaa );
+
+    WHEN( "The whole bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 7872, 1 );
+      bvcopy( sbv, dbv );
+
+      THEN( "All first bits of length of source bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xdddddddddddddddd );
+        REQUIRE( dbv.get_int( 100 ) == 0x0 );
+        REQUIRE( dbv.get_int( 478 ) == 0x0 );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 893 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7672 ) == 0x0 );
+        REQUIRE( dbv.get_int( 7736 ) == 0xaaaaaaaaaaaaaaaa );
+      }
+    }
+
+    WHEN( "The bit vector is partially copied to another" )
+    {
+      sdsl::bit_vector dbv( 8000, 1 );
+      bvcopy( sbv, dbv, 542, 74, 542 );
+
+      THEN( "That part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0x900000000fafabcd );
+        REQUIRE( dbv.get_int( 606 ) == 0xfffffffffffffc00 );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+      }
+    }
+
+    WHEN( "A suffix of the bit vector is copied to another" )
+    {
+      sdsl::bit_vector dbv( 8000, 1 );
+      bvcopy( sbv, dbv, 7736, 64, 7736 );
+
+      THEN( "The suffix part of destination bit vector should be equal to the source" )
+      {
+        REQUIRE( dbv.get_int( 0 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 100 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 478 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 542 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 893 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 6936 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7672 ) == 0xffffffffffffffff );
+        REQUIRE( dbv.get_int( 7736 ) == 0xaaaaaaaaaaaaaaaa );
+      }
+    }
+  }
 }
 
 SCENARIO( "Generate random integers", "[utils]" )
@@ -701,6 +860,87 @@ SCENARIO( "Generate random strings", "[utils]" )
     {
       for ( int i = 0; i < n; ++i ) {
         REQUIRE( random::random_string( len ).length() == len );
+      }
+    }
+  }
+}
+
+SCENARIO( "Compute the average of a long stream of integers in parallel", "[utils]" )
+{
+  using value_type = uint16_t;
+
+  uint8_t nofthreads = 8;
+  value_type lbound = 20;
+  value_type ubound = 50;
+  GIVEN( std::to_string( nofthreads ) + " threads contributing to a shared sum variable" )
+  {
+    std::atomic< value_type > sum( 0 );
+    std::atomic< value_type > total( 0 );
+    std::atomic< double > avg( -1 );
+    RWSpinLock rws_lock;
+    std::atomic_ullong real_sum( 0 );
+    std::atomic_ullong real_tot( 0 );
+    std::vector< std::thread > threads;
+
+    auto update =
+        [&sum, &total, &avg]() -> void {
+          auto partial_sum = sum.load();
+          auto partial_total = total.load();
+          sum.store( 0 );
+          total.store( 0 );
+          double pre_avg = avg.load();
+          double new_avg = partial_sum / static_cast< double >( partial_total );
+          if ( pre_avg == -1 ) avg.store( new_avg );
+          else avg.store( ( new_avg + pre_avg ) / 2 );
+        };
+
+    auto run =
+        [&sum, &total, &rws_lock, &real_sum, &real_tot, update, lbound, ubound]() -> void {
+          constexpr const unsigned int RETRY_THRESHOLD = 4;
+          constexpr const unsigned int NOF_VALUES = 2000;
+
+          unsigned int retry = RETRY_THRESHOLD;
+          for ( std::size_t i = 0; i < NOF_VALUES; ++i ) {
+            value_type value = random::random_integer( lbound, ubound );
+            while ( true ) {
+              auto peek_sum = sum.load();
+              if ( peek_sum >= std::numeric_limits< value_type >::max() - value ) {
+                UniqWriterLock reducer( rws_lock );
+                if ( reducer ) {
+                  REQUIRE( !rws_lock.acquire_writer_weak() );
+                  REQUIRE( sum.load() >= std::numeric_limits< value_type >::max() - value );
+                  update();
+                }
+                continue;
+              }
+              {
+                ReaderLock adder( rws_lock );
+                if ( sum.compare_exchange_weak( peek_sum, peek_sum+value,
+                                                std::memory_order_release, std::memory_order_relaxed ) ) {
+                  total.fetch_add( 1 );
+                  break;
+                }
+              }
+
+              if ( --retry == 0 ) {
+                retry = RETRY_THRESHOLD;
+                std::this_thread::yield();
+              }
+            }
+            real_sum.fetch_add( value );
+            real_tot.fetch_add( 1 );
+          }
+        };
+
+    WHEN( "The average is computed" )
+    {
+      for ( std::size_t tidx = 0; tidx < nofthreads; ++tidx ) threads.emplace_back( run );
+      THEN( "It should be approximately correct" )
+      {
+        for ( std::size_t tidx = 0; tidx < nofthreads; ++tidx ) threads[ tidx ].join();
+        update();
+        double diff = real_sum / static_cast< double >( real_tot ) - avg;
+        REQUIRE( diff == Approx( 0 ).margin( 0.3 ) );
       }
     }
   }

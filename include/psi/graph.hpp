@@ -23,7 +23,9 @@
 #include <functional>
 #include <random>
 #include <cstdint>
+#include <vector>
 
+#include <gum/graph.hpp>
 #include <vg/vg.pb.h>
 #include <vg/io/stream.hpp>
 
@@ -51,41 +53,25 @@ namespace psi {
       return max;
     }
 
-    template< class TGraph >
-    inline typename TGraph::offset_type
-    total_nof_loci( TGraph const& graph )
-    {
-      typedef TGraph graph_type;
-      typedef typename graph_type::id_type id_type;
-      typedef typename graph_type::rank_type rank_type;
-      typedef typename graph_type::offset_type offset_type;
-
-      offset_type total = 0;
-      graph.for_each_node(
-          [&graph, &total]( rank_type rank, id_type id ) {
-            total += graph.node_length( id );
-            return true;
-          } );
-      return total;
-    }
-
-    template< class TGraph, typename TNodeIter, typename TEdgeIter >
+    template< class TGraph, typename TNodeIter, typename TEdgeIter,
+              typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
+                                                          decltype( vg::Node().id() ) > >
     inline void
     induced_graph( TGraph const& graph,
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
-                   vg::Graph* induced )
+                   vg::Graph* induced, TCoordinate&& coord={} )
     {
       for ( ; nbegin != nend; ++nbegin ) {
         vg::Node* new_node = induced->add_node();
-        new_node->set_id( *nbegin );
+        new_node->set_id( coord( *nbegin ) );
         new_node->set_sequence( graph.node_sequence( *nbegin ) );
       }
 
       for ( ; ebegin != eend; ++ebegin ) {
         vg::Edge* new_edge = induced->add_edge();
-        new_edge->set_from( graph.from_id( *ebegin ) );
-        new_edge->set_to( graph.to_id( *ebegin ) );
+        new_edge->set_from( coord( graph.from_id( *ebegin ) ) );
+        new_edge->set_to( coord( graph.to_id( *ebegin ) ) );
         new_edge->set_from_start( graph.is_from_start( *ebegin ) );
         new_edge->set_to_end( graph.is_to_end( *ebegin ) );
         new_edge->set_overlap( graph.edge_overlap( *ebegin ) );
@@ -105,13 +91,15 @@ namespace psi {
      *  :TODO:Sat Apr 20 12:29:\@cartoonist: add ability of including path in the
      *  `vg::Graph`.
      */
-    template< class TGraph, typename TNodeIter, typename TEdgeIter >
+    template< class TGraph, typename TNodeIter, typename TEdgeIter,
+              typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
+                                                          decltype( vg::Node().id() ) > >
     inline void
     induced_graph( TGraph const& graph,
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
                    std::function< void( vg::Graph& ) > callback,
-                   std::ptrdiff_t chunk_size )
+                   std::ptrdiff_t chunk_size, TCoordinate&& coord={} )
     {
       assert( chunk_size < PTRDIFF_MAX );
       auto nodes_l = nbegin;
@@ -124,7 +112,7 @@ namespace psi {
         auto maxid = *( nodes_r - 1 );
         while ( edges_r != eend && graph.from_id( *edges_r ) <= maxid ) ++edges_r;
         vg::Graph g;
-        induced_graph( nodes_l, nodes_r, edges_l, edges_r, &g );
+        induced_graph( graph, nodes_l, nodes_r, edges_l, edges_r, &g, coord );
         callback( g );
         nodes_l = nodes_r;
         edges_l = edges_r;
@@ -266,6 +254,201 @@ namespace psi {
       }
 
       return equally_covered ? 0 : lc_id;
+    }
+
+    /**
+     *  @brief  Count the nodes of a subgraph in the graph or of the whole graph.
+     *
+     *  The subgraph is indicated by the node range [lower, upper).
+     */
+    template< class TGraph >
+    inline typename TGraph::rank_type
+    node_count( TGraph const& graph, typename TGraph::rank_type lower=1,
+                typename TGraph::rank_type upper=0 )
+    {
+      if ( upper == 0 ) upper = graph.get_node_count() + 1;
+      assert( lower <= graph.get_node_count() && lower > 0 );
+      assert( upper <= graph.get_node_count()+1 && upper > lower );
+      return upper - lower;
+    }
+
+    /**
+     *  @brief  Count the edges of a graph component or of the whole graph.
+     *
+     *  The component is indicated by the node range [lower, upper).
+     */
+    template< class TGraph >
+    inline typename TGraph::rank_type
+    edge_count( TGraph const& graph, typename TGraph::rank_type lower=1,
+                typename TGraph::rank_type upper=0 )
+    {
+      typedef typename TGraph::id_type id_type;
+      typedef typename TGraph::rank_type rank_type;
+
+      rank_type edge_count = 0;
+      graph.for_each_node(
+          [&graph, &edge_count, &upper]( rank_type rank, id_type id ){
+            edge_count += graph.outdegree( id );
+            if ( rank + 1 == upper ) return false;
+            return true;
+          },
+          lower );
+      return edge_count;
+    }
+
+    /**
+     *  @brief Get component node rank boundaries of the given graph.
+     *
+     *  @param[in]  graph The graph.
+     *  @return A sorted vector containing the smallest node rank in each component.
+     *
+     *  NOTE: This method assumes that the input graph is sorted such that node rank
+     *  ranges of components are disjoint.
+     *
+     *  NOTE: This function assumes that the graph is augmented by one path per region
+     *        and nothing more.
+     */
+    template< class TGraph >
+    inline std::vector< typename TGraph::rank_type >
+    components_ranks( TGraph const& graph )
+    {
+      std::vector< typename TGraph::rank_type > result;
+      graph.for_each_path(
+          [&graph, &result]( auto path_rank, auto path_id ) {
+            auto sid = *graph.path( path_id ).begin();
+            result.push_back( graph.id_to_rank( sid ) );
+            return true;
+          } );
+      std::sort( result.begin(), result.end() );
+      return result;
+    }
+
+    /**
+     *  @brief  Get the adjacency matrix of the graph in CRS format.
+     *
+     *  @param[in]  graph The graph.
+     *  @param[in]  tag  The CRS trait tag.
+     *  @param[in]  lower  The lower node rank (inclusive).
+     *  @param[in]  upper  The upper node rank (exclusive).
+     *  @return  The adjacency matrix.
+     *
+     *  Compute adjacency matrix of a component in the given `graph` or of the whole
+     *  graph. The component is indicated by nodes whose ranks are in the range [lower,
+     *  upper). The resulting adjacency matrix is stored in CRS format.
+     */
+    template< class TGraph, typename TCrsTraits >
+    inline typename TCrsTraits::crsMat_t
+    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */,
+                      typename TGraph::rank_type lower=1,
+                      typename TGraph::rank_type upper=0 )
+    {
+      typedef TGraph graph_type;
+      typedef typename graph_type::id_type id_type;
+      typedef typename graph_type::offset_type offset_type;
+      typedef typename graph_type::rank_type rank_type;
+      typedef typename graph_type::linktype_type linktype_type;
+
+      typedef typename TCrsTraits::lno_t lno_t;
+      typedef typename TCrsTraits::size_type size_type;
+      typedef typename TCrsTraits::lno_nnz_view_t lno_nnz_view_t;
+      typedef typename TCrsTraits::scalar_view_t scalar_view_t;
+      typedef typename TCrsTraits::lno_view_t lno_view_t;
+      typedef typename TCrsTraits::crsMat_t crsMat_t;
+
+      if ( upper == 0 ) upper = graph.get_node_count() + 1;
+      lno_t nrows = gum::util::total_nof_loci( graph, lower, upper );
+      size_type nnz = nrows - node_count( graph, lower, upper ) +
+          edge_count( graph, lower, upper );
+
+      lno_nnz_view_t entries( "entries", nnz );
+      scalar_view_t values( "values", nnz );
+      lno_view_t rowmap( "rowmap", nrows + 1 );
+
+      for ( size_type i = 0; i < nnz; ++i ) values( i ) = 1;  // boolean
+
+      offset_type cursor = 0;
+      offset_type start = gum::util::id_to_charorder( graph, graph.rank_to_id( lower ) );
+      size_type i = 0;
+      size_type irow = 0;
+      rowmap( irow++ ) = i;
+      graph.for_each_node(
+          [&]( rank_type rank, id_type id ) {
+            assert( gum::util::id_to_charorder( graph, id ) == cursor + start );
+            for ( offset_type offset = 1; offset < graph.node_length( id ); ++offset ) {
+              entries( i++ ) = ++cursor;
+              rowmap( irow++ ) = i;
+            }
+            ++cursor;
+            graph.for_each_edges_out(
+                id,
+                [&graph, &entries, &i, start]( id_type to, linktype_type ) {
+                  entries( i++ ) = gum::util::id_to_charorder( graph, to ) - start;
+                  return true;
+                } );
+            rowmap( irow++ ) = i;
+            if ( rank + 1 == upper ) return false;
+            return true;
+          },
+          lower );
+      assert( i == nnz );
+      assert( irow == static_cast< unsigned int >( nrows + 1 ) );
+
+      return crsMat_t( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
+    }
+
+    /**
+     *  @brief Compress a distance index by removing intra-node loci pairs
+     *
+     *  @param  dindex input distance index
+     *  @param  graph underlying graph
+     *  @return a mutable compressed distance index of type `TMutableCRSMatrix`
+     *
+     *  NOTE: The resulting mutable matrix can be assigned to a immutable compressed
+     *        matrix afterwards.
+     *
+     *  NOTE: The input uncompressed distance index is passed by non-const reference,
+     *        since containers in const Buffered specialisations cannot be iterated.
+     */
+    template< typename TMutableCRSMatrix,
+              typename TCRSMatrix,
+              typename TGraph >
+    inline TMutableCRSMatrix
+    compress_distance_index( TCRSMatrix& dindex, TGraph const& graph )
+    {
+      typedef TGraph graph_type;
+      typedef typename graph_type::rank_type rank_type;
+
+      typedef TMutableCRSMatrix crsmat_mutable_type;
+      typedef TCRSMatrix crsmat_type;
+      typedef typename crsmat_type::ordinal_type ordinal_type;
+
+      typename crsmat_mutable_type::entries_type entries;
+      typename crsmat_mutable_type::rowmap_type rowmap;
+      crsmat_mutable_type::base_type::traits_type::init( entries );
+      crsmat_mutable_type::base_type::traits_type::init( rowmap );
+      rank_type cnode_rank = 0;  // current node rank
+      ordinal_type start = 0;    // row start index
+      ordinal_type end;          // row end index
+      ordinal_type cloc = 0;     // current node loci index
+      ordinal_type nloc = 0;     // next node loci index
+      for ( ordinal_type nrow = 0; nrow < dindex.numRows(); ++nrow ) {
+        rowmap.push_back( entries.size() );
+        if ( nrow == nloc ) {
+          ++cnode_rank;
+          cloc = nloc;
+          nloc += graph.node_length( graph.rank_to_id( cnode_rank ) );
+        }
+        assert( nrow < nloc );
+        end = dindex.rowMap( nrow + 1 );
+        for ( ; start < end; ++start ) {
+          if ( cloc <= dindex.entry( start ) && dindex.entry( start ) < nloc ) continue;
+          else entries.push_back( dindex.entry( start ) );
+        }
+      }
+      rowmap.push_back( entries.size() );
+      assert( start == dindex.nnz() );
+
+      return crsmat_mutable_type( dindex.numCols(), std::move( entries ), std::move( rowmap ) );
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */
