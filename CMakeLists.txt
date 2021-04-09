@@ -95,6 +95,7 @@ install(FILES psi.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 # Exporting targets
 install(TARGETS psi EXPORT psi-targets)
 install(EXPORT psi-targets NAMESPACE psi:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
+install(FILES ${PROJECT_SOURCE_DIR}/cmake/modules/SeqAnTarget.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 # Creating the package configuration file
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/psi-config.cmake.in
   "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"

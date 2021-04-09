@@ -9,6 +9,8 @@ find_dependency(gum REQUIRED)
 find_dependency(kseq++ REQUIRED)
 find_dependency(pairg REQUIRED)
 
+include("${CMAKE_CURRENT_LIST_DIR}/SeqAnTarget.cmake")
+
 if(NOT TARGET psi::psi)
   include("${CMAKE_CURRENT_LIST_DIR}/psi-targets.cmake")
 endif()
