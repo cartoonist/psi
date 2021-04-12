@@ -25,6 +25,7 @@
 #include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
 #include <psi/crs_matrix.hpp>
+#include <psi/seed_finder.hpp>
 
 
 using namespace psi;
@@ -121,7 +122,8 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
 
 template< typename TCRSMatrix, typename TGraph >
 bool
-verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph const& g )
+verify_compressed_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi,
+                                   TGraph const& g )
 {
   typedef typename TCRSMatrix::ordinal_type ordinal_type;
   typedef typename TGraph::rank_type rank_type;
@@ -132,7 +134,7 @@ verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph con
   ordinal_type end;          // row end index
   ordinal_type nloc = 0;     // next node loci index
   for ( ordinal_type nrow = 0; nrow < udi.numRows(); ++nrow ) {
-    if ( nrow == nloc) {
+    if ( nrow == nloc ) {
       ++cnode_rank;
       if ( cnode_rank == g.get_node_count() ) nloc = udi.numRows();
       else nloc = gum::util::id_to_charorder( g, g.rank_to_id( cnode_rank + 1 ) );
@@ -152,11 +154,12 @@ verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph con
   return true;
 }
 
+template< typename TCRSMatrix >
 void
 compress( cxxopts::ParseResult& res )
 {
-  typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
-  typedef CRSMatrix< crs_matrix::Buffered, bool, uint32_t, uint64_t > crsmat_buffer_type;
+  typedef TCRSMatrix crsmat_type;
+  typedef make_buffered_t< crsmat_type > crsmat_buffer_type;
 
   std::string graph_path = res[ "graph" ].as< std::string >();
   std::string pindex_prefix = res[ "prefix" ].as< std::string >();
@@ -190,7 +193,7 @@ compress( cxxopts::ParseResult& res )
             << " non-zero elements." << std::endl;
 
   std::cout << "Verifying compressed distance index..." << std::endl;
-  if ( !verify_distance_matrix( cindex, dindex, graph ) ) {
+  if ( !verify_compressed_distance_matrix( cindex, dindex, graph ) ) {
     std::cerr << "Verification failed!" << std::endl;
     throw EXIT_FAILURE;
   }
@@ -215,8 +218,11 @@ main( int argc, char* argv[] )
   try {
     auto res = parse_opts( options, argc, argv );
     std::string command = res[ "command" ].as< std::string >();
+
+    typedef typename SeedFinder<>::crsmat_type crsmat_type;
+
     if ( command == "compress" ) {
-      compress( res );
+      compress< crsmat_type >( res );
     }
     else if ( command == "merge" ) {
       merge( res );
