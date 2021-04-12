@@ -397,7 +397,7 @@ namespace psi {
     }
 
     /**
-     *  @brief Compress a distance index by removing intra-node loci pairs
+     *  @brief  Compress a distance index by removing intra-node loci pairs
      *
      *  @param  dindex input distance index
      *  @param  graph underlying graph
@@ -449,6 +449,69 @@ namespace psi {
       assert( start == dindex.nnz() );
 
       return crsmat_mutable_type( dindex.numCols(), std::move( entries ), std::move( rowmap ) );
+    }
+
+    /**
+     *  @brief  Merge two distance indices
+     *
+     *  @param  dindex1 first distance index
+     *  @param  dindex2 second distance index
+     *  @return a mutable merged distance index of type `TMutableCRSMatrix`
+     *
+     *  NOTE: The resulting mutable matrix can be assigned to a immutable compressed
+     *        matrix afterwards.
+     *
+     *  NOTE: The input distance indices are passed by non-const references, since
+     *        containers in const Buffered specialisations cannot be iterated.
+     */
+    template< typename TMutableCRSMatrix, typename TCRSMatrix >
+    inline TMutableCRSMatrix
+    merge_distance_index( TCRSMatrix& dindex1, TCRSMatrix& dindex2 )
+    {
+      typedef TMutableCRSMatrix crsmat_mutable_type;
+      typedef TCRSMatrix crsmat_type;
+      typedef typename crsmat_type::ordinal_type ordinal_type;
+
+      typename crsmat_mutable_type::entries_type entries;
+      typename crsmat_mutable_type::rowmap_type rowmap;
+      crsmat_mutable_type::base_type::traits_type::init( entries );
+      crsmat_mutable_type::base_type::traits_type::init( rowmap );
+      ordinal_type cursor1 = 0;    // current entry index in the first distance index
+      ordinal_type cursor2 = 0;    // current entry index in the second distance index
+      ordinal_type end1;  // last entry index of the row in the first distance index
+      ordinal_type end2;  // last entry index of the row in the second distance index
+
+      assert( dindex1.numRows() == dindex2.numRows() );
+      assert( dindex1.numCols() == dindex2.numCols() );
+
+      auto nof_rows = dindex1.numRows();
+      auto nof_cols = dindex1.numCols();
+
+      for ( ordinal_type nrow = 0; nrow < nof_rows; ++nrow ) {
+        rowmap.push_back( entries.size() );
+
+        end1 = dindex1.rowMap( nrow + 1 );
+        end2 = dindex2.rowMap( nrow + 1 );
+        while ( cursor1 != end1 ) {
+          if ( cursor2 == end2 ) {
+            while ( cursor1 < end1 ) entries.push_back( dindex1.entry( cursor1++ ) );
+            break;
+          }
+          if ( dindex2.entry( cursor2 ) < dindex1.entry( cursor1 ) ) {
+            entries.push_back( dindex2.entry( cursor2++ ) );
+          } else {
+            entries.push_back( dindex1.entry( cursor1 ) );
+            if ( dindex2.entry( cursor2 ) == dindex1.entry( cursor1 ) ) ++cursor2;
+            ++cursor1;
+          }
+        }
+        while ( cursor2 < end2 ) entries.push_back( dindex2.entry( cursor2++ ) );
+      }
+      rowmap.push_back( entries.size() );
+      assert( cursor1 == dindex1.nnz() );
+      assert( cursor2 == dindex2.nnz() );
+
+      return crsmat_mutable_type( nof_cols, std::move( entries ), std::move( rowmap ) );
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */

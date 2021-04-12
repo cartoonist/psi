@@ -25,6 +25,7 @@
 #include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
 #include <psi/crs_matrix.hpp>
+#include <psi/seed_finder.hpp>
 
 
 using namespace psi;
@@ -39,18 +40,25 @@ void
 config_parser( cxxopts::Options& options )
 {
   options.add_options( "general" )
+      ( "o, output", "Write to this file instead of stdout",
+        cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
       ( "h, help", "Print this message and exit" )
       ;
 
   options.add_options( "compress" )
-      ( "o, output", "Write to this file instead of standard output",
-        cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
       ( "d, min-insert-size", "Distance index minimum read insert size",
         cxxopts::value< unsigned int >() )
       ( "D, max-insert-size", "Distance index maximum read insert size",
         cxxopts::value< unsigned int >() )
       ( "g, graph", "Corresponding graph file (vg or gfa)",
         cxxopts::value< std::string >() )
+      ;
+
+  options.add_options( "merge" )
+      ( "1, first-range", "Distance constraint range of the first index (comma-separated: min,max)",
+        cxxopts::value< std::vector< unsigned int > >() )
+      ( "2, second-range", "Distance constraint range of the second index (comma-separated: min,max)",
+        cxxopts::value< std::vector< unsigned int > >() )
       ;
 
   options.add_options( "positional" )
@@ -70,7 +78,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     auto help_message = ( options.help( { "general" } )
                           + "\n COMMANDS:\n"
                           + "  compress\tCompress a distance index\n"
-                          + "  merge\t\tMerge distance indices" );
+                          + "  merge\t\tMerge two distance indices" );
     if ( result.count( "help" ) )
     {
       std::cout << help_message << std::endl;
@@ -81,17 +89,10 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
   else if ( result[ "command" ].as< std::string >() == "compress" ) {  // compress
     options.custom_help( "compress [OPTION...]" );
-    options.positional_help( "DINDEX" );
+    options.positional_help( "PREFIX" );
     if ( result.count( "help" ) ) {
       std::cout << options.help( { "general", "compress" } ) << std::endl;
       throw EXIT_SUCCESS;
-    }
-
-    if ( !result.count( "prefix" ) ) {
-      throw cxxopts::OptionParseException( "Index prefix must be specified" );
-    }
-    if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
-      throw cxxopts::OptionParseException( "Index file not found" );
     }
 
     if ( ! result.count( "graph" ) ) {
@@ -109,11 +110,45 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       throw cxxopts::OptionParseException( "Maximum insert size must be specified" );
     }
   }
-  else if ( result[ "command" ].as< std::string >() == "merge" ) {
-    throw std::runtime_error( "Operation merge has not been implemented" );
+  else if ( result[ "command" ].as< std::string >() == "merge" ) {  // merge
+    options.custom_help( "merge [OPTION...]" );
+    options.positional_help( "PREFIX" );
+    if ( result.count( "help" ) ) {
+      std::cout << options.help( { "general", "merge" } ) << std::endl;
+      throw EXIT_SUCCESS;
+    }
+
+    if ( !result.count( "first-range" ) ) {
+      throw cxxopts::OptionParseException( "First distance constraint range must be specified" );
+    }
+    else {
+      auto range = result[ "first-range" ].as< std::vector< unsigned int > >();
+      if ( range.size() != 2 ) {
+        throw cxxopts::OptionParseException( "Invalid range for the first constraint" );
+      }
+    }
+
+    if ( !result.count( "second-range" ) ) {
+      throw cxxopts::OptionParseException( "Second distance constraint range must be specified" );
+    }
+    else {
+      auto range = result[ "second-range" ].as< std::vector< unsigned int > >();
+      if ( range.size() != 2 ) {
+        throw cxxopts::OptionParseException( "Invalid range for the second constraint" );
+      }
+    }
   }
   else {
-    throw std::runtime_error( "Command not found" );
+    throw cxxopts::OptionParseException( "Unknown command '" +
+                                         result[ "command" ].as< std::string >() + "'" );
+  }
+
+  /* Verifying positional arguments */
+  if ( !result.count( "prefix" ) ) {
+    throw cxxopts::OptionParseException( "Index prefix must be specified" );
+  }
+  if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
+    throw cxxopts::OptionParseException( "Index file not found" );
   }
 
   return result;
@@ -121,7 +156,8 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
 
 template< typename TCRSMatrix, typename TGraph >
 bool
-verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph const& g )
+verify_compressed_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi,
+                                   TGraph const& g )
 {
   typedef typename TCRSMatrix::ordinal_type ordinal_type;
   typedef typename TGraph::rank_type rank_type;
@@ -132,7 +168,7 @@ verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph con
   ordinal_type end;          // row end index
   ordinal_type nloc = 0;     // next node loci index
   for ( ordinal_type nrow = 0; nrow < udi.numRows(); ++nrow ) {
-    if ( nrow == nloc) {
+    if ( nrow == nloc ) {
       ++cnode_rank;
       if ( cnode_rank == g.get_node_count() ) nloc = udi.numRows();
       else nloc = gum::util::id_to_charorder( g, g.rank_to_id( cnode_rank + 1 ) );
@@ -152,11 +188,12 @@ verify_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi, TGraph con
   return true;
 }
 
+template< typename TCRSMatrix >
 void
 compress( cxxopts::ParseResult& res )
 {
-  typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
-  typedef CRSMatrix< crs_matrix::Buffered, bool, uint32_t, uint64_t > crsmat_buffer_type;
+  typedef TCRSMatrix crsmat_type;
+  typedef make_buffered_t< crsmat_type > crsmat_buffer_type;
 
   std::string graph_path = res[ "graph" ].as< std::string >();
   std::string pindex_prefix = res[ "prefix" ].as< std::string >();
@@ -190,7 +227,7 @@ compress( cxxopts::ParseResult& res )
             << " non-zero elements." << std::endl;
 
   std::cout << "Verifying compressed distance index..." << std::endl;
-  if ( !verify_distance_matrix( cindex, dindex, graph ) ) {
+  if ( !verify_compressed_distance_matrix( cindex, dindex, graph ) ) {
     std::cerr << "Verification failed!" << std::endl;
     throw EXIT_FAILURE;
   }
@@ -201,9 +238,101 @@ compress( cxxopts::ParseResult& res )
   cindex.serialize( ofs );
 }
 
+template< typename TCRSMatrix >
+bool
+verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2 )
+{
+  typedef typename TCRSMatrix::ordinal_type ordinal_type;
+
+  ordinal_type start = 0;    // row start index
+  ordinal_type end;          // row end index
+  for ( ordinal_type nrow = 0; nrow < mdi.numRows(); ++nrow ) {
+    end = mdi.rowMap( nrow + 1 );
+    for ( ; start < end; ++start ) {
+      auto col = mdi.entry( start );
+      if ( !di1( nrow, col ) && !di2( nrow, col ) ) return false;
+    }
+  }
+  assert( start == mdi.nnz() );
+
+  start = 0;
+  for ( ordinal_type nrow = 0; nrow < di1.numRows(); ++nrow ) {
+    end = di1.rowMap( nrow + 1 );
+    for ( ; start < end; ++start ) {
+      auto col = di1.entry( start );
+      if ( !mdi( nrow, col ) ) return false;
+    }
+  }
+  assert( start == di1.nnz() );
+
+  start = 0;
+  for ( ordinal_type nrow = 0; nrow < di2.numRows(); ++nrow ) {
+    end = di2.rowMap( nrow + 1 );
+    for ( ; start < end; ++start ) {
+      auto col = di2.entry( start );
+      if ( !mdi( nrow, col ) ) return false;
+    }
+  }
+  assert( start == di2.nnz() );
+
+  return true;
+}
+
+template< typename TCRSMatrix >
 void
 merge( cxxopts::ParseResult& res )
 {
+  typedef TCRSMatrix crsmat_type;
+  typedef make_buffered_t< crsmat_type > crsmat_buffer_type;
+
+  std::string pindex_prefix = res[ "prefix" ].as< std::string >();
+  std::string output = res[ "output" ].as< std::string >();
+  auto range1 = res[ "first-range" ].as< std::vector< unsigned int > >();
+  auto range2 = res[ "second-range" ].as< std::vector< unsigned int > >();
+  crsmat_type dindex1;
+  crsmat_type dindex2;
+  auto index_path1 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range1[0] ) +
+      "M" + std::to_string( range1[1] );
+  auto index_path2 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range2[0] ) +
+      "M" + std::to_string( range2[1] );
+
+  {
+    std::cout << "Loading the first distance index '" << index_path1 << "'..." << std::endl;
+    std::ifstream ifs( index_path1, std::ifstream::in | std::ifstream::binary );
+    if ( !ifs ) throw std::runtime_error( "The first distance matrix cannot be opened" );
+    dindex1.load( ifs );
+    std::cout << "Loaded the first distance index ("
+              << dindex1.numRows() << "x" << dindex1.numCols() << ") with "
+              << dindex1.nnz() << " non-zero elements." << std::endl;
+  }
+
+  {
+    std::cout << "Loading the second distance index '" << index_path2 << "'..." << std::endl;
+    std::ifstream ifs( index_path2, std::ifstream::in | std::ifstream::binary );
+    if ( !ifs ) throw std::runtime_error( "The second distance matrix cannot be opened" );
+    dindex2.load( ifs );
+    std::cout << "Loaded the second distance index ("
+              << dindex2.numRows() << "x" << dindex2.numCols() << ") with "
+              << dindex2.nnz() << " non-zero elements." << std::endl;
+  }
+
+  std::cout << "Merging distance indices..." << std::endl;
+  crsmat_type mindex;
+  mindex.assign( util::merge_distance_index< crsmat_buffer_type >( dindex1, dindex2 ) );
+  std::cout << "Merged distance index ("
+            << mindex.numRows() << "x" << mindex.numCols() << ") has " << mindex.nnz()
+            << " non-zero elements." << std::endl;
+
+  std::cout << "Verifying merged distance index..." << std::endl;
+  if ( !verify_merged_distance_matrix( mindex, dindex1, dindex2 ) ) {
+    std::cerr << "Verification failed!" << std::endl;
+    throw EXIT_FAILURE;
+  }
+
+  std::cout << "Serialising merged distance index..." << std::endl;
+  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
+  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+  mindex.serialize( ofs );
 }
 
 int
@@ -215,11 +344,14 @@ main( int argc, char* argv[] )
   try {
     auto res = parse_opts( options, argc, argv );
     std::string command = res[ "command" ].as< std::string >();
+
+    typedef typename SeedFinder<>::crsmat_type crsmat_type;
+
     if ( command == "compress" ) {
-      compress( res );
+      compress< crsmat_type >( res );
     }
     else if ( command == "merge" ) {
-      merge( res );
+      merge< crsmat_type >( res );
     }
     else {
       // should not reach here!
