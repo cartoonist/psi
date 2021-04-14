@@ -1341,7 +1341,8 @@ namespace psi {
           template< typename TString >
           inline void
           seeds_on_paths( TString const& sequence,
-                          std::function< void(typename traverser_type::output_type const &) > callback ) const
+                          std::function< void(typename traverser_type::output_type const &) > callback,
+                          bool find_all=true ) const
           {
             typedef TopDownFine<> TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
@@ -1357,7 +1358,7 @@ namespace psi {
             TPIterator piter( this->pindex.index );
             auto context = this->pindex.get_context();
             find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
-                       this->gocc_threshold );
+                       this->gocc_threshold, find_all );
           }
 
             inline void

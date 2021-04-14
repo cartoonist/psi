@@ -859,7 +859,8 @@ namespace psi {
                unsigned int minlen,
                unsigned int context,
                TCallback callback,
-               unsigned int gocc_threshold = 0 )
+               unsigned int gocc_threshold = 0,
+               bool find_all=true )
     {
       typedef typename Direction< TRecords >::Type TPathDir;
 
@@ -886,6 +887,7 @@ namespace psi {
             hit.gocc = length( occs );
             callback( hit );
           }
+          if ( !find_all ) break;
         }
         if ( has_hit /*|| plen > context*/ ||
              pattern[ start + plen ] == 'N' ||
