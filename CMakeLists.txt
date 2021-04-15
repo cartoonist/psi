@@ -61,7 +61,7 @@ target_link_libraries(psi
   INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>
   INTERFACE "atomic")
 # Define `PSI_DEBUG`
-if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
 endif()
 # Define `PSI_STATS`
