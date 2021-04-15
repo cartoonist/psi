@@ -421,14 +421,15 @@ namespace psi {
       typedef TMutableCRSMatrix crsmat_mutable_type;
       typedef TCRSMatrix crsmat_type;
       typedef typename crsmat_type::ordinal_type ordinal_type;
+      typedef typename crsmat_type::size_type size_type;
 
       typename crsmat_mutable_type::entries_type entries;
       typename crsmat_mutable_type::rowmap_type rowmap;
       crsmat_mutable_type::base_type::traits_type::init( entries );
       crsmat_mutable_type::base_type::traits_type::init( rowmap );
       rank_type cnode_rank = 0;  // current node rank
-      ordinal_type start = 0;    // row start index
-      ordinal_type end;          // row end index
+      size_type start = 0;    // row start index
+      size_type end;          // row end index
       ordinal_type cloc = 0;     // current node loci index
       ordinal_type nloc = 0;     // next node loci index
       for ( ordinal_type nrow = 0; nrow < dindex.numRows(); ++nrow ) {
@@ -471,15 +472,16 @@ namespace psi {
       typedef TMutableCRSMatrix crsmat_mutable_type;
       typedef TCRSMatrix crsmat_type;
       typedef typename crsmat_type::ordinal_type ordinal_type;
+      typedef typename crsmat_type::size_type size_type;
 
       typename crsmat_mutable_type::entries_type entries;
       typename crsmat_mutable_type::rowmap_type rowmap;
       crsmat_mutable_type::base_type::traits_type::init( entries );
       crsmat_mutable_type::base_type::traits_type::init( rowmap );
-      ordinal_type cursor1 = 0;    // current entry index in the first distance index
-      ordinal_type cursor2 = 0;    // current entry index in the second distance index
-      ordinal_type end1;  // last entry index of the row in the first distance index
-      ordinal_type end2;  // last entry index of the row in the second distance index
+      size_type cursor1 = 0;    // current entry index in the first distance index
+      size_type cursor2 = 0;    // current entry index in the second distance index
+      size_type end1;  // last entry index of the row in the first distance index
+      size_type end2;  // last entry index of the row in the second distance index
 
       assert( dindex1.numRows() == dindex2.numRows() );
       assert( dindex1.numCols() == dindex2.numCols() );

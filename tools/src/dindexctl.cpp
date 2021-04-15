@@ -160,12 +160,13 @@ verify_compressed_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi,
                                    TGraph const& g )
 {
   typedef typename TCRSMatrix::ordinal_type ordinal_type;
+  typedef typename TCRSMatrix::size_type size_type;
   typedef typename TGraph::rank_type rank_type;
 
   rank_type cnode_rank = 0;  // current node rank
-  ordinal_type start = 0;    // row start index
-  ordinal_type cstart = 0;    // row start index
-  ordinal_type end;          // row end index
+  size_type start = 0;    // row start index
+  size_type cstart = 0;    // row start index
+  size_type end;          // row end index
   ordinal_type nloc = 0;     // next node loci index
   for ( ordinal_type nrow = 0; nrow < udi.numRows(); ++nrow ) {
     if ( nrow == nloc ) {
@@ -243,9 +244,10 @@ bool
 verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2 )
 {
   typedef typename TCRSMatrix::ordinal_type ordinal_type;
+  typedef typename TCRSMatrix::size_type size_type;
 
-  ordinal_type start = 0;    // row start index
-  ordinal_type end;          // row end index
+  size_type start = 0;    // row start index
+  size_type end;          // row end index
   for ( ordinal_type nrow = 0; nrow < mdi.numRows(); ++nrow ) {
     end = mdi.rowMap( nrow + 1 );
     for ( ; start < end; ++start ) {
