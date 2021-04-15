@@ -79,7 +79,7 @@ reads_dist( std::unordered_map< std::string, Path< TGraph > > const& haplotypes,
   auto extra = numreads - sum;
   assert( extra < haplotypes.size() );
   for ( unsigned long int i = 0; i < extra; ++i ) ++dist[i];
-  assert( std::accumulate( dist.begin(), dist.end(), 0 ) == numreads );
+  assert( static_cast< unsigned long int >( std::accumulate( dist.begin(), dist.end(), 0 ) ) == numreads );
   return dist;
 }
 
@@ -181,7 +181,7 @@ _simulate_read( klibpp::KSeq& read, vg::Path& read_path, klibpp::KSeq const& hap
     auto offset = position_to_offset( haplotype, cursor );
     auto label_len = graph_ptr->node_length( id );
     auto range = std::min< std::size_t >( label_len - offset, remaining );
-    assert( hapseq.seq.end() - start >= range );
+    assert( hapseq.seq.end() >= range + start );
     next = start + range;
     map_ptr = read_path.add_mapping();
     vg::Position* p = map_ptr->mutable_position();
