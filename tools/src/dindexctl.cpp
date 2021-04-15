@@ -248,35 +248,22 @@ verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2
 
   size_type start = 0;    // row start index
   size_type end;          // row end index
+  size_type sum_of_nnz = 0;
   for ( ordinal_type nrow = 0; nrow < mdi.numRows(); ++nrow ) {
     end = mdi.rowMap( nrow + 1 );
     for ( ; start < end; ++start ) {
       auto col = mdi.entry( start );
-      if ( !di1( nrow, col ) && !di2( nrow, col ) ) return false;
+      unsigned int sum = di1( nrow, col ) + di2( nrow, col );
+      sum_of_nnz += sum;
+      if ( sum == 0 ) {
+        std::cerr << "Merged matrix contains an invalid non-zero element at ("
+                  << nrow << ", " << col << ")!" << std::endl;
+        return false;
+      }
     }
   }
   assert( start == mdi.nnz() );
-
-  start = 0;
-  for ( ordinal_type nrow = 0; nrow < di1.numRows(); ++nrow ) {
-    end = di1.rowMap( nrow + 1 );
-    for ( ; start < end; ++start ) {
-      auto col = di1.entry( start );
-      if ( !mdi( nrow, col ) ) return false;
-    }
-  }
-  assert( start == di1.nnz() );
-
-  start = 0;
-  for ( ordinal_type nrow = 0; nrow < di2.numRows(); ++nrow ) {
-    end = di2.rowMap( nrow + 1 );
-    for ( ; start < end; ++start ) {
-      auto col = di2.entry( start );
-      if ( !mdi( nrow, col ) ) return false;
-    }
-  }
-  assert( start == di2.nnz() );
-
+  if ( sum_of_nnz != di1.nnz() + di2.nnz() ) return false;
   return true;
 }
 
