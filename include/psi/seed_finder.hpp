@@ -846,10 +846,12 @@ namespace psi {
         SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned int gocc_thr = 0,
+            unsigned int mxmem = 0,
             unsigned char mismatches = 0 )
           : graph_ptr( &g ), pindex( g, true ), handler( true ), seed_len( len ),
           seed_mismatches( mismatches ),
           gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
+          max_mem( ( mxmem != 0 ? mxmem : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
         { }
         /* ====================  ACCESSORS      ====================================== */
@@ -1341,8 +1343,7 @@ namespace psi {
           template< typename TString >
           inline void
           seeds_on_paths( TString const& sequence,
-                          std::function< void(typename traverser_type::output_type const &) > callback,
-                          bool find_all=true ) const
+                          std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
             typedef TopDownFine<> TIterSpec;
             typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
@@ -1358,7 +1359,7 @@ namespace psi {
             TPIterator piter( this->pindex.index );
             auto context = this->pindex.get_context();
             find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
-                       this->gocc_threshold, find_all );
+                       this->gocc_threshold, this->max_mem );
           }
 
             inline void
@@ -1648,6 +1649,7 @@ namespace psi {
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
+        unsigned int max_mem;  /**< @brief Maximum required number of MEMs on paths. */
         std::pair< unsigned int, unsigned int > d; /**< @brief distance constraints. */
         std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */

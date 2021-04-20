@@ -860,17 +860,19 @@ namespace psi {
                unsigned int context,
                TCallback callback,
                unsigned int gocc_threshold = 0,
-               bool find_all=true )
+               unsigned int max_mem=0 )
     {
       typedef typename Direction< TRecords >::Type TPathDir;
 
       if ( gocc_threshold == 0 ) {
         gocc_threshold = std::numeric_limits< decltype( gocc_threshold ) >::max();
       }
+      if ( max_mem == 0 ) max_mem = std::numeric_limits< decltype( max_mem ) >::max();
 
       unsigned int start = 0;
       unsigned int plen = 0;
       bool has_hit = false;
+      std::size_t nof_hits = 0;
       while( start + plen < pattern.size() ) {
         if ( plen >= minlen && count_occurrences( idx_itr ) <= gocc_threshold ) {
           using seqan::length;
@@ -886,8 +888,9 @@ namespace psi {
             hit.match_len = plen;
             hit.gocc = length( occs );
             callback( hit );
+            ++nof_hits;
           }
-          if ( !find_all ) break;
+          if ( nof_hits >= max_mem ) break;
         }
         if ( has_hit /*|| plen > context*/ ||
              pattern[ start + plen ] == 'N' ||
