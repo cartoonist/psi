@@ -81,3 +81,18 @@ target_link_libraries(loci_stats
   PRIVATE spdlog::spdlog_header_only)
 # Install targets
 install(TARGETS loci_stats DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Defining target 'alice': PSI ALignment InspeCtor and analysEr
+set(ALICE_SOURCES "src/alice.cpp")
+add_executable(alice ${ALICE_SOURCES})
+target_compile_options(alice PRIVATE -g -Wall -Wpedantic -Werror)
+target_include_directories(alice
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+target_link_libraries(alice
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only)
+# Install targets
+install(TARGETS alice DESTINATION ${CMAKE_INSTALL_BINDIR})
