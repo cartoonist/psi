@@ -30,6 +30,9 @@
 #include <memory>
 #include <cassert>
 #include <limits>
+#include <algorithm> 
+#include <cctype>
+#include <locale>
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
@@ -168,6 +171,71 @@ namespace psi {
     }
     return false;
   }  /* -----  end of function starts_with  ----- */
+
+  // From: https://stackoverflow.com/a/217605/357257
+  /**
+   *  @brief  Trim a string from left (in place)
+   */
+    inline void
+  ltrim( std::string& s )
+  {
+    s.erase( s.begin(), std::find_if( s.begin(), s.end(),
+                                      []( unsigned char ch ) {
+                                        return !std::isspace(ch);
+                                      } ) );
+  }
+
+  /**
+   *  @brief  Trim a string from right (in place)
+   */
+    inline void
+  rtrim( std::string& s )
+  {
+    s.erase( std::find_if( s.rbegin(), s.rend(),
+                           []( unsigned char ch ) {
+                             return !std::isspace(ch);
+                           } ).base(), s.end() );
+  }
+
+  /**
+   *  @brief  Trim a string from both ends (in place)
+   */
+    inline void
+  trim( std::string& s )
+  {
+    ltrim( s );
+    rtrim( s );
+  }
+
+  /**
+   *  @brief  Trim a string from left (copying)
+   */
+    inline std::string
+  ltrim_copy( std::string s )
+  {
+    ltrim( s );
+    return s;
+  }
+
+  /**
+   *  @brief  Trim a string from right (copying)
+   */
+    inline std::string
+  rtrim_copy( std::string s )
+  {
+    rtrim( s );
+    return s;
+  }
+
+  /**
+   *  @brief  Trim a string from both ends (copying)
+   */
+    inline std::string
+  trim_copy( std::string s )
+  {
+    trim( s );
+    return s;
+  }
 
 
   /**
