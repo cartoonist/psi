@@ -53,6 +53,9 @@ config_parser( cxxopts::Options& options )
   options.add_options( "dstats" )
       ;
 
+  options.add_options( "analyse" )
+      ;
+
   options.add_options( "positional" )
       ( "command", "Operation type", cxxopts::value< std::string >() )
       ( "alignment", "Alignment file (GAF)", cxxopts::value< std::string >() )
@@ -69,7 +72,8 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     options.positional_help( "COMMAND" );
     auto help_message = ( options.help( { "general" } )
                           + "\n COMMANDS:\n"
-                          + "  dstats\tPrint statistics of inner-distances of read pairs\n" );
+                          + "  dstats\tPrint statistics of inner-distances of read pairs\n"
+                          + "  analyse\tAnalyse the given alignment file\n" );
     if ( result.count( "help" ) )
     {
       std::cout << help_message << std::endl;
@@ -83,6 +87,14 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     options.positional_help( "ALIGNMENT" );
     if ( result.count( "help" ) ) {
       std::cout << options.help( { "general", "dstats" } ) << std::endl;
+      throw EXIT_SUCCESS;
+    }
+  }
+  else if ( result[ "command" ].as< std::string >() == "analyse" ) {  // analyse
+    options.custom_help( "analyse [OPTION...]" );
+    options.positional_help( "ALIGNMENT" );
+    if ( result.count( "help" ) ) {
+      std::cout << options.help( { "general", "analyse" } ) << std::endl;
       throw EXIT_SUCCESS;
     }
   }
@@ -414,6 +426,48 @@ dstats( cxxopts::ParseResult& res )
   }
 }
 
+void
+analyse( cxxopts::ParseResult& res )
+{
+  typedef gum::SeqGraph< gum::Succinct > graph_type;
+
+  // Fetching input parameters
+  std::string output = res[ "output" ].as< std::string >();
+  std::string graph_path = res[ "graph" ].as< std::string >();
+  std::string aln_path = res[ "alignment" ].as< std::string >();
+
+  // Opening output file for writing
+  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
+  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+
+  // Loading input graph
+  graph_type graph;
+  std::cout << "Loading input graph..." << std::endl;
+  gum::util::load( graph, graph_path, true );
+
+  // Opening alignment file for reading
+  std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
+  phmap::flat_hash_map< std::string, std::size_t > counts;
+  std::string name;
+  gaf::GAFRecord record = gaf::next( ifs );
+  std::size_t total_alns = 0;
+  std::size_t total_multi_alns = 0;
+  while( record ) {
+    name = record.q_name;
+    name.pop_back();  // remove 1 or 2 at the end
+    name.pop_back();  // remove the separator
+    auto found = counts.find( name );
+    if ( found == counts.end() ) counts[ name ] = 0;
+    found->second += 1;
+    ++total_alns;
+    record = gaf::next( ifs );
+  }
+  for ( auto entry : counts ) if ( entry.second > 2 ) ++total_multi_alns;
+  std::cout << "Total number of alignments: " << total_alns << std::endl;
+  std::cout << "Total pairs with valid alignments: " << counts.size() << std::endl;
+  std::cout << "Total pairs with multiple alignments: " << total_multi_alns << std::endl;
+}
+
 int
 main( int argc, char* argv[] )
 {
@@ -426,6 +480,9 @@ main( int argc, char* argv[] )
 
     if ( command == "dstats" ) {
       dstats( res );
+    }
+    if ( command == "analyse" ) {
+      analyse( res );
     }
     else {
       // should not reach here!
