@@ -10,8 +10,11 @@ fields:
   - 'context'
   - 'step_size'
   - 'gocc_threshold'
+  - 'maxmem'
   - 'mind'
   - 'maxd'
+  - 'ecutoff'
+  - 'edensity'
   - 'clustersize'
   - 'bandwidth'
   - 'ramp'
@@ -53,16 +56,18 @@ patterns:
   - 'GraphAligner {version}-{branch}-{commit:w}{:s}'
   - "Load graph from {dataset_region}\n"
   - 'PSI: Number of uncovered loci: {uncovered_loci:d}'
-  - 'PSI seeds,
-    seed length {seed_length:d},
-    chunk size {chunk_size:d},
-    distance {distance:d},
-    paths {pathno:d},
-    context {context:d},
-    step {step_size:d},
-    GOCC threshold {gocc_threshold:d},
-    distance index minimum insert size {mind:d},
-    distance index maximum insert size {maxd:d}'
+#  - 'PSI seeds,
+#    seed length {seed_length:d},
+#    chunk size {chunk_size:d},
+#    distance {distance:d},
+#    paths {pathno:d},
+#    context {context:d},
+#    step {step_size:d},
+#    GOCC threshold {gocc_threshold:d},
+#    maximum MEMs on paths {maxmem:d},
+#    distance index minimum insert size {mind:d},
+#    distance index maximum insert size {maxd:d}'
+  - "write alignments to {}ga-psi_l{seed_length:d}d{distance:d}c{chunk_size:d}e{step_size:d}n{pathno:d}i{}t{context:d}r{gocc_threshold:d}E{maxmem:d}m{mind:d}M{maxd:d}b{:d}R{:d}f{ecutoff:d}C{:d}D{edensity:d}{}.{}\n"
   - 'Seed cluster size {clustersize:d}'
   - 'Initial bandwidth {bandwidth:d}, ramp bandwidth {ramp:d}'
   - 'Preprocessing took {total_init}ms'
