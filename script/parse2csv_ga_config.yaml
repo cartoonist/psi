@@ -1,0 +1,86 @@
+---
+fields:
+  - 'commit'
+  - 'dataset_region'
+  - 'uncovered_loci'
+  - 'seed_length'
+  - 'chunk_size'
+  - 'distance'
+  - 'pathno'
+  - 'context'
+  - 'step_size'
+  - 'gocc_threshold'
+  - 'mind'
+  - 'maxd'
+  - 'clustersize'
+  - 'bandwidth'
+  - 'ramp'
+  - 'total_init'
+  - 'reads_count'
+  - 'reads_size'
+  - 'total_hits'
+  - 'total_extended'
+  - 'covered_reads'
+  - 'aligned_reads'
+  - 'alns_count'
+  - 'alns_discarded'
+  - 'alns_e2e'
+  - 'chunks_done'
+  - 'seeding'
+  - 'query_paths'
+  - 'seeds_on_paths'
+  - 'seeds_off_path'
+  - 'seed_cluster'
+  - 'query_dindex'
+  - 'seed_extend'
+  - 'alignment'
+  - 'psi_init'
+reduce:
+  dataset_region:
+    - 'parse'
+    - '.*/([^/]+)(/[^/]+).gfa'
+  version: 'first'
+  branch: 'first'
+  commit: 'first'
+  seeding: 'avg_tp'
+  query_paths: 'avg_tp'
+  seeds_on_paths: 'avg_tp'
+  seeds_off_path: 'avg_tp'
+  seed_extend: 'avg_tp'
+  seed_cluster: 'avg_tp'
+  query_dindex: 'avg_tp'
+patterns:
+  - 'GraphAligner {version}-{branch}-{commit:w}{:s}'
+  - "Load graph from {dataset_region}\n"
+  - 'PSI: Number of uncovered loci: {uncovered_loci:d}'
+  - 'PSI seeds,
+    seed length {seed_length:d},
+    chunk size {chunk_size:d},
+    distance {distance:d},
+    paths {pathno:d},
+    context {context:d},
+    step {step_size:d},
+    GOCC threshold {gocc_threshold:d},
+    distance index minimum insert size {mind:d},
+    distance index maximum insert size {maxd:d}'
+  - 'Seed cluster size {clustersize:d}'
+  - 'Initial bandwidth {bandwidth:d}, ramp bandwidth {ramp:d}'
+  - 'Preprocessing took {total_init}ms'
+  - 'Input reads: {reads_count:d} ({reads_size:d}bp)'
+  - 'Seeds found: {total_hits:d}'
+  - 'Seeds extended: {total_extended:d}'
+  - 'Reads with a seed: {covered_reads:d}'
+  - 'Reads with an alignment: {aligned_reads:d}'
+  - 'Alignments: {alns_count:d} ({:d}bp) ({alns_discarded:d} additional alignments discarded)'
+  - 'End-to-end alignments: {alns_e2e:d}{:s}'
+  - 'Chunks processed: {chunks_done:d}{:s}'
+  - "PSI Timer '{:w}seeding#{:w}': {seeding:f} s"
+  - "PSI Timer '{:w}query-paths#{:w}': {query_paths:f} s"
+  - "PSI Timer '{:w}seeds-on-paths#{:w}': {seeds_on_paths:f} s"
+  - "PSI Timer '{:w}seeds-off-path#{:w}': {seeds_off_path:f} s"
+  - "PSI Timer '{:w}seed-cluster#{:w}': {seed_cluster:f} s"
+  - "PSI Timer '{:w}query-dindex#{:w}': {query_dindex:f} s"
+  - "PSI Timer '{:w}seed-extend#{:w}': {seed_extend:f} s"
+  - "PSI timer 'alignment': {alignment:f} s"
+  - "PSI timer 'psi-prepare': {psi_init:f} s"
+...
