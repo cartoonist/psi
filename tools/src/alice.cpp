@@ -269,6 +269,12 @@ namespace gaf {
       return this->q_name.empty();
     }
 
+    inline bool
+    is_valid( ) const
+    {
+      return this->block != 0;
+    }
+
     template< typename TGraph >
     inline typename TGraph::dynamic_type::path_type
     parse_stable_path( TGraph const& graph ) const
@@ -332,6 +338,25 @@ namespace gaf {
       throw std::runtime_error( "parsing path with stable ID is not implemented" );
     }
   };
+
+  inline std::ostream&
+  operator<<( std::ostream& os, GAFRecord const& record )
+  {
+    os << "=== Record ===\n"
+       << "* Query name: " << record.q_name << "\n"
+       << "* Query length: " << record.q_len << "\n"
+       << "* Query start: " << record.q_start << "\n"
+       << "* Query end: " << record.q_end << "\n"
+       << "* Query strand: " << ( record.q_fwd ? "Forward" : "Reverse" ) << "\n"
+       << "* Path: " << record.path << "\n"
+       << "* Path length: " << record.p_len << "\n"
+       << "* Path start: " << record.p_start << "\n"
+       << "* Path end: " << record.p_end << "\n"
+       << "* No. of matches: " << record.match << "\n"
+       << "* Alignment block length: " << record.block << "\n"
+       << "* Mapping quality: " << record.qual;
+    return os;
+  }
 
   inline GAFRecord
   next( std::istream& is )
