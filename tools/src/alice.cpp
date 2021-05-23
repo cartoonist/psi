@@ -211,21 +211,51 @@ namespace gaf {
         throw std::runtime_error( "missing mandatory field(s) in input GAF file" );
       }
 
-      this->q_name = tokens[ QNAME_IDX ];
-      this->q_len = std::stoull( tokens[ QLEN_IDX ] );
-      this->q_start = std::stoull( tokens[ QSTART_IDX ] );
-      this->q_end = std::stoull( tokens[ QEND_IDX ] );
-      if ( tokens[ QORIENT_IDX ] == "+" ) this->q_fwd = true;
-      else if ( tokens[ QORIENT_IDX ] == "-" ) this->q_fwd = false;
-      else throw std::runtime_error( "invalid query orientation char '" +
-                                    tokens[ QORIENT_IDX ] + "'" );
-      this->path = tokens[ PATH_IDX ];
-      this->p_len = std::stoull( tokens[ PLEN_IDX ] );
-      this->p_start = std::stoull( tokens[ PSTART_IDX ] );
-      this->p_end = std::stoull( tokens[ PEND_IDX ] );
-      this->match = std::stoull( tokens[ MATCH_IDX ] );
-      this->block = std::stoull( tokens[ BLOCK_IDX ] );
-      this->qual = std::stoull( tokens[ QUAL_IDX ] );
+      try {
+        this->q_name = tokens[ QNAME_IDX ];
+        this->q_len = std::stoull( tokens[ QLEN_IDX ] );
+        this->q_start = ( tokens[ QSTART_IDX ] == "*" ?
+                          this->q_start : std::stoull( tokens[ QSTART_IDX ] ) );
+        this->q_end = ( tokens[ QEND_IDX ] == "*" ?
+                        this->q_end : std::stoull( tokens[ QEND_IDX ] ) );
+
+        if ( tokens[ QORIENT_IDX ] == "+" ) this->q_fwd = true;
+        else if ( tokens[ QORIENT_IDX ] == "-" ) this->q_fwd = false;
+        else if ( tokens[ QORIENT_IDX ] == "*" ) /* do nothing */;
+        else throw std::invalid_argument( "invalid query orientation char" );
+
+        this->path = ( tokens[ PATH_IDX ] == "*" ?
+                       this->path : tokens[ PATH_IDX ] );
+        this->p_len = ( tokens[ PLEN_IDX ] == "*" ?
+                        this->p_len : std::stoull( tokens[ PLEN_IDX ] ) );
+        this->p_start = ( tokens[ PSTART_IDX ] == "*" ?
+                          this->p_start : std::stoull( tokens[ PSTART_IDX ] ) );
+        this->p_end = ( tokens[ PEND_IDX ] == "*" ?
+                        this->p_end : std::stoull( tokens[ PEND_IDX ] ) );
+        this->match = ( tokens[ MATCH_IDX ] == "*" ?
+                        this->match : std::stoull( tokens[ MATCH_IDX ] ) );
+        this->block = ( tokens[ BLOCK_IDX ] == "*" ?
+                        this->block : std::stoull( tokens[ BLOCK_IDX ] ) );
+        this->qual = ( tokens[ QUAL_IDX ] == "*" ?
+                       this->qual : std::stoull( tokens[ QUAL_IDX ] ) );
+      }
+      catch ( std::invalid_argument const& e ) {
+        std::cerr << "! Error in parsing input GAF:" << std::endl;
+        std::cerr << "  === Record tokens ===\n"
+                  << "  * QNAME: " << tokens[ QNAME_IDX ] << "\n"
+                  << "  * QLEN: " << tokens[ QLEN_IDX ] << "\n"
+                  << "  * QSTART: " << tokens[ QSTART_IDX ] << "\n"
+                  << "  * QEND: " << tokens[ QEND_IDX ] << "\n"
+                  << "  * QORIENT: " << tokens[ QORIENT_IDX ] << "\n"
+                  << "  * PATH: " << tokens[ PATH_IDX ] << "\n"
+                  << "  * PLEN: " << tokens[ PLEN_IDX ] << "\n"
+                  << "  * PSTART: " << tokens[ PSTART_IDX ] << "\n"
+                  << "  * PEND: " << tokens[ PEND_IDX ] << "\n"
+                  << "  * MATCH: " << tokens[ MATCH_IDX ] << "\n"
+                  << "  * BLOCK: " << tokens[ BLOCK_IDX ] << "\n"
+                  << "  * QUAL: " << tokens[ QUAL_IDX ] << "\n"
+                  << std::endl;
+      }
     }
     /* === OPERATORS === */
     inline operator bool() const
