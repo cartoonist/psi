@@ -54,6 +54,7 @@ config_parser( cxxopts::Options& options )
       ;
 
   options.add_options( "analyse" )
+      ( "F, full-report", "Output full report" )
       ;
 
   options.add_options( "positional" )
@@ -139,6 +140,7 @@ namespace gaf {
     static constexpr const unsigned int MATCH_IDX = 9;
     static constexpr const unsigned int BLOCK_IDX = 10;
     static constexpr const unsigned int QUAL_IDX = 11;
+    static constexpr const unsigned int AUX_START_IDX = 12;
     /* === DATA MEMBERS === */
     std::string q_name;
     std::size_t q_len;
@@ -152,6 +154,9 @@ namespace gaf {
     std::size_t match;
     std::size_t block;
     std::size_t qual;
+    phmap::flat_hash_map< std::string, std::string > tag_az;
+    phmap::flat_hash_map< std::string, int32_t > tag_i;
+    phmap::flat_hash_map< std::string, float > tag_f;
     /* === STATIC METHODS === */
     static inline int64_t
     generate_path_id( )
@@ -198,6 +203,7 @@ namespace gaf {
     { }
 
     GAFRecord( std::string line )
+      : GAFRecord( )
     {
       psi::trim( line );
 
@@ -211,21 +217,55 @@ namespace gaf {
         throw std::runtime_error( "missing mandatory field(s) in input GAF file" );
       }
 
-      this->q_name = tokens[ QNAME_IDX ];
-      this->q_len = std::stoull( tokens[ QLEN_IDX ] );
-      this->q_start = std::stoull( tokens[ QSTART_IDX ] );
-      this->q_end = std::stoull( tokens[ QEND_IDX ] );
-      if ( tokens[ QORIENT_IDX ] == "+" ) this->q_fwd = true;
-      else if ( tokens[ QORIENT_IDX ] == "-" ) this->q_fwd = false;
-      else throw std::runtime_error( "invalid query orientation char '" +
-                                    tokens[ QORIENT_IDX ] + "'" );
-      this->path = tokens[ PATH_IDX ];
-      this->p_len = std::stoull( tokens[ PLEN_IDX ] );
-      this->p_start = std::stoull( tokens[ PSTART_IDX ] );
-      this->p_end = std::stoull( tokens[ PEND_IDX ] );
-      this->match = std::stoull( tokens[ MATCH_IDX ] );
-      this->block = std::stoull( tokens[ BLOCK_IDX ] );
-      this->qual = std::stoull( tokens[ QUAL_IDX ] );
+      try {
+        this->q_name = tokens[ QNAME_IDX ];
+        this->q_len = std::stoull( tokens[ QLEN_IDX ] );
+        this->q_start = ( tokens[ QSTART_IDX ] == "*" ?
+                          this->q_start : std::stoull( tokens[ QSTART_IDX ] ) );
+        this->q_end = ( tokens[ QEND_IDX ] == "*" ?
+                        this->q_end : std::stoull( tokens[ QEND_IDX ] ) );
+
+        if ( tokens[ QORIENT_IDX ] == "+" ) this->q_fwd = true;
+        else if ( tokens[ QORIENT_IDX ] == "-" ) this->q_fwd = false;
+        else if ( tokens[ QORIENT_IDX ] == "*" ) /* do nothing */;
+        else throw std::invalid_argument( "invalid query orientation char" );
+
+        this->path = ( tokens[ PATH_IDX ] == "*" ?
+                       this->path : tokens[ PATH_IDX ] );
+        this->p_len = ( tokens[ PLEN_IDX ] == "*" ?
+                        this->p_len : std::stoull( tokens[ PLEN_IDX ] ) );
+        this->p_start = ( tokens[ PSTART_IDX ] == "*" ?
+                          this->p_start : std::stoull( tokens[ PSTART_IDX ] ) );
+        this->p_end = ( tokens[ PEND_IDX ] == "*" ?
+                        this->p_end : std::stoull( tokens[ PEND_IDX ] ) );
+        this->match = ( tokens[ MATCH_IDX ] == "*" ?
+                        this->match : std::stoull( tokens[ MATCH_IDX ] ) );
+        this->block = ( tokens[ BLOCK_IDX ] == "*" ?
+                        this->block : std::stoull( tokens[ BLOCK_IDX ] ) );
+        this->qual = ( tokens[ QUAL_IDX ] == "*" ?
+                       this->qual : std::stoull( tokens[ QUAL_IDX ] ) );
+      }
+      catch ( std::invalid_argument const& ) {
+        std::cerr << "! Error in parsing input GAF:" << std::endl;
+        std::cerr << "  === Record tokens ===\n"
+                  << "  * QNAME: " << tokens[ QNAME_IDX ] << "\n"
+                  << "  * QLEN: " << tokens[ QLEN_IDX ] << "\n"
+                  << "  * QSTART: " << tokens[ QSTART_IDX ] << "\n"
+                  << "  * QEND: " << tokens[ QEND_IDX ] << "\n"
+                  << "  * QORIENT: " << tokens[ QORIENT_IDX ] << "\n"
+                  << "  * PATH: " << tokens[ PATH_IDX ] << "\n"
+                  << "  * PLEN: " << tokens[ PLEN_IDX ] << "\n"
+                  << "  * PSTART: " << tokens[ PSTART_IDX ] << "\n"
+                  << "  * PEND: " << tokens[ PEND_IDX ] << "\n"
+                  << "  * MATCH: " << tokens[ MATCH_IDX ] << "\n"
+                  << "  * BLOCK: " << tokens[ BLOCK_IDX ] << "\n"
+                  << "  * QUAL: " << tokens[ QUAL_IDX ] << "\n"
+                  << std::endl;
+      }
+
+      for ( std::size_t i = AUX_START_IDX; i < tokens.size(); ++i ) {
+        this->parse_tag( tokens[ i ] );
+      }
     }
     /* === OPERATORS === */
     inline operator bool() const
@@ -239,6 +279,12 @@ namespace gaf {
       return this->q_name.empty();
     }
 
+    inline bool
+    is_valid( ) const
+    {
+      return this->block != 0;
+    }
+
     template< typename TGraph >
     inline typename TGraph::dynamic_type::path_type
     parse_stable_path( TGraph const& graph ) const
@@ -246,7 +292,7 @@ namespace gaf {
       typedef typename TGraph::dynamic_type::path_type path_type;
 
       assert( !this->empty() );
-      assert( !GAFRecord::is_orientation_char( this->path[0] ) );
+      assert( !GAFRecord::is_orientation_char( this->path[ 0 ] ) );
       path_type p( GAFRecord::generate_path_id(), this->q_name );
       _parse_stable_path( p, this->path.begin(), this->path.end(), graph );
       return p;
@@ -259,7 +305,7 @@ namespace gaf {
       typedef typename TGraph::dynamic_type::path_type path_type;
 
       assert( !this->empty() );
-      assert( GAFRecord::is_orientation_char( this->path[0] ) );
+      assert( GAFRecord::is_orientation_char( this->path[ 0 ] ) );
       path_type p( GAFRecord::generate_path_id(), this->q_name );
       auto begin = this->path.begin();
       auto end = this->path.end();
@@ -281,7 +327,7 @@ namespace gaf {
     inline bool
     is_oriented_path( ) const
     {
-      return GAFRecord::is_orientation_char( this->path[0] );
+      return GAFRecord::is_orientation_char( this->path[ 0 ] );
     }
 
     template< typename TGraph >
@@ -294,6 +340,49 @@ namespace gaf {
     }
 
   private:
+    inline void
+    parse_tag( std::string field ) {
+      psi::trim( field );
+
+      const std::regex re(R"(:)");
+      std::vector< std::string > tokens(
+          std::sregex_token_iterator( field.begin(), field.end(), re, -1 ),
+          std::sregex_token_iterator()
+        );
+
+      if ( tokens.size() != 3 || tokens[ 0 ].size() != 2 || tokens[ 1 ].size() != 1 ) {
+        std::cerr << "! Warning: ignoring tag '" << field << "' (wrong tokens)" << std::endl;
+        return;
+      }
+      auto const& name = tokens[ 0 ];
+      char type = tokens[ 1 ][ 0 ];
+      auto&& value = tokens[ 2 ];
+
+      try {
+        switch( type ) {
+        case 'i':
+          this->tag_i[ name ] = ( value != "*" ? std::stoul( value ) : 0 );
+          break;
+        case 'f':
+          this->tag_f[ name ] = ( value != "*" ? std::stof( value ) : 0.0 );
+          break;
+        case 'A':
+          if ( value.size() != 1 ) throw std::length_error( "expected one character" );
+        case 'Z':
+          this->tag_az[ name ] = ( value != "*" ? std::move( value ) : "" );
+          break;
+        }
+      }
+      catch ( ... ) {
+        std::cerr << "! Error in parsing tag value:" << std::endl;
+        std::cerr << "  === Tag tokens ===\n"
+                  << "  * NAME: " << tokens[ 0 ] << "\n"
+                  << "  * TYPE: " << tokens[ 1 ] << "\n"
+                  << "  * VALUE: " << tokens[ 2 ] << "\n"
+                  << std::endl;
+      }
+    }
+
     template< typename TIter, typename TGraph >
     inline void
     _parse_stable_path( typename TGraph::dynamic_type::path_type& p,
@@ -302,6 +391,34 @@ namespace gaf {
       throw std::runtime_error( "parsing path with stable ID is not implemented" );
     }
   };
+
+  inline std::ostream&
+  operator<<( std::ostream& os, GAFRecord const& record )
+  {
+    os << "=== Record ===\n"
+       << "* Query name: " << record.q_name << "\n"
+       << "* Query length: " << record.q_len << "\n"
+       << "* Query start: " << record.q_start << "\n"
+       << "* Query end: " << record.q_end << "\n"
+       << "* Query strand: " << ( record.q_fwd ? "Forward" : "Reverse" ) << "\n"
+       << "* Path: " << record.path << "\n"
+       << "* Path length: " << record.p_len << "\n"
+       << "* Path start: " << record.p_start << "\n"
+       << "* Path end: " << record.p_end << "\n"
+       << "* No. of matches: " << record.match << "\n"
+       << "* Alignment block length: " << record.block << "\n"
+       << "* Mapping quality: " << record.qual;
+    for ( auto const& elem : record.tag_az ) {
+      os << "\n* " << elem.first << " (A/Z): " << elem.second;
+    }
+    for ( auto const& elem : record.tag_i ) {
+      os << "\n* " << elem.first << " (i): " << elem.second;
+    }
+    for ( auto const& elem : record.tag_f ) {
+      os << "\n* " << elem.first << " (f): " << elem.second;
+    }
+    return os;
+  }
 
   inline GAFRecord
   next( std::istream& is )
@@ -402,8 +519,14 @@ dstats( cxxopts::ParseResult& res )
   std::string aln_path = res[ "alignment" ].as< std::string >();
 
   // Opening output file for writing
-  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+  std::ostream ost( nullptr );
+  std::ofstream ofs;
+  if ( output == "-" ) ost.rdbuf( std::cout.rdbuf() );
+  else{
+    ofs.open( output, std::ofstream::out | std::ofstream::binary );
+    ost.rdbuf( ofs.rdbuf() );
+  }
+  if ( !ost ) throw std::runtime_error( "output file cannot be opened" );
 
   // Loading input graph
   graph_type graph;
@@ -412,15 +535,17 @@ dstats( cxxopts::ParseResult& res )
 
   // Loading reference paths
   psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
+  std::cout << "Loading reference paths..." << std::endl;
   index_reference_paths( rpaths, graph );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
+  std::cout << "Estimating inner-distances between aligned read pairs..." << std::endl;
   gaf::GAFRecord record1 = gaf::next( ifs );
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
     auto distance = distance_estimate( rpaths, graph, record1, record2 );
-    ofs << distance << std::endl;
+    ost << distance << std::endl;
     record1 = gaf::next( ifs );
     record2 = gaf::next( ifs );
   }
@@ -435,10 +560,17 @@ analyse( cxxopts::ParseResult& res )
   std::string output = res[ "output" ].as< std::string >();
   std::string graph_path = res[ "graph" ].as< std::string >();
   std::string aln_path = res[ "alignment" ].as< std::string >();
+  bool full = res.count( "full-report" );
 
   // Opening output file for writing
-  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+  std::ostream ost( nullptr );
+  std::ofstream ofs;
+  if ( output == "-" ) ost.rdbuf( std::cout.rdbuf() );
+  else {
+    ofs.open( output, std::ofstream::out | std::ofstream::binary );
+    ost.rdbuf( ofs.rdbuf() );
+  }
+  if ( !ost ) throw std::runtime_error( "output file cannot be opened" );
 
   // Loading input graph
   graph_type graph;
@@ -447,25 +579,111 @@ analyse( cxxopts::ParseResult& res )
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  phmap::flat_hash_map< std::string, std::size_t > counts;
+  std::cout << "Analysing..." << std::endl;
+
+  std::string del = "\t";
+  struct Tuple {
+    std::size_t paired;
+    std::size_t single;
+    std::size_t invalid;
+  };
+
+  phmap::flat_hash_map< std::string, Tuple > counts;
   std::string name;
   gaf::GAFRecord record = gaf::next( ifs );
-  std::size_t total_alns = 0;
-  std::size_t total_multi_alns = 0;
+  std::size_t valids = 0;
+  std::size_t invalids = 0;
+  std::size_t nrecords = 0;
+  std::size_t with_valid = 0;
+  std::size_t paired = 0;
+  std::size_t uniq_paired = 0;
+  std::size_t uniq_single = 0;
+  std::size_t multis = 0;
+  std::size_t with_invalid = 0;
+
   while( record ) {
+    ++nrecords;
     name = record.q_name;
-    name.pop_back();  // remove 1 or 2 at the end
-    name.pop_back();  // remove the separator
-    auto found = counts.find( name );
-    if ( found == counts.end() ) counts[ name ] = 0;
-    found->second += 1;
-    ++total_alns;
+    if ( !record.is_valid() ) {  // invalid
+      ++counts[ name ].invalid;
+      ++invalids;
+    }
+    else {
+      ++valids;
+      auto fnptr = record.tag_az.find( "fn" );
+      if ( fnptr != record.tag_az.end() ) {  // paired
+        record = gaf::next( ifs );
+        ++nrecords;
+        if ( !record.is_valid() ) {
+          ++counts[ name ].single;
+          ++counts[ name ].invalid;
+          ++invalids;
+        }
+        else if ( record.q_name != name ) {
+          ++counts[ name ].single;
+          std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
+                    << std::endl;
+          continue;
+        }
+        else {
+          ++valids;
+          auto fpptr = record.tag_az.find( "fp" );
+          if ( fpptr == record.tag_az.end() || fpptr->second != fnptr->second ) {
+            std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
+                      << name << "'" << std::endl;
+            std::cerr << "  consider two alignments as unpaired" << std::endl;
+            counts[ name ].single += 2;
+          }
+          else {
+            ++counts[ name ].paired;
+          }
+        }
+      }
+      else {  // single
+        ++counts[ name ].single;
+      }
+    }
     record = gaf::next( ifs );
   }
-  for ( auto entry : counts ) if ( entry.second > 2 ) ++total_multi_alns;
-  std::cout << "Total number of alignments: " << total_alns << std::endl;
-  std::cout << "Total pairs with valid alignments: " << counts.size() << std::endl;
-  std::cout << "Total pairs with multiple alignments: " << total_multi_alns << std::endl;
+
+  if ( full ) {
+    ost << "#RNAME: read name\n"
+        << "#NP: number of paired alignments\n"
+        << "#NS: number of single alignments\n"
+        << "#NI: number of invalid alignments\n"
+        << "RNAME" + del + "NP" + del + "NS" + del + "NI" << std::endl;
+    for ( auto const& elem : counts ) {
+      ost << elem.first << del << elem.second.paired << del << elem.second.single << del
+          << elem.second.invalid << std::endl;
+    }
+  }
+  else {
+    for ( auto const& elem : counts ) {
+      auto const& cnts = elem.second;
+      if ( cnts.paired != 0 ) ++paired;
+      if ( cnts.paired != 0 || cnts.single != 0 ) ++with_valid;
+      if ( cnts.paired == 1 && cnts.single == 0 ) ++uniq_paired;
+      else if ( cnts.paired == 0 && cnts.single == 1 ) ++uniq_single;
+      else if ( cnts.paired >= 1 || cnts.single >= 1 ) ++multis;
+      if ( cnts.invalid != 0 ) ++with_invalid;
+    }
+
+    ost << "#NREC: number of records\n"
+        << "#NVAL: number of valid alignments\n"
+        << "#NIVR: number of invalid alignments\n"
+        << "#NALR: number of reads with at least one alignment\n"
+        << "#NAPR: number of reads with at least one paired alignment\n"
+        << "#NUQP: number of reads with a unique paired alignment\n"
+        << "#NUQS: number of reads with a unique single alignment\n"
+        << "#NMLT: number of reads with multiple alignments\n"
+        << "#NRIN: number of reads with at least one invalid alignment\n"
+        << "NREC" + del + "NVAL" + del + "NIVR" + del + "NALR" + del + "NAPR" + del
+        << "NUQP" + del + "NUQS" + del + "NMLT" + del + "NRIN\n"
+        << nrecords << ( valids + invalids != nrecords ? "*" : "") << del
+        << valids << del << invalids << del << with_valid << del << paired << del
+        << uniq_paired << del << uniq_single << del << multis << del << with_invalid
+        << std::endl;
+  }
 }
 
 int
