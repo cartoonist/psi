@@ -518,8 +518,14 @@ dstats( cxxopts::ParseResult& res )
   std::string aln_path = res[ "alignment" ].as< std::string >();
 
   // Opening output file for writing
-  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+  std::ostream ost( nullptr );
+  std::ofstream ofs;
+  if ( output == "-" ) ost.rdbuf( std::cout.rdbuf() );
+  else{
+    ofs.open( output, std::ofstream::out | std::ofstream::binary );
+    ost.rdbuf( ofs.rdbuf() );
+  }
+  if ( !ost ) throw std::runtime_error( "output file cannot be opened" );
 
   // Loading input graph
   graph_type graph;
@@ -536,7 +542,7 @@ dstats( cxxopts::ParseResult& res )
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
     auto distance = distance_estimate( rpaths, graph, record1, record2 );
-    ofs << distance << std::endl;
+    ost << distance << std::endl;
     record1 = gaf::next( ifs );
     record2 = gaf::next( ifs );
   }
@@ -553,8 +559,14 @@ analyse( cxxopts::ParseResult& res )
   std::string aln_path = res[ "alignment" ].as< std::string >();
 
   // Opening output file for writing
-  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+  std::ostream ost( nullptr );
+  std::ofstream ofs;
+  if ( output == "-" ) ost.rdbuf( std::cout.rdbuf() );
+  else {
+    ofs.open( output, std::ofstream::out | std::ofstream::binary );
+    ost.rdbuf( ofs.rdbuf() );
+  }
+  if ( !ost ) throw std::runtime_error( "output file cannot be opened" );
 
   // Loading input graph
   graph_type graph;
