@@ -54,6 +54,7 @@ config_parser( cxxopts::Options& options )
       ;
 
   options.add_options( "analyse" )
+      ( "F, full-report", "Output full report" )
       ;
 
   options.add_options( "positional" )
@@ -534,10 +535,12 @@ dstats( cxxopts::ParseResult& res )
 
   // Loading reference paths
   psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
+  std::cout << "Loading reference paths..." << std::endl;
   index_reference_paths( rpaths, graph );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
+  std::cout << "Estimating inner-distances between aligned read pairs..." << std::endl;
   gaf::GAFRecord record1 = gaf::next( ifs );
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
@@ -557,6 +560,7 @@ analyse( cxxopts::ParseResult& res )
   std::string output = res[ "output" ].as< std::string >();
   std::string graph_path = res[ "graph" ].as< std::string >();
   std::string aln_path = res[ "alignment" ].as< std::string >();
+  bool full = res.count( "full-report" );
 
   // Opening output file for writing
   std::ostream ost( nullptr );
@@ -575,25 +579,111 @@ analyse( cxxopts::ParseResult& res )
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  phmap::flat_hash_map< std::string, std::size_t > counts;
+  std::cout << "Analysing..." << std::endl;
+
+  std::string del = "\t";
+  struct Tuple {
+    std::size_t paired;
+    std::size_t single;
+    std::size_t invalid;
+  };
+
+  phmap::flat_hash_map< std::string, Tuple > counts;
   std::string name;
   gaf::GAFRecord record = gaf::next( ifs );
-  std::size_t total_alns = 0;
-  std::size_t total_multi_alns = 0;
+  std::size_t valids = 0;
+  std::size_t invalids = 0;
+  std::size_t nrecords = 0;
+  std::size_t with_valid = 0;
+  std::size_t paired = 0;
+  std::size_t uniq_paired = 0;
+  std::size_t uniq_single = 0;
+  std::size_t multis = 0;
+  std::size_t with_invalid = 0;
+
   while( record ) {
+    ++nrecords;
     name = record.q_name;
-    name.pop_back();  // remove 1 or 2 at the end
-    name.pop_back();  // remove the separator
-    auto found = counts.find( name );
-    if ( found == counts.end() ) counts[ name ] = 0;
-    found->second += 1;
-    ++total_alns;
+    if ( !record.is_valid() ) {  // invalid
+      ++counts[ name ].invalid;
+      ++invalids;
+    }
+    else {
+      ++valids;
+      auto fnptr = record.tag_az.find( "fn" );
+      if ( fnptr != record.tag_az.end() ) {  // paired
+        record = gaf::next( ifs );
+        ++nrecords;
+        if ( !record.is_valid() ) {
+          ++counts[ name ].single;
+          ++counts[ name ].invalid;
+          ++invalids;
+        }
+        else if ( record.q_name != name ) {
+          ++counts[ name ].single;
+          std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
+                    << std::endl;
+          continue;
+        }
+        else {
+          ++valids;
+          auto fpptr = record.tag_az.find( "fp" );
+          if ( fpptr == record.tag_az.end() || fpptr->second != fnptr->second ) {
+            std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
+                      << name << "'" << std::endl;
+            std::cerr << "  consider two alignments as unpaired" << std::endl;
+            counts[ name ].single += 2;
+          }
+          else {
+            ++counts[ name ].paired;
+          }
+        }
+      }
+      else {  // single
+        ++counts[ name ].single;
+      }
+    }
     record = gaf::next( ifs );
   }
-  for ( auto entry : counts ) if ( entry.second > 2 ) ++total_multi_alns;
-  std::cout << "Total number of alignments: " << total_alns << std::endl;
-  std::cout << "Total pairs with valid alignments: " << counts.size() << std::endl;
-  std::cout << "Total pairs with multiple alignments: " << total_multi_alns << std::endl;
+
+  if ( full ) {
+    ost << "#RNAME: read name\n"
+        << "#NP: number of paired alignments\n"
+        << "#NS: number of single alignments\n"
+        << "#NI: number of invalid alignments\n"
+        << "RNAME" + del + "NP" + del + "NS" + del + "NI" << std::endl;
+    for ( auto const& elem : counts ) {
+      ost << elem.first << del << elem.second.paired << del << elem.second.single << del
+          << elem.second.invalid << std::endl;
+    }
+  }
+  else {
+    for ( auto const& elem : counts ) {
+      auto const& cnts = elem.second;
+      if ( cnts.paired != 0 ) ++paired;
+      if ( cnts.paired != 0 || cnts.single != 0 ) ++with_valid;
+      if ( cnts.paired == 1 && cnts.single == 0 ) ++uniq_paired;
+      else if ( cnts.paired == 0 && cnts.single == 1 ) ++uniq_single;
+      else if ( cnts.paired >= 1 || cnts.single >= 1 ) ++multis;
+      if ( cnts.invalid != 0 ) ++with_invalid;
+    }
+
+    ost << "#NREC: number of records\n"
+        << "#NVAL: number of valid alignments\n"
+        << "#NIVR: number of invalid alignments\n"
+        << "#NALR: number of reads with at least one alignment\n"
+        << "#NAPR: number of reads with at least one paired alignment\n"
+        << "#NUQP: number of reads with a unique paired alignment\n"
+        << "#NUQS: number of reads with a unique single alignment\n"
+        << "#NMLT: number of reads with multiple alignments\n"
+        << "#NRIN: number of reads with at least one invalid alignment\n"
+        << "NREC" + del + "NVAL" + del + "NIVR" + del + "NALR" + del + "NAPR" + del
+        << "NUQP" + del + "NUQS" + del + "NMLT" + del + "NRIN\n"
+        << nrecords << ( valids + invalids != nrecords ? "*" : "") << del
+        << valids << del << invalids << del << with_valid << del << paired << del
+        << uniq_paired << del << uniq_single << del << multis << del << with_invalid
+        << std::endl;
+  }
 }
 
 int
