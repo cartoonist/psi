@@ -139,6 +139,7 @@ namespace gaf {
     static constexpr const unsigned int MATCH_IDX = 9;
     static constexpr const unsigned int BLOCK_IDX = 10;
     static constexpr const unsigned int QUAL_IDX = 11;
+    static constexpr const unsigned int AUX_START_IDX = 12;
     /* === DATA MEMBERS === */
     std::string q_name;
     std::size_t q_len;
@@ -152,6 +153,9 @@ namespace gaf {
     std::size_t match;
     std::size_t block;
     std::size_t qual;
+    phmap::flat_hash_map< std::string, std::string > tag_az;
+    phmap::flat_hash_map< std::string, int32_t > tag_i;
+    phmap::flat_hash_map< std::string, float > tag_f;
     /* === STATIC METHODS === */
     static inline int64_t
     generate_path_id( )
@@ -198,6 +202,7 @@ namespace gaf {
     { }
 
     GAFRecord( std::string line )
+      : GAFRecord( )
     {
       psi::trim( line );
 
@@ -239,7 +244,7 @@ namespace gaf {
         this->qual = ( tokens[ QUAL_IDX ] == "*" ?
                        this->qual : std::stoull( tokens[ QUAL_IDX ] ) );
       }
-      catch ( std::invalid_argument const& e ) {
+      catch ( std::invalid_argument const& ) {
         std::cerr << "! Error in parsing input GAF:" << std::endl;
         std::cerr << "  === Record tokens ===\n"
                   << "  * QNAME: " << tokens[ QNAME_IDX ] << "\n"
@@ -255,6 +260,10 @@ namespace gaf {
                   << "  * BLOCK: " << tokens[ BLOCK_IDX ] << "\n"
                   << "  * QUAL: " << tokens[ QUAL_IDX ] << "\n"
                   << std::endl;
+      }
+
+      for ( std::size_t i = AUX_START_IDX; i < tokens.size(); ++i ) {
+        this->parse_tag( tokens[ i ] );
       }
     }
     /* === OPERATORS === */
@@ -282,7 +291,7 @@ namespace gaf {
       typedef typename TGraph::dynamic_type::path_type path_type;
 
       assert( !this->empty() );
-      assert( !GAFRecord::is_orientation_char( this->path[0] ) );
+      assert( !GAFRecord::is_orientation_char( this->path[ 0 ] ) );
       path_type p( GAFRecord::generate_path_id(), this->q_name );
       _parse_stable_path( p, this->path.begin(), this->path.end(), graph );
       return p;
@@ -295,7 +304,7 @@ namespace gaf {
       typedef typename TGraph::dynamic_type::path_type path_type;
 
       assert( !this->empty() );
-      assert( GAFRecord::is_orientation_char( this->path[0] ) );
+      assert( GAFRecord::is_orientation_char( this->path[ 0 ] ) );
       path_type p( GAFRecord::generate_path_id(), this->q_name );
       auto begin = this->path.begin();
       auto end = this->path.end();
@@ -317,7 +326,7 @@ namespace gaf {
     inline bool
     is_oriented_path( ) const
     {
-      return GAFRecord::is_orientation_char( this->path[0] );
+      return GAFRecord::is_orientation_char( this->path[ 0 ] );
     }
 
     template< typename TGraph >
@@ -330,6 +339,49 @@ namespace gaf {
     }
 
   private:
+    inline void
+    parse_tag( std::string field ) {
+      psi::trim( field );
+
+      const std::regex re(R"(:)");
+      std::vector< std::string > tokens(
+          std::sregex_token_iterator( field.begin(), field.end(), re, -1 ),
+          std::sregex_token_iterator()
+        );
+
+      if ( tokens.size() != 3 || tokens[ 0 ].size() != 2 || tokens[ 1 ].size() != 1 ) {
+        std::cerr << "! Warning: ignoring tag '" << field << "' (wrong tokens)" << std::endl;
+        return;
+      }
+      auto const& name = tokens[ 0 ];
+      char type = tokens[ 1 ][ 0 ];
+      auto&& value = tokens[ 2 ];
+
+      try {
+        switch( type ) {
+        case 'i':
+          this->tag_i[ name ] = ( value != "*" ? std::stoul( value ) : 0 );
+          break;
+        case 'f':
+          this->tag_f[ name ] = ( value != "*" ? std::stof( value ) : 0.0 );
+          break;
+        case 'A':
+          if ( value.size() != 1 ) throw std::length_error( "expected one character" );
+        case 'Z':
+          this->tag_az[ name ] = ( value != "*" ? std::move( value ) : "" );
+          break;
+        }
+      }
+      catch ( ... ) {
+        std::cerr << "! Error in parsing tag value:" << std::endl;
+        std::cerr << "  === Tag tokens ===\n"
+                  << "  * NAME: " << tokens[ 0 ] << "\n"
+                  << "  * TYPE: " << tokens[ 1 ] << "\n"
+                  << "  * VALUE: " << tokens[ 2 ] << "\n"
+                  << std::endl;
+      }
+    }
+
     template< typename TIter, typename TGraph >
     inline void
     _parse_stable_path( typename TGraph::dynamic_type::path_type& p,
@@ -355,6 +407,15 @@ namespace gaf {
        << "* No. of matches: " << record.match << "\n"
        << "* Alignment block length: " << record.block << "\n"
        << "* Mapping quality: " << record.qual;
+    for ( auto const& elem : record.tag_az ) {
+      os << "\n* " << elem.first << " (A/Z): " << elem.second;
+    }
+    for ( auto const& elem : record.tag_i ) {
+      os << "\n* " << elem.first << " (i): " << elem.second;
+    }
+    for ( auto const& elem : record.tag_f ) {
+      os << "\n* " << elem.first << " (f): " << elem.second;
+    }
     return os;
   }
 
