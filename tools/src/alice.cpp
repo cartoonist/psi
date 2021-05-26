@@ -344,19 +344,15 @@ namespace gaf {
     parse_tag( std::string field ) {
       psi::trim( field );
 
-      const std::regex re(R"(:)");
-      std::vector< std::string > tokens(
-          std::sregex_token_iterator( field.begin(), field.end(), re, -1 ),
-          std::sregex_token_iterator()
-        );
-
-      if ( tokens.size() != 3 || tokens[ 0 ].size() != 2 || tokens[ 1 ].size() != 1 ) {
+      if ( field.size() < 6 || field[ 0 ] == ':' || field[ 1 ] == ':' ||
+           field[ 2 ] != ':' || field[ 3 ] == ':' || field[4] != ':' ) {
         std::cerr << "! Warning: ignoring tag '" << field << "' (wrong tokens)" << std::endl;
         return;
       }
-      auto const& name = tokens[ 0 ];
-      char type = tokens[ 1 ][ 0 ];
-      auto&& value = tokens[ 2 ];
+
+      std::string name = field.substr( 0, 2 );
+      char type = field[ 3 ];
+      std::string value = field.substr( 5 );
 
       try {
         switch( type ) {
@@ -376,9 +372,9 @@ namespace gaf {
       catch ( ... ) {
         std::cerr << "! Error in parsing tag value:" << std::endl;
         std::cerr << "  === Tag tokens ===\n"
-                  << "  * NAME: " << tokens[ 0 ] << "\n"
-                  << "  * TYPE: " << tokens[ 1 ] << "\n"
-                  << "  * VALUE: " << tokens[ 2 ] << "\n"
+                  << "  * NAME: " << name << "\n"
+                  << "  * TYPE: " << type << "\n"
+                  << "  * VALUE: " << value << "\n"
                   << std::endl;
       }
     }
