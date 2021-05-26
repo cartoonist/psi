@@ -600,8 +600,9 @@ analyse( cxxopts::ParseResult& res )
   while( record ) {
     ++nrecords;
     name = record.q_name;
+    auto&& cnt = counts[ name ];
     if ( !record.is_valid() ) {  // invalid
-      ++counts[ name ].invalid;
+      ++cnt.invalid;
       ++invalids;
     }
     else {
@@ -611,12 +612,12 @@ analyse( cxxopts::ParseResult& res )
         record = gaf::next( ifs );
         ++nrecords;
         if ( !record.is_valid() ) {
-          ++counts[ name ].single;
-          ++counts[ name ].invalid;
+          ++cnt.single;
+          ++cnt.invalid;
           ++invalids;
         }
         else if ( record.q_name != name ) {
-          ++counts[ name ].single;
+          ++cnt.single;
           std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
                     << std::endl;
           continue;
@@ -628,15 +629,15 @@ analyse( cxxopts::ParseResult& res )
             std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
                       << name << "'" << std::endl;
             std::cerr << "  consider two alignments as unpaired" << std::endl;
-            counts[ name ].single += 2;
+            cnt.single += 2;
           }
           else {
-            ++counts[ name ].paired;
+            ++cnt.paired;
           }
         }
       }
       else {  // single
-        ++counts[ name ].single;
+        ++cnt.single;
       }
     }
     record = gaf::next( ifs );
