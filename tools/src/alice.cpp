@@ -38,6 +38,7 @@ constexpr const char* LONG_DESC = ( "ALICE\n"
                                     "ALignment InspeCtor and analysEr\n" );
 // Default values for command line arguments
 constexpr const char* DEFAULT_OUTPUT = "-";  // stdout
+constexpr const char* DEFAULT_ID_THRESHOLD = "0.9";
 
 void
 config_parser( cxxopts::Options& options )
@@ -55,6 +56,8 @@ config_parser( cxxopts::Options& options )
 
   options.add_options( "analyse" )
       ( "F, full-report", "Output full report" )
+      ( "I, identity-threshold", "Minimum identity score of a good alignment",
+        cxxopts::value< float >()->default_value( DEFAULT_ID_THRESHOLD ) )
       ;
 
   options.add_options( "positional" )
@@ -424,6 +427,16 @@ namespace gaf {
     if ( is ) return GAFRecord( std::move( line ) );
     else return GAFRecord();
   }
+
+  inline float
+  get_identity( GAFRecord const& record )
+  {
+    auto id_itr = record.tag_f.find( "id" );
+    if ( id_itr != record.tag_f.end() ) return id_itr->second;
+    auto dv_itr = record.tag_f.find( "dv" );
+    if ( dv_itr != record.tag_f.end() ) return 1 - dv_itr->second;
+    return 0;
+  }
 }
 
 template< typename TPathSet, typename TGraph >
@@ -556,6 +569,7 @@ analyse( cxxopts::ParseResult& res )
   std::string output = res[ "output" ].as< std::string >();
   std::string graph_path = res[ "graph" ].as< std::string >();
   std::string aln_path = res[ "alignment" ].as< std::string >();
+  float id_threshold = res[ "identity-threshold" ].as< float >();
   bool full = res.count( "full-report" );
 
   // Opening output file for writing
@@ -581,6 +595,8 @@ analyse( cxxopts::ParseResult& res )
   struct Tuple {
     std::size_t paired;
     std::size_t single;
+    std::size_t hi_paired;
+    std::size_t hi_single;
     std::size_t invalid;
   };
 
@@ -594,6 +610,10 @@ analyse( cxxopts::ParseResult& res )
   std::size_t paired = 0;
   std::size_t uniq_paired = 0;
   std::size_t uniq_single = 0;
+  std::size_t hi_paired = 0;
+  std::size_t hi_single = 0;
+  std::size_t hi_uniq_paired = 0;
+  std::size_t hi_uniq_single = 0;
   std::size_t multis = 0;
   std::size_t with_invalid = 0;
 
@@ -607,6 +627,7 @@ analyse( cxxopts::ParseResult& res )
     }
     else {
       ++valids;
+      auto identity = gaf::get_identity( record );
       auto fnptr = record.tag_az.find( "fn" );
       if ( fnptr != record.tag_az.end() ) {  // paired
         record = gaf::next( ifs );
@@ -615,29 +636,37 @@ analyse( cxxopts::ParseResult& res )
           ++cnt.single;
           ++cnt.invalid;
           ++invalids;
+          if ( identity >= id_threshold ) ++cnt.hi_single;
         }
         else if ( record.q_name != name ) {
           ++cnt.single;
+          if ( identity >= id_threshold ) ++cnt.hi_single;
           std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
                     << std::endl;
           continue;
         }
         else {
           ++valids;
+          auto identity2 = gaf::get_identity( record );
           auto fpptr = record.tag_az.find( "fp" );
           if ( fpptr == record.tag_az.end() || fpptr->second != fnptr->second ) {
             std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
                       << name << "'" << std::endl;
             std::cerr << "  consider two alignments as unpaired" << std::endl;
             cnt.single += 2;
+            if ( identity >= id_threshold ) ++cnt.hi_single;
+            if ( identity2 >= id_threshold ) ++cnt.hi_single;
           }
           else {
             ++cnt.paired;
+            if ( identity >= id_threshold && identity2 >= id_threshold ) ++cnt.hi_paired;
+            else if ( identity >= id_threshold || identity2 >= id_threshold ) ++cnt.hi_single;
           }
         }
       }
       else {  // single
         ++cnt.single;
+        if ( identity >= id_threshold ) ++cnt.hi_single;
       }
     }
     record = gaf::next( ifs );
@@ -648,10 +677,14 @@ analyse( cxxopts::ParseResult& res )
         << "#NP: number of paired alignments\n"
         << "#NS: number of single alignments\n"
         << "#NI: number of invalid alignments\n"
-        << "RNAME" + del + "NP" + del + "NS" + del + "NI" << std::endl;
+        << "#NHP: number of paired alignments with high identity score\n"
+        << "#NHS: number of single alignments with high identity score\n"
+        << "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS"
+        << std::endl;
     for ( auto const& elem : counts ) {
       ost << elem.first << del << elem.second.paired << del << elem.second.single << del
-          << elem.second.invalid << std::endl;
+          << elem.second.invalid << del << elem.second.hi_paired << del
+          << elem.second.hi_single << std::endl;
     }
   }
   else {
@@ -662,6 +695,10 @@ analyse( cxxopts::ParseResult& res )
       if ( cnts.paired == 1 && cnts.single == 0 ) ++uniq_paired;
       else if ( cnts.paired == 0 && cnts.single == 1 ) ++uniq_single;
       else if ( cnts.paired >= 1 || cnts.single >= 1 ) ++multis;
+      if ( cnts.hi_paired != 0 ) ++hi_paired;
+      if ( cnts.hi_paired == 1 ) ++hi_uniq_paired;
+      if ( cnts.hi_single != 0 ) ++hi_single;
+      if ( cnts.hi_single == 1 ) ++hi_uniq_single;
       if ( cnts.invalid != 0 ) ++with_invalid;
     }
 
@@ -672,14 +709,20 @@ analyse( cxxopts::ParseResult& res )
         << "#NAPR: number of reads with at least one paired alignment\n"
         << "#NUQP: number of reads with a unique paired alignment\n"
         << "#NUQS: number of reads with a unique single alignment\n"
+        << "#NHIP: number of reads with a at least one paired alignment with high identity score\n"
+        << "#NHIS: number of reads with a at least one single alignment with high identity score\n"
+        << "#NUHP: number of reads with a unique paired alignment with high identity score\n"
+        << "#NUHS: number of reads with a unique single alignment with high identity score\n"
         << "#NMLT: number of reads with multiple alignments\n"
         << "#NRIN: number of reads with at least one invalid alignment\n"
         << "NREC" + del + "NVAL" + del + "NIVR" + del + "NALR" + del + "NAPR" + del
-        << "NUQP" + del + "NUQS" + del + "NMLT" + del + "NRIN\n"
+        << "NUQP" + del + "NUQS" + del + "NHIP" + del + "NHIS" + del + "NUHP" + del
+        << "NUHS" + del + "NMLT" + del + "NRIN\n"
         << nrecords << ( valids + invalids != nrecords ? "*" : "") << del
         << valids << del << invalids << del << with_valid << del << paired << del
-        << uniq_paired << del << uniq_single << del << multis << del << with_invalid
-        << std::endl;
+        << uniq_paired << del << uniq_single << del << hi_paired << del << hi_single
+        << del << hi_uniq_paired << del << hi_uniq_single << del << multis << del
+        << with_invalid << std::endl;
   }
 }
 
