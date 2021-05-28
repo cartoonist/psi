@@ -631,8 +631,9 @@ analyse( cxxopts::ParseResult& res )
     else {
       ++valids;
       auto identity = gaf::get_identity( record );
-      auto fnptr = record.tag_az.find( "fn" );
-      if ( fnptr != record.tag_az.end() ) {  // paired
+      auto tagptr = record.tag_az.find( "fn" );
+      if ( tagptr != record.tag_az.end() ) {  // paired
+        auto fn = tagptr->second;
         record = gaf::next( ifs );
         ++nrecords;
         if ( !record.is_valid() ) {
@@ -651,8 +652,8 @@ analyse( cxxopts::ParseResult& res )
         else {
           ++valids;
           auto identity2 = gaf::get_identity( record );
-          auto fpptr = record.tag_az.find( "fp" );
-          if ( fpptr == record.tag_az.end() || fpptr->second != fnptr->second ) {
+          tagptr = record.tag_az.find( "fp" );
+          if ( tagptr == record.tag_az.end() || tagptr->second != fn ) {
             std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
                       << name << "'" << std::endl;
             std::cerr << "  consider two alignments as unpaired" << std::endl;
