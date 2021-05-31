@@ -251,6 +251,9 @@ namespace psi {
         initialize( )
         {
           indexRequire( this->encids_index, seqan::FibreSALF() );
+          for ( size_type i = 0; i < this->bv_ids_set.size(); ++i ) {
+            sdsl::util::init_support( this->rs_ids_set[ i ], &this->bv_ids_set[ i ] );
+          }
         }
 
           inline void
