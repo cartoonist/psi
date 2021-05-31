@@ -449,6 +449,7 @@ index_reference_paths( TPathSet& pathset, TGraph& graph )
   graph.for_each_path(
       [&nodes, &graph, &pathset]( auto rank, auto pid ) {
         typedef typename TPathSet::value_type path_type;
+        std::cerr << "! INFO Fetching reference path " << rank << "..." << std::endl;
         for ( auto n : graph.path( pid ) ) nodes.push_back( n );
         typename path_type::nodes_type cnodes( nodes );
         pathset.push_back( path_type( &graph, std::move( cnodes ) ) );
@@ -553,8 +554,10 @@ dstats( cxxopts::ParseResult& res )
   gaf::GAFRecord record1 = gaf::next( ifs );
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
-    auto distance = distance_estimate( rpaths, graph, record1, record2 );
-    ost << distance << std::endl;
+    if ( record1.is_valid() && record2.is_valid() ) {
+      auto distance = distance_estimate( rpaths, graph, record1, record2 );
+      ost << distance << std::endl;
+    }
     record1 = gaf::next( ifs );
     record2 = gaf::next( ifs );
   }
@@ -628,8 +631,9 @@ analyse( cxxopts::ParseResult& res )
     else {
       ++valids;
       auto identity = gaf::get_identity( record );
-      auto fnptr = record.tag_az.find( "fn" );
-      if ( fnptr != record.tag_az.end() ) {  // paired
+      auto tagptr = record.tag_az.find( "fn" );
+      if ( tagptr != record.tag_az.end() ) {  // paired
+        auto fn = tagptr->second;
         record = gaf::next( ifs );
         ++nrecords;
         if ( !record.is_valid() ) {
@@ -648,8 +652,8 @@ analyse( cxxopts::ParseResult& res )
         else {
           ++valids;
           auto identity2 = gaf::get_identity( record );
-          auto fpptr = record.tag_az.find( "fp" );
-          if ( fpptr == record.tag_az.end() || fpptr->second != fnptr->second ) {
+          tagptr = record.tag_az.find( "fp" );
+          if ( tagptr == record.tag_az.end() || tagptr->second != fn ) {
             std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
                       << name << "'" << std::endl;
             std::cerr << "  consider two alignments as unpaired" << std::endl;
@@ -739,7 +743,7 @@ main( int argc, char* argv[] )
     if ( command == "dstats" ) {
       dstats( res );
     }
-    if ( command == "analyse" ) {
+    else if ( command == "analyse" ) {
       analyse( res );
     }
     else {
