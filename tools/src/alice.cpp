@@ -58,6 +58,10 @@ config_parser( cxxopts::Options& options )
       ( "F, full-report", "Output full report" )
       ( "I, identity-threshold", "Minimum identity score of a good alignment",
         cxxopts::value< float >()->default_value( DEFAULT_ID_THRESHOLD ) )
+      ( "T, ground-truth", "Ground truth alignment (GAF)",
+        cxxopts::value< std::string >()->default_value( "" ) )
+      ( "m, trim-name",
+        "Trim fragment numbers at the end of read names in the input ground truth set" )
       ;
 
   options.add_options( "positional" )
@@ -100,6 +104,11 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     if ( result.count( "help" ) ) {
       std::cout << options.help( { "general", "analyse" } ) << std::endl;
       throw EXIT_SUCCESS;
+    }
+
+    if ( result.count( "ground-truth" ) &&
+         ! readable( result[ "ground-truth" ].as< std::string >() ) ) {
+      throw cxxopts::OptionParseException( "Ground truth alignment file not found" );
     }
   }
   else {
@@ -466,7 +475,7 @@ ref_pos( TPathSet& rpaths, typename TPathSet::graph_type graph, TPath& path )
   typedef typename TPathSet::graph_type graph_type;
 
   psi::Path< graph_type, psi::Dynamic > one_node_path( &graph );
-  std::size_t offset = 0;
+  long long int offset = 0;
   for ( auto n : path ) {
     auto id = path.id_of( n );
     bool reverse = path.is_reverse( n );
@@ -540,17 +549,17 @@ dstats( cxxopts::ParseResult& res )
 
   // Loading input graph
   graph_type graph;
-  std::cout << "Loading input graph..." << std::endl;
+  std::cerr << "Loading input graph..." << std::endl;
   gum::util::load( graph, graph_path, true );
 
   // Loading reference paths
   psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
-  std::cout << "Loading reference paths..." << std::endl;
+  std::cerr << "Loading reference paths..." << std::endl;
   index_reference_paths( rpaths, graph );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  std::cout << "Estimating inner-distances between aligned read pairs..." << std::endl;
+  std::cerr << "Estimating inner-distances between aligned read pairs..." << std::endl;
   gaf::GAFRecord record1 = gaf::next( ifs );
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
@@ -563,6 +572,83 @@ dstats( cxxopts::ParseResult& res )
   }
 }
 
+template< typename TGraph >
+auto
+load_ground_truth( std::string const& truth_path, TGraph const& graph,
+                   bool trim_name=false )
+{
+  struct OrientedPos {
+    typename TGraph::dynamic_type::path_type::value_type oriented_id;
+    std::size_t offset;
+    OrientedPos( typename TGraph::dynamic_type::path_type::value_type i, std::size_t o )
+      : oriented_id( i ), offset( o )
+    { }
+  };
+  phmap::flat_hash_map< std::string, std::vector< OrientedPos > > truth;
+
+  if ( truth_path.empty() ) return truth;
+
+  // Opening ground truth alignment file for reading
+  std::ifstream ifs( truth_path, std::ifstream::in | std::ifstream::binary );
+  std::cerr << "Loading ground truth alignments..." << std::endl;
+
+  gaf::GAFRecord record = gaf::next( ifs );
+  while ( record ) {
+    auto name = record.q_name;
+    if ( trim_name ) name.resize( name.size() - 2 );
+    auto&& loci = truth[ name ];
+    if ( record.is_valid() ) {
+      auto path = record.parse_path( graph );
+      loci.push_back( { path.front(), record.p_start } );
+      if ( loci.size() > 2 ) {
+        std::cerr << "! Warning: '" << name << "' has more than two alignments"
+                  << std::endl;
+      }
+    }
+    record = gaf::next( ifs );
+  }
+
+  std::size_t multiple = 0;
+  std::array< std::size_t, 3 > counters = { 0, 0, 0 };
+  for ( auto const& element : truth ) {
+    if ( element.second.size() > 2 ) ++multiple;
+    else ++counters[ element.second.size() ];
+  }
+
+  std::cerr << "Loaded ground truth alignments with (0, 1, 2, 3+) fragments: ("
+            << counters[ 0 ] << ", " << counters[ 1 ] << ", " << counters[ 2 ] << ", "
+            << multiple << ")" << std::endl;
+
+  return truth;
+}
+
+template< typename TRecord, typename TMap, typename TGraph >
+unsigned char
+get_truth_flag( TRecord const& record, TMap const& truth, TGraph const& graph,
+                bool full=false )
+{
+  unsigned char flag = 0;
+  auto&& name = record.q_name;
+  auto found = truth.find( name );
+  if ( found == truth.end() ) return 0;
+  auto path = record.parse_path( graph );
+  if ( found->second.size() > 4 ) throw std::runtime_error( "too many ground truth fragments" );
+  for ( auto it = found->second.begin(); it != found->second.end(); ++it ) {
+    if ( it->oriented_id == path.front() ) {
+      // flag <<= 1;
+      ++flag;
+      if ( it->offset == record.p_start )
+      {
+        flag <<= 1;
+        ++flag;
+      }
+      flag <<= 2*( it - found->second.begin() );
+      break;
+    }
+  }
+  return flag;
+}
+
 void
 analyse( cxxopts::ParseResult& res )
 {
@@ -571,9 +657,11 @@ analyse( cxxopts::ParseResult& res )
   // Fetching input parameters
   std::string output = res[ "output" ].as< std::string >();
   std::string graph_path = res[ "graph" ].as< std::string >();
+  std::string truth_path = res[ "ground-truth" ].as< std::string >();
   std::string aln_path = res[ "alignment" ].as< std::string >();
   float id_threshold = res[ "identity-threshold" ].as< float >();
   bool full = res.count( "full-report" );
+  bool trim = res.count( "trim-name" );
 
   // Opening output file for writing
   std::ostream ost( nullptr );
@@ -587,12 +675,14 @@ analyse( cxxopts::ParseResult& res )
 
   // Loading input graph
   graph_type graph;
-  std::cout << "Loading input graph..." << std::endl;
+  std::cerr << "Loading input graph..." << std::endl;
   gum::util::load( graph, graph_path, true );
+
+  // Loading ground truth if available
+  auto truth = load_ground_truth( truth_path, graph, trim );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  std::cout << "Analysing..." << std::endl;
 
   std::string del = "\t";
   struct Tuple {
@@ -601,6 +691,7 @@ analyse( cxxopts::ParseResult& res )
     std::size_t hi_paired;
     std::size_t hi_single;
     std::size_t invalid;
+    unsigned char truth_flag;
   };
 
   phmap::flat_hash_map< std::string, Tuple > counts;
@@ -619,9 +710,16 @@ analyse( cxxopts::ParseResult& res )
   std::size_t hi_uniq_single = 0;
   std::size_t multis = 0;
   std::size_t with_invalid = 0;
+  std::size_t nffm = 0;
+  std::size_t nppm = 0;
+  std::size_t nfpm = 0;
+  std::size_t nfnm = 0;
+  std::size_t npnm = 0;
+  std::size_t nnnm = 0;
 
   while( record ) {
     ++nrecords;
+    std::cerr << "\rAnalysing record " << nrecords << "...";
     name = record.q_name;
     auto&& cnt = counts[ name ];
     if ( !record.is_valid() ) {  // invalid
@@ -630,26 +728,28 @@ analyse( cxxopts::ParseResult& res )
     }
     else {
       ++valids;
+      cnt.truth_flag |= get_truth_flag( record, truth, graph );
       auto identity = gaf::get_identity( record );
       auto tagptr = record.tag_az.find( "fn" );
       if ( tagptr != record.tag_az.end() ) {  // paired
         auto fn = tagptr->second;
         record = gaf::next( ifs );
-        ++nrecords;
-        if ( !record.is_valid() ) {
-          ++cnt.single;
-          ++cnt.invalid;
-          ++invalids;
-          if ( identity >= id_threshold ) ++cnt.hi_single;
-        }
-        else if ( record.q_name != name ) {
+        if ( record.q_name != name ) {
           ++cnt.single;
           if ( identity >= id_threshold ) ++cnt.hi_single;
           std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
                     << std::endl;
           continue;
         }
+        else if ( !record.is_valid() ) {
+          ++nrecords;  // process fetched record
+          ++cnt.single;
+          ++cnt.invalid;
+          ++invalids;
+          if ( identity >= id_threshold ) ++cnt.hi_single;
+        }
         else {
+          ++nrecords;  // process fetched record
           ++valids;
           auto identity2 = gaf::get_identity( record );
           tagptr = record.tag_az.find( "fp" );
@@ -660,11 +760,13 @@ analyse( cxxopts::ParseResult& res )
             cnt.single += 2;
             if ( identity >= id_threshold ) ++cnt.hi_single;
             if ( identity2 >= id_threshold ) ++cnt.hi_single;
+            cnt.truth_flag |= get_truth_flag( record, truth, graph );  // pick the best map
           }
           else {
             ++cnt.paired;
             if ( identity >= id_threshold && identity2 >= id_threshold ) ++cnt.hi_paired;
             else if ( identity >= id_threshold || identity2 >= id_threshold ) ++cnt.hi_single;
+            cnt.truth_flag |= get_truth_flag( record, truth, graph );
           }
         }
       }
@@ -675,6 +777,7 @@ analyse( cxxopts::ParseResult& res )
     }
     record = gaf::next( ifs );
   }
+  std::cerr << "\rAnalysing " << nrecords << " record... Done.";
 
   if ( full ) {
     ost << "#RNAME: read name\n"
@@ -683,12 +786,14 @@ analyse( cxxopts::ParseResult& res )
         << "#NI: number of invalid alignments\n"
         << "#NHP: number of paired alignments with high identity score\n"
         << "#NHS: number of single alignments with high identity score\n"
-        << "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS"
+        << "#MTF: alignment truth flag\n"
+        << "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS" + del + "MTF"
         << std::endl;
     for ( auto const& elem : counts ) {
       ost << elem.first << del << elem.second.paired << del << elem.second.single << del
           << elem.second.invalid << del << elem.second.hi_paired << del
-          << elem.second.hi_single << std::endl;
+          << elem.second.hi_single << del << std::bitset< 8 >( elem.second.truth_flag )
+          << std::endl;
     }
   }
   else {
@@ -704,6 +809,12 @@ analyse( cxxopts::ParseResult& res )
       if ( cnts.hi_single != 0 ) ++hi_single;
       if ( cnts.hi_single == 1 ) ++hi_uniq_single;
       if ( cnts.invalid != 0 ) ++with_invalid;
+      if ( cnts.truth_flag == 0b1111 ) ++nffm;
+      else if ( cnts.truth_flag == 0b1010 ) ++nppm;
+      else if ( cnts.truth_flag == 0b1110 || cnts.truth_flag == 0b1011 ) ++nfpm;
+      else if ( cnts.truth_flag == 0b1100 || cnts.truth_flag == 0b0011 ) ++nfnm;
+      else if ( cnts.truth_flag == 0b1000 || cnts.truth_flag == 0b0010 ) ++npnm;
+      else if ( cnts.truth_flag == 0b0000 ) ++nnnm;
     }
 
     ost << "#NREC: number of records\n"
@@ -719,14 +830,22 @@ analyse( cxxopts::ParseResult& res )
         << "#NUHS: number of reads with a unique single alignment with high identity score\n"
         << "#NMLT: number of reads with multiple alignments\n"
         << "#NRIN: number of reads with at least one invalid alignment\n"
+        << "#NFFM: number of reads with fully-true alignments for both ends\n"
+        << "#NPPM: number of reads with partially-true alignments for both ends\n"
+        << "#NFPM: number of reads with fully-true alignments for one end and partial ones for the other\n"
+        << "#NFNM: number of reads with fully-true alignments for one end and no true alignment for the other\n"
+        << "#NPNM: number of reads with partially-true alignments for one end and no true alignment for the other\n"
+        << "#NNNM: number of reads with no true alignments for both ends\n"
         << "NREC" + del + "NVAL" + del + "NIVR" + del + "NALR" + del + "NAPR" + del
         << "NUQP" + del + "NUQS" + del + "NHIP" + del + "NHIS" + del + "NUHP" + del
-        << "NUHS" + del + "NMLT" + del + "NRIN\n"
+        << "NUHS" + del + "NMLT" + del + "NRIN" + del + "NFFM" + del + "NPPM" + del
+        << "NFPM" + del + "NFNM" + del + "NPNM" + del + "NNNM" + "\n"
         << nrecords << ( valids + invalids != nrecords ? "*" : "") << del
         << valids << del << invalids << del << with_valid << del << paired << del
         << uniq_paired << del << uniq_single << del << hi_paired << del << hi_single
         << del << hi_uniq_paired << del << hi_uniq_single << del << multis << del
-        << with_invalid << std::endl;
+        << with_invalid << del << nffm << del << nppm << del << nfpm << del << nfnm
+        << del << npnm << del << nnnm << std::endl;
   }
 }
 
