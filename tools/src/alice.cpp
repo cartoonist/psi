@@ -466,7 +466,7 @@ ref_pos( TPathSet& rpaths, typename TPathSet::graph_type graph, TPath& path )
   typedef typename TPathSet::graph_type graph_type;
 
   psi::Path< graph_type, psi::Dynamic > one_node_path( &graph );
-  std::size_t offset = 0;
+  long long int offset = 0;
   for ( auto n : path ) {
     auto id = path.id_of( n );
     bool reverse = path.is_reverse( n );
@@ -540,17 +540,17 @@ dstats( cxxopts::ParseResult& res )
 
   // Loading input graph
   graph_type graph;
-  std::cout << "Loading input graph..." << std::endl;
+  std::cerr << "Loading input graph..." << std::endl;
   gum::util::load( graph, graph_path, true );
 
   // Loading reference paths
   psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
-  std::cout << "Loading reference paths..." << std::endl;
+  std::cerr << "Loading reference paths..." << std::endl;
   index_reference_paths( rpaths, graph );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  std::cout << "Estimating inner-distances between aligned read pairs..." << std::endl;
+  std::cerr << "Estimating inner-distances between aligned read pairs..." << std::endl;
   gaf::GAFRecord record1 = gaf::next( ifs );
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
@@ -587,12 +587,11 @@ analyse( cxxopts::ParseResult& res )
 
   // Loading input graph
   graph_type graph;
-  std::cout << "Loading input graph..." << std::endl;
+  std::cerr << "Loading input graph..." << std::endl;
   gum::util::load( graph, graph_path, true );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  std::cout << "Analysing..." << std::endl;
 
   std::string del = "\t";
   struct Tuple {
@@ -622,6 +621,7 @@ analyse( cxxopts::ParseResult& res )
 
   while( record ) {
     ++nrecords;
+    std::cerr << "\rAnalysing record " << nrecords << "...";
     name = record.q_name;
     auto&& cnt = counts[ name ];
     if ( !record.is_valid() ) {  // invalid
@@ -635,21 +635,22 @@ analyse( cxxopts::ParseResult& res )
       if ( tagptr != record.tag_az.end() ) {  // paired
         auto fn = tagptr->second;
         record = gaf::next( ifs );
-        ++nrecords;
-        if ( !record.is_valid() ) {
-          ++cnt.single;
-          ++cnt.invalid;
-          ++invalids;
-          if ( identity >= id_threshold ) ++cnt.hi_single;
-        }
-        else if ( record.q_name != name ) {
+        if ( record.q_name != name ) {
           ++cnt.single;
           if ( identity >= id_threshold ) ++cnt.hi_single;
           std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
                     << std::endl;
           continue;
         }
+        else if ( !record.is_valid() ) {
+          ++nrecords;  // process fetched record
+          ++cnt.single;
+          ++cnt.invalid;
+          ++invalids;
+          if ( identity >= id_threshold ) ++cnt.hi_single;
+        }
         else {
+          ++nrecords;  // process fetched record
           ++valids;
           auto identity2 = gaf::get_identity( record );
           tagptr = record.tag_az.find( "fp" );
@@ -675,6 +676,7 @@ analyse( cxxopts::ParseResult& res )
     }
     record = gaf::next( ifs );
   }
+  std::cerr << "\rAnalysing " << nrecords << " record... Done.";
 
   if ( full ) {
     ost << "#RNAME: read name\n"
