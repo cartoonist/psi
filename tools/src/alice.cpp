@@ -48,6 +48,7 @@ config_parser( cxxopts::Options& options )
         cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
       ( "g, graph", "Corresponding graph file (vg or gfa)",
         cxxopts::value< std::string >() )
+      ( "P, progress", "Show progress" )
       ( "h, help", "Print this message and exit" )
       ;
 
@@ -625,12 +626,16 @@ load_ground_truth( std::string const& truth_path, TGraph const& graph,
 template< typename TRecord, typename TMap, typename TGraph >
 unsigned char
 get_truth_flag( TRecord const& record, TMap const& truth, TGraph const& graph,
-                bool full=false )
+                bool progress=false )
 {
   unsigned char flag = 0;
   auto&& name = record.q_name;
   auto found = truth.find( name );
-  if ( found == truth.end() ) return 0;
+  if ( found == truth.end() ) {
+    if ( progress ) std::cerr << std::endl;
+    std::cerr << "! Warning: '" << name << "' has no ground truth alignment" << std::endl;
+    return 0;
+  }
   auto path = record.parse_path( graph );
   if ( found->second.size() > 4 ) throw std::runtime_error( "too many ground truth fragments" );
   for ( auto it = found->second.begin(); it != found->second.end(); ++it ) {
@@ -662,6 +667,7 @@ analyse( cxxopts::ParseResult& res )
   float id_threshold = res[ "identity-threshold" ].as< float >();
   bool full = res.count( "full-report" );
   bool trim = res.count( "trim-name" );
+  bool progress = res.count( "progress" );
 
   // Opening output file for writing
   std::ostream ost( nullptr );
@@ -683,6 +689,7 @@ analyse( cxxopts::ParseResult& res )
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
+  std::cerr << "Analysing..." << std::endl;
 
   std::string del = "\t";
   struct Tuple {
@@ -719,7 +726,7 @@ analyse( cxxopts::ParseResult& res )
 
   while( record ) {
     ++nrecords;
-    std::cerr << "\rAnalysing record " << nrecords << "...";
+    if ( progress ) std::cerr << "\rAnalysing record " << nrecords << "...";
     name = record.q_name;
     auto&& cnt = counts[ name ];
     if ( !record.is_valid() ) {  // invalid
@@ -728,7 +735,7 @@ analyse( cxxopts::ParseResult& res )
     }
     else {
       ++valids;
-      cnt.truth_flag |= get_truth_flag( record, truth, graph );
+      cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );
       auto identity = gaf::get_identity( record );
       auto tagptr = record.tag_az.find( "fn" );
       if ( tagptr != record.tag_az.end() ) {  // paired
@@ -737,6 +744,7 @@ analyse( cxxopts::ParseResult& res )
         if ( record.q_name != name ) {
           ++cnt.single;
           if ( identity >= id_threshold ) ++cnt.hi_single;
+          if ( progress ) std::cerr << std::endl;
           std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
                     << std::endl;
           continue;
@@ -754,19 +762,20 @@ analyse( cxxopts::ParseResult& res )
           auto identity2 = gaf::get_identity( record );
           tagptr = record.tag_az.find( "fp" );
           if ( tagptr == record.tag_az.end() || tagptr->second != fn ) {
+            if ( progress ) std::cerr << std::endl;
             std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
                       << name << "'" << std::endl;
             std::cerr << "  consider two alignments as unpaired" << std::endl;
             cnt.single += 2;
             if ( identity >= id_threshold ) ++cnt.hi_single;
             if ( identity2 >= id_threshold ) ++cnt.hi_single;
-            cnt.truth_flag |= get_truth_flag( record, truth, graph );  // pick the best map
+            cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );  // pick the best map
           }
           else {
             ++cnt.paired;
             if ( identity >= id_threshold && identity2 >= id_threshold ) ++cnt.hi_paired;
             else if ( identity >= id_threshold || identity2 >= id_threshold ) ++cnt.hi_single;
-            cnt.truth_flag |= get_truth_flag( record, truth, graph );
+            cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );
           }
         }
       }
@@ -777,7 +786,7 @@ analyse( cxxopts::ParseResult& res )
     }
     record = gaf::next( ifs );
   }
-  std::cerr << "\rAnalysing " << nrecords << " record... Done.";
+  if ( progress ) std::cerr << "\rAnalysing " << nrecords << " record... Done.";
 
   if ( full ) {
     ost << "#RNAME: read name\n"
