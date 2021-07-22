@@ -581,7 +581,8 @@ load_ground_truth( std::string const& truth_path, TGraph const& graph,
   struct OrientedPos {
     typename TGraph::dynamic_type::path_type::value_type oriented_id;
     std::size_t offset;
-    OrientedPos( typename TGraph::dynamic_type::path_type::value_type i, std::size_t o )
+    OrientedPos( typename TGraph::dynamic_type::path_type::value_type i=0,
+                 std::size_t o=0 )
       : oriented_id( i ), offset( o )
     { }
   };
@@ -640,11 +641,10 @@ get_truth_flag( TRecord const& record, TMap const& truth, TGraph const& graph,
   if ( found->second.size() > 4 ) throw std::runtime_error( "too many ground truth fragments" );
   for ( auto it = found->second.begin(); it != found->second.end(); ++it ) {
     if ( it->oriented_id == path.front() ) {
-      // flag <<= 1;
       ++flag;
+      flag <<= 1;
       if ( it->offset == record.p_start )
       {
-        flag <<= 1;
         ++flag;
       }
       flag <<= 2*( it - found->second.begin() );
