@@ -703,20 +703,69 @@ analyse( cxxopts::ParseResult& res )
 
   phmap::flat_hash_map< std::string, Tuple > counts;
   std::string name;
-  gaf::GAFRecord record = gaf::next( ifs );
+
+  const std::string general_info =
+      "#NREC: number of records\n"
+      "#NVAL: number of valid alignments\n"
+      "#NINV: number of invalid alignments";
+
+  const std::string general_header = "NREC" + del + "NVAL" + del + "NINV";
+
+  std::size_t nrecords = 0;
   std::size_t valids = 0;
   std::size_t invalids = 0;
-  std::size_t nrecords = 0;
-  std::size_t with_valid = 0;
-  std::size_t paired = 0;
-  std::size_t uniq_paired = 0;
-  std::size_t uniq_single = 0;
-  std::size_t hi_paired = 0;
-  std::size_t hi_single = 0;
-  std::size_t hi_uniq_paired = 0;
-  std::size_t hi_uniq_single = 0;
-  std::size_t multis = 0;
-  std::size_t with_invalid = 0;
+
+  // Sets (refer to [[../doc/alice_analyse_partitions.png]]):
+  // P: reads with at least one paired alignment
+  // UP: reads with exactly one paired alignment
+  // S: reads with at least one single alignment
+  // US: reads with exactly one single alignment
+  // DS: reads with exactly two single alignments
+  // HP: reads with at least one paired alignment with high identity score
+  // HS: reads with at least one single alignment with high identity score
+  const std::string summary_info =
+      "#HUP: reads with exactly one paired alignment with high identity score\n"
+      "#HMP: reads with multiple paired alignments with high identity score\t\t\t\t\t= HP  \\ HUP\n"
+      "#LUP: reads with exactly one paired alignment without high identity score\t\t\t\t= UP  \\ HUP\n"
+      "#LMP: reads with multiple paired alignments without high identity score\t\t\t\t\t= P   \\ (HP ∪ UP)\n"
+      "#HUS: reads with exactly one single alignment with high identity score and with no paired alignment\t= HUS \\ P\n"
+      "#HDS: reads with exactly two single alignments with high identity score and with no paired alignment\t= HDS \\ P\n"
+      "#HMS: reads with multiple single alignments with high identity score and with no paired alignment\t= HS  \\ (HUS ∪ HDS ∪ P)\n"
+      "#LUS: reads with exactly one single alignment without high identity score and with no paired alignment\t= US  \\ (HUS ∪ P)\n"
+      "#LDS: reads with exactly two single alignments without high identity score and with no paired alignment\t= DS  \\ (HS ∪ P)\n"
+      "#LMS: reads with multiple single alignments without high identity score and with no paired alignment\t= S   \\ (US ∪ DS ∪ HS ∪ P)\n"
+      "#MUL: reads with multiple alignments\n"
+      "#WIN: reads with at least one invalid alignment";
+
+  const std::string summary_header =
+      "NHUP" + del + "NHMP" + del + "NLUP" + del + "NLMP" + del + "NHUS" + del +
+      "NHDS" + del + "NHMS" + del + "NLUS" + del + "NLDS" + del + "NLMS" + del +
+      "NMUL" + del + "NWIN";
+
+  std::size_t nhup = 0;
+  std::size_t nhmp = 0;
+  std::size_t nlup = 0;
+  std::size_t nlmp = 0;
+  std::size_t nhus = 0;
+  std::size_t nhds = 0;
+  std::size_t nhms = 0;
+  std::size_t nlus = 0;
+  std::size_t nlds = 0;
+  std::size_t nlms = 0;
+  std::size_t nmul = 0;
+  std::size_t nwin = 0;
+
+  const std::string truth_info =
+      "#FFM: reads with fully-true alignments for both ends\n"
+      "#PPM: reads with partially-true alignments for both ends\n"
+      "#FPM: reads with fully-true alignments for one end and partial ones for the other\n"
+      "#FNM: reads with fully-true alignments for one end and no true alignment for the other\n"
+      "#PNM: reads with partially-true alignments for one end and no true alignment for the other\n"
+      "#NNM: reads with no true alignments for both ends";
+
+  const std::string truth_header =
+      "NFFM" + del + "NPPM" + del + "NFPM" + del + "NFNM" + del + "NPNM" + del + "NNNM";
+
   std::size_t nffm = 0;
   std::size_t nppm = 0;
   std::size_t nfpm = 0;
@@ -724,69 +773,93 @@ analyse( cxxopts::ParseResult& res )
   std::size_t npnm = 0;
   std::size_t nnnm = 0;
 
-  while( record ) {
-    ++nrecords;
-    if ( progress ) std::cerr << "\rAnalysing record " << nrecords << "...";
-    name = record.q_name;
-    auto&& cnt = counts[ name ];
-    if ( !record.is_valid() ) {  // invalid
-      ++cnt.invalid;
-      ++invalids;
+  auto fetch_next =
+      [&nrecords, progress]( auto&& ifs ) -> gaf::GAFRecord {
+        gaf::GAFRecord fetched = gaf::next( ifs );
+        if ( fetched ) {
+          ++nrecords;
+          if ( progress ) std::cerr << "\rAnalysing record " << nrecords << "...";
+        }
+        return fetched;
+      };
+
+  auto get_pair_name =
+      []( auto const& record, bool next ) -> std::string {
+        std::string tag;
+        if ( next ) tag = "fn";
+        else tag = "fp";
+        auto found = record.tag_az.find( tag );
+        if ( found == record.tag_az.end() ) return "";
+        return found->second;
+      };
+
+  auto warn =
+      [progress]( std::string const& msg ) {
+        if ( progress ) std::cerr << std::endl;
+        std::cerr << "! Warning: " << msg << std::endl;
+      };
+
+  gaf::GAFRecord record;
+  struct SnapShot {
+    std::string name = "";
+    std::string next = "";
+    bool his = false;
+    SnapShot( std::string nm="", std::string fn="", bool hs=false )
+      : name( nm ), next( fn ), his( hs )
+    { }
+
+    inline void clear()
+    {
+      this->name.clear();
+      this->next.clear();
+      this->his = false;
+    }
+
+    inline operator bool()
+    {
+      return !this->next.empty();
+    }
+  };
+  SnapShot pre = { };
+  while ( ( record = fetch_next( ifs ) ) ) {
+    auto&& cnt = counts[ record.q_name ];
+    std::string pname = get_pair_name( record, !pre );
+    if ( !record.is_valid() || ( pre && ( record.q_name != pre.next || pre.name != pname ) ) ) {  // error
+      if ( pre ) {  // consider held record as single if there is any
+        auto&& pre_cnt = counts[ pre.name ];
+        ++pre_cnt.single;
+        pre_cnt.hi_single += pre.his;
+        pre.clear();
+      }
+      if ( !record.is_valid() ) {
+        ++cnt.invalid;
+        ++invalids;
+        continue;  // no need to process an invalid record
+      }
+      if ( record.q_name != pre.next ) warn( "missing next fragment alignment of '" + name + "'" );
+      else if ( pre.name != pname ) warn( "missing proper 'fp' tag in next fragment alignment of '" + name + "'" );
+      pname.clear();  // consider current record as single
+    }
+    // okay
+    ++valids;
+    cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );
+    auto identity = gaf::get_identity( record );
+    if ( pre ) {
+      ++cnt.paired;
+      if ( identity >= id_threshold && pre.his ) ++cnt.hi_paired;
+      else if ( identity >= id_threshold || pre.his ) ++cnt.hi_single;
+      pre.clear();
+    }
+    else if ( !pname.empty() ) {
+      pre = { record.q_name, pname };
+      if ( identity >= id_threshold ) pre.his = true;
     }
     else {
-      ++valids;
-      cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );
-      auto identity = gaf::get_identity( record );
-      auto tagptr = record.tag_az.find( "fn" );
-      if ( tagptr != record.tag_az.end() ) {  // paired
-        auto fn = tagptr->second;
-        record = gaf::next( ifs );
-        if ( record.q_name != name ) {
-          ++cnt.single;
-          if ( identity >= id_threshold ) ++cnt.hi_single;
-          if ( progress ) std::cerr << std::endl;
-          std::cerr << "! Warning: missing next fragment alignment of '" << name << "'"
-                    << std::endl;
-          continue;
-        }
-        else if ( !record.is_valid() ) {
-          ++nrecords;  // process fetched record
-          ++cnt.single;
-          ++cnt.invalid;
-          ++invalids;
-          if ( identity >= id_threshold ) ++cnt.hi_single;
-        }
-        else {
-          ++nrecords;  // process fetched record
-          ++valids;
-          auto identity2 = gaf::get_identity( record );
-          tagptr = record.tag_az.find( "fp" );
-          if ( tagptr == record.tag_az.end() || tagptr->second != fn ) {
-            if ( progress ) std::cerr << std::endl;
-            std::cerr << "! Warning: missing proper 'fp' tag in next fragment alignment of '"
-                      << name << "'" << std::endl;
-            std::cerr << "  consider two alignments as unpaired" << std::endl;
-            cnt.single += 2;
-            if ( identity >= id_threshold ) ++cnt.hi_single;
-            if ( identity2 >= id_threshold ) ++cnt.hi_single;
-            cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );  // pick the best map
-          }
-          else {
-            ++cnt.paired;
-            if ( identity >= id_threshold && identity2 >= id_threshold ) ++cnt.hi_paired;
-            else if ( identity >= id_threshold || identity2 >= id_threshold ) ++cnt.hi_single;
-            cnt.truth_flag |= get_truth_flag( record, truth, graph, progress );
-          }
-        }
-      }
-      else {  // single
-        ++cnt.single;
-        if ( identity >= id_threshold ) ++cnt.hi_single;
-      }
+      ++cnt.single;
+      if ( identity >= id_threshold ) ++cnt.hi_single;
     }
-    record = gaf::next( ifs );
   }
-  if ( progress ) std::cerr << "\rAnalysing " << nrecords << " record... Done.";
+  if ( progress ) std::cerr << "Done." << std::endl;
 
   if ( full ) {
     ost << "#RNAME: read name\n"
@@ -795,8 +868,8 @@ analyse( cxxopts::ParseResult& res )
         << "#NI: number of invalid alignments\n"
         << "#NHP: number of paired alignments with high identity score\n"
         << "#NHS: number of single alignments with high identity score\n"
-        << "#MTF: alignment truth flag\n"
-        << "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS" + del + "MTF"
+        << "#ATF: alignment truth flag\n"
+        << "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS" + del + "ATF"
         << std::endl;
     for ( auto const& elem : counts ) {
       ost << elem.first << del << elem.second.paired << del << elem.second.single << del
@@ -808,53 +881,42 @@ analyse( cxxopts::ParseResult& res )
   else {
     for ( auto const& elem : counts ) {
       auto const& cnts = elem.second;
-      if ( cnts.paired != 0 ) ++paired;
-      if ( cnts.paired != 0 || cnts.single != 0 ) ++with_valid;
-      if ( cnts.paired == 1 && cnts.single == 0 ) ++uniq_paired;
-      else if ( cnts.paired == 0 && cnts.single == 1 ) ++uniq_single;
-      else if ( cnts.paired >= 1 || cnts.single >= 1 ) ++multis;
-      if ( cnts.hi_paired != 0 ) ++hi_paired;
-      if ( cnts.hi_paired == 1 ) ++hi_uniq_paired;
-      if ( cnts.hi_single != 0 ) ++hi_single;
-      if ( cnts.hi_single == 1 ) ++hi_uniq_single;
-      if ( cnts.invalid != 0 ) ++with_invalid;
-      if ( cnts.truth_flag == 0b1111 ) ++nffm;
-      else if ( cnts.truth_flag == 0b1010 ) ++nppm;
-      else if ( cnts.truth_flag == 0b1110 || cnts.truth_flag == 0b1011 ) ++nfpm;
-      else if ( cnts.truth_flag == 0b1100 || cnts.truth_flag == 0b0011 ) ++nfnm;
-      else if ( cnts.truth_flag == 0b1000 || cnts.truth_flag == 0b0010 ) ++npnm;
-      else if ( cnts.truth_flag == 0b0000 ) ++nnnm;
+      if ( cnts.hi_paired == 1 ) ++nhup;
+      else if ( cnts.hi_paired != 0 ) ++nhmp;
+      else if ( cnts.paired == 1 ) ++nlup;
+      else if ( cnts.paired != 0 ) ++nlmp;
+      else if ( cnts.hi_single == 1 ) ++nhus;
+      else if ( cnts.hi_single == 2 ) ++nhds;
+      else if ( cnts.hi_single != 0 ) ++nhms;
+      else if ( cnts.single == 1 ) ++nlus;
+      else if ( cnts.single == 2 ) ++nlds;
+      else if ( cnts.single != 0 ) ++nlms;
+
+      if ( cnts.paired + cnts.single > 1 ) ++nmul;
+      if ( cnts.invalid != 0 ) ++nwin;
+
+      if ( !truth.empty() ) {
+        if ( cnts.truth_flag == 0b1111 ) ++nffm;
+        else if ( cnts.truth_flag == 0b1010 ) ++nppm;
+        else if ( cnts.truth_flag == 0b1110 || cnts.truth_flag == 0b1011 ) ++nfpm;
+        else if ( cnts.truth_flag == 0b1100 || cnts.truth_flag == 0b0011 ) ++nfnm;
+        else if ( cnts.truth_flag == 0b1000 || cnts.truth_flag == 0b0010 ) ++npnm;
+        else if ( cnts.truth_flag == 0b0000 ) ++nnnm;
+      }
     }
 
-    ost << "#NREC: number of records\n"
-        << "#NVAL: number of valid alignments\n"
-        << "#NIVR: number of invalid alignments\n"
-        << "#NALR: number of reads with at least one alignment\n"
-        << "#NAPR: number of reads with at least one paired alignment\n"
-        << "#NUQP: number of reads with a unique paired alignment\n"
-        << "#NUQS: number of reads with a unique single alignment\n"
-        << "#NHIP: number of reads with a at least one paired alignment with high identity score\n"
-        << "#NHIS: number of reads with a at least one single alignment with high identity score\n"
-        << "#NUHP: number of reads with a unique paired alignment with high identity score\n"
-        << "#NUHS: number of reads with a unique single alignment with high identity score\n"
-        << "#NMLT: number of reads with multiple alignments\n"
-        << "#NRIN: number of reads with at least one invalid alignment\n"
-        << "#NFFM: number of reads with fully-true alignments for both ends\n"
-        << "#NPPM: number of reads with partially-true alignments for both ends\n"
-        << "#NFPM: number of reads with fully-true alignments for one end and partial ones for the other\n"
-        << "#NFNM: number of reads with fully-true alignments for one end and no true alignment for the other\n"
-        << "#NPNM: number of reads with partially-true alignments for one end and no true alignment for the other\n"
-        << "#NNNM: number of reads with no true alignments for both ends\n"
-        << "NREC" + del + "NVAL" + del + "NIVR" + del + "NALR" + del + "NAPR" + del
-        << "NUQP" + del + "NUQS" + del + "NHIP" + del + "NHIS" + del + "NUHP" + del
-        << "NUHS" + del + "NMLT" + del + "NRIN" + del + "NFFM" + del + "NPPM" + del
-        << "NFPM" + del + "NFNM" + del + "NPNM" + del + "NNNM" + "\n"
-        << nrecords << ( valids + invalids != nrecords ? "*" : "") << del
-        << valids << del << invalids << del << with_valid << del << paired << del
-        << uniq_paired << del << uniq_single << del << hi_paired << del << hi_single
-        << del << hi_uniq_paired << del << hi_uniq_single << del << multis << del
-        << with_invalid << del << nffm << del << nppm << del << nfpm << del << nfnm
-        << del << npnm << del << nnnm << std::endl;
+    ost << general_info << "\n"
+        << summary_info << "\n";
+    if ( !truth.empty() ) ost << truth_info << "\n";
+    ost << general_header << del
+        << summary_header;
+    if ( !truth.empty() ) ost << del << truth_header;
+    ost << "\n"
+        << nrecords << ( valids + invalids != nrecords ? "*" : "") << del << valids << del << invalids
+        << del << nhup << del << nhmp << del << nlup << del << nlmp << del << nhus << del << nhds
+        << del << nhms << del << nlus << del << nlds << del << nlms << del << nmul << del << nwin;
+    if ( !truth.empty() ) ost << del << nffm << del << nppm << del << nfpm << del << nfnm << del << npnm << del << nnnm;
+    ost << std::endl;
   }
 }
 
