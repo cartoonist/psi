@@ -39,6 +39,7 @@ constexpr const char* LONG_DESC = ( "ALICE\n"
 // Default values for command line arguments
 constexpr const char* DEFAULT_OUTPUT = "-";  // stdout
 constexpr const char* DEFAULT_ID_THRESHOLD = "0.9";
+constexpr const char* DEFAULT_RNDSEED = "0";
 
 void
 config_parser( cxxopts::Options& options )
@@ -56,13 +57,17 @@ config_parser( cxxopts::Options& options )
       ;
 
   options.add_options( "analyse" )
-      ( "F, full-report", "Output full report" )
+      ( "F, full-report", "Output full report (overrides -r/-G)" )
       ( "I, identity-threshold", "Minimum identity score of a good alignment",
         cxxopts::value< float >()->default_value( DEFAULT_ID_THRESHOLD ) )
       ( "T, ground-truth", "Ground truth alignment (GAF)",
         cxxopts::value< std::string >()->default_value( "" ) )
       ( "m, trim-name",
         "Trim fragment numbers at the end of read names in the input ground truth set" )
+      ( "S, random-seed", "Seed for random generator",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_RNDSEED ) )
+      ( "r, sample-rate", "Sample rate", cxxopts::value< float >() )
+      ( "G, sample-group", "Sample group", cxxopts::value< std::string >() )
       ;
 
   options.add_options( "positional" )
@@ -110,6 +115,17 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     if ( result.count( "ground-truth" ) &&
          ! readable( result[ "ground-truth" ].as< std::string >() ) ) {
       throw cxxopts::OptionParseException( "Ground truth alignment file not found" );
+    }
+
+    if ( result.count( "full-report" ) && ( result.count( "sample-rate" ) ||
+         result.count( "sample-group" ) ) ) {
+      std::cerr << "! Warning: `full-report` flag has overridden sampling arguments." << std::endl;
+    }
+    else if ( result.count( "sample-rate" ) && !result.count( "sample-group" ) ) {
+      throw cxxopts::OptionParseException( "Specified sample rate without any sample group" );
+    }
+    else if ( !result.count( "sample-rate" ) && result.count( "sample-group" ) ) {
+      throw cxxopts::OptionParseException( "Specified sample group without any sample rate" );
     }
   }
   else {
@@ -449,6 +465,29 @@ namespace gaf {
   }
 }
 
+namespace rnd {
+  thread_local static std::mt19937 lgen;
+  thread_local static unsigned int lseed = std::mt19937::default_seed;
+  std::atomic_uint iseed = 0;
+
+  inline void
+  init_gen( unsigned int seed=0 )
+  {
+    iseed.store( seed );
+    if ( seed != 0 && seed != lseed ) {
+      lseed = seed;
+      lgen.seed( seed );
+    }
+  }
+
+  inline std::mt19937&
+  get_gen( )
+  {
+    if ( iseed.load() == 0 ) return psi::random::gen;
+    else return lgen;
+  }
+}  /* -----  end of namespace rnd  ----- */
+
 template< typename TPathSet, typename TGraph >
 void
 index_reference_paths( TPathSet& pathset, TGraph& graph )
@@ -665,9 +704,19 @@ analyse( cxxopts::ParseResult& res )
   std::string truth_path = res[ "ground-truth" ].as< std::string >();
   std::string aln_path = res[ "alignment" ].as< std::string >();
   float id_threshold = res[ "identity-threshold" ].as< float >();
+  unsigned int seed = res[ "random-seed" ].as< unsigned int >();
+  std::string sgroup = "";
+  float srate = 0;
   bool full = res.count( "full-report" );
   bool trim = res.count( "trim-name" );
   bool progress = res.count( "progress" );
+  bool sampling = res.count( "sample-rate" );
+
+  if ( !full && sampling ) {
+    ::rnd::init_gen( seed );
+    sgroup = res[ "sample-group" ].as< std::string >();
+    srate = res[ "sample-rate" ].as< float >();
+  }
 
   // Opening output file for writing
   std::ostream ost( nullptr );
@@ -703,6 +752,18 @@ analyse( cxxopts::ParseResult& res )
 
   phmap::flat_hash_map< std::string, Tuple > counts;
   std::string name;
+
+  const std::string full_info =
+      "#RNAME: read name\n"
+      "#NP: number of paired alignments\n"
+      "#NS: number of single alignments\n"
+      "#NI: number of invalid alignments\n"
+      "#NHP: number of paired alignments with high identity score\n"
+      "#NHS: number of single alignments with high identity score\n"
+      "#ATF: alignment truth flag";
+
+  const std::string full_header =
+      "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS" + del + "ATF";
 
   const std::string general_info =
       "#NREC: number of records\n"
@@ -862,15 +923,7 @@ analyse( cxxopts::ParseResult& res )
   if ( progress ) std::cerr << "Done." << std::endl;
 
   if ( full ) {
-    ost << "#RNAME: read name\n"
-        << "#NP: number of paired alignments\n"
-        << "#NS: number of single alignments\n"
-        << "#NI: number of invalid alignments\n"
-        << "#NHP: number of paired alignments with high identity score\n"
-        << "#NHS: number of single alignments with high identity score\n"
-        << "#ATF: alignment truth flag\n"
-        << "RNAME" + del + "NP" + del + "NS" + del + "NI" + del + "NHP" + del + "NHS" + del + "ATF"
-        << std::endl;
+    ost << full_info << "\n" << full_header << std::endl;
     for ( auto const& elem : counts ) {
       ost << elem.first << del << elem.second.paired << del << elem.second.single << del
           << elem.second.invalid << del << elem.second.hi_paired << del
@@ -879,44 +932,113 @@ analyse( cxxopts::ParseResult& res )
     }
   }
   else {
+    std::vector< std::pair< std::string, Tuple > > samples;
+    std::uniform_real_distribution< float > dis(0, 1);
     for ( auto const& elem : counts ) {
+      bool sample_this = false;
       auto const& cnts = elem.second;
-      if ( cnts.hi_paired == 1 ) ++nhup;
-      else if ( cnts.hi_paired != 0 ) ++nhmp;
-      else if ( cnts.paired == 1 ) ++nlup;
-      else if ( cnts.paired != 0 ) ++nlmp;
-      else if ( cnts.hi_single == 1 ) ++nhus;
-      else if ( cnts.hi_single == 2 ) ++nhds;
-      else if ( cnts.hi_single != 0 ) ++nhms;
-      else if ( cnts.single == 1 ) ++nlus;
-      else if ( cnts.single == 2 ) ++nlds;
-      else if ( cnts.single != 0 ) ++nlms;
+      if ( cnts.hi_paired == 1 ) {
+        if ( sgroup == "hup" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nhup;
+      }
+      else if ( cnts.hi_paired != 0 ) {
+        if ( sgroup == "hmp" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nhmp;
+      }
+      else if ( cnts.paired == 1 ) {
+        if ( sgroup == "lup" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nlup;
+      }
+      else if ( cnts.paired != 0 ) {
+        if ( sgroup == "lmp" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nlmp;
+      }
+      else if ( cnts.hi_single == 1 ) {
+        if ( sgroup == "hus" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nhus;
+      }
+      else if ( cnts.hi_single == 2 ) {
+        if ( sgroup == "hds" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nhds;
+      }
+      else if ( cnts.hi_single != 0 ) {
+        if ( sgroup == "hms" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nhms;
+      }
+      else if ( cnts.single == 1 ) {
+        if ( sgroup == "lus" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nlus;
+      }
+      else if ( cnts.single == 2 ) {
+        if ( sgroup == "lds" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nlds;
+      }
+      else if ( cnts.single != 0 ) {
+        if ( sgroup == "lms" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nlms;
+      }
 
-      if ( cnts.paired + cnts.single > 1 ) ++nmul;
-      if ( cnts.invalid != 0 ) ++nwin;
+      if ( cnts.paired + cnts.single > 1 ) {
+        if ( sgroup == "mul" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nmul;
+      }
+      if ( cnts.invalid != 0 ) {
+        if ( sgroup == "win" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nwin;
+      }
 
       if ( !truth.empty() ) {
-        if ( cnts.truth_flag == 0b1111 ) ++nffm;
-        else if ( cnts.truth_flag == 0b1010 ) ++nppm;
-        else if ( cnts.truth_flag == 0b1110 || cnts.truth_flag == 0b1011 ) ++nfpm;
-        else if ( cnts.truth_flag == 0b1100 || cnts.truth_flag == 0b0011 ) ++nfnm;
-        else if ( cnts.truth_flag == 0b1000 || cnts.truth_flag == 0b0010 ) ++npnm;
-        else if ( cnts.truth_flag == 0b0000 ) ++nnnm;
+        if ( cnts.truth_flag == 0b1111 ) {
+          if ( sgroup == "ffm" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+          ++nffm;
+        }
+        else if ( cnts.truth_flag == 0b1010 ) {
+          if ( sgroup == "ppm" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+          ++nppm;
+        }
+        else if ( cnts.truth_flag == 0b1110 || cnts.truth_flag == 0b1011 ) {
+          if ( sgroup == "fpm" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+          ++nfpm;
+        }
+        else if ( cnts.truth_flag == 0b1100 || cnts.truth_flag == 0b0011 ) {
+          if ( sgroup == "fnm" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+          ++nfnm;
+        }
+        else if ( cnts.truth_flag == 0b1000 || cnts.truth_flag == 0b0010 ) {
+          if ( sgroup == "pnm" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+          ++npnm;
+        }
+        else if ( cnts.truth_flag == 0b0000 ) {
+          if ( sgroup == "nnm" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+          ++nnnm;
+        }
       }
+      if ( sample_this ) samples.push_back( elem );
     }
 
-    ost << general_info << "\n"
-        << summary_info << "\n";
-    if ( !truth.empty() ) ost << truth_info << "\n";
-    ost << general_header << del
-        << summary_header;
-    if ( !truth.empty() ) ost << del << truth_header;
-    ost << "\n"
-        << nrecords << ( valids + invalids != nrecords ? "*" : "") << del << valids << del << invalids
-        << del << nhup << del << nhmp << del << nlup << del << nlmp << del << nhus << del << nhds
-        << del << nhms << del << nlus << del << nlds << del << nlms << del << nmul << del << nwin;
-    if ( !truth.empty() ) ost << del << nffm << del << nppm << del << nfpm << del << nfnm << del << npnm << del << nnnm;
-    ost << std::endl;
+    if ( sampling ) {
+      ost << full_info << "\n" << full_header << std::endl;
+      for ( auto const& elem : samples ) {
+        ost << elem.first << del << elem.second.paired << del << elem.second.single << del
+            << elem.second.invalid << del << elem.second.hi_paired << del
+            << elem.second.hi_single << del << std::bitset< 8 >( elem.second.truth_flag )
+            << std::endl;
+      }
+    }
+    else {
+      ost << general_info << "\n"
+          << summary_info << "\n";
+      if ( !truth.empty() ) ost << truth_info << "\n";
+      ost << general_header << del
+          << summary_header;
+      if ( !truth.empty() ) ost << del << truth_header;
+      ost << "\n"
+          << nrecords << ( valids + invalids != nrecords ? "*" : "") << del << valids << del << invalids
+          << del << nhup << del << nhmp << del << nlup << del << nlmp << del << nhus << del << nhds
+          << del << nhms << del << nlus << del << nlds << del << nlms << del << nmul << del << nwin;
+      if ( !truth.empty() ) ost << del << nffm << del << nppm << del << nfpm << del << nfnm << del << npnm << del << nnnm;
+      ost << std::endl;
+    }
   }
 }
 
