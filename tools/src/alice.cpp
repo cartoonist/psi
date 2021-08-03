@@ -768,13 +768,15 @@ analyse( cxxopts::ParseResult& res )
   const std::string general_info =
       "#NREC: number of records\n"
       "#NVAL: number of valid alignments\n"
-      "#NINV: number of invalid alignments";
+      "#NINV: number of invalid alignments\n"
+      "#NRAL: number of reads with at least one alignment";
 
-  const std::string general_header = "NREC" + del + "NVAL" + del + "NINV";
+  const std::string general_header = "NREC" + del + "NVAL" + del + "NINV" + del + "NRAL";
 
   std::size_t nrecords = 0;
   std::size_t valids = 0;
   std::size_t invalids = 0;
+  std::size_t nral = 0;
 
   // Sets (refer to [[../doc/alice_analyse_partitions.png]]):
   // P: reads with at least one paired alignment
@@ -785,18 +787,18 @@ analyse( cxxopts::ParseResult& res )
   // HP: reads with at least one paired alignment with high identity score
   // HS: reads with at least one single alignment with high identity score
   const std::string summary_info =
-      "#HUP: reads with exactly one paired alignment with high identity score\n"
-      "#HMP: reads with multiple paired alignments with high identity score\t\t\t\t\t= HP  \\ HUP\n"
-      "#LUP: reads with exactly one paired alignment without high identity score\t\t\t\t= UP  \\ HUP\n"
-      "#LMP: reads with multiple paired alignments without high identity score\t\t\t\t\t= P   \\ (HP ∪ UP)\n"
-      "#HUS: reads with exactly one single alignment with high identity score and with no paired alignment\t= HUS \\ P\n"
-      "#HDS: reads with exactly two single alignments with high identity score and with no paired alignment\t= HDS \\ P\n"
-      "#HMS: reads with multiple single alignments with high identity score and with no paired alignment\t= HS  \\ (HUS ∪ HDS ∪ P)\n"
-      "#LUS: reads with exactly one single alignment without high identity score and with no paired alignment\t= US  \\ (HUS ∪ P)\n"
-      "#LDS: reads with exactly two single alignments without high identity score and with no paired alignment\t= DS  \\ (HS ∪ P)\n"
-      "#LMS: reads with multiple single alignments without high identity score and with no paired alignment\t= S   \\ (US ∪ DS ∪ HS ∪ P)\n"
-      "#MUL: reads with multiple alignments\n"
-      "#WIN: reads with at least one invalid alignment";
+      "#NHUP: number of reads with exactly one paired alignment with high identity score\n"
+      "#NHMP: number of reads with multiple paired alignments with high identity score\t\t\t\t\t= HP  \\ HUP\n"
+      "#NLUP: number of reads with exactly one paired alignment without high identity score\t\t\t\t= UP  \\ HUP\n"
+      "#NLMP: number of reads with multiple paired alignments without high identity score\t\t\t\t\t= P   \\ (HP ∪ UP)\n"
+      "#NHUS: number of reads with exactly one single alignment with high identity score and with no paired alignment\t= HUS \\ P\n"
+      "#NHDS: number of reads with exactly two single alignments with high identity score and with no paired alignment\t= HDS \\ P\n"
+      "#NHMS: number of reads with multiple single alignments with high identity score and with no paired alignment\t= HS  \\ (HUS ∪ HDS ∪ P)\n"
+      "#NLUS: number of reads with exactly one single alignment without high identity score and with no paired alignment\t= US  \\ (HUS ∪ P)\n"
+      "#NLDS: number of reads with exactly two single alignments without high identity score and with no paired alignment\t= DS  \\ (HS ∪ P)\n"
+      "#NLMS: number of reads with multiple single alignments without high identity score and with no paired alignment\t= S   \\ (US ∪ DS ∪ HS ∪ P)\n"
+      "#NMUL: number of reads with multiple alignments\n"
+      "#NWIN: number of reads with at least one invalid alignment";
 
   const std::string summary_header =
       "NHUP" + del + "NHMP" + del + "NLUP" + del + "NLMP" + del + "NHUS" + del +
@@ -817,12 +819,12 @@ analyse( cxxopts::ParseResult& res )
   std::size_t nwin = 0;
 
   const std::string truth_info =
-      "#FFM: reads with fully-true alignments for both ends\n"
-      "#PPM: reads with partially-true alignments for both ends\n"
-      "#FPM: reads with fully-true alignments for one end and partial ones for the other\n"
-      "#FNM: reads with fully-true alignments for one end and no true alignment for the other\n"
-      "#PNM: reads with partially-true alignments for one end and no true alignment for the other\n"
-      "#NNM: reads with no true alignments for both ends";
+      "#NFFM: number of reads with fully-true alignments for both ends\n"
+      "#NPPM: number of reads with partially-true alignments for both ends\n"
+      "#NFPM: number of reads with fully-true alignments for one end and partial ones for the other\n"
+      "#NFNM: number of reads with fully-true alignments for one end and no true alignment for the other\n"
+      "#NPNM: number of reads with partially-true alignments for one end and no true alignment for the other\n"
+      "#NNNM: number of reads with no true alignments for both ends";
 
   const std::string truth_header =
       "NFFM" + del + "NPPM" + del + "NFPM" + del + "NFNM" + del + "NPNM" + del + "NNNM";
@@ -978,6 +980,10 @@ analyse( cxxopts::ParseResult& res )
         ++nlms;
       }
 
+      if ( cnts.paired != 0 || cnts.single != 0 ) {
+        if ( sgroup == "ral" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
+        ++nral;
+      }
       if ( cnts.paired + cnts.single > 1 ) {
         if ( sgroup == "mul" && dis( ::rnd::get_gen() ) < srate ) sample_this = true;
         ++nmul;
@@ -1032,11 +1038,13 @@ analyse( cxxopts::ParseResult& res )
       ost << general_header << del
           << summary_header;
       if ( !truth.empty() ) ost << del << truth_header;
-      ost << "\n"
-          << nrecords << ( valids + invalids != nrecords ? "*" : "") << del << valids << del << invalids
-          << del << nhup << del << nhmp << del << nlup << del << nlmp << del << nhus << del << nhds
-          << del << nhms << del << nlus << del << nlds << del << nlms << del << nmul << del << nwin;
-      if ( !truth.empty() ) ost << del << nffm << del << nppm << del << nfpm << del << nfnm << del << npnm << del << nnnm;
+      ost << "\n" << nrecords << ( valids + invalids != nrecords ? "*" : "")
+          << del << valids << del << invalids << del << nral
+          << del << nhup << del << nhmp << del << nlup << del << nlmp
+          << del << nhus << del << nhds << del << nhms << del << nlus
+          << del << nlds << del << nlms << del << nmul << del << nwin;
+      if ( !truth.empty() ) ost << del << nffm << del << nppm << del << nfpm
+                                << del << nfnm << del << npnm << del << nnnm;
       ost << std::endl;
     }
   }
