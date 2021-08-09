@@ -1038,8 +1038,9 @@ analyse( cxxopts::ParseResult& res )
       ost << general_header << del
           << summary_header;
       if ( !truth.empty() ) ost << del << truth_header;
+      std::size_t sum = nhup + nhmp + nlup + nlmp + nhus + nhds + nhms + nlus + nlds + nlms;
       ost << "\n" << nrecords << ( valids + invalids != nrecords ? "*" : "")
-          << del << valids << del << invalids << del << nral
+          << del << valids << del << invalids << del << nral << ( sum != nral ? "*" : "")
           << del << nhup << del << nhmp << del << nlup << del << nlmp
           << del << nhus << del << nhds << del << nhms << del << nlus
           << del << nlds << del << nlms << del << nmul << del << nwin;
