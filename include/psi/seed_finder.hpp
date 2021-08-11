@@ -1069,6 +1069,9 @@ namespace psi {
               std::function< void( std::string const& ) > warn=nullptr )
           {
             if ( n == 0 ) return;
+            if ( this->graph_ptr->get_path_count() == 0 ) {
+              throw std::runtime_error( "no reference path found in the input graph" );
+            }
 
             this->stats_ptr->set_progress( progress_type::select_paths );
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "pick-paths" );
