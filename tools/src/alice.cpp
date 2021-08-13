@@ -54,6 +54,7 @@ config_parser( cxxopts::Options& options )
       ;
 
   options.add_options( "dstats" )
+      ( "N, inner", "Check inner-distance instead of insert size" )
       ;
 
   options.add_options( "analyse" )
@@ -86,7 +87,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     options.positional_help( "COMMAND" );
     auto help_message = ( options.help( { "general" } )
                           + "\n COMMANDS:\n"
-                          + "  dstats\tPrint statistics of inner-distances of read pairs\n"
+                          + "  dstats\tGive some statistics about distances between read pairs\n"
                           + "  analyse\tAnalyse the given alignment file\n" );
     if ( result.count( "help" ) )
     {
@@ -498,7 +499,7 @@ index_reference_paths( TPathSet& pathset, TGraph& graph )
   graph.for_each_path(
       [&nodes, &graph, &pathset]( auto rank, auto pid ) {
         typedef typename TPathSet::value_type path_type;
-        std::cerr << "! INFO Fetching reference path " << rank << "..." << std::endl;
+        std::cerr << "Fetching reference path " << rank << "..." << std::endl;
         for ( auto n : graph.path( pid ) ) nodes.push_back( n );
         typename path_type::nodes_type cnodes( nodes );
         pathset.push_back( path_type( &graph, std::move( cnodes ) ) );
@@ -537,7 +538,7 @@ ref_pos( TPathSet& rpaths, typename TPathSet::graph_type graph, TPath& path )
 template< typename TPathSet >
 long long int
 distance_estimate( TPathSet& rpaths, typename TPathSet::graph_type& graph,
-                   gaf::GAFRecord& rec1, gaf::GAFRecord& rec2)
+                   gaf::GAFRecord& rec1, gaf::GAFRecord& rec2, bool inner )
 {
   std::size_t idx1;
   std::size_t pos1;
@@ -564,7 +565,10 @@ distance_estimate( TPathSet& rpaths, typename TPathSet::graph_type& graph,
 
   if ( distance < 0 ) std::runtime_error( "negative distance" );
 
-  return  distance;
+  if ( !inner ) {
+    distance += ( rec1.p_end - rec1.p_start ) + ( rec2.p_end - rec2.p_start );
+  }
+  return distance;
 }
 
 void
@@ -575,6 +579,7 @@ dstats( cxxopts::ParseResult& res )
   // Fetching input parameters
   std::string output = res[ "output" ].as< std::string >();
   std::string graph_path = res[ "graph" ].as< std::string >();
+  bool inner = res.count( "inner" );
   std::string aln_path = res[ "alignment" ].as< std::string >();
 
   // Opening output file for writing
@@ -592,19 +597,20 @@ dstats( cxxopts::ParseResult& res )
   std::cerr << "Loading input graph..." << std::endl;
   gum::util::load( graph, graph_path, true );
 
+  // Opening alignment file for reading
+  std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
+
   // Loading reference paths
   psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
   std::cerr << "Loading reference paths..." << std::endl;
   index_reference_paths( rpaths, graph );
 
-  // Opening alignment file for reading
-  std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
-  std::cerr << "Estimating inner-distances between aligned read pairs..." << std::endl;
+  std::cerr << "Estimating distances between aligned read pairs..." << std::endl;
   gaf::GAFRecord record1 = gaf::next( ifs );
   gaf::GAFRecord record2 = gaf::next( ifs );
   while ( record1 && record2 ) {
     if ( record1.is_valid() && record2.is_valid() ) {
-      auto distance = distance_estimate( rpaths, graph, record1, record2 );
+      auto distance = distance_estimate( rpaths, graph, record1, record2, inner );
       ost << distance << std::endl;
     }
     record1 = gaf::next( ifs );
