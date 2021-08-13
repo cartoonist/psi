@@ -28,6 +28,7 @@
 #include <psi/graph.hpp>
 #include <psi/graph.hpp>
 #include <psi/pathset.hpp>
+#include <psi/seed_finder.hpp>
 #include <psi/utils.hpp>
 
 
@@ -40,6 +41,8 @@ constexpr const char* LONG_DESC = ( "ALICE\n"
 constexpr const char* DEFAULT_OUTPUT = "-";  // stdout
 constexpr const char* DEFAULT_ID_THRESHOLD = "0.9";
 constexpr const char* DEFAULT_RNDSEED = "0";
+constexpr const char* DEFAULT_MIN_DISTANCE = "0";
+constexpr const char* DEFAULT_MAX_DISTANCE = "0";
 
 void
 config_parser( cxxopts::Options& options )
@@ -55,6 +58,12 @@ config_parser( cxxopts::Options& options )
 
   options.add_options( "dstats" )
       ( "N, inner", "Check inner-distance instead of insert size" )
+      ( "i, psi-index-prefix", "PSI index prefix",
+        cxxopts::value< std::string >()->default_value( "" ) )
+      ( "d, min-distance", "Minimum distance constraint",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_MIN_DISTANCE ) )
+      ( "D, max-distance", "Maximum distance constraint",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_MAX_DISTANCE ) )
       ;
 
   options.add_options( "analyse" )
@@ -103,6 +112,18 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     if ( result.count( "help" ) ) {
       std::cout << options.help( { "general", "dstats" } ) << std::endl;
       throw EXIT_SUCCESS;
+    }
+
+    if ( ! result[ "psi-index-prefix" ].as< std::string >().empty() &&
+         ( result[ "min-distance" ].as< unsigned int >() == 0 ||
+           result[ "max-distance" ].as< unsigned int >() == 0 ) ) {
+      throw cxxopts::OptionParseException( "Both minimum and maximum distance constraints should be specified" );
+    }
+
+    if ( result[ "psi-index-prefix" ].as< std::string >().empty() &&
+         ( result[ "min-distance" ].as< unsigned int >() != 0 ||
+           result[ "max-distance" ].as< unsigned int >() != 0 ) ) {
+      std::cerr << "! Warning: Ignoring distance constraint arguments since no PSI index prefix has been specified." << std::endl;
     }
   }
   else if ( result[ "command" ].as< std::string >() == "analyse" ) {  // analyse
@@ -571,6 +592,44 @@ distance_estimate( TPathSet& rpaths, typename TPathSet::graph_type& graph,
   return distance;
 }
 
+template< typename TFinder >
+bool
+verify_distance_by_dindex( gaf::GAFRecord* rec1, gaf::GAFRecord* rec2, TFinder& finder,
+                           bool inner )
+{
+  typedef typename TFinder::graph_type graph_type;
+  typedef typename graph_type::id_type id_type;
+  typedef typename graph_type::offset_type offset_type;
+
+  graph_type const* graph_ptr = finder.get_graph_ptr();
+
+  id_type fwd_id = 0;
+  offset_type fwd_off = 0;
+  id_type bwd_id = 0;
+  offset_type bwd_off = 0;
+
+  auto fwd_path = rec1->parse_path( *graph_ptr );
+  auto bwd_path = rec2->parse_path( *graph_ptr );
+  if ( fwd_path.is_reverse( fwd_path.front() ) ) {
+    std::swap( fwd_path, bwd_path );
+    std::swap( rec1, rec2 );
+  }
+
+  if ( inner ) {
+    fwd_id = fwd_path.id_of( fwd_path.back() );
+    fwd_off = graph_ptr->node_length( fwd_id ) - ( rec1->p_len - rec1->p_end ) - 1;
+    bwd_id = bwd_path.id_of( bwd_path.back() );
+    bwd_off = rec2->p_len - rec2->p_end;
+  }
+  else {
+    fwd_id = fwd_path.id_of( fwd_path.front() );
+    fwd_off = rec1->p_start;
+    bwd_id = bwd_path.id_of( bwd_path.front() );
+    bwd_off = graph_ptr->node_length( bwd_id ) - ( rec2->p_start ) - 1;
+  }
+  return finder.verify_distance( fwd_id, fwd_off, bwd_id, bwd_off );
+}
+
 void
 dstats( cxxopts::ParseResult& res )
 {
@@ -579,6 +638,9 @@ dstats( cxxopts::ParseResult& res )
   // Fetching input parameters
   std::string output = res[ "output" ].as< std::string >();
   std::string graph_path = res[ "graph" ].as< std::string >();
+  std::string psi_index_prefix = res[ "psi-index-prefix" ].as< std::string >();
+  unsigned int dmin = res[ "min-distance" ].as< unsigned int >();
+  unsigned int dmax = res[ "max-distance" ].as< unsigned int >();
   bool inner = res.count( "inner" );
   std::string aln_path = res[ "alignment" ].as< std::string >();
 
@@ -600,21 +662,60 @@ dstats( cxxopts::ParseResult& res )
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
 
-  // Loading reference paths
-  psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
-  std::cerr << "Loading reference paths..." << std::endl;
-  index_reference_paths( rpaths, graph );
+  // Loading PSI index if available
+  if ( !psi_index_prefix.empty() ) {
+    auto finder = psi::SeedFinder<>( graph, 30 /* dummy seed length */ );
+    std::cerr << "Loading PSI index..." << std::endl;
+    finder.load_path_index( psi_index_prefix, 0, 1, dmin, dmax );
 
-  std::cerr << "Estimating distances between aligned read pairs..." << std::endl;
-  gaf::GAFRecord record1 = gaf::next( ifs );
-  gaf::GAFRecord record2 = gaf::next( ifs );
-  while ( record1 && record2 ) {
-    if ( record1.is_valid() && record2.is_valid() ) {
-      auto distance = distance_estimate( rpaths, graph, record1, record2, inner );
-      ost << distance << std::endl;
+    std::cerr << "Verifying distances between paired alignments..." << std::endl;
+    char del = '\t';
+    gaf::GAFRecord record1 = gaf::next( ifs );
+    gaf::GAFRecord record2 = gaf::next( ifs );
+    while ( record1 && record2 ) {
+      if ( record1.is_valid() && record2.is_valid() ) {
+        auto name1 = record1.q_name;
+        auto name2 = record2.q_name;
+        if ( psi::ends_with( name1, "_1" ) || psi::ends_with( name1, "/1" ) ||
+             psi::ends_with( name1, "_2" ) || psi::ends_with( name1, "/2" ) )
+        {
+          name1.resize( name1.size() - 2 );
+          name2.resize( name2.size() - 2 );
+        }
+        if ( name1 == name2 ) ost << name1 << del;
+        else {
+          std::cerr << "! Warning: Ignoring an alignment for '" << name1
+                    << "' because of the missing pair..." << std::endl;
+          record1 = std::move( record2 );
+          record2 = gaf::next( ifs );
+          continue;
+        }
+        if ( verify_distance_by_dindex( &record1, &record2, finder, inner ) ) {
+          ost << "y" << std::endl;
+        }
+        else ost << "N" << std::endl;
+      }
+      record1 = gaf::next( ifs );
+      record2 = gaf::next( ifs );
     }
-    record1 = gaf::next( ifs );
-    record2 = gaf::next( ifs );
+  }
+  else {
+    // Loading reference paths
+    psi::PathSet< psi::Path< graph_type, psi::Compact > > rpaths( graph );
+    std::cerr << "Loading reference paths..." << std::endl;
+    index_reference_paths( rpaths, graph );
+
+    std::cerr << "Estimating distances between aligned read pairs..." << std::endl;
+    gaf::GAFRecord record1 = gaf::next( ifs );
+    gaf::GAFRecord record2 = gaf::next( ifs );
+    while ( record1 && record2 ) {
+      if ( record1.is_valid() && record2.is_valid() ) {
+        auto distance = distance_estimate( rpaths, graph, record1, record2, inner );
+        ost << distance << std::endl;
+      }
+      record1 = gaf::next( ifs );
+      record2 = gaf::next( ifs );
+    }
   }
 }
 
