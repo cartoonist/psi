@@ -37,7 +37,7 @@ namespace psi {
       "This is an implementation of the method introduced in:\n\n"
       "  Ghaffaari, A. & Marschall, T. "
       "Fully-sensitive seed finding in sequence graphs using a hybrid index. "
-      "Bioinformatics 35, i81-i89 (2019)\n\n"
+      "Bioinformatics 35, i81-i89 (2019).\n\n"
       "When using PSI library for a publication please cite above article.";
   /** @brief Banner to be printed on help and version messages. */
   const char * const BANNER =

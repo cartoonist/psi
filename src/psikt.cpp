@@ -180,8 +180,8 @@ template< class TGraph, typename TReadsIndexSpec >
           /* Load a chunk from reads set. */
           if ( !readRecords( chunk, reads_iss, params.chunk_size ) ) break;
         }
-        log->info( "Fetched {} reads in {}.", length( chunk ),
-                   timer_type::get_duration_str( "load-chunk" ) );
+        log->info( "Fetched {} reads with total length of {}bp in {}.", length( chunk ),
+                   lengthSum( chunk.str ), timer_type::get_duration_str( "load-chunk" ) );
         /* Give the current chunk to the finder. */
         finder.get_seeds( seeds, chunk, params.distance );
         auto seeds_index = finder.index_reads( seeds );
@@ -266,7 +266,7 @@ startup( const Options & options )
 setup_argparser( seqan::ArgumentParser& parser )
 {
   // positional arguments.
-  std::string POSARG1 = "VG_FILE";
+  std::string POSARG1 = "GRAPH_FILE";
   // add usage line.
   addUsageLine( parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"" );
 
@@ -281,7 +281,7 @@ setup_argparser( seqan::ArgumentParser& parser )
       seqan::ArgParseOption( "f", "fastq",
         "Reads in FASTQ format.",
         seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE" ) );
-  setValidValues( parser, "f", "fq fastq" );
+  setValidValues( parser, "f", "fq fastq fq.gz fastq.gz" );
   setRequired( parser, "f" );
   // output file
   // :TODO:Sat Oct 21 00:06:\@cartoonist: output should be alignment in the GAM format.
