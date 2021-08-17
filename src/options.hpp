@@ -73,6 +73,7 @@ namespace psi {
     unsigned int path_num;
     unsigned int context;
     unsigned int gocc_threshold;
+    unsigned int max_mem;
     unsigned int dindex_min_ris;
     unsigned int dindex_max_ris;
     IndexType index;

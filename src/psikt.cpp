@@ -101,7 +101,7 @@ template< class TGraph, typename TReadsIndexSpec >
     std::signal( SIGUSR1, finder_type::stats_type::signal_handler );
 
     /* The seed finder for the input graph. */
-    finder_type finder( graph, params.seed_len, params.gocc_threshold );
+    finder_type finder( graph, params.seed_len, params.gocc_threshold, params.max_mem );
     auto const& stats = finder.get_stats();
     /* Prepare (load or create) genome-wide paths. */
     log->info( "Looking for an existing path index..." );
@@ -213,6 +213,7 @@ startup( const Options & options )
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
   log->info( "- Seed genome occurrence count threshold: {}", options.gocc_threshold );
+  log->info( "- Maximum number of MEMs on paths: {}", options.max_mem );
   log->info( "- Distance index minimum read insert size: {}", options.dindex_min_ris );
   log->info( "- Distance index maximum read insert size: {}", options.dindex_max_ris );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
@@ -340,6 +341,12 @@ setup_argparser( seqan::ArgumentParser& parser )
                                     "Seed genome occurrence count threshold (no threshold by default).",
                                     seqan::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "r", 0 );
+  // maximum number of MEMs on paths
+  addOption( parser,
+             seqan::ArgParseOption( "E", "max-mem",
+                                    "Maximum number of MEMs on paths (default: find all).",
+                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "E", 0 );
   // distance index minimum read insert size
   addOption( parser,
              seqan::ArgParseOption( "m", "min-insert-size",
@@ -406,6 +413,7 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   getOptionValue( options.gocc_threshold, parser, "gocc-threshold" );
+  getOptionValue( options.max_mem, parser, "max-mem" );
   getOptionValue( options.dindex_min_ris, parser, "min-insert-size" );
   getOptionValue( options.dindex_max_ris, parser, "max-insert-size" );
   options.patched = !isSet( parser, "no-patched" );
