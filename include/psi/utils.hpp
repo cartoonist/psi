@@ -45,9 +45,16 @@
 #define PSI_TMPFILE_TEMPLATE "/psi-XXXXXX"
 
 #define BINARY_NAME "psi"
+
+#ifdef __ASSERT_VOID_CAST
+#define PSI_ASSERT_VOID_CAST __ASSERT_VOID_CAST
+#else
+#define PSI_ASSERT_VOID_CAST static_cast<void>
+#endif  // ifdef __ASSERT_VOID_CAST
+
 #define ASSERT(expr)							\
   ((expr)								\
-   ? __ASSERT_VOID_CAST (0)						\
+   ? PSI_ASSERT_VOID_CAST (0)						\
    : assert_fail (#expr, BINARY_NAME, __FILE__, __LINE__, __PRETTY_FUNCTION__))
 
 /**
