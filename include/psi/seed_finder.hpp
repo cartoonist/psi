@@ -1561,8 +1561,8 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::write_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
-          std::function< vg::Position( uint64_t ) > lambda =
-              [this]( uint64_t i ) {
+          std::function< vg::Position( std::size_t ) > lambda =
+              [this]( std::size_t i ) {
                 auto pos = this->starting_loci.at( i );
                 pos.set_node_id( this->graph_ptr->coordinate_id( pos.node_id() ) );
                 return pos;

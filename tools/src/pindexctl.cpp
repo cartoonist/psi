@@ -101,7 +101,7 @@ template< typename TGraph, typename TFinder >
     vg::Alignment p;
     std::string pathname;
     auto coord = [&graph]( auto id ) { return graph.coordinate_id( id ); };
-    for ( size_t i = 0; i < pathset.size(); ++i ) {
+    for ( std::size_t i = 0; i < pathset.size(); ++i ) {
       pathname = "path" + std::to_string( i + 1 );
       p.set_name( pathname );
       std::cout << "\rConverted " << std::to_string( i + 1 ) << "/"
@@ -118,8 +118,8 @@ template< typename TGraph, typename TFinder >
     }
 
     std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-    std::function< vg::Alignment( uint64_t ) > lambda =
-      [&paths]( uint64_t i ) { return paths.at( i ); };
+    std::function< vg::Alignment( std::size_t ) > lambda =
+      [&paths]( std::size_t i ) { return paths.at( i ); };
     std::cout << "\nWriting all paths to a GAM file... ";
     vg::io::write( ofs, paths.size(), lambda );
     std::cout << "Done." << std::endl;
@@ -139,8 +139,8 @@ template< typename TGraph, typename TFinder >
     std::vector< vg::Graph > graphset;
     std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
 
-    std::function< vg::Graph( uint64_t ) > graph_at =
-      [&graphset]( uint64_t i ) { return graphset.at( i ); };
+    std::function< vg::Graph( std::size_t ) > graph_at =
+      [&graphset]( std::size_t i ) { return graphset.at( i ); };
 
     std::function< void( vg::Graph& ) > accumulate =
       [&graphset]( vg::Graph& g ) {
