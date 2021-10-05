@@ -230,7 +230,7 @@ namespace psi {
       std::size_t lc_value = UINTMAX_MAX;
       bool equally_covered = true;
       auto cov =
-          [&graph, &paths_set]( TPath const& tail ) {
+          [&paths_set]( TPath const& tail ) {
             return path_coverage( tail.begin(), tail.end(), paths_set );
           };
 

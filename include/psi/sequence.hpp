@@ -1640,8 +1640,8 @@ namespace psi {
       inline typename seqan::Size< TText >::Type
     increment_kmer( TText& str, typename seqan::Size< TText >::Type pos, bool continuous=false )
     {
-      static const unsigned int max_value = ordValue( maxValue( str[0] ) );
-      static const unsigned int min_value = ordValue( minValue( str[0] ) );
+      static const unsigned int max_value = ordValue( seqan::MaxValue< std::decay_t< decltype( str[0] ) > >::VALUE );
+      static const unsigned int min_value = ordValue( seqan::MinValue< std::decay_t< decltype( str[0] ) > >::VALUE );
 
       assert( pos < length( str ) );
 

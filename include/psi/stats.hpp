@@ -89,14 +89,15 @@ namespace psi {
     class TimerTraits< clock_t > {
       public:
         /* ====================  TYPE MEMBERS  ======================================= */
-        typedef struct {
+        struct ClockTraits {
           typedef clock_t time_point;
             static inline time_point
           now()
           {
             return clock();
           }
-        } clock_type;
+        };
+        typedef ClockTraits clock_type;
         typedef float duration_type;
         typedef duration_type rep_type;
         /* ====================  DATA MEMBERS  ======================================= */
@@ -131,10 +132,11 @@ namespace psi {
     class TimerTraits< void > {
       public:
         /* === TYPE MEMBERS === */
-        typedef struct {
+        struct ClockTraits {
           typedef void* time_point;
           static inline time_point now() { return nullptr; }
-        } clock_type;
+        };
+        typedef ClockTraits clock_type;
         typedef float duration_type;
         typedef duration_type rep_type;
         /* === DATA MEMBERS === */
@@ -261,7 +263,7 @@ namespace psi {
           this->timer_name = name;
           auto found = get_timers().find( this->timer_name );
           if ( found != get_timers().end() ) {
-            assert( found->second.end > found->second.start );
+            assert( found->second.end >= found->second.start );
             found->second.pre_elapsed = found->second.duration();
             found->second.start = clock_type::now();
           } else get_timers()[ this->timer_name ].start = clock_type::now();
@@ -410,8 +412,8 @@ namespace psi {
       };
       typedef TimePeriod period_type;
       /* === LIFECYCLE === */
-      Timer( std::string const& ) { }
-      Timer( ) { }
+      constexpr Timer( std::string const& ) { }
+      constexpr Timer( ) { }
       /* === METHODS === */
       static inline std::unordered_map< std::string, TimePeriod >
       get_timers( )
