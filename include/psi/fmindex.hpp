@@ -1,8 +1,8 @@
 /**
  *    @file  fmindex.hpp
- *   @brief  FM-Index wrapper on `sdsl::csa_wt`.
+ *   @brief  FM-Index wrapper on `sdsl::cst_wt`.
  *
- *  This is a wrapper module for `sdsl::csa_wt`.
+ *  This is a wrapper module for `sdsl::cst_wt`.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -22,7 +22,7 @@
 #include <string>
 
 #include <seqan/index.h>
-#include <sdsl/suffix_arrays.hpp>
+#include <sdsl/suffix_trees.hpp>
 
 #include "sequence.hpp"
 #include "utils.hpp"
@@ -82,7 +82,8 @@ namespace seqan {
         typedef TText text_type;                               /**< @brief input text type */
         typedef typename text_type::pos_type pos_type;
         typedef psi::FMIndex< TWT, TDens, TInvDens > spec_type;
-        typedef sdsl::csa_wt< TWT, TDens, TInvDens > value_type;
+        typedef sdsl::csa_wt< TWT, TDens, TInvDens > csa_type;
+        typedef sdsl::cst_sada< csa_type > value_type;
         typedef typename value_type::string_type string_type;  /**< @brief output string type */
         typedef typename value_type::size_type savalue_type;
         typedef typename value_type::index_category index_category;
@@ -379,7 +380,7 @@ namespace seqan {
         typedef typename index_type::comp_char_type comp_char_type;
         typedef typename index_type::range_type range_type;
         /* ====================  ASSERTS       ======================================= */
-        static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
+        static_assert( std::is_same< sdsl::cst_tag, index_category >::value, "index category should be `cst`" );
         /* ====================  LIFECYCLE     ======================================= */
         Finder( index_type const* i_p )
           : index_p( i_p ), occ_cur( 0 ), occ_end( this->index_p->size()-1 ),
@@ -682,7 +683,7 @@ namespace seqan {
         typedef typename std::vector< pos_type > occs_type;
         typedef IterHistory< index_type, TopDown< TSpec > > history_type;
         /* ====================  ASSERTS       ======================================= */
-        static_assert( std::is_same< sdsl::csa_tag, index_category >::value, "index category should be `csa`" );
+        static_assert( std::is_same< sdsl::cst_tag, index_category >::value, "index category should be `cst`" );
         /* ====================  LIFECYCLE     ======================================= */
         Iter( index_type const* i_p )
           : index_p( i_p ), occ_cur( 0 ), occ_end( 0 ), depth( 0 ), initialized( false ) { }
