@@ -19,6 +19,7 @@
 #ifndef PSI_STATS_HPP__
 #define PSI_STATS_HPP__
 
+#include <ctime>
 #include <chrono>
 #include <unordered_map>
 #include <cassert>
@@ -44,6 +45,7 @@ namespace psi {
 
   typedef clock_t CpuClock;
   typedef std::chrono::steady_clock SteadyClock;
+  typedef struct timespec BetterClock;
 
   template< typename TSpec = CpuClock >
     class TimerTraits;
@@ -74,6 +76,113 @@ namespace psi {
                       duration_type pre_elapsed=zero_duration )
         {
           return TimerTraits::duration( end, start, pre_elapsed ).count();
+        }
+
+          static inline std::string
+        duration_str( clock_type::time_point end, clock_type::time_point start,
+                      duration_type pre_elapsed=zero_duration )
+        {
+          return std::to_string( TimerTraits::duration_rep( end, start, pre_elapsed ) ) +
+              " " + TimerTraits::unit_repr;
+        }
+    };  /* ---  end of class TimerTraits  --- */
+
+  template< >
+    class TimerTraits< struct timespec > {
+      public:
+        /* ====================  TYPE MEMBERS  ======================================= */
+        struct Clock {
+          struct TimePoint {
+            typedef double duration_type;
+            constexpr static const long int NSEC_PER_USEC = 1000;
+            constexpr static const long int NSEC_PER_SEC = 1000000000;
+            constexpr static const long int USEC_PER_SEC = NSEC_PER_SEC / NSEC_PER_USEC;
+
+            TimePoint() = default;
+
+            TimePoint( duration_type d )
+            {
+              this->p.tv_sec = d / USEC_PER_SEC;
+              this->p.tv_nsec = ( d - this->p.tv_sec * USEC_PER_SEC ) * NSEC_PER_USEC;
+            }
+
+            inline
+            operator duration_type() const
+            {
+              return this->p.tv_sec * USEC_PER_SEC + this->p.tv_nsec / NSEC_PER_USEC;
+            }
+
+              inline bool
+            operator>( TimePoint const& y ) const
+            {
+              if ( this->p.tv_sec == y.p.tv_sec ) return this->p.tv_nsec > y.p.tv_nsec;
+              return this->p.tv_sec > y.p.tv_sec;
+            }
+
+              inline bool
+            operator<( TimePoint const& y ) const
+            {
+              return y > *this;
+            }
+
+            /**
+             *  @brief Subtract the ‘struct timespec’ values x and y.
+             *
+             *  NOTE: x should be larger than y!
+             */
+              inline TimePoint
+            operator-( TimePoint y ) const
+            {
+              TimePoint result;
+              /* Perform the carry for the later subtraction by updating y. */
+              if ( this->p.tv_nsec < y.p.tv_nsec ) {
+                int sec = ( y.p.tv_nsec - this->p.tv_nsec ) / NSEC_PER_SEC + 1;
+                y.p.tv_nsec -= sec * NSEC_PER_SEC;
+                y.p.tv_sec += sec;
+              }
+              if ( this->p.tv_nsec - y.p.tv_nsec > NSEC_PER_SEC ) {
+                int sec = ( this->p.tv_nsec - y.p.tv_nsec ) / NSEC_PER_SEC;
+                y.p.tv_nsec += sec * NSEC_PER_SEC;
+                y.p.tv_sec -= sec;
+              }
+              /* Compute the time remaining to wait. tv_nsec is certainly positive. */
+              result.p.tv_sec = this->p.tv_sec - y.p.tv_sec;
+              result.p.tv_nsec = this->p.tv_nsec - y.p.tv_nsec;
+
+              return result;
+            }
+            struct timespec p;
+          };
+          typedef TimePoint time_point;
+            static inline time_point
+          now( clockid_t cid=0 )
+          {
+            time_point tp;
+            if ( cid == 0 ) clock_getcpuclockid( pthread_self(), &cid );
+            clock_gettime( cid, &tp.p );
+            return tp;
+          }
+        };
+        typedef Clock clock_type;
+        typedef clock_type::time_point::duration_type duration_type;
+        typedef duration_type rep_type;
+        /* ====================  DATA MEMBERS  ======================================= */
+        constexpr static const char* unit_repr = "us";
+        constexpr static const duration_type zero_duration = 0;
+        constexpr static const rep_type zero_duration_rep = 0;
+        /* ====================  METHODS       ======================================= */
+          static inline duration_type
+        duration( clock_type::time_point end, clock_type::time_point start,
+                  duration_type pre_elapsed=zero_duration )
+        {
+          return static_cast< duration_type >( end - start ) + pre_elapsed;
+        }
+
+          static inline rep_type
+        duration_rep( clock_type::time_point end, clock_type::time_point start,
+                      duration_type pre_elapsed=zero_duration )
+        {
+          return TimerTraits::duration( end, start, pre_elapsed );
         }
 
           static inline std::string
