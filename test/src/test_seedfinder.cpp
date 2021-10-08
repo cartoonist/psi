@@ -103,7 +103,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
         finder.add_uncovered_loci( );
         for ( const auto& locus : finder.get_starting_loci() ) {
           REQUIRE( locus.node_id() == (*truth_itr).first );
-          REQUIRE( locus.offset() == (*truth_itr).second );
+          REQUIRE( static_cast< unsigned long long int>( locus.offset() ) == (*truth_itr).second );
           ++truth_itr;
         }
       }

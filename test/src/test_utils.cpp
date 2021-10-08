@@ -212,7 +212,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
   size_t size = 20;
   GIVEN( "A vector of integer with size " + std::to_string( size ) )
   {
-    std::vector< int > v;
+    std::vector< unsigned int > v;
     for ( unsigned int i = 0; i < size; ++i ) {
       v.push_back( i * 2 );
     }
@@ -226,7 +226,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
       THEN( "should be deserialized correctly" )
       {
         std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-        std::vector< int > w;
+        std::vector< unsigned int > w;
         deserialize( ifs, w, std::back_inserter( w ) );
 
         for ( unsigned int i = 0; i < w.size(); ++i ) {
@@ -240,7 +240,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
 
   GIVEN( "An empty string" )
   {
-    std::vector< int > v;
+    std::vector< unsigned int > v;
 
     WHEN( "it is serialized to a file" )
     {
@@ -251,7 +251,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
       THEN( "should be deserialized correctly" )
       {
         std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-        std::vector< int > w;
+        std::vector< unsigned int > w;
         deserialize( ifs, w, std::back_inserter( w ) );
         REQUIRE( w.size() == 0 );
       }
@@ -261,7 +261,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
   }
 
   struct position {
-    int i;
+    unsigned int i;
     double d;
     char c;
     char s[10];
@@ -273,7 +273,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
     std::vector< position > v;
     for ( unsigned int i = 0; i < size; ++i ) {
       v.push_back( {
-          static_cast<int>( i + 10 ),
+          i + 10,
           i / 3.0,
           static_cast<char>( i + 65 ),
           { static_cast<char>( i + 65 ), static_cast<char>( i + 97 ) }
@@ -295,7 +295,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
         for ( unsigned int i = 0; i < w.size(); ++i ) {
           REQUIRE( w[i].i == i + 10 );
           REQUIRE( w[i].d == i / 3.0 );
-          REQUIRE( w[i].c == i + 65 );
+          REQUIRE( w[i].c == static_cast< char >( i + 65 ) );
           const char s[10] = { static_cast<char>( i + 65 ), static_cast<char>( i + 97 ) };
           REQUIRE( std::strcmp( w[i].s, s ) == 0 );
         }

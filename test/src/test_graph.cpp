@@ -83,8 +83,8 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {
-        REQUIRE( matrix.numCols() == nof_nodes );
-        REQUIRE( matrix.numRows() == nof_nodes );
+        REQUIRE( static_cast< unsigned long long int >( matrix.numCols() ) == nof_nodes );
+        REQUIRE( static_cast< unsigned long long int >( matrix.numRows() ) == nof_nodes );
         REQUIRE( matrix.graph.row_map.extent( 0 ) == nof_nodes + 1 );
       }
 
@@ -141,8 +141,8 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {
-        REQUIRE( matrix.numCols() == nof_nodes );
-        REQUIRE( matrix.numRows() == nof_nodes );
+        REQUIRE( static_cast< unsigned long long int >( matrix.numCols() ) == nof_nodes );
+        REQUIRE( static_cast< unsigned long long int >( matrix.numRows() ) == nof_nodes );
         REQUIRE( matrix.graph.row_map.extent( 0 ) == nof_nodes + 1 );
       }
 
