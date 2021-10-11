@@ -906,7 +906,7 @@ SCENARIO( "Compute the average of a long stream of integers in parallel", "[util
               auto peek_sum = sum.load();
               if ( peek_sum >= std::numeric_limits< value_type >::max() - value ) {
                 UniqWriterLock reducer( rws_lock );
-                if ( reducer ) {
+                if ( reducer && peek_sum == sum.load() ) {
                   REQUIRE( !rws_lock.acquire_writer_weak() );
                   REQUIRE( sum.load() >= std::numeric_limits< value_type >::max() - value );
                   update();
@@ -940,7 +940,7 @@ SCENARIO( "Compute the average of a long stream of integers in parallel", "[util
         for ( std::size_t tidx = 0; tidx < nofthreads; ++tidx ) threads[ tidx ].join();
         update();
         double diff = real_sum / static_cast< double >( real_tot ) - avg;
-        REQUIRE( diff == Approx( 0 ).margin( 0.3 ) );
+        REQUIRE( diff == Approx( 0 ).margin( 0.5 ) );
       }
     }
   }

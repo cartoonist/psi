@@ -162,7 +162,7 @@ namespace psi {
             auto peek_sum = get_partial_pathlen_sum().load();
             if ( peek_sum >= PARTIAL_PATHLEN_SUM_UBOUND ) {
               UniqWriterLock reducer( get_rws_lock() );
-              if ( reducer ) {
+              if ( reducer && peek_sum == get_partial_pathlen_sum().load() ) {
                 update_avg_pathlen();
               }
               continue;
