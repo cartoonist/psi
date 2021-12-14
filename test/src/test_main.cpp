@@ -20,3 +20,20 @@
 
 #define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
+
+#include "test_base.hpp"
+
+class MyTestEventListener : public Catch::TestEventListenerBase {
+public:
+    using Catch::TestEventListenerBase::TestEventListenerBase;
+
+    void testRunStarting( Catch::TestRunInfo const& ) override {
+      auto seed = Catch::rngSeed();
+      if ( seed != 0 ) {
+        std::cout << "Setting random generator seed to " << seed << "..." << std::endl;
+        rnd::set_seed( seed );
+      }
+    }
+};
+
+CATCH_REGISTER_LISTENER(MyTestEventListener)

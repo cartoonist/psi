@@ -20,6 +20,7 @@
 #define PSI_TEST_BASE_HPP__
 
 #include <string>
+#include <random>
 
 #include "catch2/catch.hpp"
 
@@ -30,6 +31,21 @@
 #ifndef TEST_DATA_DIR
 #define TEST_DATA_DIR PROJECT_SOURCE_DIR "/test/data"
 #endif
+
+namespace rnd {
+  thread_local static std::random_device rd;
+  thread_local static unsigned int iseed = rd();
+  thread_local static std::mt19937 rgn( iseed );
+
+  inline void
+  set_seed( unsigned int seed )
+  {
+    if ( seed != 0 ) {
+      iseed = seed;
+      rgn.seed( seed );
+    }
+  }
+}  /* ---  end of namespace rnd  --- */
 
 static const std::string test_data_dir( TEST_DATA_DIR );
 
