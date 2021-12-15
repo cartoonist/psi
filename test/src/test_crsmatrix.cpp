@@ -71,7 +71,8 @@ namespace test_util {
   /* NOTE: The `matrix` cannot be const reference because of Buffered specialisations. */
   template< typename TValue, std::size_t NRows, std::size_t NCols >
   inline std::size_t
-  get_nnz( std::array< std::array< TValue, NCols >, NRows >& matrix ) {
+  get_nnz( std::array< std::array< TValue, NCols >, NRows >& matrix )
+  {
     auto nrows = numRows( matrix );
     auto ncols = numCols( matrix );
     std::size_t nnz = 0;
@@ -92,7 +93,8 @@ namespace test_util {
 
   template< typename TMatrix >
   inline void
-  zero_matrix( TMatrix& matrix ) {
+  zero_matrix( TMatrix& matrix )
+  {
     auto nrows = numRows( matrix );
     auto ncols = numCols( matrix );
     for ( std::size_t i = 0; i < nrows; ++i ) {
@@ -102,7 +104,8 @@ namespace test_util {
 
   template< typename TMatrix >
   inline void
-  random_matrix( TMatrix& matrix, std::size_t nnz ) {
+  random_matrix( TMatrix& matrix, std::size_t nnz )
+  {
     auto nrows = numRows( matrix );
     auto ncols = numCols( matrix );
 
@@ -113,8 +116,8 @@ namespace test_util {
 
     std::size_t i = 0;
     while ( i < nnz ) {
-      auto r = random::random_index( nrows );
-      auto c = random::random_index( ncols );
+      auto r = random::random_index( nrows, rnd::rgn );
+      auto c = random::random_index( ncols, rnd::rgn );
       if ( matrix[r][c] == 0 ) {
         matrix[r][c] = 1;
         ++i;
@@ -161,7 +164,7 @@ namespace test_util {
   template< typename TMatrix1, typename TMatrix2 >
   inline void
   fill_block( TMatrix1& matrix, TMatrix2 const& block,
-              unsigned int &si, unsigned int &sj )
+              unsigned int& si, unsigned int& sj )
   {
     for ( std::size_t i = 0; i < block.size(); ++i ) {
       for ( std::size_t j = 0; j < block[0].size(); ++j ) {
@@ -207,6 +210,7 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix( simple, nnz );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
@@ -247,6 +251,7 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 
     test_util::random_matrix( block1, nnz1 );
     test_util::random_matrix( block2, nnz2 );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -301,6 +306,7 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 
     test_util::random_matrix( block1, nnz1 );
     test_util::random_matrix( block2, nnz2 );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -354,6 +360,7 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix( simple, nnz );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
@@ -407,6 +414,7 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
 
     test_util::random_matrix( block1, nnz1 );
     test_util::random_matrix( block2, nnz2 );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -474,6 +482,7 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
 
     test_util::random_matrix( block1, nnz1 );
     test_util::random_matrix( block2, nnz2 );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -536,6 +545,7 @@ SCENARIO( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsm
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix( simple, nnz );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
