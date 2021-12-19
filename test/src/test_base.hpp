@@ -27,6 +27,7 @@
 #include "test_config.hpp"
 
 #define TEMPLATE_SCENARIO TEMPLATE_TEST_CASE
+#define TEMPLATE_SCENARIO_SIG TEMPLATE_TEST_CASE_SIG
 
 #ifndef TEST_DATA_DIR
 #define TEST_DATA_DIR PROJECT_SOURCE_DIR "/test/data"

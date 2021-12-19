@@ -15,6 +15,9 @@
  *  See LICENSE file for more information.
  */
 
+#include <numeric>
+#include <algorithm>
+
 #include <psi/crs_matrix.hpp>
 #include <pairg/spgemm_utility.hpp>
 
@@ -125,6 +128,76 @@ namespace test_util {
     }
   }
 
+  template< typename TMatrix >
+  inline void
+  random_matrix_ranged( TMatrix& matrix, std::size_t nnz )
+  {
+    static const std::size_t MIN_NOF_FRAGS = 1;
+    static const std::size_t MAX_NOF_FRAGS = 4;
+
+    auto nrows = numRows( matrix );
+    auto ncols = numCols( matrix );
+
+    assert( nnz <= nrows * ncols );
+
+    // initialise the matrix by zero
+    zero_matrix( matrix );
+
+    std::size_t base_zp = nnz / nrows;     // minimum number of non-zero value per row
+    std::size_t remainders = nnz % nrows;  // remainder of the division scattered across rows
+    std::size_t nfrags = std::max( MIN_NOF_FRAGS, std::min( MAX_NOF_FRAGS, base_zp ) );
+    std::size_t filled = 0;
+    std::vector< std::size_t > lens;
+    std::vector< std::size_t > spaces;
+    std::vector< std::size_t > therange( ncols );
+
+    std::iota( therange.begin(), therange.end(), 1 );
+
+    auto partition = [&therange, ncols]( std::vector< std::size_t >& out,
+                                         std::size_t len, std::size_t nfrag,
+                                         bool can_empty=false ) {
+      assert( 1 <= len && len <= ncols );
+      if ( can_empty ) {
+        std::generate_n( out.begin(), nfrag - 1, [&](){ return random::random_index( len ); } );
+      }
+      else {
+        std::sample( therange.begin(), therange.begin() + len - 1, out.begin(), nfrag - 1, rnd::rgn );
+      }
+      out.back() = len;
+      std::sort( out.begin(), out.end() );
+      std::adjacent_difference( out.begin(), out.end(), out.begin() );
+    };
+
+    for ( std::size_t i = 0; i < nrows; ++i ) {
+      //if ( nnz < filled + base_zp ) base_zp = nnz - filled;
+      assert( filled <= nnz );
+      if ( filled == nnz ) break;
+      auto c_nfrags = random::random_integer( 1ul, nfrags, rnd::rgn );  // number of fragments in the current row
+      auto nnzp = base_zp;  // number of non-zero values in the current row
+      if ( remainders ) {
+        ++nnzp;
+        --remainders;
+      }
+
+      lens.resize( c_nfrags );
+      partition( lens, nnzp, c_nfrags );
+      spaces.resize( c_nfrags );
+      partition( spaces, ncols - nnzp, c_nfrags + 1, true );
+
+      std::size_t j = 0;
+      auto cspace = spaces.begin();
+      for ( auto it = lens.begin(); it != lens.end(); ++it ) {
+        j += *cspace++;
+        for ( std::size_t k = 0; k < *it; ++k ) {
+          matrix[i][j] = 1;
+          ++j;
+        }
+      }
+
+      filled += nnzp;
+    }
+  }
+
   /* NOTE: The `matrix` cannot be const reference because of Buffered specialisations. */
   template< typename TMatrix, typename TExternalMatrixTraits = pairg::matrixOps >
   inline typename TExternalMatrixTraits::crsMat_t
@@ -177,7 +250,8 @@ namespace test_util {
 
   template< typename TMatrix1, typename TMatrix2 >
   inline void
-  is_identical( TMatrix1& matrix1, TMatrix2& matrix2 ) {
+  is_identical( TMatrix1& matrix1, TMatrix2& matrix2 )
+  {
     REQUIRE( numRows( matrix1 ) != 0 );
     REQUIRE( numCols( matrix1 ) != 0 );
     REQUIRE( numRows( matrix1 ) == numRows( matrix2 ) );
@@ -185,6 +259,7 @@ namespace test_util {
     REQUIRE( get_nnz( matrix1 ) == get_nnz( matrix2 ) );
     for ( std::size_t i = 0; i < numRows( matrix1 ); ++i ) {
       for ( std::size_t j = 0; j < numCols( matrix1 ); ++j ) {
+        INFO( "With i, j: " << i << ", " << j );
         REQUIRE( access( matrix1, i, j ) == access( matrix2, i, j ) );
       }
     }
@@ -195,18 +270,67 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
                    crs_matrix::Dynamic,
                    crs_matrix::Compressed,
                    crs_matrix::Buffered,
-                   crs_matrix::FullyBuffered )
+                   crs_matrix::FullyBuffered,
+                   crs_matrix::RangeDynamic,
+                   crs_matrix::RangeCompressed )
 {
   typedef TestType spec_type;
   typedef CRSMatrix< spec_type, bool > crsmat_type;
 
   Kokkos::initialize();
 
+  GIVEN( "A tiny matrix" )
+  {
+    constexpr const std::size_t nnz = 25;
+    constexpr const std::size_t nrows = 10;
+    constexpr const std::size_t ncols = 10;
+    std::array< std::array< bool, ncols >, nrows > simple;
+
+    test_util::zero_matrix( simple );
+    simple[ 0 ][ 3 ] = 1;
+    simple[ 0 ][ 4 ] = 1;
+    simple[ 0 ][ 5 ] = 1;
+    simple[ 0 ][ 6 ] = 1;
+    simple[ 1 ][ 7 ] = 1;
+    simple[ 1 ][ 8 ] = 1;
+    simple[ 1 ][ 9 ] = 1;
+    simple[ 2 ][ 0 ] = 1;
+    simple[ 2 ][ 1 ] = 1;
+    simple[ 2 ][ 6 ] = 1;
+    simple[ 4 ][ 1 ] = 1;
+    simple[ 4 ][ 2 ] = 1;
+    simple[ 5 ][ 0 ] = 1;
+    simple[ 5 ][ 1 ] = 1;
+    simple[ 5 ][ 2 ] = 1;
+    simple[ 5 ][ 3 ] = 1;
+    simple[ 5 ][ 4 ] = 1;
+    simple[ 5 ][ 5 ] = 1;
+    simple[ 5 ][ 6 ] = 1;
+    simple[ 5 ][ 7 ] = 1;
+    simple[ 5 ][ 8 ] = 1;
+    simple[ 5 ][ 9 ] = 1;
+    simple[ 8 ][ 9 ] = 1;
+    simple[ 9 ][ 8 ] = 1;
+    simple[ 9 ][ 9 ] = 1;
+
+    REQUIRE( test_util::get_nnz( simple ) == nnz );
+
+    WHEN( "A CRSMatrix instance is constructed by an external CRS matrix" )
+    {
+      crsmat_type matrix( test_util::to_external_crs( simple, nnz ) );
+
+      THEN( "It should be identical to the original matrix" )
+      {
+        test_util::is_identical( matrix, simple );
+      }
+    }
+  }
+
   GIVEN( "A simple external matrix" )
   {
-    constexpr const std::size_t nnz = 2000;
-    constexpr const std::size_t nrows = 1000;
-    constexpr const std::size_t ncols = 500;
+    constexpr const std::size_t nnz = 2400;
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix( simple, nnz );
@@ -237,20 +361,20 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 
   GIVEN( "Two external matrices as blocks" )
   {
-    constexpr const std::size_t nnz1 = 2000;
-    constexpr const std::size_t nrows1 = 1000;
-    constexpr const std::size_t ncols1 = 500;
+    constexpr const std::size_t nnz1 = 2400;
+    constexpr const std::size_t nrows1 = 200;
+    constexpr const std::size_t ncols1 = 200;
     std::array< std::array< bool, ncols1 >, nrows1 > block1;
 
-    constexpr const std::size_t nnz2 = 1000;
+    constexpr const std::size_t nnz2 = 4000;
     constexpr const std::size_t nrows2 = 400;
     constexpr const std::size_t ncols2 = 400;
     std::array< std::array< bool, ncols2 >, nrows2 > block2;
 
     std::array< std::array< bool, ncols1 + ncols2 >, nrows1 + nrows2 > appended;
 
-    test_util::random_matrix( block1, nnz1 );
-    test_util::random_matrix( block2, nnz2 );
+    test_util::random_matrix_ranged( block1, nnz1 );
+    test_util::random_matrix_ranged( block2, nnz2 );
     INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
@@ -289,23 +413,23 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 
   GIVEN( "Two external matrices as non-consecutive blocks" )
   {
-    constexpr const std::size_t nnz1 = 2000;
-    constexpr const std::size_t nrows1 = 100;
-    constexpr const std::size_t ncols1 = 500;
+    constexpr const std::size_t nnz1 = 2400;
+    constexpr const std::size_t nrows1 = 200;
+    constexpr const std::size_t ncols1 = 200;
     std::array< std::array< bool, ncols1 >, nrows1 > block1;
 
     constexpr const std::size_t znrows = 3;
     constexpr const std::size_t zncols = 6;
 
-    constexpr const std::size_t nnz2 = 1500;
+    constexpr const std::size_t nnz2 = 4000;
     constexpr const std::size_t nrows2 = 400;
     constexpr const std::size_t ncols2 = 400;
     std::array< std::array< bool, ncols2 >, nrows2 > block2;
 
     std::array< std::array< bool, ncols1+zncols+ncols2 >, nrows1+znrows+nrows2 > appended;
 
-    test_util::random_matrix( block1, nnz1 );
-    test_util::random_matrix( block2, nnz2 );
+    test_util::random_matrix_ranged( block1, nnz1 );
+    test_util::random_matrix_ranged( block2, nnz2 );
     INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
@@ -347,19 +471,21 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatrix",
                    "[crsmatrix][bool]",
                    crs_matrix::Dynamic,
-                   crs_matrix::Compressed )
+                   crs_matrix::Compressed,
+                   crs_matrix::RangeDynamic,
+                   crs_matrix::RangeCompressed )
 {
   typedef TestType spec_type;
   typedef CRSMatrix< spec_type, bool > crsmat_type;
 
   GIVEN( "A simple external matrix" )
   {
-    constexpr const std::size_t nnz = 2000;
-    constexpr const std::size_t nrows = 1000;
-    constexpr const std::size_t ncols = 500;
+    constexpr const std::size_t nnz = 2400;
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
     std::array< std::array< bool, ncols >, nrows > simple;
 
-    test_util::random_matrix( simple, nnz );
+    test_util::random_matrix_ranged( simple, nnz );
     INFO( "Seed for the random number generator: " << rnd::iseed );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
@@ -400,20 +526,20 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
 
   GIVEN( "Two external matrices as blocks" )
   {
-    constexpr const std::size_t nnz1 = 2000;
-    constexpr const std::size_t nrows1 = 1000;
-    constexpr const std::size_t ncols1 = 500;
+    constexpr const std::size_t nnz1 = 2400;
+    constexpr const std::size_t nrows1 = 200;
+    constexpr const std::size_t ncols1 = 200;
     std::array< std::array< bool, ncols1 >, nrows1 > block1;
 
-    constexpr const std::size_t nnz2 = 1000;
+    constexpr const std::size_t nnz2 = 4000;
     constexpr const std::size_t nrows2 = 400;
     constexpr const std::size_t ncols2 = 400;
     std::array< std::array< bool, ncols2 >, nrows2 > block2;
 
     std::array< std::array< bool, ncols1 + ncols2 >, nrows1 + nrows2 > appended;
 
-    test_util::random_matrix( block1, nnz1 );
-    test_util::random_matrix( block2, nnz2 );
+    test_util::random_matrix_ranged( block1, nnz1 );
+    test_util::random_matrix_ranged( block2, nnz2 );
     INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
@@ -465,23 +591,23 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
 
   GIVEN( "Two external matrices as non-consecutive blocks" )
   {
-    constexpr const std::size_t nnz1 = 2000;
-    constexpr const std::size_t nrows1 = 100;
-    constexpr const std::size_t ncols1 = 500;
+    constexpr const std::size_t nnz1 = 2400;
+    constexpr const std::size_t nrows1 = 200;
+    constexpr const std::size_t ncols1 = 200;
     std::array< std::array< bool, ncols1 >, nrows1 > block1;
 
     constexpr const std::size_t znrows = 3;
     constexpr const std::size_t zncols = 6;
 
-    constexpr const std::size_t nnz2 = 1500;
+    constexpr const std::size_t nnz2 = 4000;
     constexpr const std::size_t nrows2 = 400;
     constexpr const std::size_t ncols2 = 400;
     std::array< std::array< bool, ncols2 >, nrows2 > block2;
 
     std::array< std::array< bool, ncols1+zncols+ncols2 >, nrows1+znrows+nrows2 > appended;
 
-    test_util::random_matrix( block1, nnz1 );
-    test_util::random_matrix( block2, nnz2 );
+    test_util::random_matrix_ranged( block1, nnz1 );
+    test_util::random_matrix_ranged( block2, nnz2 );
     INFO( "Seed for the random number generator: " << rnd::iseed );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
@@ -588,6 +714,58 @@ SCENARIO( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsm
       crsmat_type matrix;
       make_fully_buffered_t< crsmat_type > bmatrix( test_util::to_external_crs( simple, nnz ) );
       matrix.assign( bmatrix );
+
+      THEN( "It should be identical to the original matrix" )
+      {
+        test_util::is_identical( matrix, simple );
+      }
+    }
+  }
+}
+
+TEMPLATE_SCENARIO_SIG( "Specialised functionalities of Range Boolean CRS Matrix", "[crsmatrix][bool]",
+                   ( ( typename T, typename U, int V /* dummy type unless compile error */ ), T, U, V ),
+                   ( crs_matrix::RangeDynamic, crs_matrix::Dynamic, 0 ),
+                   ( crs_matrix::RangeDynamic, crs_matrix::Compressed, 0 ),
+                   ( crs_matrix::RangeDynamic, crs_matrix::Buffered, 0 ),
+                   ( crs_matrix::RangeDynamic, crs_matrix::FullyBuffered, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::Dynamic, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::Compressed, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::Buffered, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::FullyBuffered, 0 ) )
+{
+  typedef CRSMatrix< T, bool > crsmat_range_type;
+  typedef CRSMatrix< U, bool > crsmat_basic_type;
+
+  GIVEN( "A simple external matrix" )
+  {
+    constexpr const std::size_t nnz = 2400;
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
+    std::array< std::array< bool, ncols >, nrows > simple;
+
+    test_util::random_matrix_ranged( simple, nnz );
+    INFO( "Seed for the random number generator: " << rnd::iseed );
+
+    REQUIRE( test_util::get_nnz( simple ) == nnz );
+
+    WHEN( "The Range CRSMatrix is assigned by a Basic CRSMatrix")
+    {
+      crsmat_basic_type matrix( test_util::to_external_crs( simple, nnz ) );
+      crsmat_range_type r_matrix;
+      r_matrix.assign( matrix );
+
+      THEN( "It should be identical to the original matrix" )
+      {
+        test_util::is_identical( r_matrix, simple );
+      }
+    }
+
+    WHEN( "The Basic CRSMatrix is assigned by a Range CRSMatrix")
+    {
+      crsmat_range_type r_matrix( test_util::to_external_crs( simple, nnz ) );
+      crsmat_basic_type matrix;
+      matrix.assign( r_matrix );
 
       THEN( "It should be identical to the original matrix" )
       {
