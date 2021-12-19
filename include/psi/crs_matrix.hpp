@@ -528,7 +528,19 @@ namespace psi {
     assign( entries_type& entries, rowmap_type& rowmap, TExtEntries& e_entries,
             TExtRowmap& e_rowmap, crs_matrix::RangeGroup )
     {
-      std::runtime_error( "A Compressed Basic CRS cannot be assigned by a Range CRS" );
+      typedef CRSMatrixTraits< mutable_spec_type, bool, TOrdinal, TSize > mutable_trait_type;
+      typedef typename mutable_trait_type::entries_type m_entries_type;
+      typedef typename mutable_trait_type::rowmap_type m_rowmap_type;
+
+      m_entries_type m_entries;
+      m_rowmap_type m_rowmap( e_rowmap.size() );
+      m_rowmap[ 0 ] = 0;
+      mutable_trait_type::assign( m_entries, m_rowmap, e_entries, e_rowmap, crs_matrix::RangeGroup{} );
+
+      gum::RandomAccessNonConstProxyContainer< m_entries_type, uint64_t > proxy_entries(
+          &m_entries,
+          []( typename m_entries_type::value_type e ) { return static_cast< uint64_t >( e ); } );
+      assign( entries, rowmap, proxy_entries, m_rowmap, crs_matrix::BasicGroup{} );
     }
 
     template< typename TCrsMatrix >
@@ -536,7 +548,7 @@ namespace psi {
     fill_all_partial( entries_type& entries, rowmap_type& rowmap, TCrsMatrix const& ex,
                       TOrdinal scol=0, TOrdinal srow=0 )
     {
-      std::runtime_error( "A Compressed Basic CRS cannot be modified" );
+      throw std::runtime_error( "A Compressed Basic CRS cannot be modified" );
     }
   };
 
@@ -643,7 +655,19 @@ namespace psi {
     assign( entries_type& entries, rowmap_type& rowmap, TExtEntries& e_entries,
             TExtRowmap& e_rowmap, crs_matrix::BasicGroup )
     {
-      std::runtime_error( "A Compressed Range CRS cannot be assigned by a Basic CRS" );
+      typedef CRSMatrixTraits< mutable_spec_type, bool, TOrdinal, TSize > mutable_trait_type;
+      typedef typename mutable_trait_type::entries_type m_entries_type;
+      typedef typename mutable_trait_type::rowmap_type m_rowmap_type;
+
+      m_entries_type m_entries;
+      m_rowmap_type m_rowmap( e_rowmap.size() );
+      m_rowmap[ 0 ] = 0;
+      mutable_trait_type::assign( m_entries, m_rowmap, e_entries, e_rowmap, crs_matrix::BasicGroup{} );
+
+      gum::RandomAccessNonConstProxyContainer< m_entries_type, uint64_t > proxy_entries(
+          &m_entries,
+          []( typename m_entries_type::value_type e ) { return static_cast< uint64_t >( e ); } );
+      assign( entries, rowmap, proxy_entries, m_rowmap, crs_matrix::RangeGroup{} );
     }
 
     template< typename TExtEntries, typename TExtRowmap >
@@ -660,7 +684,7 @@ namespace psi {
     fill_all_partial( entries_type& entries, rowmap_type& rowmap, TCrsMatrix const& ex,
                       TOrdinal scol=0, TOrdinal srow=0 )
     {
-      std::runtime_error( "A Compressed Range CRS cannot be modified" );
+      throw std::runtime_error( "A Compressed Range CRS cannot be modified" );
     }
   };
 
