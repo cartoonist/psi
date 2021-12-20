@@ -775,8 +775,8 @@ namespace psi {
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
         typedef pairg::matrixOps crs_traits_type;
-        typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
-        typedef crs_matrix::Buffered mutable_crsmat_spec_type;
+        typedef CRSMatrix< crs_matrix::RangeCompressed, bool, uint32_t, uint64_t > crsmat_type;
+        typedef crs_matrix::RangeDynamic mutable_crsmat_spec_type;
         typedef make_spec_t< mutable_crsmat_spec_type, crsmat_type > mutable_crsmat_type;
 
         class KokkosHandler {
@@ -1146,11 +1146,9 @@ namespace psi {
           };
           auto nrows = gum::util::total_nof_loci( *this->graph_ptr );
           auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
-                           this->graph_ptr->get_edge_count() ) * ( dmax - dmin );
+                           this->graph_ptr->get_edge_count() ) * 4;
           mutable_crsmat_type udindex( nrows, nrows, provider, nnz_est );
-          this->distance_mat.assign(
-              util::compress_distance_index< mutable_crsmat_type >( udindex,
-                                                                    *this->graph_ptr ) );
+          this->distance_mat.assign( udindex );
           this->d = std::make_pair( dmin, dmax );
         }
 
