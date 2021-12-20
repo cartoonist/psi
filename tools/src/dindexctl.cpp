@@ -35,6 +35,30 @@ constexpr const char* LONG_DESC = ( "dindexctl\n"
                                     "Hacking tool for distance indices\n" );
 // Default values for command line arguments
 constexpr const char* DEFAULT_OUTPUT = "-";  // stdout
+constexpr const char* DEFAULT_SAMPLING_RATE = "0.001";
+constexpr const char* DEFAULT_RNDSEED = "0";
+
+
+namespace rnd {
+  thread_local static std::mt19937 lgen;
+  thread_local static unsigned int iseed = 0;
+
+  inline void
+  init_gen( unsigned int seed=0 )
+  {
+    if ( seed != 0 ) {
+      iseed = seed;
+      lgen.seed( seed );
+    }
+  }
+
+  inline std::mt19937&
+  get_gen( )
+  {
+    if ( iseed == 0 ) return psi::random::gen;
+    else return lgen;
+  }
+}  /* ---  end of namespace rnd  --- */
 
 void
 config_parser( cxxopts::Options& options )
@@ -52,6 +76,11 @@ config_parser( cxxopts::Options& options )
         cxxopts::value< unsigned int >() )
       ( "g, graph", "Corresponding graph file (vg or gfa)",
         cxxopts::value< std::string >() )
+      ( "V, verify", "Verify if the distance index is compressed" )
+      ( "r, sample-rate", "Node sampling rate for verification",
+        cxxopts::value< float >()->default_value( DEFAULT_SAMPLING_RATE ) )
+      ( "S, random-seed", "Seed for random generator",
+        cxxopts::value< unsigned int >()->default_value( DEFAULT_RNDSEED ) )
       ;
 
   options.add_options( "merge" )
@@ -196,12 +225,17 @@ compress( cxxopts::ParseResult& res )
   typedef TCRSMatrix crsmat_type;
   typedef make_buffered_t< crsmat_type > crsmat_buffer_type;
 
+  typedef gum::SeqGraph< gum::Succinct > graph_type;
+  typedef typename graph_type::id_type id_type;
+  typedef typename graph_type::rank_type rank_type;
+  typedef typename graph_type::offset_type offset_type;
+
   std::string graph_path = res[ "graph" ].as< std::string >();
   std::string pindex_prefix = res[ "prefix" ].as< std::string >();
   std::string output = res[ "output" ].as< std::string >();
   unsigned int min_size = res[ "min-insert-size" ].as< unsigned int >();
   unsigned int max_size = res[ "max-insert-size" ].as< unsigned int >();
-  gum::SeqGraph< gum::Succinct > graph;
+  graph_type graph;
   crsmat_type dindex;
   auto index_path = pindex_prefix + "_dist_mat_" + "m" + std::to_string( min_size ) +
       "M" + std::to_string( max_size );
@@ -220,23 +254,46 @@ compress( cxxopts::ParseResult& res )
             << dindex.numRows() << "x" << dindex.numCols() << ") has " << dindex.nnz()
             << " non-zero elements." << std::endl;
 
-  std::cout << "Compressing distance index..." << std::endl;
-  crsmat_type cindex;
-  cindex.assign( util::compress_distance_index< crsmat_buffer_type >( dindex, graph ) );
-  std::cout << "Compressed distance index ("
-            << cindex.numRows() << "x" << cindex.numCols() << ") has " << cindex.nnz()
-            << " non-zero elements." << std::endl;
-
-  std::cout << "Verifying compressed distance index..." << std::endl;
-  if ( !verify_compressed_distance_matrix( cindex, dindex, graph ) ) {
-    std::cerr << "Verification failed!" << std::endl;
-    throw EXIT_FAILURE;
+  if ( res.count( "verify" ) ) {
+    std::cout << "Verifying distance index for compression..." << std::endl;
+    std::uniform_real_distribution< float > dis( 0, 1 );
+    float srate = res[ "sample-rate" ].as< float >();
+    unsigned int seed = res[ "random-seed" ].as< unsigned int >();
+    ::rnd::init_gen( seed );
+    bool success = graph.for_each_node(
+      [&graph, &dindex, &dis, srate]( rank_type rank, id_type id ) {
+        if ( dis( ::rnd::get_gen() ) >= srate ) return true;
+        auto label_len = graph.node_length( id );
+        auto charid = gum::util::id_to_charorder( graph, id );
+        for ( offset_type i = 0; i < label_len; ++i ) {
+          for ( offset_type j = i+1; j < label_len; ++j ) {
+            if ( dindex( charid + i, charid + j ) ) return false;
+          }
+        }
+        return true;
+      });
+    if ( success ) std::cout << "[PASS] Input distance index is compressed." << std::endl;
+    else std::cerr << "[FAIL] Input distance index is not compressed!" << std::endl;
   }
+  else {
+    std::cout << "Compressing distance index..." << std::endl;
+    crsmat_type cindex;
+    cindex.assign( util::compress_distance_index< crsmat_buffer_type >( dindex, graph ) );
+    std::cout << "Compressed distance index ("
+              << cindex.numRows() << "x" << cindex.numCols() << ") has " << cindex.nnz()
+              << " non-zero elements." << std::endl;
 
-  std::cout << "Serialising compressed distance index..." << std::endl;
-  std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-  if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
-  cindex.serialize( ofs );
+    std::cout << "Verifying compressed distance index..." << std::endl;
+    if ( !verify_compressed_distance_matrix( cindex, dindex, graph ) ) {
+      std::cerr << "Verification failed!" << std::endl;
+      throw EXIT_FAILURE;
+    }
+
+    std::cout << "Serialising compressed distance index..." << std::endl;
+    std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
+    if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+    cindex.serialize( ofs );
+  }
 }
 
 template< typename TCRSMatrix >
