@@ -33,6 +33,7 @@
 #include <algorithm> 
 #include <cctype>
 #include <locale>
+#include <random>
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
@@ -1361,44 +1362,74 @@ namespace psi {
   template< typename T1, typename T2 >
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
 
+  namespace functional {
+    struct NoopFunctor {
+      void operator()() { /* NOOP */ }
+    };
+  }  /* --- end of namespace functional --- */
+
   namespace random {
     /* Adapted from here: https://stackoverflow.com/q/440133/357257 */
     thread_local static std::random_device rd;
     thread_local static std::mt19937 gen( rd() );
+
+    template< typename TInteger, typename TGenerator >
+    inline TInteger
+    random_integer( TInteger low,
+                    TInteger high,
+                    TGenerator&& rgen )
+    {
+      assert( low <= high );
+      std::uniform_int_distribution< TInteger > dis( low, high );
+      return dis( rgen );
+    }
 
     template< typename TInteger >
     inline TInteger
     random_integer( TInteger low=std::numeric_limits< TInteger >::min(),
                     TInteger high=std::numeric_limits< TInteger >::max() )
     {
-      assert( low <= high );
-      std::uniform_int_distribution< TInteger > dis( low, high );
-      return dis( gen );
+      return random_integer( low, high, gen );
+    }
+
+    template< typename TInteger, typename TGenerator >
+    inline TInteger
+    random_index( TInteger length, TGenerator&& rgen )
+    {
+      assert( 0 < length );
+      return random_integer< TInteger >( 0, length - 1, rgen );
     }
 
     template< typename TInteger >
     inline TInteger
     random_index( TInteger length )
     {
-      assert( 0 < length );
-      return random_integer< TInteger >( 0, length - 1 );
+      return random_index( length, gen );
     }
 
+    template< typename TInteger, typename TGenerator >
     inline std::string
-    random_string( std::size_t length )
+    random_string( TInteger length, TGenerator&& rgen )
     {
-      auto randchar = []() -> char
+      auto randchar = [&rgen]() -> char
       {
         const char charset[] =
             "0123456789"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
             "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = ( sizeof( charset ) - 1 );
-        return charset[ random_index( max_index ) ];
+        const std::size_t max_index = ( sizeof( charset ) - 1 );
+        return charset[ random_index( max_index, rgen ) ];
       };
       std::string str( length, 0 );
       std::generate_n( str.begin(), length, randchar );
       return str;
+    }
+
+    template< typename TInteger >
+    inline std::string
+    random_string( TInteger length )
+    {
+      return random_string( length, gen );
     }
   }  /* --- end of namespace random --- */
 }  /* --- end of namespace psi --- */
