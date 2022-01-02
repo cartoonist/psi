@@ -1640,6 +1640,152 @@ namespace psi {
   /* === interface functions === */
 
   /**
+   *  @brief  Merge two distance indices (Range Group)
+   *
+   *  @param  dindex1 first distance index
+   *  @param  dindex2 second distance index
+   *  @return a mutable merged distance index of type `TMutableCRSMatrix`
+   *
+   *  NOTE: The resulting mutable matrix can be assigned to a immutable compressed
+   *        matrix afterwards.
+   *
+   *  NOTE: The input distance indices are passed by non-const references, since
+   *        containers in const Buffered specialisations cannot be iterated.
+   */
+  template< typename TMutableCRSMatrix, typename TCRSMatrix >
+  inline TMutableCRSMatrix
+  merge_distance_index( TCRSMatrix& dindex1, TCRSMatrix& dindex2,
+                        crs_matrix::RangeGroup /* tag */ )
+  {
+    typedef TMutableCRSMatrix crsmat_mutable_type;
+    typedef TCRSMatrix crsmat_type;
+    typedef typename crsmat_type::ordinal_type ordinal_type;
+    typedef typename crsmat_type::size_type size_type;
+
+    typename crsmat_mutable_type::entries_type entries;
+    typename crsmat_mutable_type::rowmap_type rowmap;
+    crsmat_mutable_type::base_type::traits_type::init( entries );
+    crsmat_mutable_type::base_type::traits_type::init( rowmap );
+    size_type cursor1 = 0;    // current entry index in the first distance index
+    size_type cursor2 = 0;    // current entry index in the second distance index
+    size_type end1;  // last entry index of the row in the first distance index
+    size_type end2;  // last entry index of the row in the second distance index
+
+    assert( dindex1.numRows() == dindex2.numRows() );
+    assert( dindex1.numCols() == dindex2.numCols() );
+
+    auto nof_rows = dindex1.numRows();
+    auto nof_cols = dindex1.numCols();
+
+    /* NOTE: this function assumes that `cursors` are in the entry ranges. */
+    auto fetch_min_and_adv =
+      []( TCRSMatrix& dindex1, TCRSMatrix& dindex2, size_type& cursor1, size_type& cursor2 )
+      {
+        ordinal_type l1 = dindex1.entry( cursor1 );
+        ordinal_type u1 = dindex1.entry( cursor1 + 1 );
+        ordinal_type l2 = dindex2.entry( cursor2 );
+        ordinal_type u2 = dindex2.entry( cursor2 + 1 );
+
+        if ( l1 < l2 || ( l1 == l2 && u1 < u2 ) ) {
+          ++cursor1; ++cursor1;
+          return std::make_pair( l1, u1 );
+        }
+        else {
+          ++cursor2; ++cursor2;
+          return std::make_pair( l2, u2 );
+        }
+      };
+
+    auto merge_and_adv =
+      []( TCRSMatrix& dindex1, TCRSMatrix& dindex2,
+          size_type& cursor1, size_type end1,
+          size_type& cursor2, size_type end2,
+          ordinal_type l, ordinal_type u )
+      {
+        ordinal_type l1 = std::numeric_limits< ordinal_type >::max();
+        ordinal_type u1 = std::numeric_limits< ordinal_type >::max();
+        ordinal_type l2 = std::numeric_limits< ordinal_type >::max();
+        ordinal_type u2 = std::numeric_limits< ordinal_type >::max();
+
+        if ( cursor1 < end1 ) {
+          l1 = dindex1.entry( cursor1 );
+          u1 = dindex1.entry( cursor1 + 1 );
+        }
+
+        if ( cursor2 < end2 ) {
+          l2 = dindex2.entry( cursor2 );
+          u2 = dindex2.entry( cursor2 + 1 );
+        }
+
+        while ( true ) {
+          if ( u + 1 >= l1 ) {
+            l = std::min( l, l1 );
+            u = std::max( u, u1 );
+            ++cursor1; ++cursor1;
+            if ( cursor1 < end1 ) {
+              l1 = dindex1.entry( cursor1 );
+              u1 = dindex1.entry( cursor1 + 1 );
+            }
+            else l1 = std::numeric_limits< ordinal_type >::max();
+          }
+          else if ( u + 1 >= l2 ) {
+            l = std::min( l, l2 );
+            u = std::max( u, u2 );
+            ++cursor2; ++cursor2;
+            if ( cursor2 < end2 ) {
+              l2 = dindex2.entry( cursor2 );
+              u2 = dindex2.entry( cursor2 + 1 );
+            }
+            else l2 = std::numeric_limits< ordinal_type >::max();
+          }
+          else break;
+        }
+
+        return std::make_pair( l, u );
+      };
+
+    size_type c_nnz = 0;
+    ordinal_type l = 0;
+    ordinal_type u = 0;
+    for ( ordinal_type nrow = 0; nrow < nof_rows; ++nrow ) {
+      rowmap.push_back( entries.size() );
+
+      end1 = dindex1.rowMap( nrow + 1 );
+      end2 = dindex2.rowMap( nrow + 1 );
+      l = 0;
+      u = 0;
+      while ( cursor1 < end1 ) {
+        if ( cursor2 >= end2 ) {
+          while ( cursor1 < end1 ) {
+            l = dindex1.entry( cursor1++ );
+            u = dindex1.entry( cursor1++ );
+            entries.push_back( l );
+            entries.push_back( u );
+            c_nnz += u - l + 1;
+          }
+          break;
+        }
+        std::tie( l, u ) = fetch_min_and_adv( dindex1, dindex2, cursor1, cursor2 );
+        std::tie( l, u ) =
+          merge_and_adv( dindex1, dindex2, cursor1, end1, cursor2, end2, l, u );
+        entries.push_back( l );
+        entries.push_back( u );
+        c_nnz += u - l + 1;
+      }
+      while ( cursor2 < end2 ) {
+        l = dindex2.entry( cursor2++ );
+        u = dindex2.entry( cursor2++ );
+        entries.push_back( l );
+        entries.push_back( u );
+        c_nnz += u - l + 1;
+      }
+    }
+    rowmap.push_back( entries.size() );
+
+    return crsmat_mutable_type( nof_cols, std::move( entries ), std::move( rowmap ), c_nnz );
+  }
+
+  /**
    *  @brief  Merge two distance indices (Basic Group)
    *
    *  @param  dindex1 first distance index
