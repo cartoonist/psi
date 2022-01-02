@@ -264,6 +264,45 @@ namespace test_util {
       }
     }
   }
+
+  template< typename TCRSMatrix1, typename TCRSMatrix2 >
+  inline void
+  is_identical_crs( TCRSMatrix1& matrix1, TCRSMatrix2& matrix2 )
+  {
+    REQUIRE( numRows( matrix1 ) != 0 );
+    REQUIRE( numCols( matrix1 ) != 0 );
+    REQUIRE( numRows( matrix1 ) == numRows( matrix2 ) );
+    REQUIRE( numCols( matrix1 ) == numCols( matrix2 ) );
+    REQUIRE( get_nnz( matrix1 ) == get_nnz( matrix2 ) );
+
+    std::size_t nrows = numRows( matrix1 );
+    std::size_t entries_size = matrix1.rowMap( nrows );
+
+    for ( std::size_t i = 0; i < entries_size; ++i ) {
+      REQUIRE( matrix1.entry( i ) == matrix2.entry( i ) );
+    }
+
+    for ( std::size_t j = 0; j < nrows + 1; ++j ) {
+      REQUIRE( matrix1.rowMap( j ) == matrix2.rowMap( j ) );
+    }
+  }
+
+  template< typename TCRSMatrix >
+  inline void
+  print_matrix( TCRSMatrix& mat, std::string title="" )
+  {
+    if ( title.empty() ) title = "matrix:";
+    auto nrows = mat.numRows();
+    std::cout << title << std::endl;
+    std::size_t j = 0;
+    for ( std::size_t i = 0; i < nrows; ++i ) {
+      auto end = mat.rowMap( i + 1 );
+      for ( ; j < end; ++j ) {
+        std::cout << mat.entry( j ) << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
 }
 
 TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][bool]",
@@ -770,6 +809,229 @@ TEMPLATE_SCENARIO_SIG( "Specialised functionalities of Range Boolean CRS Matrix"
       THEN( "It should be identical to the original matrix" )
       {
         test_util::is_identical( matrix, simple );
+      }
+    }
+  }
+}
+
+TEMPLATE_SCENARIO_SIG( "Merging two distance indices", "[crsmatrix][bool]",
+                   ( ( typename T, typename U, int V /* dummy type unless compile error */ ), T, U, V ),
+                   ( crs_matrix::Compressed, crs_matrix::Dynamic, 0 ),
+                   ( crs_matrix::Compressed, crs_matrix::Buffered, 0 ),
+                   ( crs_matrix::Compressed, crs_matrix::FullyBuffered, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::RangeDynamic, 0 ) )
+{
+  typedef CRSMatrix< T, bool > crsmat_type;
+  typedef CRSMatrix< U, bool > crsmat_mutable_type;
+
+  GIVEN( "Two zero CRS matrices" )
+  {
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
+    std::array< std::array< bool, ncols >, nrows > matrix1;
+    std::array< std::array< bool, ncols >, nrows > matrix2;
+    std::array< std::array< bool, ncols >, nrows > zero;
+    test_util::zero_matrix( matrix1 );
+    test_util::zero_matrix( matrix2 );
+    test_util::zero_matrix( zero );
+
+    WHEN( "They got merged" )
+    {
+      crsmat_type mat1( test_util::to_external_crs( matrix1 ) );
+      crsmat_type mat2( test_util::to_external_crs( matrix2 ) );
+      crsmat_type mmat;
+      mmat.assign( merge_distance_index< crsmat_mutable_type >( mat1, mat2 ) );
+
+      THEN( "The resulting merged matrix should be a zero matrix" )
+      {
+        REQUIRE( mat1.nnz() == 0 );
+        REQUIRE( mat2.nnz() == 0 );
+        REQUIRE( mmat.nnz() == 0 );
+        test_util::is_identical( mmat, zero );
+      }
+    }
+  }
+
+  GIVEN( "Two CRS matrices, one is a random matrix and the other is a zero one" )
+  {
+    constexpr const std::size_t nnz = 4200;
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
+    std::array< std::array< bool, ncols >, nrows > matrix;
+    std::array< std::array< bool, ncols >, nrows > zero;
+
+    test_util::zero_matrix( zero );
+    test_util::random_matrix_ranged( matrix, nnz );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
+
+    crsmat_type matn( test_util::to_external_crs( matrix ) );
+    crsmat_type matz( test_util::to_external_crs( zero ) );
+    crsmat_type mmat;
+
+    WHEN( "The random matrix is merged with the zero one" )
+    {
+      mmat.assign( merge_distance_index< crsmat_mutable_type >( matn, matz ) );
+
+      THEN( "The merged matrix should be identical to the non-zero one" )
+      {
+        REQUIRE( matz.nnz() == 0 );
+        REQUIRE( mmat.nnz() == 4200 );
+        test_util::is_identical( mmat, matn );
+      }
+    }
+
+    WHEN( "They the zero matrix is merged with the random one" )
+    {
+      mmat.assign( merge_distance_index< crsmat_mutable_type >( matz, matn ) );
+
+      THEN( "The merged matrix should be identical to the non-zero one" )
+      {
+        REQUIRE( matz.nnz() == 0 );
+        REQUIRE( mmat.nnz() == 4200 );
+        test_util::is_identical( mmat, matn );
+      }
+    }
+  }
+
+  GIVEN( "Two CRS matrices constructed from two random external matrices" )
+  {
+    constexpr const std::size_t nnz1 = 5200;
+    constexpr const std::size_t nnz2 = 4000;
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
+    std::array< std::array< bool, ncols >, nrows > matrix1;
+    std::array< std::array< bool, ncols >, nrows > matrix2;
+    std::array< std::array< bool, ncols >, nrows > merged;
+
+    test_util::random_matrix_ranged( matrix1, nnz1 );
+    test_util::random_matrix_ranged( matrix2, nnz2 );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
+
+    test_util::zero_matrix( merged );
+    for ( std::size_t i = 0; i < nrows; ++i ) {
+      for ( std::size_t j = 0; j < ncols; ++j ) {
+        if ( matrix1[i][j] == true || matrix2[i][j] == true ) merged[i][j] = true;
+      }
+    }
+
+    WHEN( "They got merged" )
+    {
+      crsmat_type mat1( test_util::to_external_crs( matrix1 ) );
+      crsmat_type mat2( test_util::to_external_crs( matrix2 ) );
+      crsmat_type mmat;
+      mmat.assign( merge_distance_index< crsmat_mutable_type >( mat1, mat2 ) );
+
+      THEN( "It should be true whereever either of matrices are true" )
+      {
+        test_util::is_identical( mmat, merged );
+      }
+    }
+  }
+
+  GIVEN( "Two triangular CRS matrices whose merging yeilds all-ones matrix" )
+  {
+    constexpr const std::size_t nrows = 200;
+    constexpr const std::size_t ncols = 200;
+    constexpr const std::size_t offset = 20;
+    std::array< std::array< bool, ncols >, nrows > matrix1;
+    std::array< std::array< bool, ncols >, nrows > matrix2;
+    std::array< std::array< bool, ncols >, nrows > allones;
+
+    test_util::zero_matrix( matrix1 );
+    test_util::zero_matrix( matrix2 );
+    test_util::zero_matrix( allones );
+    for ( std::size_t i = 0; i < nrows ; ++i ) {
+      for ( std::size_t j = 0; j < ncols ; ++j ) {
+        if ( i + offset < j ) matrix1[i][j] = true;
+        else matrix2[i][j] = true;
+        allones[i][j] = true;
+      }
+    }
+
+    WHEN( "They got merged" )
+    {
+      crsmat_type mat1( test_util::to_external_crs( matrix1 ) );
+      crsmat_type mat2( test_util::to_external_crs( matrix2 ) );
+      crsmat_type mmat;
+      mmat.assign( merge_distance_index< crsmat_mutable_type >( mat1, mat2 ) );
+
+      THEN( "It should yeild an all-ones matrix" )
+      {
+        test_util::is_identical( mmat, allones );
+      }
+    }
+  }
+}
+
+TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crsmatrix][bool]",
+                       ( ( typename T, typename U, int V /* dummy type unless compile error */ ), T, U, V ),
+                       ( crs_matrix::Compressed, crs_matrix::Dynamic, 0 ),
+                       ( crs_matrix::Compressed, crs_matrix::Buffered, 0 ),
+                       ( crs_matrix::Compressed, crs_matrix::FullyBuffered, 0 ),
+                       ( crs_matrix::RangeCompressed, crs_matrix::RangeDynamic, 0 ) )
+{
+  typedef CRSMatrix< T, bool, uint16_t, uint32_t > crsmat_type;
+  typedef CRSMatrix< U, bool, uint16_t, uint32_t > crsmat_mutable_type;
+
+  GIVEN( "Two CRS matrices with very large dimensions" )
+  {
+    typedef typename crsmat_type::ordinal_type ordinal_type;
+
+    constexpr const std::size_t nnz1 = 2400;
+    constexpr const std::size_t nrows1 = 200;
+    constexpr const std::size_t ncols1 = 200;
+    std::array< std::array< bool, ncols1 >, nrows1 > block1;
+
+    constexpr const std::size_t nnz2 = 4000;
+    constexpr const std::size_t nrows2 = 400;
+    constexpr const std::size_t ncols2 = 400;
+    std::array< std::array< bool, ncols2 >, nrows2 > block2;
+
+    test_util::random_matrix_ranged( block1, nnz1 );
+    test_util::random_matrix_ranged( block2, nnz2 );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
+
+    constexpr const std::size_t nrows = std::numeric_limits< ordinal_type >::max() / 2;
+    constexpr const std::size_t ncols = nrows;
+
+    auto blk1 = test_util::to_external_crs( block1 );
+    auto blk2 = test_util::to_external_crs( block2 );
+
+    auto list = []( auto ...args ) {
+      return [=]( auto fn ) { fn( args... ); };
+    };
+
+    auto feed_blocks = []( auto xs ) {
+      return [=]( auto callback ) {
+        auto impl = [=]( auto fn ) {
+          return /* main */ [=]( auto* blk, std::size_t sr, std::size_t sc, auto ...rest ) {
+            callback( *blk, sr, sc );
+            if constexpr ( sizeof...( rest ) > 0 ) {
+              fn( fn )( rest... );
+            }
+          };
+        };
+        xs( impl( impl ) );  // apply `main` lambda on all parameters
+      };
+    };
+
+    std::size_t i = nrows - nrows2;
+    std::size_t j = ncols - ncols2;
+    crsmat_type mat1( nrows, ncols, feed_blocks( list( &blk1, 0, 0 ) ), nnz1 );
+    crsmat_type mat2( nrows, ncols, feed_blocks( list( &blk2, i, j ) ), nnz2 );
+    crsmat_type merged( nrows, ncols, feed_blocks( list( &blk1, 0, 0, &blk2, i, j ) ), nnz1 + nnz2 );
+
+    WHEN( "They got merged" )
+    {
+      crsmat_type mmat;
+      mmat.assign( merge_distance_index< crsmat_mutable_type >( mat1, mat2 ) );
+
+      THEN( "It should be true whereever either of matrices are true" )
+      {
+        REQUIRE( mat1.nnz() == nnz1 );
+        REQUIRE( mat2.nnz() == nnz2 );
+        REQUIRE( mmat.nnz() == nnz1 + nnz2 );
+        test_util::is_identical_crs( mmat, merged );
       }
     }
   }
