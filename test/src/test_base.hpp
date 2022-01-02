@@ -34,16 +34,33 @@
 #endif
 
 namespace rnd {
-  thread_local static std::random_device rd;
-  thread_local static unsigned int iseed = rd();
-  thread_local static std::mt19937 rgn( iseed );
+  inline std::random_device&
+  get_rd()
+  {
+    thread_local static std::random_device rd;
+    return rd;
+  }
+
+  inline unsigned int&
+  get_iseed()
+  {
+    thread_local static unsigned int iseed = get_rd()();
+    return iseed;
+  }
+
+  inline std::mt19937&
+  get_rgn()
+  {
+    thread_local static std::mt19937 rgn( get_iseed() );
+    return rgn;
+  }
 
   inline void
   set_seed( unsigned int seed )
   {
     if ( seed != 0 ) {
-      iseed = seed;
-      rgn.seed( seed );
+      get_iseed() = seed;
+      get_rgn().seed( seed );
     }
   }
 }  /* ---  end of namespace rnd  --- */

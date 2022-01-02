@@ -119,8 +119,8 @@ namespace test_util {
 
     std::size_t i = 0;
     while ( i < nnz ) {
-      auto r = random::random_index( nrows, rnd::rgn );
-      auto c = random::random_index( ncols, rnd::rgn );
+      auto r = random::random_index( nrows, rnd::get_rgn() );
+      auto c = random::random_index( ncols, rnd::get_rgn() );
       if ( matrix[r][c] == 0 ) {
         matrix[r][c] = 1;
         ++i;
@@ -161,7 +161,7 @@ namespace test_util {
         std::generate_n( out.begin(), nfrag - 1, [&](){ return random::random_index( len ); } );
       }
       else {
-        std::sample( therange.begin(), therange.begin() + len - 1, out.begin(), nfrag - 1, rnd::rgn );
+        std::sample( therange.begin(), therange.begin() + len - 1, out.begin(), nfrag - 1, rnd::get_rgn() );
       }
       out.back() = len;
       std::sort( out.begin(), out.end() );
@@ -172,7 +172,7 @@ namespace test_util {
       //if ( nnz < filled + base_zp ) base_zp = nnz - filled;
       assert( filled <= nnz );
       if ( filled == nnz ) break;
-      auto c_nfrags = random::random_integer( 1ul, nfrags, rnd::rgn );  // number of fragments in the current row
+      auto c_nfrags = random::random_integer( 1ul, nfrags, rnd::get_rgn() );  // number of fragments in the current row
       auto nnzp = base_zp;  // number of non-zero values in the current row
       if ( remainders ) {
         ++nnzp;
@@ -334,7 +334,7 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix( simple, nnz );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
@@ -375,7 +375,7 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 
     test_util::random_matrix_ranged( block1, nnz1 );
     test_util::random_matrix_ranged( block2, nnz2 );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -430,7 +430,7 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
 
     test_util::random_matrix_ranged( block1, nnz1 );
     test_util::random_matrix_ranged( block2, nnz2 );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -486,7 +486,7 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix_ranged( simple, nnz );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
@@ -540,7 +540,7 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
 
     test_util::random_matrix_ranged( block1, nnz1 );
     test_util::random_matrix_ranged( block2, nnz2 );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -608,7 +608,7 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
 
     test_util::random_matrix_ranged( block1, nnz1 );
     test_util::random_matrix_ranged( block2, nnz2 );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
     test_util::zero_matrix( appended );
     unsigned int i = 0;
     unsigned int j = 0;
@@ -671,7 +671,7 @@ SCENARIO( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsm
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix( simple, nnz );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
@@ -745,7 +745,7 @@ TEMPLATE_SCENARIO_SIG( "Specialised functionalities of Range Boolean CRS Matrix"
     std::array< std::array< bool, ncols >, nrows > simple;
 
     test_util::random_matrix_ranged( simple, nnz );
-    INFO( "Seed for the random number generator: " << rnd::iseed );
+    INFO( "Seed for the random number generator: " << rnd::get_iseed() );
 
     REQUIRE( test_util::get_nnz( simple ) == nnz );
 
