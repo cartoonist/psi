@@ -50,17 +50,17 @@ namespace psi {
     // Group meta-function
     template< typename TSpec >
     struct Group {
-      typedef BasicGroup group_type;
+      typedef BasicGroup type;
     };
 
     template< >
     struct Group< RangeDynamic > {
-      typedef RangeGroup group_type;
+      typedef RangeGroup type;
     };
 
     template< >
     struct Group< RangeCompressed > {
-      typedef RangeGroup group_type;
+      typedef RangeGroup type;
     };
 
     /* === Specialised helper functions === */
@@ -265,6 +265,38 @@ namespace psi {
 
   template< typename TNativeCRSMatrix >
   using make_fully_buffered_t = typename make_fully_buffered< TNativeCRSMatrix >::type;
+
+  template< typename TNativeCRSMatrix >
+  struct make_range;
+
+  template< typename ...TArgs >
+  struct make_range< CRSMatrix< crs_matrix::Dynamic, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::RangeDynamic, TArgs... > type;
+  };
+
+  template< typename ...TArgs >
+  struct make_range< CRSMatrix< crs_matrix::Compressed, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::RangeCompressed, TArgs... > type;
+  };
+
+  template< typename TNativeCRSMatrix >
+  using make_range_t = typename make_range< TNativeCRSMatrix >::type;
+
+  template< typename TNativeCRSMatrix >
+  struct make_basic;
+
+  template< typename ...TArgs >
+  struct make_basic< CRSMatrix< crs_matrix::RangeDynamic, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::Dynamic, TArgs... > type;
+  };
+
+  template< typename ...TArgs >
+  struct make_basic< CRSMatrix< crs_matrix::RangeCompressed, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::Compressed, TArgs... > type;
+  };
+
+  template< typename TNativeCRSMatrix >
+  using make_basic_t = typename make_basic< TNativeCRSMatrix >::type;
 
   template< typename TSpec, typename TNativeCRSMatrix >
   struct make_spec;
@@ -533,7 +565,10 @@ namespace psi {
       typedef typename mutable_trait_type::rowmap_type m_rowmap_type;
 
       m_entries_type m_entries;
-      m_rowmap_type m_rowmap( e_rowmap.size() );
+      m_rowmap_type m_rowmap;
+      mutable_trait_type::init( m_entries );
+      mutable_trait_type::init( m_rowmap );
+      m_rowmap.resize( e_rowmap.size() );
       m_rowmap[ 0 ] = 0;
       mutable_trait_type::assign( m_entries, m_rowmap, e_entries, e_rowmap, crs_matrix::RangeGroup{} );
 
@@ -660,7 +695,10 @@ namespace psi {
       typedef typename mutable_trait_type::rowmap_type m_rowmap_type;
 
       m_entries_type m_entries;
-      m_rowmap_type m_rowmap( e_rowmap.size() );
+      m_rowmap_type m_rowmap;
+      mutable_trait_type::init( m_entries );
+      mutable_trait_type::init( m_rowmap );
+      m_rowmap.resize( e_rowmap.size() );
       m_rowmap[ 0 ] = 0;
       mutable_trait_type::assign( m_entries, m_rowmap, e_entries, e_rowmap, crs_matrix::BasicGroup{} );
 
@@ -769,7 +807,7 @@ namespace psi {
       typedef std::decay_t< decltype( matrix.entries ) > ext_entries_type;
       typedef typename ext_entries_type::value_type ext_value_type;
       typedef typename std::decay_t< TCrsMatrixBase >::spec_type ext_spec_type;
-      typedef typename crs_matrix::Group< ext_spec_type >::group_type ext_group_type;
+      typedef typename crs_matrix::Group< ext_spec_type >::type ext_group_type;
 
       gum::RandomAccessNonConstProxyContainer< ext_entries_type, uint64_t > proxy_entries(
           &matrix.entries,
