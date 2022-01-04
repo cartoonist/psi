@@ -66,6 +66,7 @@ config_parser( cxxopts::Options& options )
   options.add_options( "general" )
       ( "o, output", "Write to this file instead of stdout",
         cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
+      ( "b, basic-mode", "Consider indices as Basic CRS matrices" )
       ( "h, help", "Print this message and exit" )
       ;
 
@@ -124,10 +125,10 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       throw EXIT_SUCCESS;
     }
 
-    if ( ! result.count( "graph" ) ) {
+    if ( result.count( "basic-mode" ) && !result.count( "graph" ) ) {
       throw cxxopts::OptionParseException( "Graph file must be specified" );
     }
-    if ( ! readable( result[ "graph" ].as< std::string >() ) ) {
+    if ( result.count( "basic-mode" ) && !readable( result[ "graph" ].as< std::string >() ) ) {
       throw cxxopts::OptionParseException( "Graph file not found" );
     }
 
@@ -218,12 +219,73 @@ verify_compressed_distance_matrix( TCRSMatrix const& cdi, TCRSMatrix const& udi,
   return true;
 }
 
-template< typename TCRSMatrix >
+template< typename TCRSMatrixRange, typename TCRSMatrixBasic,
+          /* restrict it to range group CRS matrices */
+          typename=std::enable_if_t< std::is_same< typename crs_matrix::Group< typename TCRSMatrixRange::spec_type >::type, crs_matrix::RangeGroup >::value >,
+          typename=std::enable_if_t< std::is_same< typename crs_matrix::Group< typename TCRSMatrixBasic::spec_type >::type, crs_matrix::BasicGroup >::value > >
 void
-compress( cxxopts::ParseResult& res )
+compress( cxxopts::ParseResult& res, crs_matrix::RangeGroup /* tag */ )
+{
+  typedef TCRSMatrixRange crsmat_range_type;
+  typedef TCRSMatrixBasic crsmat_basic_type;
+
+  std::string pindex_prefix = res[ "prefix" ].as< std::string >();
+  std::string output = res[ "output" ].as< std::string >();
+  unsigned int min_size = res[ "min-insert-size" ].as< unsigned int >();
+  unsigned int max_size = res[ "max-insert-size" ].as< unsigned int >();
+  crsmat_basic_type basic_dindex;
+  crsmat_range_type range_dindex;
+  auto index_path = pindex_prefix + "_dist_mat_" + "m" + std::to_string( min_size ) +
+      "M" + std::to_string( max_size );
+
+  std::cout << "Loading distance index..." << std::endl;
+  std::ifstream ifs( index_path, std::ifstream::in | std::ifstream::binary );
+  if ( !ifs ) throw std::runtime_error( "distance matrix cannot be opened" );
+
+  if ( res.count( "verify" ) ) {
+    std::cout << "[WARNING] There is no verification procedure for "
+              << "Range-based distance indices" << std::endl;
+    range_dindex.load( ifs );
+    std::cout << "Loaded distance index ("
+              << range_dindex.numRows() << "x" << range_dindex.numCols() << ") has "
+              << range_dindex.nnz() << " non-zero elements." << std::endl;
+  }
+  else {
+    basic_dindex.load( ifs );
+    std::cout << "Loaded distance index ("
+              << basic_dindex.numRows() << "x" << basic_dindex.numCols() << ") has "
+              << basic_dindex.nnz() << " non-zero elements." << std::endl;
+
+    std::cout << "Compressing distance index..." << std::endl;
+    range_dindex.assign( basic_dindex );
+    std::cout << "Compressed distance index ("
+              << range_dindex.numRows() << "x" << range_dindex.numCols() << ") has "
+              << range_dindex.nnz() << " non-zero elements." << std::endl;
+
+    std::cout << "Verifying compressed distance index..." << std::endl;
+    if ( range_dindex.numRows() != basic_dindex.numRows() ||
+         range_dindex.numCols() != basic_dindex.numCols() ||
+         range_dindex.nnz() != basic_dindex.nnz() )  {
+      std::cerr << "Verification failed!" << std::endl;
+      throw EXIT_FAILURE;
+    }
+
+    std::cout << "Serialising compressed distance index..." << std::endl;
+    std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
+    if ( !ofs ) throw std::runtime_error( "output file cannot be opened" );
+    range_dindex.serialize( ofs );
+  }
+}
+
+template< typename TCRSMatrix, typename TMutableCRSMatrix,
+          /* restrict it to basic group CRS matrices */
+          typename=std::enable_if_t< std::is_same< typename crs_matrix::Group< typename TCRSMatrix::spec_type >::type, crs_matrix::BasicGroup >::value >,
+          typename=std::enable_if_t< std::is_same< typename crs_matrix::Group< typename TMutableCRSMatrix::spec_type >::type, crs_matrix::BasicGroup >::value > >
+void
+compress( cxxopts::ParseResult& res, crs_matrix::BasicGroup /* tag */ )
 {
   typedef TCRSMatrix crsmat_type;
-  typedef make_buffered_t< crsmat_type > crsmat_buffer_type;
+  typedef TMutableCRSMatrix mutable_crsmat_type;
 
   typedef gum::SeqGraph< gum::Succinct > graph_type;
   typedef typename graph_type::id_type id_type;
@@ -278,7 +340,7 @@ compress( cxxopts::ParseResult& res )
   else {
     std::cout << "Compressing distance index..." << std::endl;
     crsmat_type cindex;
-    cindex.assign( util::compress_distance_index< crsmat_buffer_type >( dindex, graph ) );
+    cindex.assign( util::compress_distance_index< mutable_crsmat_type >( dindex, graph ) );
     std::cout << "Compressed distance index ("
               << cindex.numRows() << "x" << cindex.numCols() << ") has " << cindex.nnz()
               << " non-zero elements." << std::endl;
@@ -296,9 +358,18 @@ compress( cxxopts::ParseResult& res )
   }
 }
 
+template< typename TCRSMatrix1, typename TCRSMatrix2 >
+void
+compress( cxxopts::ParseResult& res )
+{
+  compress< TCRSMatrix1, TCRSMatrix2 >
+    ( res, typename crs_matrix::Group< typename TCRSMatrix1::spec_type >::type{} );
+}
+
 template< typename TCRSMatrix >
 bool
-verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2 )
+verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2,
+                               crs_matrix::BasicGroup /* tag */ )
 {
   typedef typename TCRSMatrix::ordinal_type ordinal_type;
   typedef typename TCRSMatrix::size_type size_type;
@@ -325,55 +396,65 @@ verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2
 }
 
 template< typename TCRSMatrix >
+bool
+verify_merged_distance_matrix( TCRSMatrix& mdi, TCRSMatrix& di1, TCRSMatrix& di2,
+                               crs_matrix::RangeGroup /* tag */ )
+{
+  std::cout << "Skipping verification for Range CRS indices..." << std::endl;
+  return true;
+}
+
+template< typename TCRSMatrix, typename TMutableCRSMatrix >
 void
 merge( cxxopts::ParseResult& res )
 {
   typedef TCRSMatrix crsmat_type;
-  typedef make_buffered_t< crsmat_type > crsmat_buffer_type;
+  typedef TMutableCRSMatrix crsmat_mutable_type;
 
   std::string pindex_prefix = res[ "prefix" ].as< std::string >();
   std::string output = res[ "output" ].as< std::string >();
   auto range1 = res[ "first-range" ].as< std::vector< unsigned int > >();
   auto range2 = res[ "second-range" ].as< std::vector< unsigned int > >();
-  crsmat_type dindex1;
-  crsmat_type dindex2;
-  auto index_path1 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range1[0] ) +
+
+  crsmat_type mindex;
+  crsmat_mutable_type bmerged;
+
+  {
+    crsmat_type dindex1;
+    crsmat_type dindex2;
+    auto index_path1 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range1[0] ) +
       "M" + std::to_string( range1[1] );
-  auto index_path2 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range2[0] ) +
+    auto index_path2 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range2[0] ) +
       "M" + std::to_string( range2[1] );
 
-  {
-    std::cout << "Loading the first distance index '" << index_path1 << "'..." << std::endl;
-    std::ifstream ifs( index_path1, std::ifstream::in | std::ifstream::binary );
-    if ( !ifs ) throw std::runtime_error( "The first distance matrix cannot be opened" );
-    dindex1.load( ifs );
-    std::cout << "Loaded the first distance index ("
-              << dindex1.numRows() << "x" << dindex1.numCols() << ") with "
-              << dindex1.nnz() << " non-zero elements." << std::endl;
+    {
+      std::cout << "Loading the first distance index '" << index_path1 << "'..." << std::endl;
+      std::ifstream ifs( index_path1, std::ifstream::in | std::ifstream::binary );
+      if ( !ifs ) throw std::runtime_error( "The first distance matrix cannot be opened" );
+      dindex1.load( ifs );
+      std::cout << "Loaded the first distance index ("
+                << dindex1.numRows() << "x" << dindex1.numCols() << ") with "
+                << dindex1.nnz() << " non-zero elements." << std::endl;
+    }
+
+    {
+      std::cout << "Loading the second distance index '" << index_path2 << "'..." << std::endl;
+      std::ifstream ifs( index_path2, std::ifstream::in | std::ifstream::binary );
+      if ( !ifs ) throw std::runtime_error( "The second distance matrix cannot be opened" );
+      dindex2.load( ifs );
+      std::cout << "Loaded the second distance index ("
+                << dindex2.numRows() << "x" << dindex2.numCols() << ") with "
+                << dindex2.nnz() << " non-zero elements." << std::endl;
+    }
+
+    std::cout << "Merging distance indices..." << std::endl;
+    bmerged = merge_distance_index< crsmat_mutable_type >( dindex1, dindex2 );
   }
 
-  {
-    std::cout << "Loading the second distance index '" << index_path2 << "'..." << std::endl;
-    std::ifstream ifs( index_path2, std::ifstream::in | std::ifstream::binary );
-    if ( !ifs ) throw std::runtime_error( "The second distance matrix cannot be opened" );
-    dindex2.load( ifs );
-    std::cout << "Loaded the second distance index ("
-              << dindex2.numRows() << "x" << dindex2.numCols() << ") with "
-              << dindex2.nnz() << " non-zero elements." << std::endl;
-  }
-
-  std::cout << "Merging distance indices..." << std::endl;
-  crsmat_type mindex;
-  mindex.assign( util::merge_distance_index< crsmat_buffer_type >( dindex1, dindex2 ) );
+  mindex.assign( bmerged );
   std::cout << "Merged distance index ("
             << mindex.numRows() << "x" << mindex.numCols() << ") has " << mindex.nnz()
             << " non-zero elements." << std::endl;
-
-  std::cout << "Verifying merged distance index..." << std::endl;
-  if ( !verify_merged_distance_matrix( mindex, dindex1, dindex2 ) ) {
-    std::cerr << "Verification failed!" << std::endl;
-    throw EXIT_FAILURE;
-  }
 
   std::cout << "Serialising merged distance index..." << std::endl;
   std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
@@ -390,14 +471,21 @@ main( int argc, char* argv[] )
   try {
     auto res = parse_opts( options, argc, argv );
     std::string command = res[ "command" ].as< std::string >();
+    bool basic_mode = res[ "basic-mode" ].as< bool >();
 
     typedef typename SeedFinder<>::crsmat_type crsmat_type;
+    typedef make_basic_t< crsmat_type > crsmat_basic_type;
+
+    typedef typename SeedFinder<>::mutable_crsmat_type crsmat_mut_type;
+    typedef make_buffered_t< crsmat_basic_type > crsmat_basic_mut_type;
 
     if ( command == "compress" ) {
-      compress< crsmat_type >( res );
+      if ( basic_mode ) compress< crsmat_basic_type, crsmat_basic_mut_type >( res );
+      else compress< crsmat_type, crsmat_basic_type >( res );
     }
     else if ( command == "merge" ) {
-      merge< crsmat_type >( res );
+      if ( basic_mode ) merge< crsmat_basic_type, crsmat_basic_mut_type >( res );
+      else merge< crsmat_type, crsmat_mut_type >( res );
     }
     else {
       // should not reach here!
