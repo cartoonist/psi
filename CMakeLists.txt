@@ -31,7 +31,7 @@ find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
 find_package(gum 1.1.1 QUIET)
-find_package(kseq++ 0.2.3 QUIET)
+find_package(kseq++ 1.0.0 QUIET)
 find_package(pairg 0.2.0 QUIET)
 # Handle bundled dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
