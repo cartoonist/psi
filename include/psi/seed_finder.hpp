@@ -843,6 +843,24 @@ namespace psi {
           bool finaliser;
         };
         /* === STATIC MEMBERS === */
+          static inline std::string
+        get_distance_index_path( std::string prefix, unsigned int dmin, unsigned int dmax )
+        {
+          return prefix + "_dist_mat_" +
+            "m" + std::to_string( dmin ) +
+            "M" + std::to_string( dmax );
+        }
+
+          static inline std::string
+        get_sloci_filepath( const std::string& prefix, unsigned int seed_len,
+                            unsigned int step_size )
+        {
+          std::string filepath = prefix + "_loci_"
+            "e" + std::to_string( step_size ) +
+            "l" + std::to_string( seed_len );
+          return filepath;
+        }
+
         /**
          *  @brief  Deserialize dumped starting loci from input stream
          *
@@ -1180,8 +1198,7 @@ namespace psi {
         {
           if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
 
-          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
-              "M" + std::to_string( this->d.second );
+          auto fname = SeedFinder::get_distance_index_path( prefix, this->d.first, this->d.second );
           std::ofstream ofs( fname, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 
@@ -1198,8 +1215,7 @@ namespace psi {
           if ( dmax == 0 ) dmax = dmin;
           this->d = std::make_pair( dmin, dmax );
 
-          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
-              "M" + std::to_string( this->d.second );
+          auto fname = SeedFinder::get_distance_index_path( prefix, this->d.first, this->d.second );
           std::ifstream ifs( fname, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
@@ -1546,8 +1562,7 @@ namespace psi {
         open_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          std::string filepath = prefix + "_loci_"
-            "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
+          std::string filepath = SeedFinder::get_sloci_filepath( prefix, seed_len, step_size );
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
@@ -1571,8 +1586,7 @@ namespace psi {
         {
           typedef gum::RandomAccessProxyContainer< std::vector< Position<> >, Position<> > proxy_container_type;
 
-          std::string filepath = prefix + "_loci_"
-            "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
+          std::string filepath = SeedFinder::get_sloci_filepath( prefix, seed_len, step_size );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 

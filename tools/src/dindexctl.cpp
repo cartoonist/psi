@@ -235,8 +235,7 @@ compress( cxxopts::ParseResult& res, crs_matrix::RangeGroup /* tag */ )
   unsigned int max_size = res[ "max-insert-size" ].as< unsigned int >();
   crsmat_basic_type basic_dindex;
   crsmat_range_type range_dindex;
-  auto index_path = pindex_prefix + "_dist_mat_" + "m" + std::to_string( min_size ) +
-      "M" + std::to_string( max_size );
+  auto index_path = psi::SeedFinder<>::get_distance_index_path( pindex_prefix, min_size, max_size );
 
   std::cout << "Loading distance index..." << std::endl;
   std::ifstream ifs( index_path, std::ifstream::in | std::ifstream::binary );
@@ -299,8 +298,7 @@ compress( cxxopts::ParseResult& res, crs_matrix::BasicGroup /* tag */ )
   unsigned int max_size = res[ "max-insert-size" ].as< unsigned int >();
   graph_type graph;
   crsmat_type dindex;
-  auto index_path = pindex_prefix + "_dist_mat_" + "m" + std::to_string( min_size ) +
-      "M" + std::to_string( max_size );
+  auto index_path = psi::SeedFinder<>::get_distance_index_path( pindex_prefix, min_size, max_size );
 
   std::cout << "Loading input graph..." << std::endl;
   gum::util::load( graph, graph_path, true );
@@ -422,10 +420,8 @@ merge( cxxopts::ParseResult& res )
   {
     crsmat_type dindex1;
     crsmat_type dindex2;
-    auto index_path1 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range1[0] ) +
-      "M" + std::to_string( range1[1] );
-    auto index_path2 = pindex_prefix + "_dist_mat_" + "m" + std::to_string( range2[0] ) +
-      "M" + std::to_string( range2[1] );
+    auto index_path1 = psi::SeedFinder<>::get_distance_index_path( pindex_prefix, range1[0], range1[1] );
+    auto index_path2 = psi::SeedFinder<>::get_distance_index_path( pindex_prefix, range2[0], range2[1] );
 
     {
       std::cout << "Loading the first distance index '" << index_path1 << "'..." << std::endl;
