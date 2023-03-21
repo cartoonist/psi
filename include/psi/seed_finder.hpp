@@ -842,6 +842,42 @@ namespace psi {
           /* === DATA MEMBERS === */
           bool finaliser;
         };
+        /* === STATIC MEMBERS === */
+        /**
+         *  @brief  Deserialize dumped starting loci from input stream
+         *
+         *  NOTE: This static function wraps deserialization procedure and provides an
+         *  interface for class users to parse starting loci index file without a finder
+         *  indstance.
+         *
+         *  NOTE: The node ids in the resulting vector is not converted to the graph's
+         *  internal coordinate system.
+         */
+        template< typename TContainer >
+          static inline bool
+        deserialize_starts( std::istream& in, TContainer& sloci )
+        {
+          deserialize( in, sloci );
+          return true;
+        }
+
+        /**
+         *  @brief  Serialize starting loci to output stream
+         *
+         *  NOTE: This static function wraps serialization procedure and provides an
+         *  interface for class users to write starting loci to an index file without a
+         *  finder instance.
+         *
+         *  NOTE: The node ids in the input vector are assumed converted to the external
+         *  coordinate system.
+         */
+        template< typename TContainer >
+          static inline bool
+        serialize_starts( std::ostream& out, TContainer const& sloci )
+        {
+          serialize( out, sloci, sloci.begin(), sloci.end() );
+          return true;
+        }
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
@@ -867,7 +903,7 @@ namespace psi {
         /**
          *  @brief  getter function for starting_loci.
          */
-          inline const std::vector< vg::Position >&
+          inline const std::vector< Position<> >&
         get_starting_loci( ) const
         {
           return this->starting_loci;
@@ -948,22 +984,9 @@ namespace psi {
 
         /**
          *  @brief  setter function for starting_loci.
-         *
-         *  Copy assignment.
          */
           inline void
-        set_starting_loci( const std::vector< vg::Position >& loci )
-        {
-          this->starting_loci = loci;
-        }
-
-        /**
-         *  @brief  setter function for starting_loci.
-         *
-         *  Move assignment.
-         */
-          inline void
-        set_starting_loci( std::vector< vg::Position >&& loci )
+        set_starting_loci( std::vector< Position<> > loci )
         {
           this->starting_loci = std::move( loci );
         }
@@ -1036,7 +1059,7 @@ namespace psi {
         }
 
           inline void
-        add_start( const vg::Position& locus )
+        add_start( const Position<>& locus )
         {
           this->starting_loci.push_back( locus );
         }
@@ -1044,7 +1067,7 @@ namespace psi {
           inline void
         add_start( id_type node_id, offset_type offset )
         {
-          vg::Position locus;
+          Position<> locus;
           locus.set_node_id( node_id );
           locus.set_offset( offset );
           this->add_start( locus );
@@ -1483,7 +1506,7 @@ namespace psi {
             unsigned long long int uncovered = 0;
 
             long long int prev_id = 0;
-            for ( const vg::Position& l : this->starting_loci ) {
+            for ( const Position<>& l : this->starting_loci ) {
               if ( prev_id == l.node_id() ) continue;
               prev_id = l.node_id();
               auto label_len = this->graph_ptr->node_length( l.node_id() );
@@ -1531,19 +1554,14 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::load_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-starts" );
 
-          std::function< void( vg::Position& ) > push_back =
-              [this]( vg::Position& pos ) {
-                pos.set_node_id( this->graph_ptr->id_by_coordinate( pos.node_id() ) );
-                this->starting_loci.push_back( pos );
-              };
+          SeedFinder::deserialize_starts( ifs, this->starting_loci );
 
-          try {
-            vg::io::for_each( ifs, push_back );
-          }
-          catch ( const std::runtime_error& ) {
-            return false;
-          }
-
+          auto callback = [this]( Position<> pos ) -> Position<> {
+            pos.set_node_id( this->graph_ptr->id_by_coordinate( pos.node_id() ) );
+            return pos;
+          };
+          std::transform( this->starting_loci.begin(), this->starting_loci.end(),
+                          this->starting_loci.begin(), callback );
           return true;
         }
 
@@ -1551,6 +1569,8 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
+          typedef gum::RandomAccessProxyContainer< std::vector< Position<> >, Position<> > proxy_container_type;
+
           std::string filepath = prefix + "_loci_"
             "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
@@ -1559,20 +1579,14 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::write_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
-          std::function< vg::Position( std::size_t ) > lambda =
-              [this]( std::size_t i ) {
-                auto pos = this->starting_loci.at( i );
-                pos.set_node_id( this->graph_ptr->coordinate_id( pos.node_id() ) );
-                return pos;
+          std::function< Position<>( const Position<>& ) > lambda =
+              [this]( const Position<>& pos ) {
+                Position<> p = pos;
+                p.set_node_id( this->graph_ptr->coordinate_id( p.node_id() ) );
+                return p;
               };
-
-          try {
-            vg::io::write( ofs, this->starting_loci.size(), lambda );
-          }
-          catch ( const std::runtime_error& ) {
-            return false;
-          }
-
+          proxy_container_type sloci( &this->starting_loci, lambda );
+          SeedFinder::serialize_starts( ofs, sloci );
           return true;
         }
 
@@ -1643,7 +1657,7 @@ namespace psi {
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* graph_ptr;
-        std::vector< vg::Position > starting_loci;
+        std::vector< Position<> > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         KokkosHandler handler;
         crsmat_type distance_mat;

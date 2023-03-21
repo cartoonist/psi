@@ -27,6 +27,7 @@
 
 #include <gum/graph.hpp>
 
+#include "basic_types.hpp"
 #include "utils.hpp"
 
 

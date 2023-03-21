@@ -20,6 +20,7 @@
 
 #include <functional>
 
+#include "basic_types.hpp"
 #include "path_base.hpp"
 
 
@@ -870,20 +871,20 @@ namespace psi {
                                                         decltype( TVGPath().mapping()[0].position().node_id() ) > >
       inline void
     convert( Path< TGraph, TSpec > const& path, TVGPath* vgpath,
-        std::vector< vg::Position > const& loci, TCoordinate&& coord={} )
+        std::vector< Position<> > const& loci, TCoordinate&& coord={} )
     {
       TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
 
       auto comp_id =
-          [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+          [graph_ptr]( Position<> const& elem, Position<> const& value ) {
             auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
             auto value_rank = graph_ptr->id_to_rank( value.node_id() );
             return elem_rank < value_rank;
           };
 
       auto comp_both =
-          [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+          [graph_ptr]( Position<> const& elem, Position<> const& value ) {
             auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
             auto value_rank = graph_ptr->id_to_rank( value.node_id() );
             return elem_rank < value_rank ||
@@ -899,10 +900,10 @@ namespace psi {
         mapping->mutable_position()->set_node_id( coord( *it ) );
         mapping->mutable_position()->set_offset( coffset );
 
-        vg::Position cpos;
+        Position<> cpos;
         cpos.set_node_id( *it );
         cpos.set_offset( coffset );
-        std::vector< vg::Position >::const_iterator nextedit, lastedit;
+        std::vector< Position<> >::const_iterator nextedit, lastedit;
         if ( it == path.end()-1 ) {
           nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_id );
           lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_both );
