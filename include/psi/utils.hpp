@@ -38,6 +38,7 @@
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 #include <sdsl/int_vector_buffer.hpp>
+#include <gum/iterators.hpp>
 
 #include "base.hpp"
 
@@ -820,11 +821,33 @@ namespace psi {
    *
    *  @overload for `sdsl::enc_vector`.
    */
-  template< typename TCoder, typename TContainer, uint32_t TDens = 128, uint8_t TWidth=0 >
+  template< typename TCoder,
+            typename TContainer,
+            typename std::enable_if_t< std::is_unsigned< typename TContainer::value_type >::value >,
+            uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
     assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       sdsl::util::assign( a, b );
+    }
+
+  template< typename TCoder,
+            typename TContainer,
+            typename=std::enable_if_t< std::is_signed< typename TContainer::value_type >::value >,
+            uint32_t TDens = 128, uint8_t TWidth=0 >
+      inline void
+    assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
+    {
+      typedef TContainer container_type;
+      typedef typename TContainer::value_type value_type;
+      typedef std::make_unsigned_t< value_type > unsigned_value_type;
+      typedef gum::RandomAccessProxyContainer< container_type, unsigned_value_type > proxy_type;
+
+      proxy_type bproxy( &b,
+                         []( value_type x ) -> unsigned_value_type {
+                           return ( unsigned_value_type )(x);
+                         } );
+      sdsl::util::assign( a, bproxy );
     }
 
 

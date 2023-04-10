@@ -1141,7 +1141,7 @@ namespace psi {
             auto hp_end = end( *this->graph_ptr, Haplotyper<>() );
             context = this->set_context( context, patched, info, warn );
             this->graph_ptr->for_each_path(
-                [&]( auto path_rank, auto path_id ) {
+                [&]( rank_type path_rank, id_type path_id ) {
                   auto path_name = this->graph_ptr->path_name( path_id );
                   id_type s = *this->graph_ptr->path( path_id ).begin();
                   hp_itr.reset( s );
