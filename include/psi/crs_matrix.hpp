@@ -597,7 +597,7 @@ namespace psi {
 
   template< typename TOrdinal, typename TSize >
   struct CRSMatrixTraits< crs_matrix::Compressed, bool, TOrdinal, TSize > {
-    typedef sdsl::coder::elias_delta coder_type;
+    typedef sdsl::coder::elias_delta<> coder_type;
     typedef sdsl::enc_vector< coder_type > entries_type;
     typedef sdsl::enc_vector< coder_type > rowmap_type;
     typedef crs_matrix::Dynamic mutable_spec_type;
@@ -872,7 +872,7 @@ namespace psi {
 
   template< typename TOrdinal, typename TSize >
   struct CRSMatrixTraits< crs_matrix::RangeCompressed, bool, TOrdinal, TSize > {
-    typedef sdsl::coder::elias_delta coder_type;
+    typedef sdsl::coder::elias_delta<> coder_type;
     typedef sdsl::enc_vector< coder_type > entries_type;
     typedef sdsl::enc_vector< coder_type > rowmap_type;
     typedef crs_matrix::RangeDynamic mutable_spec_type;
