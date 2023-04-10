@@ -112,6 +112,13 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/psi-config-version.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 
+if(BUILD_PSIKT OR BUILD_PSI_AUX_TOOLS OR BUILD_TESTING)
+  find_package(Threads REQUIRED)
+  find_package(Protobuf REQUIRED)
+  # Prepare `psi::minivgio` library
+  add_subdirectory(vg)
+endif()
+
 # Adding `psikt` submodule
 if(BUILD_PSIKT)
   add_subdirectory(src)
