@@ -1196,6 +1196,7 @@ namespace psi {
             tnnz += mat.nnz();
           };
       callback( partial_ctor );
+      this->shrink_to_fit();
       return tnnz;
     }
 
