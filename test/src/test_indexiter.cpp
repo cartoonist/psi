@@ -28,6 +28,46 @@
 
 using namespace psi;
 
+TEMPLATE_SCENARIO_SIG( "Test if index iterator is movable", "[index][iterator]",
+                      ( ( typename T, typename U, int V /* dummy type unless compile error */ ), T, U, V ),
+                      ( seqan::IndexWotd<>, seqan::Preorder, 0 ),
+                      ( seqan::IndexEsa<>, seqan::Preorder, 0 ),
+                      ( seqan::IndexWotd<>, seqan::ParentLinks<>, 0 ),
+                      ( seqan::IndexEsa<>, seqan::ParentLinks<>, 0 ) )
+{
+  typedef T indexspec_type;
+  typedef U iterspec_type;
+  typedef seqan::String< seqan::Dna, seqan::External<> > text_type;
+  typedef seqan::Index< text_type, indexspec_type > index_type;
+  typedef TFineIndexIter< index_type, iterspec_type > iterator_type;
+
+  std::string textpath = test_data_dir + "/text/sample_long_sequence.txt";
+  text_type  text( textpath.c_str(), seqan::OPEN_RDONLY );
+  index_type index( text );
+  iterator_type iter( index );
+
+  REQUIRE( go_down( iter, 'A' ) );
+  REQUIRE( go_down( iter, 'A' ) );
+  REQUIRE( representative( iter.get_iter_() ) == "AA" );
+
+  iterator_type iter2 = std::move( iter );
+  iter = iterator_type( index );
+  REQUIRE( go_down( iter2, 'A' ) );
+  REQUIRE( go_down( iter2, 'G' ) );
+  REQUIRE( representative( iter2.get_iter_() ) == "AAAG" );
+
+  iterator_type iter3 = std::move( iter2 );
+  iter2 = iterator_type( index );
+  REQUIRE( go_down( iter3, 'G' ) );
+  REQUIRE( go_down( iter3, 'G' ) );
+  REQUIRE( representative( iter3.get_iter_() ) == "AAAGGG" );
+
+  iter = std::move( iter3 );
+  iter3 = iterator_type( index );
+  REQUIRE( go_down( iter, 'G' ) );
+  REQUIRE( representative( iter.get_iter_() ) == "AAAGGGG" );
+}
+
 TEMPLATE_SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]",
                    ( seqan::IndexWotd<> ),
                    ( seqan::IndexEsa<> ) )

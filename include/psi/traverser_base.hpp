@@ -88,9 +88,9 @@ namespace psi {
         { }
 
         State( State const& ) = default;
-        State( State&& ) = delete;
+        State( State&& ) = default;
         State& operator=( State const& ) = default;
-        State& operator=( State&& ) = delete;
+        State& operator=( State&& ) = default;
         ~State( ) = default;
       } TState;
     };
