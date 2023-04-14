@@ -41,8 +41,9 @@ if(BUILD_DOC)
   include(BuildDoxygen)
 endif(BUILD_DOC)
 
-# Load `CheckGitRevision` module
+# Load project cmake modules
 include(CheckGitRevision)
+include(StdAtomic)
 
 # Creating the INTERFACE library
 add_library(psi INTERFACE)
@@ -58,8 +59,9 @@ target_link_libraries(psi
   INTERFACE $<BUILD_INTERFACE:gum::gum>;$<INSTALL_INTERFACE:gum::gum>
   INTERFACE $<BUILD_INTERFACE:kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
   INTERFACE $<BUILD_INTERFACE:SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
-  INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>
-  INTERFACE "atomic")
+  INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>)
+# Add atomic dependency using `target_link_atomic` custom function from `StdAtomic` module
+target_link_atomic(psi INTERFACE)
 # Define `PSI_DEBUG`
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
