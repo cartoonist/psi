@@ -24,10 +24,23 @@
 #include <psi/traverser.hpp>
 #include <psi/utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
 {
@@ -38,7 +51,7 @@ SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     SeedFinder< NoStats, finder_traits_type > finder( graph, 30 );
     finder.unset_as_finaliser();
@@ -76,7 +89,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     unsigned char k = 12;
     unsigned char nof_paths = 4;
@@ -153,7 +166,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "A SeedFinder on this graph with known starting loci" )
     {
@@ -202,7 +215,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::load( graph, vgpath, true );
+    gum::util::load( graph, vgpath, vg_loader, true );
 
     unsigned int dmin = 8;
     unsigned int dmax = 12;
@@ -301,7 +314,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/multi/multi.vg";
     graph_type graph;
-    gum::util::load( graph, vgpath, true );
+    gum::util::load( graph, vgpath, vg_loader, true );
 
     unsigned int dmin = 8;
     unsigned int dmax = 12;

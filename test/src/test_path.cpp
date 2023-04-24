@@ -25,10 +25,23 @@
 #include <gum/seqgraph.hpp>
 #include <gum/io_utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
 {
@@ -112,7 +125,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "An empty path" )
     {
@@ -1355,7 +1368,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "A path in the graph" )
     {
@@ -1869,7 +1882,7 @@ SCENARIO( "Trim a path in a sequence graph", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "An empty path in the graph" )
     {
@@ -2243,7 +2256,7 @@ SCENARIO( "Trim a path to the length of k", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "Two paths: one Default and one Dynamic" )
     {
@@ -2674,7 +2687,7 @@ SCENARIO( "Query node coordinates by position in the path", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     WHEN( "A path in the graph" )
     {

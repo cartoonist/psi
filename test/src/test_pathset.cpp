@@ -23,10 +23,23 @@
 #include <gum/seqgraph.hpp>
 #include <gum/io_utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO( "PathSet provides an interface similar to a conventional container", "[pathset]" )
 {
@@ -75,7 +88,7 @@ SCENARIO( "PathSet provides an interface similar to a conventional container", "
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, vg_loader );
 
     GIVEN( "A PathSet containing some paths" )
     {
