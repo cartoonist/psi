@@ -821,6 +821,12 @@ namespace psi {
           }
           /* === STATIC MEMBERS === */
           static inline void
+          initialise(  )
+          {
+            if ( !Kokkos::is_initialized() ) Kokkos::initialize();
+          }
+
+          static inline void
           finalise( )
           {
             Kokkos::finalize();
@@ -843,6 +849,19 @@ namespace psi {
           bool finaliser;
         };
         /* === STATIC MEMBERS === */
+          static inline std::atomic_bool&
+        get_kokkos_handling_status( )
+        {
+          static std::atomic_bool kokkos_handling_enabled = true;
+          return kokkos_handling_enabled;
+        }
+
+          static inline void
+        set_kokkos_handling_status( bool value=true )
+        {
+          get_kokkos_handling_status().store( value );
+        }
+
           static inline std::string
         get_distance_index_path( std::string prefix, unsigned int dmin, unsigned int dmax )
         {
@@ -902,8 +921,8 @@ namespace psi {
             unsigned int gocc_thr = 0,
             unsigned int mxmem = 0,
             unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), handler( true ), seed_len( len ),
-          seed_mismatches( mismatches ),
+          : graph_ptr( &g ), pindex( g, true ), handler( get_kokkos_handling_status() ),
+          seed_len( len ), seed_mismatches( mismatches ),
           gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           max_mem( ( mxmem != 0 ? mxmem : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )

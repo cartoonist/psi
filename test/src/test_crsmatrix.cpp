@@ -318,8 +318,6 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
   typedef TestType spec_type;
   typedef CRSMatrix< spec_type, bool > crsmat_type;
 
-  Kokkos::initialize();
-
   GIVEN( "A tiny matrix" )
   {
     constexpr const std::size_t nnz = 25;
@@ -1055,9 +1053,4 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
       }
     }
   }
-}
-
-SCENARIO( "Finalise Kokkos" )
-{
-  Kokkos::finalize();
 }

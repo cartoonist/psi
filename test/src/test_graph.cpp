@@ -80,8 +80,6 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
   typedef typename graph_type::linktype_type linktype_type;
   typedef pairg::matrixOps traits_type;
 
-  Kokkos::initialize();
-
   GIVEN( "A tiny variation graph" )
   {
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
@@ -260,6 +258,4 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
       }
     }
   }
-
-  Kokkos::finalize();
 }
