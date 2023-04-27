@@ -1019,10 +1019,11 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
       return [=]( auto fn ) { fn( args... ); };
     };
 
+/*
     auto feed_blocks = []( auto xs ) {
       return [=]( auto callback ) {
         auto impl = [=]( auto fn ) {
-          return /* main */ [=]( auto* blk, std::size_t sr, std::size_t sc, auto ...rest ) {
+          return [=]( auto* blk, std::size_t sr, std::size_t sc, auto ...rest ) {  // main
             callback( *blk, sr, sc );
             if constexpr ( sizeof...( rest ) > 0 ) {
               fn( fn )( rest... );
@@ -1032,12 +1033,33 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
         xs( impl( impl ) );  // apply `main` lambda on all parameters
       };
     };
+*/
+
+    auto feed_blocks = []( auto xs ) {
+      return [=]( auto callback ) {
+        auto impl = [=]( auto* blk, std::size_t sr, std::size_t sc ) -> void {
+          callback( *blk, sr, sc );
+        };
+        xs( impl );
+      };
+    };
+
+    auto feed_blocks_2 = []( auto xs ) {
+      return [=]( auto callback ) {
+        auto impl = [=]( auto* blk1, std::size_t sr1, std::size_t sc1,
+                         auto* blk2, std::size_t sr2, std::size_t sc2  ) -> void {
+          callback( *blk1, sr1, sc1 );
+          callback( *blk2, sr2, sc2 );
+        };
+        xs( impl );
+      };
+    };
 
     std::size_t i = nrows - nrows2;
     std::size_t j = ncols - ncols2;
     crsmat_type mat1( nrows, ncols, feed_blocks( list( &blk1, 0, 0 ) ), nnz1 );
     crsmat_type mat2( nrows, ncols, feed_blocks( list( &blk2, i, j ) ), nnz2 );
-    crsmat_type merged( nrows, ncols, feed_blocks( list( &blk1, 0, 0, &blk2, i, j ) ), nnz1 + nnz2 );
+    crsmat_type merged( nrows, ncols, feed_blocks_2( list( &blk1, 0, 0, &blk2, i, j ) ), nnz1 + nnz2 );
 
     WHEN( "They got merged" )
     {
