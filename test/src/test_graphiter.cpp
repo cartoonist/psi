@@ -332,6 +332,34 @@ SCENARIO( "Traverse a sequence graph using backtracking algorithm", "[graph][ite
       id_type true_snode_id;
       unsigned int true_offset;
 
+      /* // Search for a k-mer in truth set (not tested)
+      typedef graph_type::offset_type offset_type;
+      using element_type = std::tuple< std::string, offset_type >;
+      std::vector< std::vector< element_type > > truths;
+      truths.resize(graph.get_node_count());
+
+      auto get_truth_idx = [&graph]( id_type id ) -> id_type {
+        return graph.id_to_rank( graph.id_by_coordinate( id ) );
+      };
+
+      auto is_it_true =
+        [&truths, get_truth_idx]( std::string kmer, id_type id, offset_type offset ) -> bool {
+          auto idx = get_truth_idx( id );
+          std::string true_kmer;
+          offset_type true_offset;
+          for ( auto&& t : truths[ idx ] ) {
+            std::tie( true_kmer, true_offset ) = t;
+            if ( kmer == true_kmer && offset == true_offset ) return true;
+          }
+          return false;
+        };
+
+      while ( truth_stream >> true_kmer >> true_snode_id >> true_offset ) {
+        auto idx = get_truth_idx( true_snode_id );
+        truths[ idx ].push_back( element_type{ true_kmer, true_offset } );
+      }
+      */
+
       auto bt_itr = begin( graph, Backtracker() );
       auto bt_end = end( graph, Backtracker() );
       std::vector< id_type > trav_path;

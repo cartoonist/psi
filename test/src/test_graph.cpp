@@ -123,7 +123,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
               offset_type prev = 0;
               graph.for_each_edges_out(
                   id,
-                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                  [&graph, &matrix, &prev, char_id]( id_type to, linktype_type ) {
                     auto to_char_id = gum::util::id_to_charorder( graph, to );
                     REQUIRE( traits_type::queryValue( matrix, char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
@@ -181,7 +181,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
               offset_type prev = 0;
               graph.for_each_edges_out(
                   id,
-                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                  [&graph, &matrix, &prev, char_id]( id_type to, linktype_type ) {
                     auto to_char_id = gum::util::id_to_charorder( graph, to );
                     REQUIRE( traits_type::queryValue( matrix, char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
@@ -244,7 +244,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
               offset_type prev = 0;
               graph.for_each_edges_out(
                   id,
-                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                  [&graph, &matrix, &prev, char_id]( id_type to, linktype_type ) {
                     auto to_char_id = gum::util::id_to_charorder( graph, to );
                     REQUIRE( matrix( char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
