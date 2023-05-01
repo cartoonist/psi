@@ -202,7 +202,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
           int i = 325;
           for ( const auto& l : finder.get_starting_loci() ) {
             REQUIRE( l.node_id() == i );
-            REQUIRE( l.offset() == i % 17 );
+            REQUIRE( l.offset() == static_cast< graph_type::offset_type >( i % 17 ) );
             i -= 4;
           }
         }
