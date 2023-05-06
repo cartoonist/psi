@@ -853,7 +853,7 @@ SCENARIO( "Generate random strings", "[utils]" )
 {
   WHEN( "A length is given" )
   {
-    unsigned int len = 60;
+    unsigned int len = 6060;
     int n = 1000;
 
     THEN( "Generated random string should have the given length" )

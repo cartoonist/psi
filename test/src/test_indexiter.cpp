@@ -28,12 +28,14 @@
 
 using namespace psi;
 
-SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]" )
+TEMPLATE_SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]",
+                   ( seqan::IndexWotd<> ),
+                   ( seqan::IndexEsa<> ) )
 {
   GIVEN( "A sample small path and ESA index" )
   {
+    typedef TestType TIndexSpec;
     typedef seqan::Dna5QString TString;
-    typedef seqan::IndexEsa<> TIndexSpec;
     typedef seqan::Index< TString, TIndexSpec > TIndex;
     typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
 
@@ -86,8 +88,11 @@ SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterato
   }
 }
 
-SCENARIO( "Find k-mer exact matches between two texts using top-down index iterators", "[index][iterator]" )
+TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down index iterators", "[index][iterator]",
+                   ( seqan::IndexWotd<> ),
+                   ( seqan::IndexEsa<> ) )
 {
+  typedef TestType TIndexSpec;
   std::vector< Seed<> > seeds;
   std::function< void(const Seed<>&) > callback = [&seeds]( const Seed<>& hit )
   {
@@ -102,8 +107,8 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
     Records< Dna5QStringSet<> > rec2;
     appendValue(rec2.str, "GGGCGTAGCCA");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
+    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
@@ -150,8 +155,8 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
     Records< Dna5QStringSet<> > rec2;
     appendValue(rec2.str, "ATATAC");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
+    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
@@ -202,8 +207,8 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
     appendValue(rec2.str, "GGATTTAAATC");
     appendValue(rec2.str, "CGATTTAAATA");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
+    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
@@ -254,8 +259,8 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
     appendValue(rec2.str, "GGATTNAAATC");
     appendValue(rec2.str, "CGATTNAAATA");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
+    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
@@ -314,8 +319,8 @@ SCENARIO( "Find k-mer exact matches between two texts using top-down index itera
         "TTGCAGGGCTCTCTTGCTCGCAGTGTAGTGGCGGCACGCCGCCTGCTGGCAGCTAGGGACATTGCAGAGCCCTCTTGCT"
         "CACAGTG");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, seqan::IndexEsa<> >;
+    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
