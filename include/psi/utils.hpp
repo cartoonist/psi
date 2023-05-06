@@ -1432,16 +1432,20 @@ namespace psi {
 
     template< typename TInteger, typename TGenerator >
     inline std::string
-    random_string( TInteger length, TGenerator&& rgen )
+    random_string( TInteger length, TGenerator&& rgen,
+                   const char* charset=nullptr, std::size_t charset_len=0 )
     {
-      auto randchar = [&rgen]() -> char
+      const char alphanum_charset[] = "0123456789"
+                                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                      "abcdefghijklmnopqrstuvwxyz";
+      if ( charset == nullptr ) {
+        charset = alphanum_charset;
+        charset_len = sizeof( alphanum_charset ) - 1 /* null-terminated */;
+      }
+
+      auto randchar = [&rgen, &charset, &charset_len]() -> char
       {
-        const char charset[] =
-            "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz";
-        const std::size_t max_index = ( sizeof( charset ) - 1 );
-        return charset[ random_index( max_index, rgen ) ];
+        return charset[ random_index( charset_len, rgen ) ];
       };
       std::string str( length, 0 );
       std::generate_n( str.begin(), length, randchar );
@@ -1450,9 +1454,10 @@ namespace psi {
 
     template< typename TInteger >
     inline std::string
-    random_string( TInteger length )
+    random_string( TInteger length,
+                   const char* charset=nullptr, std::size_t charset_len=0 )
     {
-      return random_string( length, gen );
+      return random_string( length, gen, charset, charset_len );
     }
   }  /* --- end of namespace random --- */
 }  /* --- end of namespace psi --- */
