@@ -311,12 +311,12 @@ TEMPLATE_SCENARIO( "Generic functionality of Boolean CRSMatrices", "[crsmatrix][
                    crs_matrix::Buffered,
                    crs_matrix::FullyBuffered,
                    crs_matrix::RangeDynamic,
+                   crs_matrix::RangeBuffered,
+                   crs_matrix::RangeFullyBuffered,
                    crs_matrix::RangeCompressed )
 {
   typedef TestType spec_type;
   typedef CRSMatrix< spec_type, bool > crsmat_type;
-
-  Kokkos::initialize();
 
   GIVEN( "A tiny matrix" )
   {
@@ -698,9 +698,15 @@ TEMPLATE_SCENARIO( "Specialised functionalities of non-Buffered Boolean CRSMatri
   }
 }
 
-SCENARIO( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsmatrix][bool]" )
+TEMPLATE_SCENARIO_SIG( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsmatrix][bool]",
+                       ( ( typename T, typename U, typename V, int W /* dummy type unless compile error */ ), T, U, V, W ),
+                       ( crs_matrix::Compressed, crs_matrix::Buffered, crs_matrix::FullyBuffered, 0 ),
+                       ( crs_matrix::RangeCompressed, crs_matrix::RangeBuffered, crs_matrix::RangeFullyBuffered, 0 ) )
 {
-  typedef CRSMatrix< crs_matrix::Compressed, bool > crsmat_type;
+  typedef T crsmat_spec_type;
+  typedef U crsmat_buffered_spec_type;
+  typedef V crsmat_fully_buffered_spec_type;
+  typedef CRSMatrix< crsmat_spec_type, bool > crsmat_type;
 
   GIVEN( "A simple external matrix" )
   {
@@ -717,7 +723,7 @@ SCENARIO( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsm
     WHEN( "The CRSMatrix is constructed by a Buffered CRS matrix")
     {
       crsmat_type matrix( test_util::to_external_crs( simple, nnz ),
-                          crs_matrix::Buffered() );
+                          crsmat_buffered_spec_type() );
 
       THEN( "It should be identical to the original matrix" )
       {
@@ -740,7 +746,7 @@ SCENARIO( "Specialised functionalities of Compressed Boolean CRS Matrix", "[crsm
     WHEN( "The CRSMatrix is constructed by a FullyBuffered CRS matrix")
     {
       crsmat_type matrix( test_util::to_external_crs( simple, nnz ),
-                          crs_matrix::FullyBuffered() );
+                          crsmat_fully_buffered_spec_type() );
 
       THEN( "It should be identical to the original matrix" )
       {
@@ -768,6 +774,14 @@ TEMPLATE_SCENARIO_SIG( "Specialised functionalities of Range Boolean CRS Matrix"
                    ( crs_matrix::RangeDynamic, crs_matrix::Compressed, 0 ),
                    ( crs_matrix::RangeDynamic, crs_matrix::Buffered, 0 ),
                    ( crs_matrix::RangeDynamic, crs_matrix::FullyBuffered, 0 ),
+                   ( crs_matrix::RangeBuffered, crs_matrix::Dynamic, 0 ),
+                   ( crs_matrix::RangeBuffered, crs_matrix::Compressed, 0 ),
+                   ( crs_matrix::RangeBuffered, crs_matrix::Buffered, 0 ),
+                   ( crs_matrix::RangeBuffered, crs_matrix::FullyBuffered, 0 ),
+                   ( crs_matrix::RangeFullyBuffered, crs_matrix::Dynamic, 0 ),
+                   ( crs_matrix::RangeFullyBuffered, crs_matrix::Compressed, 0 ),
+                   ( crs_matrix::RangeFullyBuffered, crs_matrix::Buffered, 0 ),
+                   ( crs_matrix::RangeFullyBuffered, crs_matrix::FullyBuffered, 0 ),
                    ( crs_matrix::RangeCompressed, crs_matrix::Dynamic, 0 ),
                    ( crs_matrix::RangeCompressed, crs_matrix::Compressed, 0 ),
                    ( crs_matrix::RangeCompressed, crs_matrix::Buffered, 0 ),
@@ -819,7 +833,9 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance indices", "[crsmatrix][bool]",
                    ( crs_matrix::Compressed, crs_matrix::Dynamic, 0 ),
                    ( crs_matrix::Compressed, crs_matrix::Buffered, 0 ),
                    ( crs_matrix::Compressed, crs_matrix::FullyBuffered, 0 ),
-                   ( crs_matrix::RangeCompressed, crs_matrix::RangeDynamic, 0 ) )
+                   ( crs_matrix::RangeCompressed, crs_matrix::RangeDynamic, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::RangeBuffered, 0 ),
+                   ( crs_matrix::RangeCompressed, crs_matrix::RangeFullyBuffered, 0 ) )
 {
   typedef CRSMatrix< T, bool > crsmat_type;
   typedef CRSMatrix< U, bool > crsmat_mutable_type;
@@ -968,7 +984,9 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
                        ( crs_matrix::Compressed, crs_matrix::Dynamic, 0 ),
                        ( crs_matrix::Compressed, crs_matrix::Buffered, 0 ),
                        ( crs_matrix::Compressed, crs_matrix::FullyBuffered, 0 ),
-                       ( crs_matrix::RangeCompressed, crs_matrix::RangeDynamic, 0 ) )
+                       ( crs_matrix::RangeCompressed, crs_matrix::RangeDynamic, 0 ),
+                       ( crs_matrix::RangeCompressed, crs_matrix::RangeBuffered, 0 ),
+                       ( crs_matrix::RangeCompressed, crs_matrix::RangeFullyBuffered, 0 ) )
 {
   typedef CRSMatrix< T, bool, uint16_t, uint32_t > crsmat_type;
   typedef CRSMatrix< U, bool, uint16_t, uint32_t > crsmat_mutable_type;
@@ -1001,10 +1019,11 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
       return [=]( auto fn ) { fn( args... ); };
     };
 
+/*
     auto feed_blocks = []( auto xs ) {
       return [=]( auto callback ) {
         auto impl = [=]( auto fn ) {
-          return /* main */ [=]( auto* blk, std::size_t sr, std::size_t sc, auto ...rest ) {
+          return [=]( auto* blk, std::size_t sr, std::size_t sc, auto ...rest ) {  // main
             callback( *blk, sr, sc );
             if constexpr ( sizeof...( rest ) > 0 ) {
               fn( fn )( rest... );
@@ -1014,12 +1033,33 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
         xs( impl( impl ) );  // apply `main` lambda on all parameters
       };
     };
+*/
+
+    auto feed_blocks = []( auto xs ) {
+      return [=]( auto callback ) {
+        auto impl = [=]( auto* blk, std::size_t sr, std::size_t sc ) -> void {
+          callback( *blk, sr, sc );
+        };
+        xs( impl );
+      };
+    };
+
+    auto feed_blocks_2 = []( auto xs ) {
+      return [=]( auto callback ) {
+        auto impl = [=]( auto* blk1, std::size_t sr1, std::size_t sc1,
+                         auto* blk2, std::size_t sr2, std::size_t sc2  ) -> void {
+          callback( *blk1, sr1, sc1 );
+          callback( *blk2, sr2, sc2 );
+        };
+        xs( impl );
+      };
+    };
 
     std::size_t i = nrows - nrows2;
     std::size_t j = ncols - ncols2;
     crsmat_type mat1( nrows, ncols, feed_blocks( list( &blk1, 0, 0 ) ), nnz1 );
     crsmat_type mat2( nrows, ncols, feed_blocks( list( &blk2, i, j ) ), nnz2 );
-    crsmat_type merged( nrows, ncols, feed_blocks( list( &blk1, 0, 0, &blk2, i, j ) ), nnz1 + nnz2 );
+    crsmat_type merged( nrows, ncols, feed_blocks_2( list( &blk1, 0, 0, &blk2, i, j ) ), nnz1 + nnz2 );
 
     WHEN( "They got merged" )
     {
@@ -1035,9 +1075,4 @@ TEMPLATE_SCENARIO_SIG( "Merging two distance index with large dimensions", "[crs
       }
     }
   }
-}
-
-SCENARIO( "Finalise Kokkos" )
-{
-  Kokkos::finalize();
 }

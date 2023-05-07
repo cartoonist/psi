@@ -30,10 +30,23 @@
 #include <gum/seqgraph.hpp>
 #include <gum/io_utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][iterator][haplotyper]" )
 {
@@ -43,7 +56,7 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     WHEN( "the eigth haplotypes are generated using Haplotyper" )
     {
@@ -131,7 +144,7 @@ SCENARIO( "Get unique full haplotype using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     WHEN( "the three haplotypes are generated using Haplotyper" )
     {
@@ -200,7 +213,7 @@ SCENARIO( "A Haplotyper graph iterator raise on end", "[graph][iterator][haploty
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
     auto hap_itr = begin( graph, Haplotyper<>() );
     auto hap_end = end( graph, Haplotyper<>() );
     hap_itr.set_raise_on_end( true );
@@ -228,7 +241,7 @@ SCENARIO( "Extend a path to length k using Haplotyper graph iterator", "[graph][
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
     auto hap_itr = begin( graph, Haplotyper<>() );
     auto hap_end = end( graph, Haplotyper<>() );
     unsigned int k = 5;
@@ -273,7 +286,7 @@ SCENARIO( "Get unique patched haplotypes using Haplotyper graph iterator", "[gra
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
     unsigned int context_len = 10;
 
     WHEN( "Generate 32x patched haplotypes are generated using a Haplotyper iterator" )
@@ -306,7 +319,7 @@ SCENARIO( "Traverse a sequence graph using backtracking algorithm", "[graph][ite
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     unsigned int kmer_len = 20;
 
@@ -318,6 +331,34 @@ SCENARIO( "Traverse a sequence graph using backtracking algorithm", "[graph][ite
       std::string true_kmer;
       id_type true_snode_id;
       unsigned int true_offset;
+
+      /* // Search for a k-mer in truth set (not tested)
+      typedef graph_type::offset_type offset_type;
+      using element_type = std::tuple< std::string, offset_type >;
+      std::vector< std::vector< element_type > > truths;
+      truths.resize(graph.get_node_count());
+
+      auto get_truth_idx = [&graph]( id_type id ) -> id_type {
+        return graph.id_to_rank( graph.id_by_coordinate( id ) );
+      };
+
+      auto is_it_true =
+        [&truths, get_truth_idx]( std::string kmer, id_type id, offset_type offset ) -> bool {
+          auto idx = get_truth_idx( id );
+          std::string true_kmer;
+          offset_type true_offset;
+          for ( auto&& t : truths[ idx ] ) {
+            std::tie( true_kmer, true_offset ) = t;
+            if ( kmer == true_kmer && offset == true_offset ) return true;
+          }
+          return false;
+        };
+
+      while ( truth_stream >> true_kmer >> true_snode_id >> true_offset ) {
+        auto idx = get_truth_idx( true_snode_id );
+        truths[ idx ].push_back( element_type{ true_kmer, true_offset } );
+      }
+      */
 
       auto bt_itr = begin( graph, Backtracker() );
       auto bt_end = end( graph, Backtracker() );
@@ -384,7 +425,7 @@ SCENARIO( "Sequence graph breadth-first traverse (BFS)", "[graph][iterator][bfs]
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     WHEN( "traverse the graph using BFS graph iterator" )
     {
@@ -408,7 +449,7 @@ SCENARIO( "Sequence graph breadth-first traverse (BFS)", "[graph][iterator][bfs]
   {
     std::string vgpath = test_data_dir + "/multi/multi.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     WHEN( "traverse the graph using BFS graph iterator" )
     {

@@ -422,8 +422,19 @@ main( int argc, char* argv[] )
     params.fwd = res[ "forward-only" ].as< bool >();
     params.allow_ns = res[ "allow-Ns" ].as< bool >();
 
+    auto parse_vg = []( std::istream& in ) -> vg::Graph {
+      vg::Graph merged;
+      std::function< void( vg::Graph& ) > handle_chunks =
+        [&]( vg::Graph& other ) {
+          gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+        };
+      stream::for_each( in, handle_chunks );
+      return merged;
+    };
+
     gum::SeqGraph< gum::Succinct > graph;
-    gum::util::load( graph, graph_path, true );
+    gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+    gum::util::load( graph, graph_path, loader, true );
     std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
     std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
               << std::endl;

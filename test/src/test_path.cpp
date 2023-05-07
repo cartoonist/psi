@@ -25,10 +25,23 @@
 #include <gum/seqgraph.hpp>
 #include <gum/io_utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
 {
@@ -47,6 +60,9 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
   std::vector< id_type > empty;
   std::string nodes_str = "TGCTATGTGTAACTAGTAATGGTAATGGATATGTTGGGCTTTTTCCTTTGATTTATTTGA"
     "AGTAACGTTTGACAATCTATCACTAGGGGTAATGTGGGGAAGTGGAAAGAATACAAGAT";
+
+  Path< graph_type, Compact >::nodes_type cnodes;
+  assign( cnodes, nodes );  // supress sign-compare warnings by using a proxy container
 
   auto non_micro_tests =
     [&nodes]
@@ -112,7 +128,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "An empty path" )
     {
@@ -308,7 +324,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
       Path< graph_type, Haplotype > hap_path( &graph );
       path.push_back( 20 );
       dyn_path.push_back( 20 );
-      cmp_path.set_nodes( std::vector< graph_type::id_type >( { 20 } ) );
+      cmp_path.set_nodes( std::vector< std::make_unsigned_t< graph_type::id_type > >( { 20 } ) );
       hap_path.push_back( 20 );
       initialize( hap_path );
 
@@ -494,10 +510,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     WHEN( "A Compact path in the graph constructed at once" )
     {
       Path< graph_type, Compact > cmp_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      cmp_path.set_nodes( cnodes );
       initialize( cmp_path );
 
       THEN( "It should pass basic tests" )
@@ -671,10 +684,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Compact > path( &graph );
       Path< graph_type, Dynamic > dyn_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      path.set_nodes( cnodes );
       initialize( path );
 
       dyn_path = path;
@@ -689,10 +699,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Compact > path( &graph );
       Path< graph_type, Dynamic > dyn_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      path.set_nodes( cnodes );
       initialize( path );
 
       dyn_path = std::move( path );
@@ -741,10 +748,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type > path( &graph );
       Path< graph_type, Compact > cmp_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      cmp_path.set_nodes( cnodes );
       initialize( cmp_path );
 
       path = cmp_path;
@@ -759,10 +763,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type > path( &graph );
       Path< graph_type, Compact > cmp_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      cmp_path.set_nodes( cnodes );
       initialize( cmp_path );
 
       path = std::move( cmp_path );
@@ -782,10 +783,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
       }
       initialize( dyn_path );
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
       cmp_path = dyn_path;
-#pragma GCC diagnostic pop
 
       THEN( "It should pass basic tests" )
       {
@@ -814,10 +812,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Compact > cmp_path( &graph );
       Path< graph_type > path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
       path.set_nodes( nodes );
-#pragma GCC diagnostic pop
       initialize( path );
 
       cmp_path = path;
@@ -832,10 +827,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Compact > cmp_path( &graph );
       Path< graph_type > path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
       path.set_nodes( nodes );
-#pragma GCC diagnostic pop
       initialize( path );
 
       cmp_path = std::move( path );
@@ -884,10 +876,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Haplotype > hap_path( &graph );
       Path< graph_type, Compact > cmp_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      cmp_path.set_nodes( cnodes );
       initialize( cmp_path );
 
       hap_path = cmp_path;
@@ -967,10 +956,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Compact > cmp_path2( &graph );
       Path< graph_type, Compact > cmp_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      cmp_path.set_nodes( cnodes );
       initialize( cmp_path );
 
       cmp_path2 = cmp_path;
@@ -985,10 +971,7 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
     {
       Path< graph_type, Compact > cmp_path2( &graph );
       Path< graph_type, Compact > cmp_path( &graph );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( nodes );
-#pragma GCC diagnostic pop
+      cmp_path.set_nodes( cnodes );
       initialize( cmp_path );
 
       cmp_path2 = std::move( cmp_path );
@@ -1174,10 +1157,9 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
       for ( ; i < nodes.size(); ++i ) {
         subset.push_back( nodes[i] );
       }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      cmp_path.set_nodes( subset );
-#pragma GCC diagnostic pop
+      Path< graph_type, Compact >::nodes_type csubset;
+      assign( csubset, subset );
+      cmp_path.set_nodes( csubset );
       hap_path += cmp_path;
       initialize( hap_path );
 
@@ -1302,10 +1284,9 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
       for ( ; i < nodes.size(); ++i ) {
         subset.push_back( nodes[i] );
       }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      path2.set_nodes( subset );
-#pragma GCC diagnostic pop
+      Path< graph_type, Compact >::nodes_type csubset;
+      assign( csubset, subset );
+      path2.set_nodes( csubset );
       path1 += path2;
       initialize( path1 );
 
@@ -1327,10 +1308,9 @@ SCENARIO( "Basic test for a simple path in a sequence graph", "[path]" )
       for ( ; i < nodes.size(); ++i ) {
         subset.push_back( nodes[i] );
       }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-      path2.set_nodes( subset );
-#pragma GCC diagnostic pop
+      Path< graph_type, Compact >::nodes_type csubset;
+      assign( csubset, subset );
+      path2.set_nodes( csubset );
       path1 += path2;
       initialize( path1 );
 
@@ -1355,7 +1335,7 @@ SCENARIO( "Basic tests for offset path", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "A path in the graph" )
     {
@@ -1869,7 +1849,7 @@ SCENARIO( "Trim a path in a sequence graph", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "An empty path in the graph" )
     {
@@ -2243,7 +2223,7 @@ SCENARIO( "Trim a path to the length of k", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "Two paths: one Default and one Dynamic" )
     {
@@ -2674,7 +2654,7 @@ SCENARIO( "Query node coordinates by position in the path", "[path]" )
   {
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     WHEN( "A path in the graph" )
     {

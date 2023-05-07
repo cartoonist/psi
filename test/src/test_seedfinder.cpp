@@ -24,10 +24,23 @@
 #include <psi/traverser.hpp>
 #include <psi/utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
 {
@@ -35,12 +48,15 @@ SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
   {
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
     typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<>, InMemory > finder_traits_type;
+    typedef SeedFinder< NoStats, finder_traits_type > finder_type;
+
+    finder_type::set_kokkos_handling_status( false );
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
-    SeedFinder< NoStats, finder_traits_type > finder( graph, 30 );
+    finder_type finder( graph, 30 );
     finder.unset_as_finaliser();
 
     unsigned int nof_paths = 4;
@@ -76,7 +92,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
 
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     unsigned char k = 12;
     unsigned char nof_paths = 4;
@@ -93,6 +109,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
       truth.push_back( std::make_pair( 3, 0 ) );
       auto truth_itr = truth.begin();
 
+      SeedFinder< WithStats, finder_traits_type >::set_kokkos_handling_status( false );
       SeedFinder< WithStats, finder_traits_type > finder( graph, k );
       finder.unset_as_finaliser();
       finder.pick_paths( nof_paths, true, k );
@@ -112,6 +129,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     nof_paths = 8;
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
+      SeedFinder< NoStats, finder_traits_type >::set_kokkos_handling_status( false );
       SeedFinder< NoStats, finder_traits_type > finder( graph, k );
       finder.unset_as_finaliser();
       finder.pick_paths( nof_paths, true, k );
@@ -129,6 +147,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     nof_paths = 32;
     WHEN( "Using " + std::to_string( nof_paths ) + " number of paths" )
     {
+      SeedFinder< NoStats, finder_traits_type >::set_kokkos_handling_status( false );
       SeedFinder< NoStats, finder_traits_type > finder( graph, k );
       finder.unset_as_finaliser();
       finder.pick_paths( nof_paths, false );
@@ -150,16 +169,19 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
   {
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
     typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<> > finder_traits_type;
+    typedef SeedFinder< WithStats, finder_traits_type > finder_type;
+
+    finder_type::set_kokkos_handling_status( false );
 
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
 
     GIVEN( "A SeedFinder on this graph with known starting loci" )
     {
       int k = 12;
       int e = 10;
-      SeedFinder< WithStats, finder_traits_type > finder( graph, k );
+      finder_type finder( graph, k );
       finder.unset_as_finaliser();
 
       for ( int i = 325; i > 0; i -= 4 ) {
@@ -180,7 +202,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
           int i = 325;
           for ( const auto& l : finder.get_starting_loci() ) {
             REQUIRE( l.node_id() == i );
-            REQUIRE( l.offset() == i % 17 );
+            REQUIRE( l.offset() == static_cast< graph_type::offset_type >( i % 17 ) );
             i -= 4;
           }
         }
@@ -200,9 +222,11 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
     typedef SeedFinder< NoStats, finder_traits_type > finder_type;
     typedef std::tuple< id_type, offset_type, id_type, offset_type > ends_type;
 
+    finder_type::set_kokkos_handling_status( false );
+
     std::string vgpath = test_data_dir + "/tiny/tiny.vg";
     graph_type graph;
-    gum::util::load( graph, vgpath, true );
+    gum::util::load( graph, vgpath, vg_loader, true );
 
     unsigned int dmin = 8;
     unsigned int dmax = 12;
@@ -299,9 +323,11 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
     typedef SeedFinder< NoStats, finder_traits_type > finder_type;
     typedef std::tuple< id_type, offset_type, id_type, offset_type > ends_type;
 
+    finder_type::set_kokkos_handling_status( false );
+
     std::string vgpath = test_data_dir + "/multi/multi.vg";
     graph_type graph;
-    gum::util::load( graph, vgpath, true );
+    gum::util::load( graph, vgpath, vg_loader, true );
 
     unsigned int dmin = 8;
     unsigned int dmax = 12;
@@ -387,12 +413,5 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
         }
       }
     }
-  }
-
-  /* NOTE: Put all test scenarios before this one! */
-  THEN( "Finalise SeedFinder" )
-  {
-    gum::SeqGraph< gum::Succinct > graph;
-    SeedFinder<> last_finder( graph, 30 );
   }
 }

@@ -56,8 +56,8 @@ namespace psi {
 
         TIter iter;
         unsigned char mismatches;
-        vg::Position spos;
-        vg::Position cpos;
+        Position<> spos;
+        Position<> cpos;
         size_t depth;
         bool end;
 
@@ -78,19 +78,19 @@ namespace psi {
         { }
 
         State( TIndex* index, unsigned char mm,
-            vg::Position sp, vg::Position cp, size_t d )
+            Position<> sp, Position<> cp, size_t d )
           : iter( *index ), mismatches( mm ),
           spos( sp ), cpos( cp ), depth( d ), end( false )
         { }
 
-        State( TIndex* index, unsigned char mm, vg::Position sp, size_t d )
+        State( TIndex* index, unsigned char mm, Position<> sp, size_t d )
           : State( index, mm, sp, sp, d )
         { }
 
         State( State const& ) = default;
-        State( State&& ) = delete;
+        State( State&& ) = default;
         State& operator=( State const& ) = default;
-        State& operator=( State&& ) = delete;
+        State& operator=( State&& ) = default;
         ~State( ) = default;
       } TState;
     };
@@ -393,7 +393,7 @@ namespace psi {
         }
 
           inline void
-        add_locus( vg::Position p )
+        add_locus( Position<> p )
         {
           this->states.emplace_back(
               this->reads_index,

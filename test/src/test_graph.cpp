@@ -22,10 +22,23 @@
 #include <gum/io_utils.hpp>
 #include <pairg/spgemm_utility.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 TEMPLATE_SCENARIO( "Get graph statistics", "[graph][interface]", gum::Dynamic, gum::Succinct )
 {
@@ -36,7 +49,7 @@ TEMPLATE_SCENARIO( "Get graph statistics", "[graph][interface]", gum::Dynamic, g
   {
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::load( graph, vgpath );
+    gum::util::load( graph, vgpath, vg_loader );
 
     WHEN( "Total number of nodes in a subgraph is counted" )
     {
@@ -67,13 +80,11 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
   typedef typename graph_type::linktype_type linktype_type;
   typedef pairg::matrixOps traits_type;
 
-  Kokkos::initialize();
-
   GIVEN( "A tiny variation graph" )
   {
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
-    gum::util::load( graph, vgpath );
+    gum::util::load( graph, vgpath, vg_loader );
     auto nof_nodes = gum::util::total_nof_loci( graph );
     auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
 
@@ -112,7 +123,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
               offset_type prev = 0;
               graph.for_each_edges_out(
                   id,
-                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                  [&graph, &matrix, &prev, char_id]( id_type to, linktype_type ) {
                     auto to_char_id = gum::util::id_to_charorder( graph, to );
                     REQUIRE( traits_type::queryValue( matrix, char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
@@ -131,7 +142,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
   {
     std::string vgpath = test_data_dir + "/multi/multi.gfa";
     graph_type graph;
-    gum::util::load( graph, vgpath );
+    gum::util::load( graph, vgpath, vg_loader );
     auto nof_nodes = gum::util::total_nof_loci( graph );
     auto nof_edges = nof_nodes - graph.get_node_count() + graph.get_edge_count();
 
@@ -170,7 +181,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
               offset_type prev = 0;
               graph.for_each_edges_out(
                   id,
-                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                  [&graph, &matrix, &prev, char_id]( id_type to, linktype_type ) {
                     auto to_char_id = gum::util::id_to_charorder( graph, to );
                     REQUIRE( traits_type::queryValue( matrix, char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
@@ -233,7 +244,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
               offset_type prev = 0;
               graph.for_each_edges_out(
                   id,
-                  [&graph, &matrix, &prev, nof_nodes, char_id]( id_type to, linktype_type ) {
+                  [&graph, &matrix, &prev, char_id]( id_type to, linktype_type ) {
                     auto to_char_id = gum::util::id_to_charorder( graph, to );
                     REQUIRE( matrix( char_id, to_char_id ) );
                     for ( ; prev < to_char_id; ++prev ) {
@@ -247,6 +258,4 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
       }
     }
   }
-
-  Kokkos::finalize();
 }

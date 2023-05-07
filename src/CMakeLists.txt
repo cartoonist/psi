@@ -21,9 +21,11 @@ target_compile_options(psikt PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(psikt
   PRIVATE ${PROJECT_BINARY_DIR}/src
   PRIVATE psi::psi
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 target_link_libraries(psikt
   PRIVATE psi::psi
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS psikt DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -31,6 +31,9 @@
 #include <psi/seed_finder.hpp>
 #include <psi/utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 
 using namespace psi;
 
@@ -655,9 +658,20 @@ dstats( cxxopts::ParseResult& res )
   if ( !ost ) throw std::runtime_error( "output file cannot be opened" );
 
   // Loading input graph
+  auto parse_vg = []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  };
+
   graph_type graph;
   std::cerr << "Loading input graph..." << std::endl;
-  gum::util::load( graph, graph_path, true );
+  gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+  gum::util::load( graph, graph_path, loader, true );
 
   // Opening alignment file for reading
   std::ifstream ifs( aln_path, std::ifstream::in | std::ifstream::binary );
@@ -836,9 +850,20 @@ analyse( cxxopts::ParseResult& res )
   if ( !ost ) throw std::runtime_error( "output file cannot be opened" );
 
   // Loading input graph
+  auto parse_vg = []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  };
+
   graph_type graph;
   std::cerr << "Loading input graph..." << std::endl;
-  gum::util::load( graph, graph_path, true );
+  gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+  gum::util::load( graph, graph_path, loader, true );
 
   // Loading ground truth if available
   auto truth = load_ground_truth( truth_path, graph, trim );

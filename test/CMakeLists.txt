@@ -18,7 +18,9 @@ add_executable(psi-tests ${TEST_SOURCES})
 target_compile_options(psi-tests PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(psi-tests
   PRIVATE ${PROJECT_BINARY_DIR}/test/src
-  PRIVATE psi::psi)
+  PRIVATE psi::psi
+  PRIVATE psi::minivgio)
 target_link_libraries(psi-tests
   PRIVATE Catch2::Catch2
-  PRIVATE psi::psi)
+  PRIVATE psi::psi
+  PRIVATE psi::minivgio)

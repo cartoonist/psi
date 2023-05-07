@@ -419,7 +419,7 @@ SCENARIO( "Find a value in an integer vector by reversal iteration", "[utils]" )
     size_t len = 1000000;
     std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
-    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    sdsl::enc_vector< sdsl::coder::elias_delta<> > cv( v );
 
     WHEN( "The last item is searched" )
     {
@@ -460,7 +460,7 @@ SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
     size_t len = 1000000;
     std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
-    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    sdsl::enc_vector< sdsl::coder::elias_delta<> > cv( v );
     std::vector< unsigned int > query = { 999980, 999981, 999982, 999983, 999984, 999985 };
     auto lc = rfind( cv, *query.rbegin() );
 
@@ -480,7 +480,7 @@ SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
     std::size_t len = 10;
     std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i + 2;
-    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    sdsl::enc_vector< sdsl::coder::elias_delta<> > cv( v );
     std::vector< unsigned int > query = { 0, 1, 2 };
     auto lc = rfind( cv, *query.rbegin() );
 
@@ -853,7 +853,7 @@ SCENARIO( "Generate random strings", "[utils]" )
 {
   WHEN( "A length is given" )
   {
-    unsigned int len = 60;
+    unsigned int len = 6060;
     int n = 1000;
 
     THEN( "Generated random string should have the given length" )

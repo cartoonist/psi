@@ -34,6 +34,9 @@
 #include <psi/stats.hpp>
 #include <psi/release.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "options.hpp"
 #include "logger.hpp"
 
@@ -220,8 +223,20 @@ startup( const Options & options )
   log->info( "- Output file: '{}'", options.output_path );
 
   log->info( "Loading input graph from file '{}'...", options.rf_path );
+
+  auto parse_vg = []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  };
+
   gum::SeqGraph< gum::Succinct > graph;
-  gum::util::load( graph, options.rf_path, true );
+  gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+  gum::util::load( graph, options.rf_path, loader, true );
   if ( gum::util::ids_in_topological_order( graph ) ) {
     log->info( "Input graph node IDs are in topological sort order." );
   }

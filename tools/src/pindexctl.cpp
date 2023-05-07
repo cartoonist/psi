@@ -24,11 +24,13 @@
 #include <functional>
 
 #include <cxxopts.hpp>
-#include <vg/io/stream.hpp>
 #include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <psi/seed_finder.hpp>
 #include <psi/utils.hpp>
+
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
 
 
 using namespace psi;
@@ -118,10 +120,10 @@ template< typename TGraph, typename TFinder >
     }
 
     std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
-    std::function< vg::Alignment( std::size_t ) > lambda =
-      [&paths]( std::size_t i ) { return paths.at( i ); };
+    std::function< vg::Alignment&( uint64_t ) > lambda =
+      [&paths]( std::size_t i ) -> vg::Alignment& { return paths[ i ]; };
     std::cout << "\nWriting all paths to a GAM file... ";
-    vg::io::write( ofs, paths.size(), lambda );
+    stream::write< vg::Alignment& >( ofs, paths.size(), lambda );
     std::cout << "Done." << std::endl;
   }
 
@@ -139,8 +141,8 @@ template< typename TGraph, typename TFinder >
     std::vector< vg::Graph > graphset;
     std::ofstream ofs( output, std::ofstream::out | std::ofstream::binary );
 
-    std::function< vg::Graph( std::size_t ) > graph_at =
-      [&graphset]( std::size_t i ) { return graphset.at( i ); };
+    std::function< vg::Graph&( uint64_t ) > access =
+      [&graphset]( std::size_t i ) -> vg::Graph& { return graphset[ i ]; };
 
     std::function< void( vg::Graph& ) > accumulate =
       [&graphset]( vg::Graph& g ) {
@@ -156,7 +158,7 @@ template< typename TGraph, typename TFinder >
     psi::util::induced_graph( graph, nodes.begin(), nodes.end(), edges.begin(),
                               edges.end(), accumulate, max_nodes, coord );
     std::cout << "Writing the induced graph to a vg file... " << std::endl;
-    vg::io::write( ofs, graphset.size(), graph_at );
+    stream::write< vg::Graph& >( ofs, graphset.size(), access );
     std::cout << "Done." << std::endl;
   }
 
@@ -219,8 +221,19 @@ main( int argc, char* argv[] )
     unsigned int seedlen = res["seed-length"].as< unsigned int >();
     unsigned int stepsize = res["step-size"].as< unsigned int >();
 
+    auto parse_vg = []( std::istream& in ) -> vg::Graph {
+      vg::Graph merged;
+      std::function< void( vg::Graph& ) > handle_chunks =
+        [&]( vg::Graph& other ) {
+          gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+        };
+      stream::for_each( in, handle_chunks );
+      return merged;
+    };
+
     gum::SeqGraph< gum::Succinct > graph;
-    gum::util::load( graph, graph_path, true );
+    gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+    gum::util::load( graph, graph_path, loader, true );
     std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
     std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
               << std::endl;

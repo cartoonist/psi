@@ -20,8 +20,7 @@
 
 #include <functional>
 
-#include "vg/vg.pb.h"
-
+#include "basic_types.hpp"
 #include "path_base.hpp"
 
 
@@ -840,11 +839,11 @@ namespace psi {
    *  transform the node label to the path sequence aligned with that node which is a
    *  full-match here.
    */
-  template< typename TGraph, typename TSpec,
+  template< typename TGraph, typename TSpec, typename TVGPath,
             typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
-                                                        decltype( vg::Node().id() ) > >
+                                                        decltype( TVGPath().mapping()[0].position().node_id() ) > >
       inline void
-    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath, TCoordinate&& coord={} )
+    convert( Path< TGraph, TSpec > const& path, TVGPath* vgpath, TCoordinate&& coord={} )
     {
       TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
@@ -857,35 +856,35 @@ namespace psi {
         }
         else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
         else label_len = graph_ptr->node_length( *it );
-        vg::Mapping* mapping = vgpath->add_mapping();
+        auto mapping = vgpath->add_mapping();
         mapping->mutable_position()->set_node_id( coord( *it ) );
         mapping->mutable_position()->set_offset( noff );
-        vg::Edit* edit = mapping->add_edit();
+        auto edit = mapping->add_edit();
         edit->set_from_length( label_len );
         edit->set_to_length( label_len );
         mapping->set_rank( rank++ );
       }
     }
 
-  template< typename TGraph, typename TSpec,
+  template< typename TGraph, typename TSpec, typename TVGPath,
             typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
-                                                        decltype( vg::Node().id() ) > >
+                                                        decltype( TVGPath().mapping()[0].position().node_id() ) > >
       inline void
-    convert( Path< TGraph, TSpec > const& path, vg::Path* vgpath,
-        std::vector< vg::Position > const& loci, TCoordinate&& coord={} )
+    convert( Path< TGraph, TSpec > const& path, TVGPath* vgpath,
+        std::vector< Position<> > const& loci, TCoordinate&& coord={} )
     {
       TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
 
       auto comp_id =
-          [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+          [graph_ptr]( Position<> const& elem, Position<> const& value ) {
             auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
             auto value_rank = graph_ptr->id_to_rank( value.node_id() );
             return elem_rank < value_rank;
           };
 
       auto comp_both =
-          [graph_ptr]( vg::Position const& elem, vg::Position const& value ) {
+          [graph_ptr]( Position<> const& elem, Position<> const& value ) {
             auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
             auto value_rank = graph_ptr->id_to_rank( value.node_id() );
             return elem_rank < value_rank ||
@@ -897,14 +896,14 @@ namespace psi {
         typename TGraph::offset_type coffset = 0;
         if ( it == path.begin() ) coffset = path.get_head_offset();
         else if ( it == path.end()-1 ) label_len = path.get_seqlen_tail();
-        vg::Mapping* mapping = vgpath->add_mapping();
+        auto mapping = vgpath->add_mapping();
         mapping->mutable_position()->set_node_id( coord( *it ) );
         mapping->mutable_position()->set_offset( coffset );
 
-        vg::Position cpos;
+        Position<> cpos;
         cpos.set_node_id( *it );
         cpos.set_offset( coffset );
-        std::vector< vg::Position >::const_iterator nextedit, lastedit;
+        std::vector< Position<> >::const_iterator nextedit, lastedit;
         if ( it == path.end()-1 ) {
           nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_id );
           lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_both );
@@ -918,7 +917,7 @@ namespace psi {
               (*nextedit).offset() :
               label_len;
         do {
-          vg::Edit* edit = mapping->add_edit();
+          auto edit = mapping->add_edit();
           if ( coffset > toffset ) {
             ++nextedit;
             toffset =

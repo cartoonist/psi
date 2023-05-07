@@ -30,9 +30,9 @@ find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
-find_package(gum 0.1.1 QUIET)
-find_package(kseq++ 0.2.3 QUIET)
-find_package(pairg 0.2.0 QUIET)
+find_package(gum 1.2.1 QUIET)
+find_package(kseq++ 1.0.0 QUIET)
+find_package(pairg 0.2.1 QUIET)
 # Handle bundled dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 
@@ -41,8 +41,9 @@ if(BUILD_DOC)
   include(BuildDoxygen)
 endif(BUILD_DOC)
 
-# Load `CheckGitRevision` module
+# Load project cmake modules
 include(CheckGitRevision)
+include(StdAtomic)
 
 # Creating the INTERFACE library
 add_library(psi INTERFACE)
@@ -58,8 +59,9 @@ target_link_libraries(psi
   INTERFACE $<BUILD_INTERFACE:gum::gum>;$<INSTALL_INTERFACE:gum::gum>
   INTERFACE $<BUILD_INTERFACE:kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
   INTERFACE $<BUILD_INTERFACE:SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
-  INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>
-  INTERFACE "atomic")
+  INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>)
+# Add atomic dependency using `target_link_atomic` custom function from `StdAtomic` module
+target_link_atomic(psi INTERFACE)
 # Define `PSI_DEBUG`
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
@@ -110,6 +112,13 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/psi-config-version.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 
+if(BUILD_PSIKT OR BUILD_PSI_AUX_TOOLS OR BUILD_TESTING)
+  find_package(Threads REQUIRED)
+  find_package(Protobuf REQUIRED)
+  # Prepare `psi::minivgio` library
+  add_subdirectory(vg)
+endif()
+
 # Adding `psikt` submodule
 if(BUILD_PSIKT)
   add_subdirectory(src)
@@ -129,7 +138,6 @@ endif(BUILD_TESTING)
 include(CTest)
 add_test(NAME TestUtils COMMAND psi-tests "[utils]")
 add_test(NAME TestGraph COMMAND psi-tests "[graph]")
-add_test(NAME TestCRSMatrix COMMAND psi-tests "[crsmatrix]")
 add_test(NAME TestGraphIter COMMAND psi-tests "[graph][iterator]")
 add_test(NAME TestStats COMMAND psi-tests "[stats]")
 add_test(NAME TestSequence COMMAND psi-tests "[sequence]")
@@ -140,3 +148,4 @@ add_test(NAME TestPath COMMAND psi-tests "[path]")
 add_test(NAME TestPathSet COMMAND psi-tests "[pathset]")
 add_test(NAME TestPathIndex COMMAND psi-tests "[pathindex]")
 add_test(NAME TestSeedFinder COMMAND psi-tests "[seedfinder]")
+add_test(NAME TestCRSMatrix COMMAND psi-tests "[crsmatrix]")

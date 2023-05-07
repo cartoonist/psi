@@ -1,4 +1,5 @@
-# PSI -- Pan-genome Seed Index
+PSI -- Pan-genome Seed Index
+============================
 
 This is an implementation of the method introduced in:
 
@@ -16,16 +17,23 @@ How to Install
 PSI uses many features introduced in C++17. In order to work with it, you need a
 C++17 compliant compiler first. It has been tested for these compilers:
 
-| Compiler | Version          |
-| -------- | ---------------- |
-| GCC      | 8.3, 9.2, 10.2.0 |
+| Compiler   | Version                  |
+| ---------- | ------------------------ |
+| GCC        | 8.3, 9.2, 10.2.0, 12.2.0 |
+| AppleClang | 14.0.0, 16.0.1           |
 
-PSI is a header-only library. However, it depends on a few external libraries to
-work:
+#### Required dependencies
 
-- CMake >=3.10
+PSI library is a header-only library. However, it depends on a few external
+libraries to work. Both `psikt` seed finder and PSI library need following
+libraries to be installed before building:
+
 - Zlib
 - BZip2
+
+Configuring the source code and/or building auxiliary tools requires:
+
+- CMake >=3.10
 
 #### Bundled dependencies
 
@@ -34,15 +42,16 @@ for you. If you want PSI to to do so, specify `-DUSE_BUNDLED_ALL=on` when runnin
 (explained later). These dependencies are:
 
 - SeqAn, version 2.4.0
-- GUM, version 0.1.1
-- kseq++, version 0.2.3
-- PairG, version 0.2.0
+- GUM, version 1.2.1
+- kseq++, version 1.0.0
+- PairG, version 0.2.1
 
 PSI build script will skip those dependencies that are already installed on your system.
 Besides, installing each dependency can be individually enabled or disabled by setting
 `-DUSE_BUNDLED_<library>` to `on` or `off` respectively.
 
 ---
+
 **NOTE**
 If the bundled version of SeqAn did not work for any reason, install it manually. Make
 sure that `seqan-2.pc` configuration file has been installed too. On Debian-based

@@ -20,6 +20,7 @@
 
 #include <cinttypes>
 #include <vector>
+#include <type_traits>
 
 #include <gum/basic_types.hpp>
 #include <gum/iterators.hpp>
@@ -45,6 +46,8 @@ namespace psi {
 
     // Range specialisation tags
     struct RangeDynamic { };
+    struct RangeBuffered { };
+    struct RangeFullyBuffered { };
     struct RangeCompressed { };
 
     // Group meta-function
@@ -55,6 +58,16 @@ namespace psi {
 
     template< >
     struct Group< RangeDynamic > {
+      typedef RangeGroup type;
+    };
+
+    template< >
+    struct Group< RangeBuffered > {
+      typedef RangeGroup type;
+    };
+
+    template< >
+    struct Group< RangeFullyBuffered > {
       typedef RangeGroup type;
     };
 
@@ -87,9 +100,13 @@ namespace psi {
       return first != end && *first <= key;
     }
 
+    /**
+     *  NOTE: The input distance indices are passed by non-const references, since
+     *        containers in const Buffered specialisations cannot be iterated.
+     */
     template< typename TEntries, typename TRowmap >
     inline typename TRowmap::value_type
-    nnz( TEntries const& entries, TRowmap const& rowmap, RangeGroup /*tag*/ )
+    nnz( TEntries& entries, TRowmap& rowmap, RangeGroup /*tag*/ )
     {
       typedef typename TEntries::value_type ordinal_type;
       typedef typename TRowmap::value_type size_type;
@@ -242,25 +259,73 @@ namespace psi {
   using RangeDynamicCRSMatrix = CRSMatrix< crs_matrix::RangeDynamic, TArgs... >;
 
   template< typename ...TArgs >
+  using RangeBufferedCRSMatrix = CRSMatrix< crs_matrix::RangeBuffered, TArgs... >;
+
+  template< typename ...TArgs >
+  using RangeFullyBufferedCRSMatrix = CRSMatrix< crs_matrix::RangeFullyBuffered, TArgs... >;
+
+  template< typename ...TArgs >
   using RangeCompressedCRSMatrix = CRSMatrix< crs_matrix::RangeCompressed, TArgs... >;
 
-  template< typename TNativeCRSMatrix >
-  struct make_buffered;
+  template< typename TNativeCRSMatrix, typename TGroup >
+  struct _make_buffered_impl;
 
   template< typename TSpec, typename ...TArgs >
-  struct make_buffered< CRSMatrix< TSpec, TArgs... > > {
+  struct _make_buffered_impl< CRSMatrix< TSpec, TArgs... >, crs_matrix::RangeGroup > {
+  private:
+    typedef typename crs_matrix::Group< CRSMatrix< TSpec, TArgs... > >::type group_type;
+    static_assert( std::is_same< group_type, crs_matrix::RangeGroup >::value, "should be in Range group" );
+  public:
+    typedef CRSMatrix< crs_matrix::RangeBuffered, TArgs... > type;
+  };
+
+  template< typename TSpec, typename ...TArgs >
+  struct _make_buffered_impl< CRSMatrix< TSpec, TArgs... >, crs_matrix::BasicGroup > {
+  private:
+    typedef typename crs_matrix::Group< CRSMatrix< TSpec, TArgs... > >::type group_type;
+    static_assert( std::is_same< group_type, crs_matrix::BasicGroup >::value, "should be in Basic group" );
+  public:
     typedef CRSMatrix< crs_matrix::Buffered, TArgs... > type;
+  };
+
+  template< typename TNativeCRSMatrix >
+  struct make_buffered {
+  private:
+    typedef typename crs_matrix::Group< TNativeCRSMatrix >::type group_type;
+  public:
+    typedef typename _make_buffered_impl< TNativeCRSMatrix, group_type >::type type;
   };
 
   template< typename TNativeCRSMatrix >
   using make_buffered_t = typename make_buffered< TNativeCRSMatrix >::type;
 
-  template< typename TNativeCRSMatrix >
-  struct make_fully_buffered;
+  template< typename TNativeCRSMatrix, typename TGroup >
+  struct _make_fully_buffered_impl;
 
   template< typename TSpec, typename ...TArgs >
-  struct make_fully_buffered< CRSMatrix< TSpec, TArgs... > > {
+  struct _make_fully_buffered_impl< CRSMatrix< TSpec, TArgs... >, crs_matrix::RangeGroup > {
+  private:
+    typedef typename crs_matrix::Group< CRSMatrix< TSpec, TArgs... > >::type group_type;
+    static_assert( std::is_same< group_type, crs_matrix::RangeGroup >::value, "should be in Range group" );
+  public:
+    typedef CRSMatrix< crs_matrix::RangeFullyBuffered, TArgs... > type;
+  };
+
+  template< typename TSpec, typename ...TArgs >
+  struct _make_fully_buffered_impl< CRSMatrix< TSpec, TArgs... >, crs_matrix::BasicGroup > {
+  private:
+    typedef typename crs_matrix::Group< CRSMatrix< TSpec, TArgs... > >::type group_type;
+    static_assert( std::is_same< group_type, crs_matrix::BasicGroup >::value, "should be in Basic group" );
+  public:
     typedef CRSMatrix< crs_matrix::FullyBuffered, TArgs... > type;
+  };
+
+  template< typename TNativeCRSMatrix >
+  struct make_fully_buffered {
+  private:
+    typedef typename crs_matrix::Group< TNativeCRSMatrix >::type group_type;
+  public:
+    typedef typename _make_fully_buffered_impl< TNativeCRSMatrix, group_type >::type type;
   };
 
   template< typename TNativeCRSMatrix >
@@ -272,6 +337,16 @@ namespace psi {
   template< typename ...TArgs >
   struct make_range< CRSMatrix< crs_matrix::Dynamic, TArgs... > > {
     typedef CRSMatrix< crs_matrix::RangeDynamic, TArgs... > type;
+  };
+
+  template< typename ...TArgs >
+  struct make_range< CRSMatrix< crs_matrix::Buffered, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::RangeBuffered, TArgs... > type;
+  };
+
+  template< typename ...TArgs >
+  struct make_range< CRSMatrix< crs_matrix::FullyBuffered, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::RangeFullyBuffered, TArgs... > type;
   };
 
   template< typename ...TArgs >
@@ -288,6 +363,16 @@ namespace psi {
   template< typename ...TArgs >
   struct make_basic< CRSMatrix< crs_matrix::RangeDynamic, TArgs... > > {
     typedef CRSMatrix< crs_matrix::Dynamic, TArgs... > type;
+  };
+
+  template< typename ...TArgs >
+  struct make_basic< CRSMatrix< crs_matrix::RangeBuffered, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::Buffered, TArgs... > type;
+  };
+
+  template< typename ...TArgs >
+  struct make_basic< CRSMatrix< crs_matrix::RangeFullyBuffered, TArgs... > > {
+    typedef CRSMatrix< crs_matrix::FullyBuffered, TArgs... > type;
   };
 
   template< typename ...TArgs >
@@ -512,7 +597,7 @@ namespace psi {
 
   template< typename TOrdinal, typename TSize >
   struct CRSMatrixTraits< crs_matrix::Compressed, bool, TOrdinal, TSize > {
-    typedef sdsl::coder::elias_delta coder_type;
+    typedef sdsl::coder::elias_delta<> coder_type;
     typedef sdsl::enc_vector< coder_type > entries_type;
     typedef sdsl::enc_vector< coder_type > rowmap_type;
     typedef crs_matrix::Dynamic mutable_spec_type;
@@ -650,8 +735,144 @@ namespace psi {
   };
 
   template< typename TOrdinal, typename TSize >
+  struct CRSMatrixTraits< crs_matrix::RangeBuffered, bool, TOrdinal, TSize > {
+    typedef sdsl::int_vector_buffer< gum::widthof< TOrdinal >::value > entries_type;
+    typedef std::vector< TSize > rowmap_type;
+    typedef crs_matrix::RangeBuffered mutable_spec_type;
+
+    static inline void
+    init( entries_type& entries )
+    {
+      entries = entries_type( get_tmpfile(), std::ios::out );
+    }
+
+    static inline void
+    init( rowmap_type& )
+    { /* NOOP */ }
+
+    static inline void
+    swap( entries_type& entries, entries_type& other )
+    {
+      entries.swap( other );
+    }
+
+    static inline void
+    swap( rowmap_type& rowmap, rowmap_type& other )
+    {
+      std::swap( rowmap, other );
+    }
+
+    template< typename TIter >
+    static inline bool  /* value_type */
+    binary_search( TIter begin, TIter end, TOrdinal key )
+    {
+      return crs_matrix::binary_search( begin, end, key, crs_matrix::RangeGroup{} );
+    }
+
+    static inline TSize
+    nnz( entries_type& entries, rowmap_type& rowmap )
+    {
+      return crs_matrix::nnz( entries, rowmap, crs_matrix::RangeGroup{} );
+    }
+
+    /**
+     *  NOTE: This function assumes that `rowmap` is an already allocated array of
+     *        length `numRows`+1 with `rowmap[0] == 0`.
+     */
+    template< typename TExtEntries, typename TExtRowmap >
+    static inline void
+    assign( entries_type& entries, rowmap_type& rowmap, TExtEntries& e_entries,
+            TExtRowmap& e_rowmap, crs_matrix::BasicGroup )
+    {
+      crs_matrix::append( entries, rowmap, e_entries.begin(), e_rowmap.begin(), e_rowmap.end(),
+                          crs_matrix::RangeGroup{}, crs_matrix::BasicGroup{} );
+    }
+
+    template< typename TExtEntries, typename TExtRowmap >
+    static inline void
+    assign( entries_type& entries, rowmap_type& rowmap, TExtEntries& e_entries,
+            TExtRowmap& e_rowmap, crs_matrix::RangeGroup )
+    {
+      entries = e_entries;
+      rowmap = e_rowmap;
+    }
+
+    template< typename TCrsMatrix >
+    static inline void
+    fill_all_partial( entries_type& entries, rowmap_type& rowmap, TCrsMatrix const& ex,
+                      TOrdinal scol=0, TOrdinal srow=0 )
+    {
+      crs_matrix::fill_all_partial( entries, rowmap, ex, scol, srow, crs_matrix::RangeGroup{} );
+    }
+  };
+
+  template< typename TOrdinal, typename TSize >
+  struct CRSMatrixTraits< crs_matrix::RangeFullyBuffered, bool, TOrdinal, TSize > {
+    typedef sdsl::int_vector_buffer< gum::widthof< TOrdinal >::value > entries_type;
+    typedef sdsl::int_vector_buffer< gum::widthof< TSize >::value > rowmap_type;
+    typedef crs_matrix::RangeFullyBuffered mutable_spec_type;
+
+    template< typename T >
+    static inline void
+    init( T& a )
+    {
+      a = T( get_tmpfile(), std::ios::out );
+    }
+
+    template< typename T >
+    static inline void
+    swap( T& a, T& b )
+    {
+      a.swap( b );
+    }
+
+    template< typename TIter >
+    static inline bool  /* value_type */
+    binary_search( TIter begin, TIter end, TOrdinal key )
+    {
+      return crs_matrix::binary_search( begin, end, key, crs_matrix::RangeGroup{} );
+    }
+
+    static inline TSize
+    nnz( entries_type& entries, rowmap_type& rowmap )
+    {
+      return crs_matrix::nnz( entries, rowmap, crs_matrix::RangeGroup{} );
+    }
+
+    /**
+     *  NOTE: This function assumes that `rowmap` is an already allocated array of
+     *        length `numRows`+1 with `rowmap[0] == 0`.
+     */
+    template< typename TExtEntries, typename TExtRowmap >
+    static inline void
+    assign( entries_type& entries, rowmap_type& rowmap, TExtEntries& e_entries,
+            TExtRowmap& e_rowmap, crs_matrix::BasicGroup )
+    {
+      crs_matrix::append( entries, rowmap, e_entries.begin(), e_rowmap.begin(), e_rowmap.end(),
+                          crs_matrix::RangeGroup{}, crs_matrix::BasicGroup{} );
+    }
+
+    template< typename TExtEntries, typename TExtRowmap >
+    static inline void
+    assign( entries_type& entries, rowmap_type& rowmap, TExtEntries& e_entries,
+            TExtRowmap& e_rowmap, crs_matrix::RangeGroup )
+    {
+      entries = e_entries;
+      rowmap = e_rowmap;
+    }
+
+    template< typename TCrsMatrix >
+    static inline void
+    fill_all_partial( entries_type& entries, rowmap_type& rowmap, TCrsMatrix const& ex,
+                      TOrdinal scol=0, TOrdinal srow=0 )
+    {
+      crs_matrix::fill_all_partial( entries, rowmap, ex, scol, srow, crs_matrix::RangeGroup{} );
+    }
+  };
+
+  template< typename TOrdinal, typename TSize >
   struct CRSMatrixTraits< crs_matrix::RangeCompressed, bool, TOrdinal, TSize > {
-    typedef sdsl::coder::elias_delta coder_type;
+    typedef sdsl::coder::elias_delta<> coder_type;
     typedef sdsl::enc_vector< coder_type > entries_type;
     typedef sdsl::enc_vector< coder_type > rowmap_type;
     typedef crs_matrix::RangeDynamic mutable_spec_type;
@@ -846,6 +1067,15 @@ namespace psi {
       return traits_type::nnz( this->entries, this->rowmap );
     }
 
+    /**
+     *  NOTE: Buffered containers used in Buffered specialisations need to be non-const.
+     */
+    inline size_type
+    nnz( )
+    {
+      return traits_type::nnz( this->entries, this->rowmap );
+    }
+
     inline ordinal_type
     entry( size_type i ) const
     {
@@ -966,6 +1196,7 @@ namespace psi {
             tnnz += mat.nnz();
           };
       callback( partial_ctor );
+      this->shrink_to_fit();
       return tnnz;
     }
 
@@ -1477,6 +1708,242 @@ namespace psi {
 
     inline size_type
     nnz() const
+    {
+      return this->m_nnz;
+    }
+
+    inline void
+    serialize( std::ostream& out ) const
+    {
+      base_type::serialize( out );
+      psi::serialize( out, static_cast< uint64_t >( this->m_nnz ) );
+    }
+
+    inline void
+    load( std::istream& in )
+    {
+      base_type::load( in );
+      uint64_t dnnz;
+      psi::deserialize( in, dnnz );
+      this->m_nnz = dnnz;
+    }
+  private:
+    /* === DATA MEMBER === */
+    size_type m_nnz;
+  };
+
+  template< typename TOrdinal, typename TSize >
+  class CRSMatrix< crs_matrix::RangeBuffered, bool, TOrdinal, TSize >
+    : public CRSMatrixBase< crs_matrix::RangeBuffered, bool, TOrdinal, TSize > {
+  public:
+    /* === TYPE MEMBERS === */
+    typedef CRSMatrixBase< crs_matrix::RangeBuffered, bool, TOrdinal, TSize > base_type;
+    typedef typename base_type::spec_type spec_type;
+    typedef typename base_type::value_type value_type;
+    typedef typename base_type::ordinal_type ordinal_type;
+    typedef typename base_type::size_type size_type;
+    typedef typename base_type::traits_type traits_type;
+    typedef typename base_type::entries_type entries_type;
+    typedef typename base_type::rowmap_type rowmap_type;
+    typedef typename base_type::mutable_spec_type mutable_spec_type;
+    /* === FRIENDSHIP === */
+    template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
+    friend class CRSMatrix;
+    /* === LIFECYCLE === */
+    CRSMatrix( ) : base_type( ), m_nnz( 0 ) { }
+
+    CRSMatrix( ordinal_type ncols, entries_type&& e_entries, rowmap_type e_rowmap,
+               size_type e_nnz=0 )
+      : base_type( ncols ), m_nnz( e_nnz )
+    {
+      this->entries = std::move( e_entries );
+      this->rowmap = std::move( e_rowmap );
+      if ( this->m_nnz == 0 ) this->m_nnz = base_type::nnz();
+      assert( this->entries.size() == 0 || this->m_nnz != 0 );
+    }
+
+    /**
+     *  @brief Construct by an external `KokkosSparse::CrsMatrix`-like matrix.
+     */
+    template< typename TCrsMatrix >
+    CRSMatrix( TCrsMatrix const& ext )
+      : base_type( ext.numCols() ), m_nnz( ext.nnz() )
+    {
+      base_type::build( ext );
+    }
+
+    /**
+     *  @brief Construct by a `KokkosSparse::CrsMatrix`-like matrix part by part.
+     *
+     *  @param[in] nrows
+     *  @param[in] ncols
+     *  @param[in] callback
+     *  @param[in] nnz_est An estimation of the number of non-zero values for reserving memory.
+     */
+    template< typename TCallback >
+    CRSMatrix( ordinal_type nrows, ordinal_type ncols, TCallback callback,
+               size_type nnz_est=0 )
+      : base_type( ncols )
+    {
+      this->m_nnz = base_type::build( nrows, ncols, callback, nnz_est );
+    }
+
+    /* copy constructor */
+    CRSMatrix( CRSMatrix const& other ) = delete;
+
+    /* move constructor */
+    CRSMatrix( CRSMatrix&& other ) noexcept
+      : CRSMatrix( )
+    {
+      this->entries = std::move( other.entries );
+      this->rowmap = std::move( other.rowmap );
+      this->num_cols = other.num_cols;
+      this->m_nnz = other.m_nnz;
+    }
+    /* === OPERATORS === */
+    /* copy assignment operator */
+    inline CRSMatrix&
+    operator=( CRSMatrix const& other ) = delete;
+
+    /* move assignment operator */
+    inline CRSMatrix&
+    operator=( CRSMatrix&& other ) noexcept
+    {
+      this->entries = std::move( other.entries );
+      this->rowmap = std::move( other.rowmap );
+      this->num_cols = other.num_cols;
+      this->m_nnz = other.m_nnz;
+      return *this;
+    }
+    /* === METHODS === */
+    template< typename TCrsMatrix >
+    inline void
+    assign( TCrsMatrix&& matrix )
+    {
+      base_type::assign( matrix );
+      this->m_nnz = matrix.nnz();
+    }
+
+    inline size_type
+    nnz( )
+    {
+      return this->m_nnz;
+    }
+
+    inline void
+    serialize( std::ostream& out ) const
+    {
+      base_type::serialize( out );
+      psi::serialize( out, static_cast< uint64_t >( this->m_nnz ) );
+    }
+
+    inline void
+    load( std::istream& in )
+    {
+      base_type::load( in );
+      uint64_t dnnz;
+      psi::deserialize( in, dnnz );
+      this->m_nnz = dnnz;
+    }
+  private:
+    /* === DATA MEMBER === */
+    size_type m_nnz;
+  };
+
+  template< typename TOrdinal, typename TSize >
+  class CRSMatrix< crs_matrix::RangeFullyBuffered, bool, TOrdinal, TSize >
+    : public CRSMatrixBase< crs_matrix::RangeFullyBuffered, bool, TOrdinal, TSize > {
+  public:
+    /* === TYPE MEMBERS === */
+    typedef CRSMatrixBase< crs_matrix::RangeFullyBuffered, bool, TOrdinal, TSize > base_type;
+    typedef typename base_type::spec_type spec_type;
+    typedef typename base_type::value_type value_type;
+    typedef typename base_type::ordinal_type ordinal_type;
+    typedef typename base_type::size_type size_type;
+    typedef typename base_type::traits_type traits_type;
+    typedef typename base_type::entries_type entries_type;
+    typedef typename base_type::rowmap_type rowmap_type;
+    typedef typename base_type::mutable_spec_type mutable_spec_type;
+    /* === FRIENDSHIP === */
+    template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
+    friend class CRSMatrix;
+    /* === LIFECYCLE === */
+    CRSMatrix( ) : base_type( ), m_nnz( 0 ) { }
+
+    CRSMatrix( ordinal_type ncols, entries_type&& e_entries, rowmap_type&& e_rowmap,
+               size_type e_nnz=0 )
+      : base_type( ncols ), m_nnz( e_nnz )
+    {
+      this->entries = std::move( e_entries );
+      this->rowmap = std::move( e_rowmap );
+      if ( this->m_nnz == 0 ) this->m_nnz = base_type::nnz();
+      assert( this->entries.size() == 0 || this->m_nnz != 0 );
+    }
+
+    /**
+     *  @brief Construct by an external `KokkosSparse::CrsMatrix`-like matrix.
+     */
+    template< typename TCrsMatrix >
+    CRSMatrix( TCrsMatrix const& ext )
+      : base_type( ext.numCols() ), m_nnz( ext.nnz() )
+    {
+      base_type::build( ext );
+    }
+
+    /**
+     *  @brief Construct by a `KokkosSparse::CrsMatrix`-like matrix part by part.
+     *
+     *  @param[in] nrows
+     *  @param[in] ncols
+     *  @param[in] callback
+     *  @param[in] nnz_est An estimation of the number of non-zero values for reserving memory.
+     */
+    template< typename TCallback >
+    CRSMatrix( ordinal_type nrows, ordinal_type ncols, TCallback callback,
+               size_type nnz_est=0 )
+      : base_type( ncols )
+    {
+      this->m_nnz = base_type::build( nrows, ncols, callback, nnz_est );
+    }
+
+    /* copy constructor */
+    CRSMatrix( CRSMatrix const& other ) = delete;
+
+    /* move constructor */
+    CRSMatrix( CRSMatrix&& other ) noexcept
+      : CRSMatrix( )
+    {
+      this->entries = std::move( other.entries );
+      this->rowmap = std::move( other.rowmap );
+      this->num_cols = other.num_cols;
+      this->m_nnz = other.m_nnz;
+    }
+    /* === OPERATORS === */
+    /* copy assignment operator */
+    inline CRSMatrix&
+    operator=( CRSMatrix const& other ) = delete;
+
+    /* move assignment operator */
+    inline CRSMatrix&
+    operator=( CRSMatrix&& other ) noexcept
+    {
+      this->entries = std::move( other.entries );
+      this->rowmap = std::move( other.rowmap );
+      this->num_cols = other.num_cols;
+      this->m_nnz = other.m_nnz;
+      return *this;
+    }
+    /* === METHODS === */
+    template< typename TCrsMatrix >
+    inline void
+    assign( TCrsMatrix&& matrix )
+    {
+      base_type::assign( matrix );
+      this->m_nnz = matrix.nnz();
+    }
+
+    inline size_type
+    nnz( )
     {
       return this->m_nnz;
     }

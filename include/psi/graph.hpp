@@ -26,9 +26,8 @@
 #include <vector>
 
 #include <gum/graph.hpp>
-#include <vg/vg.pb.h>
-#include <vg/io/stream.hpp>
 
+#include "basic_types.hpp"
 #include "utils.hpp"
 
 
@@ -53,23 +52,23 @@ namespace psi {
       return max;
     }
 
-    template< class TGraph, typename TNodeIter, typename TEdgeIter,
+    template< class TGraph, typename TNodeIter, typename TEdgeIter, typename TVGGraph,
               typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
-                                                          decltype( vg::Node().id() ) > >
+                                                          decltype( TVGGraph().node(0).id() ) > >
     inline void
     induced_graph( TGraph const& graph,
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
-                   vg::Graph* induced, TCoordinate&& coord={} )
+                   TVGGraph* induced, TCoordinate&& coord={} )
     {
       for ( ; nbegin != nend; ++nbegin ) {
-        vg::Node* new_node = induced->add_node();
+        auto new_node = induced->add_node();
         new_node->set_id( coord( *nbegin ) );
         new_node->set_sequence( graph.node_sequence( *nbegin ) );
       }
 
       for ( ; ebegin != eend; ++ebegin ) {
-        vg::Edge* new_edge = induced->add_edge();
+        auto new_edge = induced->add_edge();
         new_edge->set_from( coord( graph.from_id( *ebegin ) ) );
         new_edge->set_to( coord( graph.to_id( *ebegin ) ) );
         new_edge->set_from_start( graph.is_from_start( *ebegin ) );
@@ -91,14 +90,14 @@ namespace psi {
      *  :TODO:Sat Apr 20 12:29:\@cartoonist: add ability of including path in the
      *  `vg::Graph`.
      */
-    template< class TGraph, typename TNodeIter, typename TEdgeIter,
+    template< class TGraph, typename TNodeIter, typename TEdgeIter, typename TVGGraph,
               typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
-                                                          decltype( vg::Node().id() ) > >
+                                                          decltype( TVGGraph().node(0).id() ) > >
     inline void
     induced_graph( TGraph const& graph,
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
-                   std::function< void( vg::Graph& ) > callback,
+                   std::function< void( TVGGraph& ) > callback,
                    std::ptrdiff_t chunk_size, TCoordinate&& coord={} )
     {
       assert( chunk_size < PTRDIFF_MAX );
@@ -111,7 +110,7 @@ namespace psi {
         nodes_r = nodes_l + std::min( chunk_size, nend - nodes_l );
         auto maxid = *( nodes_r - 1 );
         while ( edges_r != eend && graph.from_id( *edges_r ) <= maxid ) ++edges_r;
-        vg::Graph g;
+        TVGGraph g;
         induced_graph( graph, nodes_l, nodes_r, edges_l, edges_r, &g, coord );
         callback( g );
         nodes_l = nodes_r;

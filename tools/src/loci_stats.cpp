@@ -26,8 +26,11 @@
 #include <psi/seed_finder.hpp>
 #include <psi/utils.hpp>
 
-using namespace psi;
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
 
+
+using namespace psi;
 
 /* ====== Constants ====== */
 constexpr const char* const LONG_DESC = "Report statistics about starting loci";
@@ -107,8 +110,19 @@ main( int argc, char* argv[] )
     unsigned int num = res["number"].as< unsigned int >();
     std::string prefix = res["prefix"].as< std::string >();
 
+    auto parse_vg = []( std::istream& in ) -> vg::Graph {
+      vg::Graph merged;
+      std::function< void( vg::Graph& ) > handle_chunks =
+        [&]( vg::Graph& other ) {
+          gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+        };
+      stream::for_each( in, handle_chunks );
+      return merged;
+    };
+
     gum::SeqGraph< gum::Succinct > graph;
-    gum::util::load( graph, graph_path, true );
+    gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+    gum::util::load( graph, graph_path, loader, true );
     std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
     std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
               << std::endl;

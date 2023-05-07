@@ -72,7 +72,7 @@ namespace psi {
 
   template< typename TGraph >
     struct PathTraits< TGraph, Compact > {
-      typedef sdsl::enc_vector< sdsl::coder::elias_delta > TNodeSequence;
+      typedef sdsl::enc_vector< sdsl::coder::elias_delta<> > TNodeSequence;
       typedef TNodeSequence::int_vector_type TNodeVector;
     };
 

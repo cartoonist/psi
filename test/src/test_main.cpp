@@ -18,6 +18,8 @@
  *  See LICENSE file for more information.
  */
 
+#include<Kokkos_Core.hpp>
+
 #define CATCH_CONFIG_MAIN
 #include "catch2/catch.hpp"
 
@@ -27,12 +29,21 @@ class MyTestEventListener : public Catch::TestEventListenerBase {
 public:
     using Catch::TestEventListenerBase::TestEventListenerBase;
 
-    void testRunStarting( Catch::TestRunInfo const& ) override {
+    void set_rnd_seed() {
       auto seed = Catch::rngSeed();
       if ( seed != 0 ) {
         std::cout << "Setting random generator seed to " << seed << "..." << std::endl;
         rnd::set_seed( seed );
       }
+    }
+
+    void testRunStarting( Catch::TestRunInfo const& ) override {
+      this->set_rnd_seed();
+      Kokkos::initialize();
+    }
+
+    void testRunEnded( Catch::TestRunStats const& testRunStats ) override {
+      Kokkos::finalize();
     }
 };
 

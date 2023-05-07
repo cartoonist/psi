@@ -38,6 +38,7 @@
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 #include <sdsl/int_vector_buffer.hpp>
+#include <gum/iterators.hpp>
 
 #include "base.hpp"
 
@@ -820,11 +821,33 @@ namespace psi {
    *
    *  @overload for `sdsl::enc_vector`.
    */
-  template< typename TCoder, typename TContainer, uint32_t TDens = 128, uint8_t TWidth=0 >
+  template< typename TCoder,
+            typename TContainer,
+            typename std::enable_if_t< std::is_unsigned< typename TContainer::value_type >::value >,
+            uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
     assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       sdsl::util::assign( a, b );
+    }
+
+  template< typename TCoder,
+            typename TContainer,
+            typename=std::enable_if_t< std::is_signed< typename TContainer::value_type >::value >,
+            uint32_t TDens = 128, uint8_t TWidth=0 >
+      inline void
+    assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
+    {
+      typedef TContainer container_type;
+      typedef typename TContainer::value_type value_type;
+      typedef std::make_unsigned_t< value_type > unsigned_value_type;
+      typedef gum::RandomAccessProxyContainer< container_type, unsigned_value_type > proxy_type;
+
+      proxy_type bproxy( &b,
+                         []( value_type x ) -> unsigned_value_type {
+                           return ( unsigned_value_type )(x);
+                         } );
+      sdsl::util::assign( a, bproxy );
     }
 
 
@@ -1409,16 +1432,20 @@ namespace psi {
 
     template< typename TInteger, typename TGenerator >
     inline std::string
-    random_string( TInteger length, TGenerator&& rgen )
+    random_string( TInteger length, TGenerator&& rgen,
+                   const char* charset=nullptr, std::size_t charset_len=0 )
     {
-      auto randchar = [&rgen]() -> char
+      const char alphanum_charset[] = "0123456789"
+                                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                      "abcdefghijklmnopqrstuvwxyz";
+      if ( charset == nullptr ) {
+        charset = alphanum_charset;
+        charset_len = sizeof( alphanum_charset ) - 1 /* null-terminated */;
+      }
+
+      auto randchar = [&rgen, &charset, &charset_len]() -> char
       {
-        const char charset[] =
-            "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz";
-        const std::size_t max_index = ( sizeof( charset ) - 1 );
-        return charset[ random_index( max_index, rgen ) ];
+        return charset[ random_index( charset_len, rgen ) ];
       };
       std::string str( length, 0 );
       std::generate_n( str.begin(), length, randchar );
@@ -1427,9 +1454,10 @@ namespace psi {
 
     template< typename TInteger >
     inline std::string
-    random_string( TInteger length )
+    random_string( TInteger length,
+                   const char* charset=nullptr, std::size_t charset_len=0 )
     {
-      return random_string( length, gen );
+      return random_string( length, gen, charset, charset_len );
     }
   }  /* --- end of namespace random --- */
 }  /* --- end of namespace psi --- */

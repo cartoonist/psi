@@ -29,11 +29,13 @@ target_compile_options(ggsim PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(ggsim
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 target_link_libraries(ggsim
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS ggsim DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -44,11 +46,13 @@ target_compile_options(dindexctl PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(dindexctl
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 target_link_libraries(dindexctl
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS dindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -59,11 +63,13 @@ target_compile_options(pindexctl PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(pindexctl
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 target_link_libraries(pindexctl
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS pindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -74,11 +80,13 @@ target_compile_options(loci_stats PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(loci_stats
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 target_link_libraries(loci_stats
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS loci_stats DESTINATION ${CMAKE_INSTALL_BINDIR})
 
@@ -89,10 +97,12 @@ target_compile_options(alice PRIVATE -g -Wall -Wpedantic -Werror)
 target_include_directories(alice
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 target_link_libraries(alice
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only)
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS alice DESTINATION ${CMAKE_INSTALL_BINDIR})

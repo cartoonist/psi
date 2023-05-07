@@ -24,10 +24,23 @@
 #include <gum/seqgraph.hpp>
 #include <gum/io_utils.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" )
 {
@@ -39,7 +52,7 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, vg_loader );
     Dna5QPathIndex< graph_type, TIndexSpec > pindex( graph );
 
     unsigned int paths_num = 2;
@@ -88,7 +101,7 @@ SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
 
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, vg_loader );
 
     Dna5QPathIndex< graph_type, TIndexSpec > pindex( graph );
     Path< graph_type > path( &graph, { 205, 207, 209, 210 } );
@@ -133,7 +146,7 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath );
+    gum::util::extend( graph, vgpath, vg_loader );
 
     WHEN( "A set of paths are added to a PathIndex with non-zero context in lazy mode" )
     {
