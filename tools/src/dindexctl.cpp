@@ -27,6 +27,9 @@
 #include <psi/crs_matrix.hpp>
 #include <psi/seed_finder.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 
 using namespace psi;
 
@@ -301,7 +304,19 @@ compress( cxxopts::ParseResult& res, crs_matrix::BasicGroup /* tag */ )
   auto index_path = psi::SeedFinder<>::get_distance_index_path( pindex_prefix, min_size, max_size );
 
   std::cout << "Loading input graph..." << std::endl;
-  gum::util::load( graph, graph_path, true );
+
+  auto parse_vg = []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  };
+
+  gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+  gum::util::load( graph, graph_path, loader, true );
   std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
   std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
             << std::endl;

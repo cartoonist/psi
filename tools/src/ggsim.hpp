@@ -27,7 +27,6 @@
 #include <unordered_map>
 
 #include <cxxopts.hpp>
-#include <vg/io/stream.hpp>
 #include <kseq++/kseq++.hpp>
 #include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
@@ -35,6 +34,9 @@
 #include <psi/graph_iter.hpp>
 #include <psi/pathindex.hpp>
 #include <psi/utils.hpp>
+
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
 
 
 using namespace psi;
@@ -346,8 +348,8 @@ private:
   inline void
   write()
   {
-    vg::io::write< value_type >( this->ost, this->buffer.size(),
-                   [this]( size_type i ) -> value_type& { return this->buffer[i]; } );
+    std::function< value_type&( uint64_t ) > access = [this]( size_type i ) -> value_type& { return this->buffer[i]; };
+    stream::write< value_type& >( this->ost, this->buffer.size(), access );
     this->buffer.clear();
   }
 };
