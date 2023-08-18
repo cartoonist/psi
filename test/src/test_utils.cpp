@@ -817,7 +817,53 @@ SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
   }
 }
 
-SCENARIO( "Generate random integers", "[utils]" )
+SCENARIO( "Generate random real numbers", "[utils][random]" )
+{
+  WHEN( "No range is given" )
+  {
+    int n = 100000;
+
+    THEN( "Generated random real number should be in range [0, 1)" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_real< double >();
+        REQUIRE( ( 0 <= rnum && rnum <= 1 ) );
+      }
+    }
+  }
+
+  WHEN( "A small range is given" )
+  {
+    float low = 10;
+    float high = 100;
+    int n = 100000;
+
+    THEN( "Generated random real numbers should be in the range" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_real< float >( low, high );
+        REQUIRE( ( low <= rnum && rnum <= high ) );
+      }
+    }
+  }
+
+  WHEN( "A large range is given" )
+  {
+    double low = std::numeric_limits< double >::min();
+    double high = std::numeric_limits< double >::max();
+    int n = 100000;
+
+    THEN( "Generated random real numbers should be in the range" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_real( low, high );
+        REQUIRE( ( low <= rnum && rnum <= high ) );
+      }
+    }
+  }
+}
+
+SCENARIO( "Generate random integers", "[utils][random]" )
 {
   WHEN( "A range is given" )
   {
@@ -849,7 +895,7 @@ SCENARIO( "Generate random integers", "[utils]" )
   }
 }
 
-SCENARIO( "Generate random strings", "[utils]" )
+SCENARIO( "Generate random strings", "[utils][random]" )
 {
   WHEN( "A length is given" )
   {

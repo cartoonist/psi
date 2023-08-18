@@ -1396,13 +1396,29 @@ namespace psi {
     thread_local static std::random_device rd;
     thread_local static std::mt19937 gen( rd() );
 
+    template< typename TFloat, typename TGenerator >
+    inline TFloat
+    random_real( TFloat low, TFloat high, TGenerator&& rgen )
+    {
+      assert( low < high );  // half-open range: [low, high) imposed by std::uniform_real_distribution<>
+      std::uniform_real_distribution< TFloat > dis( low, high );
+      return dis( rgen );
+    }
+
+    template< typename TFloat >
+    inline TFloat
+    random_real( TFloat low=0, TFloat high=1 )
+    {
+      return random_real( low, high, gen );
+    }
+
     template< typename TInteger, typename TGenerator >
     inline TInteger
     random_integer( TInteger low,
                     TInteger high,
                     TGenerator&& rgen )
     {
-      assert( low <= high );
+      assert( low <= high );  // closed range: [low, high] imposed by std::uniform_int_distribution<>
       std::uniform_int_distribution< TInteger > dis( low, high );
       return dis( rgen );
     }
