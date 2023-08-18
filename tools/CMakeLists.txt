@@ -73,7 +73,7 @@ target_link_libraries(pindexctl
 # Install targets
 install(TARGETS pindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-# Defining target 'loci_stats': PSI starting loci inspector
+# Defining target 'loci_stats': PSI starting loci statistics reporting tool
 set(LOCI_STATS_SOURCES "src/loci_stats.cpp")
 add_executable(loci_stats ${LOCI_STATS_SOURCES})
 target_compile_options(loci_stats PRIVATE -g -Wall -Wpedantic -Werror)
@@ -89,6 +89,23 @@ target_link_libraries(loci_stats
   PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS loci_stats DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Defining target 'sloci': Starting loci inspection tool
+set(SLOCI_SOURCES "src/sloci.cpp")
+add_executable(sloci ${SLOCI_SOURCES})
+target_compile_options(sloci PRIVATE -g -Wall -Wpedantic -Werror)
+target_include_directories(sloci
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
+target_link_libraries(sloci
+  PRIVATE psi::psi
+  PRIVATE cxxopts::cxxopts
+  PRIVATE spdlog::spdlog_header_only
+  PRIVATE psi::minivgio)
+# Install targets
+install(TARGETS sloci DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Defining target 'alice': PSI ALignment InspeCtor and analysEr
 set(ALICE_SOURCES "src/alice.cpp")
