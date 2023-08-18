@@ -782,7 +782,8 @@ namespace psi {
         class KokkosHandler {
         public:
           /* === LIFECYCLE === */
-          KokkosHandler( bool fin=true ) : finaliser( fin )
+          KokkosHandler( bool fin=true,
+                         Kokkos::InitializationSettings settings={} ) : finaliser( fin )
           {
             /* Ensure no concurrent dtor is running */
             ReaderLock constructor( KokkosHandler::get_final_lock() );
@@ -791,7 +792,7 @@ namespace psi {
               UniqWriterLock initialiser( KokkosHandler::get_init_lock() );
               if ( initialiser ) {
                 /* Initialise Kokkos */
-                Kokkos::initialize();
+                Kokkos::initialize( settings );
               }
             }
             /* Sync ctors with the initialiser ctor to ensure that the object is ready */
@@ -920,8 +921,10 @@ namespace psi {
             unsigned int len,
             unsigned int gocc_thr = 0,
             unsigned int mxmem = 0,
-            unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), handler( get_kokkos_handling_status() ),
+            unsigned char mismatches = 0,
+            Kokkos::InitializationSettings kokkos_settings = {} )
+          : graph_ptr( &g ), pindex( g, true ),
+          handler( get_kokkos_handling_status(), kokkos_settings ),
           seed_len( len ), seed_mismatches( mismatches ),
           gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           max_mem( ( mxmem != 0 ? mxmem : UINT_MAX ) ),

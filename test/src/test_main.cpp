@@ -39,6 +39,12 @@ public:
 
     void testRunStarting( Catch::TestRunInfo const& ) override {
       this->set_rnd_seed();
+      /*
+      // For debugging
+      Kokkos::InitializationSettings args;
+      args.set_num_threads( 1 );
+      Kokkos::initialize( args );
+      */
       Kokkos::initialize();
     }
 
