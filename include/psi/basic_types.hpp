@@ -19,24 +19,23 @@
 #define PSI_BASIC_TYPES_HPP__
 
 namespace psi {
-  template< typename TId = typename gum::GraphBaseTrait< gum::Dynamic >::id_type,
-            typename TOffset = typename gum::GraphBaseTrait< gum::Dynamic >::offset_type >
-  class Position {
+  template< typename TId, typename TOffset >
+  class PositionBase {
     public:
       /* === TYPE MEMBERS === */
       using id_type = TId;
       using offset_type = TOffset;
       /* === LIFECYCLE === */
-      Position( id_type id=0, offset_type offset=0 )
+      PositionBase( id_type id=0, offset_type offset=0 )
         : m_id( id ), m_offset( offset )
       { }
 
-      Position( const Position& ) = default;
-      Position( Position&& ) = default;
-      ~Position( ) = default;
+      PositionBase( const PositionBase& ) = default;
+      PositionBase( PositionBase&& ) = default;
+      ~PositionBase( ) = default;
       /* === OPERATORS === */
-      Position& operator=( const Position& ) = default;
-      Position& operator=( Position&& ) = default;
+      PositionBase& operator=( const PositionBase& ) = default;
+      PositionBase& operator=( PositionBase&& ) = default;
       /* === ACCESSORS === */
       inline id_type
       node_id( ) const
