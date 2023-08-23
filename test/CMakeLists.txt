@@ -12,10 +12,17 @@ endif()
 # Defining the configure header file
 configure_file(src/test_config.hpp.in ${PROJECT_BINARY_DIR}/test/src/test_config.hpp @ONLY)
 
+# Default compile option
+set(PSI_TESTS_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
+
+if (EASY_PSI_EASY)
+  list(REMOVE_ITEM PSI_TESTS_DEFAULT_CXXOPS -Werror)
+endif(EASY_PSI_EASY)
+
 # Defining target psi-tests
 file(GLOB TEST_SOURCES "src/*.cpp")
 add_executable(psi-tests ${TEST_SOURCES})
-target_compile_options(psi-tests PRIVATE -g -Wall -Wpedantic -Werror)
+target_compile_options(psi-tests PRIVATE ${PSI_TESTS_DEFAULT_CXXOPS})
 target_include_directories(psi-tests
   PRIVATE ${PROJECT_BINARY_DIR}/test/src
   PRIVATE psi::psi
