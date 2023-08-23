@@ -41,7 +41,6 @@
 #include "logger.hpp"
 
 using namespace klibpp;
-using namespace seqan;
 using namespace psi;
 
 // TODO: Documentation.
