@@ -69,7 +69,8 @@ namespace psi {
       for ( ; nbegin != nend; ++nbegin ) {
         auto new_node = induced->add_node();
         new_node->set_id( coord( *nbegin ) );
-        new_node->set_sequence( graph.node_sequence( *nbegin ) );
+        std::string label = graph.node_sequence( *nbegin );
+        new_node->set_sequence( label );
       }
 
       for ( ; ebegin != eend; ++ebegin ) {
