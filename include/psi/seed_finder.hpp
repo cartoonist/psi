@@ -1606,8 +1606,6 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          typedef gum::RandomAccessProxyContainer< std::vector< Position<> >, Position<> > proxy_container_type;
-
           std::string filepath = SeedFinder::get_sloci_filepath( prefix, seed_len, step_size );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
@@ -1615,13 +1613,13 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::write_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
-          std::function< Position<>( const Position<>& ) > lambda =
-              [this]( const Position<>& pos ) {
-                Position<> p = pos;
-                p.set_node_id( this->graph_ptr->coordinate_id( p.node_id() ) );
-                return p;
-              };
-          proxy_container_type sloci( &this->starting_loci, lambda );
+          auto lambda =
+            [this]( const Position<>& pos ) -> Position<> {
+              Position<> p = pos;
+              p.set_node_id( this->graph_ptr->coordinate_id( p.node_id() ) );
+              return p;
+            };
+          gum::RandomAccessProxyContainer sloci( &this->starting_loci, lambda );
           SeedFinder::serialize_starts( ofs, sloci );
           return true;
         }

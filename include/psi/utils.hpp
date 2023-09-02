@@ -839,14 +839,14 @@ namespace psi {
     assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       typedef TContainer container_type;
-      typedef typename TContainer::value_type value_type;
+      typedef typename container_type::const_reference const_reference;
+      typedef typename container_type::value_type value_type;
       typedef std::make_unsigned_t< value_type > unsigned_value_type;
-      typedef gum::RandomAccessProxyContainer< container_type, unsigned_value_type > proxy_type;
 
-      proxy_type bproxy( &b,
-                         []( value_type x ) -> unsigned_value_type {
-                           return ( unsigned_value_type )(x);
-                         } );
+      gum::RandomAccessProxyContainer bproxy( &b,
+                                              []( const_reference x ) -> unsigned_value_type {
+                                                return static_cast< unsigned_value_type >( x );
+                                              } );
       sdsl::util::assign( a, bproxy );
     }
 
