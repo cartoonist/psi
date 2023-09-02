@@ -203,7 +203,7 @@ namespace fmt {
         fmt::Gam::extension_repr + "', '" +
         fmt::Fastq::extension_repr + "', or '" +
         fmt::Seq::extension_repr + "'";
-    throw cxxopts::OptionParseException( msg );
+    throw cxxopts::exceptions::parsing( msg );
   }
 
   template< typename TParseResult >

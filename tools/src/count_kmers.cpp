@@ -58,11 +58,11 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
 
   if ( !result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph file must be provided" );
+    throw cxxopts::exceptions::parsing( "Graph file must be provided" );
   }
 
   if ( !result.count( "length" ) ) {
-    throw cxxopts::OptionParseException( "k-mer length must be specified" );
+    throw cxxopts::exceptions::parsing( "k-mer length must be specified" );
   }
 
   return result;
@@ -94,7 +94,7 @@ main( int argc, char* argv[] )
 
     cout << count_kmers( vargraph, k, forward ) << endl;
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     cerr << "Error: " << e.what() << endl;
     return EXIT_FAILURE;
   }

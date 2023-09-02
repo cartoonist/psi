@@ -118,7 +118,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       throw EXIT_SUCCESS;
     }
     std::cerr << help_message << "\n" /* extra vertical space */ << std::endl;
-    throw cxxopts::OptionParseException( "No command specified" );
+    throw cxxopts::exceptions::parsing( "No command specified" );
   }
   else if ( result[ "command" ].as< std::string >() == "compress" ) {  // compress
     options.custom_help( "compress [OPTION...]" );
@@ -129,18 +129,18 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     }
 
     if ( result.count( "basic-mode" ) && !result.count( "graph" ) ) {
-      throw cxxopts::OptionParseException( "Graph file must be specified" );
+      throw cxxopts::exceptions::parsing( "Graph file must be specified" );
     }
     if ( result.count( "basic-mode" ) && !readable( result[ "graph" ].as< std::string >() ) ) {
-      throw cxxopts::OptionParseException( "Graph file not found" );
+      throw cxxopts::exceptions::parsing( "Graph file not found" );
     }
 
     if ( !result.count( "min-insert-size" ) ) {
-      throw cxxopts::OptionParseException( "Minimum insert size must be specified" );
+      throw cxxopts::exceptions::parsing( "Minimum insert size must be specified" );
     }
 
     if ( !result.count( "max-insert-size" ) ) {
-      throw cxxopts::OptionParseException( "Maximum insert size must be specified" );
+      throw cxxopts::exceptions::parsing( "Maximum insert size must be specified" );
     }
   }
   else if ( result[ "command" ].as< std::string >() == "merge" ) {  // merge
@@ -152,36 +152,36 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     }
 
     if ( !result.count( "first-range" ) ) {
-      throw cxxopts::OptionParseException( "First distance constraint range must be specified" );
+      throw cxxopts::exceptions::parsing( "First distance constraint range must be specified" );
     }
     else {
       auto range = result[ "first-range" ].as< std::vector< unsigned int > >();
       if ( range.size() != 2 ) {
-        throw cxxopts::OptionParseException( "Invalid range for the first constraint" );
+        throw cxxopts::exceptions::parsing( "Invalid range for the first constraint" );
       }
     }
 
     if ( !result.count( "second-range" ) ) {
-      throw cxxopts::OptionParseException( "Second distance constraint range must be specified" );
+      throw cxxopts::exceptions::parsing( "Second distance constraint range must be specified" );
     }
     else {
       auto range = result[ "second-range" ].as< std::vector< unsigned int > >();
       if ( range.size() != 2 ) {
-        throw cxxopts::OptionParseException( "Invalid range for the second constraint" );
+        throw cxxopts::exceptions::parsing( "Invalid range for the second constraint" );
       }
     }
   }
   else {
-    throw cxxopts::OptionParseException( "Unknown command '" +
+    throw cxxopts::exceptions::parsing( "Unknown command '" +
                                          result[ "command" ].as< std::string >() + "'" );
   }
 
   /* Verifying positional arguments */
   if ( !result.count( "prefix" ) ) {
-    throw cxxopts::OptionParseException( "Index prefix must be specified" );
+    throw cxxopts::exceptions::parsing( "Index prefix must be specified" );
   }
   if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Index file not found" );
+    throw cxxopts::exceptions::parsing( "Index file not found" );
   }
 
   return result;
@@ -503,7 +503,7 @@ main( int argc, char* argv[] )
       assert( false );
     }
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }

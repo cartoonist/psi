@@ -67,25 +67,25 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
 
   if ( ! result.count( "prefix" ) ) {
-    throw cxxopts::OptionParseException( "Index prefix must be specified" );
+    throw cxxopts::exceptions::parsing( "Index prefix must be specified" );
   }
   if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Index file not found" );
+    throw cxxopts::exceptions::parsing( "Index file not found" );
   }
 
   if ( !result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph must be specified" );
   }
   if ( !readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
 
   if ( ! result.count( "seed-length" ) ) {
-    throw cxxopts::OptionParseException( "Seed length must be specified" );
+    throw cxxopts::exceptions::parsing( "Seed length must be specified" );
   }
 
   if ( ! result.count( "step-size" ) ) {
-    throw cxxopts::OptionParseException( "Step size must be specified" );
+    throw cxxopts::exceptions::parsing( "Step size must be specified" );
   }
 
   return result;
@@ -129,7 +129,7 @@ main( int argc, char* argv[] )
     TFinder finder( graph, seedlen );
 
     if ( ! finder.open_starts( prefix, seedlen, stepsize ) )
-      throw cxxopts::OptionException( "Index file seems corrupted" );
+      throw cxxopts::exceptions::exception( "Index file seems corrupted" );
 
     std::cout << "Number of loci: " << finder.get_starting_loci().size() << std::endl;
 
@@ -151,7 +151,7 @@ main( int argc, char* argv[] )
       std::cout << "---------------" << std::endl;
     }
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }

@@ -86,7 +86,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       throw EXIT_SUCCESS;
     }
     std::cerr << help_message << "\n" /* extra vertical space */ << std::endl;
-    throw cxxopts::OptionParseException( "No command specified" );
+    throw cxxopts::exceptions::parsing( "No command specified" );
   }
   else if ( result[ "command" ].as< std::string >() == "convert" ) {  // convert
     options.custom_help( "convert [OPTION...]" );
@@ -100,49 +100,49 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     sum_fargs += ( result.count( "from-proto" ) ? 1 : 0 );
     sum_fargs += ( result.count( "from-native" ) ? 1 : 0 );
     sum_fargs += ( result.count( "from-json" ) ? 1 : 0 );
-    if ( sum_fargs > 1 ) throw cxxopts::OptionParseException( "Only one input format specifier can be used" );
+    if ( sum_fargs > 1 ) throw cxxopts::exceptions::parsing( "Only one input format specifier can be used" );
 
     sum_fargs = 0;
     sum_fargs += ( result.count( "to-proto" ) ? 1 : 0 );
     sum_fargs += ( result.count( "to-native" ) ? 1 : 0 );
     sum_fargs += ( result.count( "to-json" ) ? 1 : 0 );
-    if ( sum_fargs > 1 ) throw cxxopts::OptionParseException( "Only one output format specifier can be used" );
+    if ( sum_fargs > 1 ) throw cxxopts::exceptions::parsing( "Only one output format specifier can be used" );
 
     if ( result.count( "from-proto" ) && result.count( "to-proto" ) ) {
-      throw cxxopts::OptionParseException( "No conversion needed" );
+      throw cxxopts::exceptions::parsing( "No conversion needed" );
     }
 
     if ( result.count( "from-native" ) && result.count( "to-native" ) ) {
-      throw cxxopts::OptionParseException( "No conversion needed" );
+      throw cxxopts::exceptions::parsing( "No conversion needed" );
     }
 
     if ( result.count( "from-json" ) && result.count( "to-json" ) ) {
-      throw cxxopts::OptionParseException( "No conversion needed" );
+      throw cxxopts::exceptions::parsing( "No conversion needed" );
     }
   }
   else {
-    throw cxxopts::OptionParseException( "Unknown command '" +
+    throw cxxopts::exceptions::parsing( "Unknown command '" +
                                          result[ "command" ].as< std::string >() + "'" );
   }
 
   /* Verifying general arguments */
   if ( ! result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph file must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph file must be specified" );
   }
   if ( ! readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
 
   /* Verifying positional arguments */
   if ( !result.count( "index-prefix" ) ) {
-    throw cxxopts::OptionParseException( "No PSI index prefix has been specified" );
+    throw cxxopts::exceptions::parsing( "No PSI index prefix has been specified" );
   }
   if ( !readable( result[ "index-prefix" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "PSI index file not found" );
+    throw cxxopts::exceptions::parsing( "PSI index file not found" );
   }
 
   if ( !result.count( "seed-length" ) ) {
-    throw cxxopts::OptionParseException( "No seed length has been specified" );
+    throw cxxopts::exceptions::parsing( "No seed length has been specified" );
   }
 
   return result;
@@ -310,7 +310,7 @@ main( int argc, char* argv[] )
       assert( false );
     }
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
