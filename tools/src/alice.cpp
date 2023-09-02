@@ -525,7 +525,8 @@ index_reference_paths( TPathSet& pathset, TGraph& graph )
         typedef typename TPathSet::value_type path_type;
         std::cerr << "Fetching reference path " << rank << "..." << std::endl;
         for ( auto n : graph.path( pid ) ) nodes.push_back( n );
-        typename path_type::nodes_type cnodes( nodes );
+        typename path_type::nodes_type cnodes;
+        psi::assign( cnodes, nodes );
         pathset.push_back( path_type( &graph, std::move( cnodes ) ) );
         nodes.clear();
         return true;
