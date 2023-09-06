@@ -113,6 +113,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 
 if(BUILD_PSIKT OR BUILD_PSI_AUX_TOOLS OR BUILD_TESTING)
+  set(Protobuf_USE_STATIC_LIBS ON)
   find_package(Threads REQUIRED)
   find_package(Protobuf REQUIRED)
   # Prepare `psi::minivgio` library

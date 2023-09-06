@@ -30,6 +30,23 @@ libraries to be installed before building:
 
 - Zlib
 - BZip2
+- Protobuf (tested with <= 3.21.12)
+
+On Ubuntu they can be installed by:
+
+``` bash
+$ sudo apt install zlib1g-dev libbz2-dev libprotobuf-dev protobuf-compiler
+```
+
+---
+
+**NOTE**
+There is a bug in Protobuf 3.20.x causing
+[a linking issue](https://github.com/protocolbuffers/protobuf/issues/9947) while
+compiling in debug mode (i.e. when `CMAKE_BUILD_TYPE` matches `Debug`).
+Otherwise, in Release mode, it should be fine.
+
+---
 
 Configuring the source code and/or building auxiliary tools requires:
 
