@@ -116,6 +116,36 @@ namespace psi {
       for ( size_type idx = 0; idx < entries.size(); idx += 2 ) {
         nnz_counter += entries[ idx + 1 ] - entries[ idx ] + 1;
       }
+
+      return nnz_counter;
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    inline typename TRowMapDeviceView::non_const_value_type
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView, RangeGroup /*tag*/ )
+    {
+      typedef Kokkos::View< TArgs... > entries_t;
+      typedef TRowMapDeviceView row_map_t;
+      typedef typename row_map_t::non_const_value_type size_type;
+      typedef typename entries_t::execution_space execution_space;
+      typedef Kokkos::RangePolicy< execution_space > policy_type;
+
+      /* just check if both `Kokkos::View`s are on the same space */
+      static_assert( std::is_same< typename entries_t::memory_space,
+                                   typename row_map_t::memory_space >::value,
+                     "different memory space" );
+
+      auto ent_size = d_entries.extent( 0 );
+      assert( ent_size % 2 == 0 );
+
+      size_type nnz_counter = 0;
+      Kokkos::parallel_reduce(
+          "psi::crs_matrix::nnz_range", policy_type( 0, ent_size / 2 ),
+          KOKKOS_LAMBDA ( const uint64_t ii, size_type& nnz_local ) {
+            nnz_local += d_entries( ii*2 + 1 ) - d_entries( ii*2 ) + 1;
+          },
+          nnz_counter );
+
       return nnz_counter;
     }
 
