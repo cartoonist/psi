@@ -106,18 +106,15 @@ namespace psi {
      */
     template< typename TEntries, typename TRowmap >
     inline typename TRowmap::value_type
-    nnz( TEntries& entries, TRowmap& rowmap, RangeGroup /*tag*/ )
+    nnz( TEntries& entries, TRowmap&, RangeGroup /*tag*/ )
     {
-      typedef typename TEntries::value_type ordinal_type;
       typedef typename TRowmap::value_type size_type;
 
+      assert( entries.size() % 2 == 0 );
+
       size_type nnz_counter = 0;
-      size_type idx = 0;
-      for ( ordinal_type row_i = 1; row_i < rowmap.size(); ++row_i ) {
-        for ( ; idx < rowmap[ row_i ]; idx += 2 ) {
-          assert( idx+1 < rowmap[ row_i ] );
-          nnz_counter += entries[ idx + 1 ] - entries[ idx ] + 1;
-        }
+      for ( size_type idx = 0; idx < entries.size(); idx += 2 ) {
+        nnz_counter += entries[ idx + 1 ] - entries[ idx ] + 1;
       }
       return nnz_counter;
     }
