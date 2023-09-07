@@ -80,6 +80,10 @@ assert_fail( std::string const& expr, std::string const& outfile,
   std::exit( 134 );
 }
 
+#define PSI_MACRO_MIN(x, y) ((x) < (y) ? (x) : (y))
+#define PSI_MACRO_MAX(x, y) ((x) < (y) ? (y) : (x))
+
+
 namespace psi {
   /**
    *  @brief  Check whether a string ends with another string.
