@@ -27,6 +27,7 @@
 #include <sdsl/bit_vectors.hpp>
 #include <sdsl/int_vector_buffer.hpp>
 #include <sdsl/enc_vector.hpp>
+#include <Kokkos_Core.hpp>
 
 #include "utils.hpp"
 
@@ -428,6 +429,30 @@ namespace psi {
   struct CRSMatrixTraits< crs_matrix::Dynamic, bool, TOrdinal, TSize > {
     typedef std::vector< TOrdinal > entries_type;
     typedef std::vector< TSize > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::Dynamic mutable_spec_type;
 
     template< typename TValue >
@@ -442,6 +467,36 @@ namespace psi {
       std::swap( a, b );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type& entries, TDeviceSpace={} )
+    {
+      return entries_view_type< TDeviceSpace >( entries.data(), entries.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const& entries, TDeviceSpace={} )
+    {
+      return const_entries_view_type< TDeviceSpace >( entries.data(),
+                                                      entries.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type& rowmap, TDeviceSpace={} )
+    {
+      return rowmap_view_type< TDeviceSpace >( rowmap.data(), rowmap.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const& rowmap, TDeviceSpace={} )
+    {
+      return const_rowmap_view_type< TDeviceSpace >( rowmap.data(),
+                                                     rowmap.size() );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -453,6 +508,13 @@ namespace psi {
     nnz( entries_type const& entries, rowmap_type const& )
     {
       return entries.size();
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline typename TRowMapDeviceView::non_const_value_type
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView )
+    {
+      return d_entries.extent( 0 );
     }
 
     template< typename TExtEntries, typename TExtRowmap >
@@ -490,6 +552,30 @@ namespace psi {
   struct CRSMatrixTraits< crs_matrix::Buffered, bool, TOrdinal, TSize > {
     typedef sdsl::int_vector_buffer< gum::widthof< TOrdinal >::value > entries_type;
     typedef std::vector< TSize > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::Buffered mutable_spec_type;
 
     static inline void
@@ -514,6 +600,35 @@ namespace psi {
       std::swap( rowmap, other );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for Buffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for Buffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type& rowmap, TDeviceSpace={} )
+    {
+      return rowmap_view_type< TDeviceSpace >( rowmap.data(), rowmap.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const& rowmap, TDeviceSpace={} )
+    {
+      return const_rowmap_view_type< TDeviceSpace >( rowmap.data(),
+                                                     rowmap.size() );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -525,6 +640,13 @@ namespace psi {
     nnz( entries_type const& entries, rowmap_type const& )
     {
       return entries.size();
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline typename TRowMapDeviceView::non_const_value_type
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView )
+    {
+      return d_entries.extent( 0 );
     }
 
     template< typename TExtEntries, typename TExtRowmap >
@@ -562,6 +684,30 @@ namespace psi {
   struct CRSMatrixTraits< crs_matrix::FullyBuffered, bool, TOrdinal, TSize > {
     typedef sdsl::int_vector_buffer< gum::widthof< TOrdinal >::value > entries_type;
     typedef sdsl::int_vector_buffer< gum::widthof< TSize >::value > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::FullyBuffered mutable_spec_type;
 
     template< typename T >
@@ -578,6 +724,34 @@ namespace psi {
       a.swap( b );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for FullyBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for FullyBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for FullyBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for FullyBuffered CRSMatrix" );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -589,6 +763,13 @@ namespace psi {
     nnz( entries_type const& entries, rowmap_type const& )
     {
       return entries.size();
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline typename TRowMapDeviceView::non_const_value_type
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView )
+    {
+      return d_entries.extent( 0 );
     }
 
     template< typename TExtEntries, typename TExtRowmap >
@@ -627,6 +808,30 @@ namespace psi {
     typedef sdsl::coder::elias_delta<> coder_type;
     typedef sdsl::enc_vector< coder_type > entries_type;
     typedef sdsl::enc_vector< coder_type > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::Dynamic mutable_spec_type;
 
     template< typename T >
@@ -641,6 +846,34 @@ namespace psi {
       a.swap( b );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for Compressed CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for Compressed CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for Compressed CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for Compressed CRSMatrix" );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -652,6 +885,13 @@ namespace psi {
     nnz( entries_type const& entries, rowmap_type const& )
     {
       return entries.size();
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline typename TRowMapDeviceView::non_const_value_type
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView )
+    {
+      return d_entries.extent( 0 );
     }
 
     template< typename TExtEntries, typename TExtRowmap >
@@ -704,6 +944,30 @@ namespace psi {
   struct CRSMatrixTraits< crs_matrix::RangeDynamic, bool, TOrdinal, TSize > {
     typedef std::vector< TOrdinal > entries_type;
     typedef std::vector< TSize > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::RangeDynamic mutable_spec_type;
 
     template< typename TValue >
@@ -718,6 +982,36 @@ namespace psi {
       std::swap( a, b );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type& entries, TDeviceSpace={} )
+    {
+      return entries_view_type< TDeviceSpace >( entries.data(), entries.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const& entries, TDeviceSpace={} )
+    {
+      return const_entries_view_type< TDeviceSpace >( entries.data(),
+                                                      entries.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type& rowmap, TDeviceSpace={} )
+    {
+      return rowmap_view_type< TDeviceSpace >( rowmap.data(), rowmap.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const& rowmap, TDeviceSpace={} )
+    {
+      return const_rowmap_view_type< TDeviceSpace >( rowmap.data(),
+                                                     rowmap.size() );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -729,6 +1023,13 @@ namespace psi {
     nnz( entries_type const& entries, rowmap_type const& rowmap )
     {
       return crs_matrix::nnz( entries, rowmap, crs_matrix::RangeGroup{} );
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline auto
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView d_rowmap )
+    {
+      return crs_matrix::nnz( d_entries, d_rowmap, crs_matrix::RangeGroup{} );
     }
 
     /**
@@ -766,6 +1067,30 @@ namespace psi {
   struct CRSMatrixTraits< crs_matrix::RangeBuffered, bool, TOrdinal, TSize > {
     typedef sdsl::int_vector_buffer< gum::widthof< TOrdinal >::value > entries_type;
     typedef std::vector< TSize > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::RangeBuffered mutable_spec_type;
 
     static inline void
@@ -790,6 +1115,35 @@ namespace psi {
       std::swap( rowmap, other );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for RangeBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for RangeBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type& rowmap, TDeviceSpace={} )
+    {
+      return rowmap_view_type< TDeviceSpace >( rowmap.data(), rowmap.size() );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const& rowmap, TDeviceSpace={} )
+    {
+      return const_rowmap_view_type< TDeviceSpace >( rowmap.data(),
+                                                     rowmap.size() );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -801,6 +1155,13 @@ namespace psi {
     nnz( entries_type& entries, rowmap_type& rowmap )
     {
       return crs_matrix::nnz( entries, rowmap, crs_matrix::RangeGroup{} );
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline auto
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView d_rowmap )
+    {
+      return crs_matrix::nnz( d_entries, d_rowmap, crs_matrix::RangeGroup{} );
     }
 
     /**
@@ -838,6 +1199,30 @@ namespace psi {
   struct CRSMatrixTraits< crs_matrix::RangeFullyBuffered, bool, TOrdinal, TSize > {
     typedef sdsl::int_vector_buffer< gum::widthof< TOrdinal >::value > entries_type;
     typedef sdsl::int_vector_buffer< gum::widthof< TSize >::value > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::RangeFullyBuffered mutable_spec_type;
 
     template< typename T >
@@ -854,6 +1239,34 @@ namespace psi {
       a.swap( b );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for RangeFullyBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for RangeFullyBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for RangeFullyBuffered CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for RangeFullyBuffered CRSMatrix" );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -865,6 +1278,13 @@ namespace psi {
     nnz( entries_type& entries, rowmap_type& rowmap )
     {
       return crs_matrix::nnz( entries, rowmap, crs_matrix::RangeGroup{} );
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline auto
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView d_rowmap )
+    {
+      return crs_matrix::nnz( d_entries, d_rowmap, crs_matrix::RangeGroup{} );
     }
 
     /**
@@ -903,6 +1323,30 @@ namespace psi {
     typedef sdsl::coder::elias_delta<> coder_type;
     typedef sdsl::enc_vector< coder_type > entries_type;
     typedef sdsl::enc_vector< coder_type > rowmap_type;
+    template< typename TDeviceSpace >
+    using entries_view_type = Kokkos::View<
+        TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_entries_view_type = Kokkos::View<
+        const TOrdinal*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using rowmap_view_type = Kokkos::View<
+        TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type = Kokkos::View<
+        const TSize*,
+        typename TDeviceSpace::array_layout,  // Device layout since it is a 1D
+        Kokkos::DefaultHostExecutionSpace,    // On host memory space
+        Kokkos::MemoryUnmanaged >;
     typedef crs_matrix::RangeDynamic mutable_spec_type;
 
     template< typename T >
@@ -917,6 +1361,34 @@ namespace psi {
       a.swap( b );
     }
 
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for RangeCompressed CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create entries view for RangeCompressed CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for RangeCompressed CRSMatrix" );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type const&, TDeviceSpace={} )
+    {
+      throw std::runtime_error( "cannot create rowmap view for RangeCompressed CRSMatrix" );
+    }
+
     template< typename TIter >
     static inline bool  /* value_type */
     binary_search( TIter begin, TIter end, TOrdinal key )
@@ -928,6 +1400,13 @@ namespace psi {
     nnz( entries_type const& entries, rowmap_type const& rowmap )
     {
       return crs_matrix::nnz( entries, rowmap, crs_matrix::RangeGroup{} );
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline auto
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView d_rowmap )
+    {
+      return crs_matrix::nnz( d_entries, d_rowmap, crs_matrix::RangeGroup{} );
     }
 
     /**
@@ -990,6 +1469,37 @@ namespace psi {
     typedef CRSMatrixTraits< spec_type, value_type, ordinal_type, size_type > traits_type;
     typedef typename traits_type::entries_type entries_type;
     typedef typename traits_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace >
+    using entries_view_type =
+        typename traits_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using const_entries_view_type =
+        typename traits_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using rowmap_view_type =
+        typename traits_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using const_rowmap_view_type =
+        typename traits_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using entries_device_view_type = Kokkos::View< TOrdinal*, TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using const_entries_device_view_type
+        = Kokkos::View< const TOrdinal*, TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using rowmap_device_view_type = Kokkos::View< TSize*, TDeviceSpace >;
+
+    template< typename TDeviceSpace >
+    using const_rowmap_device_view_type
+        = Kokkos::View< const TSize*, TDeviceSpace >;
+
     typedef typename traits_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -999,6 +1509,115 @@ namespace psi {
     {
       traits_type::init( this->entries );
       traits_type::init( this->rowmap );
+    }
+    /* === STATIC MEMBERS === */
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type& e, TDeviceSpace space={} )
+    {
+      if ( e.size() != 0 )
+        return traits_type::entries_view( e, space );
+      else
+        return entries_view_type< TDeviceSpace >( nullptr, 0 );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    entries_view( entries_type const& e, TDeviceSpace space={} )
+    {
+      if ( e.size() != 0 )
+        return traits_type::entries_view( e, space );
+      else
+        return const_entries_view_type< TDeviceSpace >( nullptr, 0 );
+    }
+
+    template< typename TDeviceSpace >
+    static inline auto
+    rowmap_view( rowmap_type& r, TDeviceSpace space={} )
+    {
+      if ( r.size() != 0 )
+        return traits_type::rowmap_view( r, space );
+      else
+        return rowmap_view_type< TDeviceSpace >( nullptr, 0 );
+    }
+
+    template< typename TDeviceSpace>
+    static inline auto
+    rowmap_view( rowmap_type const& r, TDeviceSpace space={} )
+    {
+      if ( r.size() != 0 )
+        return traits_type::rowmap_view( r, space );
+      else
+        return const_rowmap_view_type< TDeviceSpace >( nullptr, 0 );
+    }
+
+    template< typename TDeviceSpace >
+    static inline entries_device_view_type< TDeviceSpace >
+    entries_device_view( entries_type& entries, TDeviceSpace space={} )
+    {
+      if ( entries.size() != 0 ) {
+        return Kokkos::create_mirror_view_and_copy(
+            TDeviceSpace{}, CRSMatrixBase::entries_view( entries, space ) );
+      }
+      else
+        return entries_device_view_type< TDeviceSpace >{};
+    }
+
+    template< typename TDeviceSpace >
+    static inline const_entries_device_view_type< TDeviceSpace >
+    entries_device_view( entries_type const& entries, TDeviceSpace space={} )
+    {
+      if ( entries.size() != 0 ) {
+        return Kokkos::create_mirror_view_and_copy(
+            TDeviceSpace{}, CRSMatrixBase::entries_view( entries, space ) );
+      }
+      else
+        return const_entries_device_view_type< TDeviceSpace >{};
+    }
+
+    template< typename TDeviceSpace >
+    static inline rowmap_device_view_type< TDeviceSpace >
+    rowmap_device_view( rowmap_type& rowmap, TDeviceSpace space={} )
+    {
+      if ( rowmap.size() != 0 ) {
+        return Kokkos::create_mirror_view_and_copy(
+            TDeviceSpace{}, CRSMatrixBase::rowmap_view( rowmap, space ) );
+      }
+      else
+        return rowmap_device_view_type< TDeviceSpace >{};
+    }
+
+    template< typename TDeviceSpace >
+    static inline const_rowmap_device_view_type< TDeviceSpace >
+    rowmap_device_view( rowmap_type const& rowmap, TDeviceSpace space={} )
+    {
+      if ( rowmap.size() != 0 ) {
+        return Kokkos::create_mirror_view_and_copy(
+            TDeviceSpace{}, CRSMatrixBase::rowmap_view( rowmap, space ) );
+      }
+      else
+        return const_rowmap_device_view_type< TDeviceSpace >{};
+    }
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    static inline auto
+    make_entries_device_view( TDeviceSpace={} )
+    {
+      return entries_device_view_type< TDeviceSpace >{};
+    }
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    static inline auto
+    make_rowmap_device_view( TDeviceSpace={} )
+    {
+      return rowmap_device_view_type< TDeviceSpace >{};
+    }
+
+    template< typename TRowMapDeviceView, typename ...TArgs >
+    static inline size_type
+    nnz( Kokkos::View< TArgs... > d_entries, TRowMapDeviceView d_rowmap )
+    {
+      return traits_type::nnz( d_entries, d_rowmap );
     }
     /* === OPERATORS === */
     /**
@@ -1025,6 +1644,48 @@ namespace psi {
 
       return traits_type::binary_search( this->entries.begin() + this->rowmap[ i ],
                                          this->entries.begin() + this->rowmap[ i + 1 ], j );
+    }
+    /* === ACCESSORS === */
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    inline auto
+    entries_view( TDeviceSpace space={} )
+    {
+      return CRSMatrixBase::entries_view( this->entries, space );
+    }
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    inline auto
+    entries_view( TDeviceSpace space={} ) const
+    {
+      return CRSMatrixBase::entries_view( this->entries, space );
+    }
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    inline auto
+    rowmap_view( TDeviceSpace space={} )
+    {
+      return CRSMatrixBase::rowmap_view( this->rowmap, space );
+    }
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    inline auto
+    rowmap_view( TDeviceSpace space={} ) const
+    {
+      return CRSMatrixBase::rowmap_view( this->rowmap, space );
+    }
+
+    template< typename TDeviceSpace=Kokkos::DefaultExecutionSpace >
+    inline auto
+    entries_device_view( TDeviceSpace space={} ) const
+    {
+      return CRSMatrixBase::entries_device_view( this->entries, space );
+    }
+
+    template< typename TDeviceSpace=Kokkos::DefaultExecutionSpace >
+    inline auto
+    rowmap_device_view( TDeviceSpace space={} ) const
+    {
+      return CRSMatrixBase::rowmap_device_view( this->rowmap, space );
     }
     /* === METHODS === */
     inline value_type
@@ -1197,6 +1858,19 @@ namespace psi {
       return ext.nnz();
     }
 
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    inline void
+    build( const_entries_device_view_type< TDeviceSpace > d_entries,
+           const_rowmap_device_view_type< TDeviceSpace > d_rowmap )
+    {
+      psi::resize( this->entries, d_entries.extent( 0 ) );
+      psi::resize( this->rowmap, d_rowmap.extent( 0 ) );
+      auto h_entries_view = CRSMatrixBase::entries_view< TDeviceSpace >( this->entries );
+      auto h_rowmap_view = CRSMatrixBase::rowmap_view< TDeviceSpace >( this->rowmap );
+      Kokkos::deep_copy( h_entries_view, d_entries );
+      Kokkos::deep_copy( h_rowmap_view, d_rowmap );
+    }
+
     /**
      *  @brief Construct the matrix block by block
      *
@@ -1295,6 +1969,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -1307,6 +2016,15 @@ namespace psi {
     {
       this->entries = std::move( e_entries );
       this->rowmap = std::move( e_rowmap );
+    }
+
+    template< typename TDeviceSpace >
+    CRSMatrix( ordinal_type ncols,
+               const_entries_device_view_type< TDeviceSpace > d_entries,
+               const_rowmap_device_view_type< TDeviceSpace > d_rowmap )
+      : base_type( ncols )
+    {
+      base_type::template build< TDeviceSpace >( d_entries, d_rowmap );
     }
 
     /**
@@ -1387,6 +2105,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -1467,6 +2220,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -1547,6 +2335,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -1643,6 +2466,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -1657,6 +2515,19 @@ namespace psi {
       this->entries = std::move( e_entries );
       this->rowmap = std::move( e_rowmap );
       if ( this->m_nnz == 0 ) this->m_nnz = base_type::nnz();
+      assert( this->entries.size() == 0 || this->m_nnz != 0 );
+    }
+
+    template< typename TDeviceSpace >
+    CRSMatrix( ordinal_type ncols,
+               entries_device_view_type< TDeviceSpace > d_entries,
+               rowmap_device_view_type< TDeviceSpace > d_rowmap,
+               size_type e_nnz = 0 )
+        : base_type( ncols ), m_nnz( e_nnz )
+    {
+      base_type::template build< TDeviceSpace >( d_entries, d_rowmap );
+      if ( this->m_nnz == 0 )
+        this->m_nnz = base_type::nnz( d_entries, d_rowmap );
       assert( this->entries.size() == 0 || this->m_nnz != 0 );
     }
 
@@ -1775,6 +2646,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -1893,6 +2799,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
@@ -2011,6 +2952,41 @@ namespace psi {
     typedef typename base_type::traits_type traits_type;
     typedef typename base_type::entries_type entries_type;
     typedef typename base_type::rowmap_type rowmap_type;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_view_type =
+        typename base_type::template entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_view_type =
+        typename base_type::template const_entries_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_view_type =
+        typename base_type::template rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_view_type =
+        typename base_type::template const_rowmap_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using entries_device_view_type =
+        typename base_type::template entries_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_entries_device_view_type =
+        typename base_type::template const_entries_device_view_type<
+            TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using rowmap_device_view_type =
+        typename base_type::template rowmap_device_view_type< TDeviceSpace >;
+
+    template< typename TDeviceSpace = Kokkos::DefaultExecutionSpace >
+    using const_rowmap_device_view_type =
+        typename base_type::template const_rowmap_device_view_type<
+            TDeviceSpace >;
+
     typedef typename base_type::mutable_spec_type mutable_spec_type;
     /* === FRIENDSHIP === */
     template< typename TSpec2, typename TValue2, typename TOrdinal2, typename TSize2 >
