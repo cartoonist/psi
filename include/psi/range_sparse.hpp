@@ -24,7 +24,6 @@
 #include <Kokkos_Random.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
 #include <Kokkos_NestedSort.hpp>
-#include <parallel_hashmap/btree.h>
 
 #include "crs_matrix.hpp"
 #include "range_sparse_base.hpp"
@@ -489,6 +488,7 @@ namespace psi {
     typedef typename c_row_map_type::value_type size_type;
     typedef typename c_row_map_type::execution_space execution_space;
     typedef Kokkos::RangePolicy< execution_space > policy_type;
+    typedef std::map< ordinal_type, ordinal_type > btree_type;
 
     // TODO: Extend static asserts to all views
     static_assert(
@@ -503,19 +503,24 @@ namespace psi {
 
     auto a_nrows = a_rowmap.extent( 0 ) - 1;
 
+    Kokkos::Experimental::UniqueToken< execution_space > token;
+    std::vector< btree_type > maps( token.size() );
+    auto maps_ptr = &maps;
+
     Kokkos::parallel_for(
         "psi::crs_matrix::range_spgemm_symbolic::count_row_nnz",
         policy_type( 0, a_nrows ), KOKKOS_LAMBDA ( const uint64_t row ) {
           auto a_idx = a_rowmap( row );
           auto a_end = a_rowmap( row + 1 );
-          phmap::btree_map< ordinal_type, ordinal_type > acc;
+          int id = token.acquire();
+          auto& acc = maps_ptr->operator[]( id );
           for ( ; a_idx != a_end; a_idx += 2 ) {
             auto b_idx = b_rowmap( a_entries( a_idx ) );
             auto b_end = b_rowmap( a_entries( a_idx + 1 ) + 1 );
             for ( ; b_idx != b_end; b_idx += 2 ) {
               auto old = acc[ b_entries( b_idx ) ];
               acc[ b_entries( b_idx ) ]
-                  = std::max( old, b_entries( b_idx + 1 ) );
+                  = PSI_MACRO_MAX( old, b_entries( b_idx + 1 ) );
             }
           }
 
@@ -527,8 +532,8 @@ namespace psi {
             ++it;
             for ( ; it != acc.end(); ++it ) {
               if ( it->first <= hi + 1 ) {  // merge
-                lo = std::min( lo, it->first );
-                hi = std::max( hi, it->second );
+                lo = PSI_MACRO_MIN( lo, it->first );
+                hi = PSI_MACRO_MAX( hi, it->second );
                 continue;
               }
               lo = it->first;
@@ -536,7 +541,10 @@ namespace psi {
               count += 2;
             }
             count += 2;
+            acc.clear();
           }
+
+          token.release(id);
 
           c_rowmap( row + 1 ) = count;
           if ( row == 0 ) c_rowmap( 0 ) = 0;
@@ -584,6 +592,7 @@ namespace psi {
     typedef typename c_row_map_type::value_type size_type;
     typedef typename c_entries_type::execution_space execution_space;
     typedef Kokkos::RangePolicy< execution_space > policy_type;
+    typedef std::map< ordinal_type, ordinal_type > btree_type;
 
     // TODO: Extend static asserts to all views
     static_assert(
@@ -598,19 +607,24 @@ namespace psi {
 
     auto a_nrows = a_rowmap.extent( 0 ) - 1;
 
+    Kokkos::Experimental::UniqueToken< execution_space > token;
+    std::vector< btree_type > maps( token.size() );
+    auto maps_ptr = &maps;
+
     Kokkos::parallel_for(
         "psi::crs_matrix::range_spgemm_numeric::compute_numeric",
         policy_type( 0, a_nrows ), KOKKOS_LAMBDA( const uint64_t row ) {
           auto a_idx = a_rowmap( row );
           auto a_end = a_rowmap( row + 1 );
-          phmap::btree_map< ordinal_type, ordinal_type > acc;
+          int id = token.acquire();
+          auto& acc = maps_ptr->operator[]( id );
           for ( ; a_idx < a_end; a_idx += 2 ) {
             auto b_idx = b_rowmap( a_entries( a_idx ) );
             auto b_end = b_rowmap( a_entries( a_idx + 1 ) + 1 );
             for ( ; b_idx != b_end; b_idx += 2 ) {
               auto old = acc[ b_entries( b_idx ) ];
               acc[ b_entries( b_idx ) ]
-                  = std::max( old, b_entries( b_idx + 1 ) );
+                  = PSI_MACRO_MAX( old, b_entries( b_idx + 1 ) );
             }
           }
 
@@ -622,8 +636,8 @@ namespace psi {
             ++it;
             for ( ; it != acc.end(); ++it ) {
               if ( it->first <= hi + 1 ) {  // merge
-                lo = std::min( lo, it->first );
-                hi = std::max( hi, it->second );
+                lo = PSI_MACRO_MIN( lo, it->first );
+                hi = PSI_MACRO_MAX( hi, it->second );
                 continue;
               }
               c_entries( c_idx++ ) = lo;
@@ -633,7 +647,9 @@ namespace psi {
             }
             c_entries( c_idx++ ) = lo;
             c_entries( c_idx++ ) = hi;
+            acc.clear();
           }
+          token.release( id );
         } );
   }
 
