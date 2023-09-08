@@ -525,17 +525,17 @@ namespace psi {
             ordinal_type lo = it->first;
             ordinal_type hi = it->second;
             ++it;
-            ++count;
             for ( ; it != acc.end(); ++it ) {
-              if ( it->first < hi ) {  // merge
+              if ( it->first <= hi + 1 ) {  // merge
                 lo = std::min( lo, it->first );
                 hi = std::max( hi, it->second );
                 continue;
               }
               lo = it->first;
               hi = it->second;
-              ++count;
+              count += 2;
             }
+            count += 2;
           }
 
           c_rowmap( row + 1 ) = count;
@@ -600,7 +600,7 @@ namespace psi {
 
     Kokkos::parallel_for(
         "psi::crs_matrix::range_spgemm_numeric::compute_numeric",
-        policy_type( 0, a_nrows ), KOKKOS_LAMBDA ( const uint64_t row ) {
+        policy_type( 0, a_nrows ), KOKKOS_LAMBDA( const uint64_t row ) {
           auto a_idx = a_rowmap( row );
           auto a_end = a_rowmap( row + 1 );
           phmap::btree_map< ordinal_type, ordinal_type > acc;
@@ -614,21 +614,25 @@ namespace psi {
             }
           }
 
-          size_type c_idx = c_rowmap( row );
-          auto it = acc.begin();
-          ordinal_type lo = it->first;
-          ordinal_type hi = it->second;
-          ++it;
-          for ( ; it != acc.end(); ++it ) {
-            if ( it->first < hi ) {  // merge
-              lo = std::min( lo, it->first );
-              hi = std::max( hi, it->second );
-              continue;
+          if ( !acc.empty() ) {
+            size_type c_idx = c_rowmap( row );
+            auto it = acc.begin();
+            ordinal_type lo = it->first;
+            ordinal_type hi = it->second;
+            ++it;
+            for ( ; it != acc.end(); ++it ) {
+              if ( it->first <= hi + 1 ) {  // merge
+                lo = std::min( lo, it->first );
+                hi = std::max( hi, it->second );
+                continue;
+              }
+              c_entries( c_idx++ ) = lo;
+              c_entries( c_idx++ ) = hi;
+              lo = it->first;
+              hi = it->second;
             }
             c_entries( c_idx++ ) = lo;
             c_entries( c_idx++ ) = hi;
-            lo = it->first;
-            hi = it->second;
           }
         } );
   }

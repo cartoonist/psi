@@ -94,7 +94,7 @@ namespace psi {
           first = middle;
           ++first;
           len = len - half - 1;
-	      } else len = half;
+        } else len = half;
       }
       auto idx = first - begin;
       if ( idx % 2 ) --first;
