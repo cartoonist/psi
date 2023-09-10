@@ -21,9 +21,11 @@
 #include <limits>
 #include <stdexcept>
 
+#include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
 #include <Kokkos_NestedSort.hpp>
+#include <KokkosKernels_Utils.hpp>
 
 #include "crs_matrix.hpp"
 #include "range_sparse_base.hpp"
@@ -33,11 +35,12 @@
 
 namespace psi {
   /**
-  *  @brief  Print a matrix of type `Kokkos::CrsMatrix`.
-  *
-  *  NOTE: All Views associated with the input matrix are assumed to be on device memory
-  *        space. If they are host accessible deep copy does not copy anything.
-  */
+   *  @brief  Print a matrix of type `KokkosSparse::CrsMatrix`.
+   *
+   *  NOTE: All Views associated with the input matrix are assumed to be on
+   *  device memory space. If they are host accessible deep copy does not copy
+   *  anything.
+   */
   template< typename TXCRSMatrix >
   static void
   print( const TXCRSMatrix& m, bool verbose=true, bool print_all=false )
@@ -88,14 +91,17 @@ namespace psi {
   }
 
   /**
-  *  @brief  Print a matrix of type 'Range' spacialised `psi::CRSMatrix`.
-  *
-  *  NOTE: All Views associated with the matrix are assumed to be on host memory space.
-  */
+   *  @brief  Print a matrix of type 'Range' spacialised `psi::CRSMatrix`.
+   *
+   *  NOTE: All Views associated with the matrix are assumed to be on host
+   * memory space.
+   */
   template< typename TSpec, typename TOrdinal, typename TSize >
-  static /* void */ std::enable_if_t< std::is_same_v< typename psi::crs_matrix::Group<TSpec>::type, psi::crs_matrix::RangeGroup > >
-  print( psi::CRSMatrix< TSpec, bool, TOrdinal, TSize >& m, std::string label={},
-        bool verbose=true, bool print_all=false )
+  static /* void */ std::enable_if_t<
+      std::is_same< typename psi::crs_matrix::Group< TSpec >::type,
+                    psi::crs_matrix::RangeGroup >::value >
+  print( psi::CRSMatrix< TSpec, bool, TOrdinal, TSize >& m,
+         std::string label = {}, bool verbose = true, bool print_all = false )
   {
     if ( label.empty() ) label = "A";
 
@@ -127,10 +133,10 @@ namespace psi {
   }
 
   /**
-  *  @brief  Create the identity matrix of order `n` in CRS format.
-  *
-  *  NOTE: `TXCRSMatrix` should be a `Kokkos::CrsMatrix`-like type.
-  */
+   *  @brief  Create the identity matrix of order `n` in CRS format.
+   *
+   *  NOTE: `TXCRSMatrix` should be a `KokkosSparse::CrsMatrix`-like type.
+   */
   template< typename TXCRSMatrix >
   inline TXCRSMatrix
   create_identity_matrix( typename TXCRSMatrix::ordinal_type n )
@@ -153,23 +159,24 @@ namespace psi {
   }
 
   /**
-  *  @brief  Create a random square matrix (on-host) [SLOW].
-  *
-  *  @param  n     order of the output matrix
-  *  @param  nnz   number of non-zero values
-  *  @param  lower lower bound of value range (inclusive)
-  *  @param  upper upper bound of value range (exclusive)
-  *
-  *  @return a `Kokkos::CrsMatrix`-like square matrix of order `n` with `nnz` number of
-  *  non-zero random values in range [lower, upper).
-  *
-  *  NOTE: Use `create_random_matrix` instead.
-  *  NOTE: The output matrix is constructed on **host** memory space, then it is
-  *  transferred (deep-copied) to device memory space. It is suitable for small matrices.
-  *
-  *  NOTE: The final matrix is on device memory and host mirrors get deallocated on
-  *  return.
-  */
+   *  @brief  Create a random square matrix (on-host) [SLOW].
+   *
+   *  @param  n     order of the output matrix
+   *  @param  nnz   number of non-zero values
+   *  @param  lower lower bound of value range (inclusive)
+   *  @param  upper upper bound of value range (exclusive)
+   *
+   *  @return a `KokkosSparse::CrsMatrix`-like square matrix of order `n` with
+   *  `nnz` number of non-zero random values in range [lower, upper).
+   *
+   *  NOTE: Use `create_random_matrix` instead.
+   *  NOTE: The output matrix is constructed on **host** memory space, then it
+   *  is transferred (deep-copied) to device memory space. It is suitable for
+   *  small matrices.
+   *
+   *  NOTE: The final matrix is on device memory and host mirrors get
+   *  deallocated on return.
+   */
   template< typename TXCRSMatrix >
   inline TXCRSMatrix
   create_random_matrix_on_host( typename TXCRSMatrix::ordinal_type n,
@@ -254,21 +261,21 @@ namespace psi {
   }
 
   /**
-  *  @brief  Create a random square matrix (on-device) [FAST].
-  *
-  *  @param  n     order of the output matrix
-  *  @param  nnz   number of non-zero values
-  *  @param  lower lower bound of value range (inclusive)
-  *  @param  upper upper bound of value range (exclusive)
-  *
-  *  @return a `Kokkos::CrsMatrix`-like square matrix of order `n` with `nnz` number of
-  *  non-zero random values in range [lower, upper).
-  *
-  *  This function is usually much faster than `create_random_matrix_on_host`.
-  *
-  *  NOTE: The output matrix is constructed on device memory space. It does not performs
-  *        any deep copy between device and host.
-  */
+   *  @brief  Create a random square matrix (on-device) [FAST].
+   *
+   *  @param  n     order of the output matrix
+   *  @param  nnz   number of non-zero values
+   *  @param  lower lower bound of value range (inclusive)
+   *  @param  upper upper bound of value range (exclusive)
+   *
+   *  @return a `KokkosSparse::CrsMatrix`-like square matrix of order `n` with
+   * `nnz` number of non-zero random values in range [lower, upper).
+   *
+   *  This function is usually much faster than `create_random_matrix_on_host`.
+   *
+   *  NOTE: The output matrix is constructed on device memory space. It does
+   *    not performs any deep copy between device and host.
+   */
   template< typename TXCRSMatrix, typename THostSpace=Kokkos::DefaultHostExecutionSpace >
   inline TXCRSMatrix
   create_random_matrix( typename TXCRSMatrix::ordinal_type n,
@@ -417,25 +424,25 @@ namespace psi {
   }
 
   /**
-  *  @brief  Create a random binary matrix and return in KokkosKernels CRS format.
-  */
+   *  @brief  Create a random binary `KokkosSparse::CrsMatrix`.
+   */
   template< typename TXCRSMatrix >
   inline TXCRSMatrix
   create_random_binary_matrix( typename TXCRSMatrix::ordinal_type n,
-                              typename TXCRSMatrix::size_type nnz )
+                               typename TXCRSMatrix::size_type nnz )
   {
     return create_random_matrix< TXCRSMatrix >( n, nnz, 1, 2 );
   }
 
   /**
-  *  @brief  Create a random binary matrix and return in both KokkosKernels CRS and PSI
-  *          Range CRS formats.
-  */
+   *  @brief  Create a random binary matrix and return in both KokkosKernels
+   *          CRS and PSI Range CRS formats.
+   */
   template< typename TXCRSMatrix, typename TRCRSMatrix >
   inline TXCRSMatrix
   create_random_binary_matrix( typename TXCRSMatrix::ordinal_type n,
-                              typename TXCRSMatrix::size_type nnz,
-                              TRCRSMatrix& range_crs )
+                               typename TXCRSMatrix::size_type nnz,
+                               TRCRSMatrix& range_crs )
   {
     typedef TXCRSMatrix xcrsmatrix_t;
     typedef TRCRSMatrix range_crsmatrix_t;
@@ -461,13 +468,13 @@ namespace psi {
   }
 
   /**
-  *  @brief Symbolic phase of computing matrix c as the product of a and b
-  *  (ThreadRangePartition-BTreeAccumulator specialisation).
-  *
-  *  NOTE: All matrices are assumed to be in Range CRS format.
-  *  NOTE: This function assumes `c_rowmap` is allocated on device and is of size
-  *  `a.numRows()+1`.
-  */
+   *  @brief Symbolic phase of computing matrix c as the product of a and b
+   *  (ThreadRangePartition-BTreeAccumulator specialisation).
+   *
+   *  NOTE: All matrices are assumed to be in Range CRS format.
+   *  NOTE: This function assumes `c_rowmap` is allocated on device and is of
+   *        size `a.numRows()+1`.
+   */
   template< typename THandle,
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
@@ -563,13 +570,13 @@ namespace psi {
   }
 
   /**
-  *  @brief Numeric phase of computing matrix c as the product of a and b
-  *  (ThreadRangePartition-BTreeAccumulator specialisation).
-  *
-  *  NOTE: All matrices are assumed to be in Range CRS format.
-  *  NOTE: This function assumes `c_rowmap` and `c_entries` are allocated on device with
-  *        sufficient space.
-  */
+   *  @brief Numeric phase of computing matrix c as the product of a and b
+   *         (ThreadRangePartition-BTreeAccumulator specialisation).
+   *
+   *  NOTE: All matrices are assumed to be in Range CRS format.
+   *  NOTE: This function assumes `c_rowmap` and `c_entries` are allocated on
+   *        device with sufficient space.
+   */
   template< typename THandle,
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
@@ -694,10 +701,10 @@ namespace psi {
   }
 
   /**
-  *  @brief Computing matrix c as the product of a and b.
-  *
-  *  NOTE: All matrices are assumed to be in Range CRS format.
-  */
+   *  @brief Computing matrix c as the product of a and b.
+   *
+   *  NOTE: All matrices are assumed to be in Range CRS format.
+   */
   template< typename THandle,
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
@@ -718,14 +725,14 @@ namespace psi {
     ordinal_type n = a_rowmap.extent( 0 ) - 1;
     c_rowmap = c_row_map_type( "c_rowmap", a_rowmap.extent( 0 ) );
 
-#ifndef NDEBUG
+#ifdef PSI_STATS
     Kokkos::Timer timer;
 #endif
 
     range_spgemm_symbolic( handle, a_rowmap, a_entries, b_rowmap, b_entries,
                            c_rowmap, config );
 
-#ifndef NDEBUG
+#ifdef PSI_STATS
     double d = timer.seconds();
     std::cout << "psi::range_spgemm_symbolic time: " << d * 1000 << "ms"
               << std::endl;
@@ -735,14 +742,14 @@ namespace psi {
     Kokkos::deep_copy( c_rnnz, Kokkos::subview( c_rowmap, n ) );
     c_entries = c_entries_type( "C", c_rnnz );
 
-#ifndef NDEBUG
+#ifdef PSI_STATS
     timer.reset();
 #endif
 
     range_spgemm_numeric( handle, a_rowmap, a_entries, b_rowmap, b_entries,
                           c_rowmap, c_entries, config );
 
-#ifndef NDEBUG
+#ifdef PSI_STATS
     d = timer.seconds();
     std::cout << "psi::range_spgemm_numeric time: " << d * 1000 << "ms"
               << std::endl;
