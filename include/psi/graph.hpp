@@ -332,18 +332,17 @@ namespace psi {
      *  @brief  Get the adjacency matrix of the graph in CRS format.
      *
      *  @param[in]  graph The graph.
-     *  @param[in]  tag  The CRS trait tag.
      *  @param[in]  lower  The lower node rank (inclusive).
      *  @param[in]  upper  The upper node rank (exclusive).
-     *  @return  The adjacency matrix.
+     *  @return  The adjacency matrix in KokkosSparse::CrsMatrix format.
      *
      *  Compute adjacency matrix of a component in the given `graph` or of the whole
      *  graph. The component is indicated by nodes whose ranks are in the range [lower,
      *  upper). The resulting adjacency matrix is stored in CRS format.
      */
-    template< class TGraph, typename TCrsTraits >
-    inline typename TCrsTraits::crsMat_t
-    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */,
+    template< typename TCrsMatrix, class TGraph >
+    inline TCrsMatrix
+    adjacency_matrix( TGraph const& graph,
                       typename TGraph::rank_type lower=1,
                       typename TGraph::rank_type upper=0 )
     {
@@ -353,21 +352,21 @@ namespace psi {
       typedef typename graph_type::rank_type rank_type;
       typedef typename graph_type::linktype_type linktype_type;
 
-      typedef typename TCrsTraits::lno_t lno_t;
-      typedef typename TCrsTraits::size_type size_type;
-      typedef typename TCrsTraits::lno_nnz_view_t lno_nnz_view_t;
-      typedef typename TCrsTraits::scalar_view_t scalar_view_t;
-      typedef typename TCrsTraits::lno_view_t lno_view_t;
-      typedef typename TCrsTraits::crsMat_t crsMat_t;
+      typedef typename TCrsMatrix::staticcrsgraph_type staticcrsgraph_type;
+      typedef typename TCrsMatrix::values_type::non_const_type values_type;
+      typedef typename staticcrsgraph_type::data_type ordinal_type;
+      typedef typename staticcrsgraph_type::size_type size_type;
+      typedef typename staticcrsgraph_type::row_map_type::non_const_type row_map_type;
+      typedef typename staticcrsgraph_type::entries_type::non_const_type entries_type;
 
       if ( upper == 0 ) upper = graph.get_node_count() + 1;
-      lno_t nrows = gum::util::total_nof_loci( graph, lower, upper );
+      ordinal_type nrows = gum::util::total_nof_loci( graph, lower, upper );
       size_type nnz = nrows - node_count( graph, lower, upper ) +
           edge_count( graph, lower, upper );
 
-      lno_nnz_view_t entries( "entries", nnz );
-      scalar_view_t values( "values", nnz );
-      lno_view_t rowmap( "rowmap", nrows + 1 );
+      entries_type entries( "entries", nnz );
+      values_type values( "values", nnz );
+      row_map_type rowmap( "rowmap", nrows + 1 );
 
       for ( size_type i = 0; i < nnz; ++i ) values( i ) = 1;  // boolean
 
@@ -398,7 +397,7 @@ namespace psi {
       assert( i == nnz );
       assert( irow == static_cast< unsigned int >( nrows + 1 ) );
 
-      return crsMat_t( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
+      return TCrsMatrix( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
     }
 
     /**

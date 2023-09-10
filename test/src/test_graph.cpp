@@ -78,7 +78,8 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
   typedef typename graph_type::rank_type rank_type;
   typedef typename graph_type::offset_type offset_type;
   typedef typename graph_type::linktype_type linktype_type;
-  typedef pairg::matrixOps traits_type;
+  typedef pairg::matrixOps<> traits_type;
+  typedef traits_type::crsMat_t kk_crsmat_type;
 
   GIVEN( "A tiny variation graph" )
   {
@@ -90,7 +91,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 
     WHEN( "The adjacency matrix of its corresponding character graph is build" )
     {
-      auto matrix = util::adjacency_matrix( graph, traits_type() );
+      auto matrix = util::adjacency_matrix< kk_crsmat_type >( graph );
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {
@@ -148,7 +149,7 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
 
     WHEN( "The adjacency matrix of its corresponding character graph is build" )
     {
-      auto matrix = util::adjacency_matrix( graph, traits_type() );
+      auto matrix = util::adjacency_matrix< kk_crsmat_type >( graph );
 
       THEN( "The number of columns/rows/row map should be equal to the numbers nodes" )
       {
@@ -203,9 +204,9 @@ SCENARIO( "Build adjacency matrix of a character graph", "[graph][interface]" )
         comp_ranks.push_back( 0 );  // add the upper bound of the last component
 
         for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
-          auto adj_mat = util::adjacency_matrix( graph, traits_type(),
-                                                 comp_ranks[idx], comp_ranks[idx+1] );
-          auto sid = graph.rank_to_id( comp_ranks[idx] );
+          auto adj_mat = util::adjacency_matrix< kk_crsmat_type >(
+              graph, comp_ranks[ idx ], comp_ranks[ idx + 1 ] );
+          auto sid = graph.rank_to_id( comp_ranks[ idx ] );
           auto srow = gum::util::id_to_charorder( graph, sid );
           callback( adj_mat, srow, srow );
         }

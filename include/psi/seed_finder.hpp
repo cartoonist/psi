@@ -774,8 +774,17 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
-        typedef pairg::matrixOps crs_traits_type;
-        typedef CRSMatrix< crs_matrix::RangeCompressed, bool, uint32_t, uint64_t > crsmat_type;
+        typedef char     crsmat_scalar_type;
+        typedef uint32_t crsmat_ordinal_type;
+        typedef uint64_t crsmat_size_type;
+        // KokkosKernels requires signed ordinal type
+        typedef std::make_signed_t< crsmat_ordinal_type > crsmat_signed_ordinal_type;
+        typedef pairg::matrixOps< crsmat_scalar_type, crsmat_signed_ordinal_type > crs_traits_type;
+        // typedef KokkosSparse::CrsMatrix< crsmat_scalar_type, crsmat_ordinal_type,
+        //                                  Kokkos::DefaultHostExecutionSpace >
+        //     kk_crsmat_type;
+        typedef crs_traits_type::crsMat_t kk_crsmat_type;
+        typedef CRSMatrix< crs_matrix::RangeCompressed, bool, crsmat_ordinal_type, crsmat_size_type > crsmat_type;
         typedef crs_matrix::RangeDynamic mutable_crsmat_spec_type;
         typedef make_spec_t< mutable_crsmat_spec_type, crsmat_type > mutable_crsmat_type;
 
@@ -1196,9 +1205,9 @@ namespace psi {
             }
 
             for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
-              auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
-                                                     comp_ranks[idx], comp_ranks[idx+1] );
-              auto dist_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
+              auto adj_mat = util::adjacency_matrix< kk_crsmat_type >(
+                  *this->graph_ptr, comp_ranks[ idx ], comp_ranks[ idx + 1 ] );
+              auto dist_mat = pairg::buildValidPairsMatrix< crs_traits_type >( adj_mat, dmin, dmax );
               auto sid = this->graph_ptr->rank_to_id( comp_ranks[idx] );
               auto srow = gum::util::id_to_charorder( *this->graph_ptr, sid );
               callback( dist_mat, srow, srow );
