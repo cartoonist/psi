@@ -750,8 +750,13 @@ namespace psi {
                         TEntriesDeviceViewB b_entries,
                         TRowMapDeviceViewC& c_rowmap, TSparseConfig = {} )
   {
+    typedef typename TEntriesDeviceViewA::non_const_value_type ordinal_type;
     typedef typename TSparseConfig::partition_type partition_type;
     typedef typename TSparseConfig::accumulator_type accumulator_type;
+
+    assert( handle.a_ncols == ( b_rowmap.extent( 0 ) - 1 ) );
+    ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     _range_spgemm_symbolic( handle, a_rowmap, a_entries, b_rowmap, b_entries,
                             c_rowmap, partition_type(), accumulator_type() );
@@ -769,8 +774,13 @@ namespace psi {
                         TRowMapDeviceViewC c_rowmap, TEntriesDeviceViewC& c_entries,
                         TSparseConfig={} )
   {
+    typedef typename TEntriesDeviceViewC::value_type ordinal_type;
     typedef typename TSparseConfig::partition_type partition_type;
     typedef typename TSparseConfig::accumulator_type accumulator_type;
+
+    assert( handle.a_ncols == ( b_rowmap.extent( 0 ) - 1 ) );
+    ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     _range_spgemm_numeric( handle, a_rowmap, a_entries, b_rowmap, b_entries,
                            c_rowmap, c_entries, partition_type(),
@@ -798,6 +808,10 @@ namespace psi {
     typedef TRowMapDeviceViewC  c_row_map_type;
     typedef typename c_entries_type::value_type ordinal_type;
     typedef typename c_row_map_type::value_type size_type;
+
+    assert( handle.a_ncols == ( b_rowmap.extent( 0 ) - 1 ) );
+    ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     ordinal_type n = a_rowmap.extent( 0 ) - 1;
     c_rowmap = c_row_map_type(
@@ -844,9 +858,12 @@ namespace psi {
   {
     typedef TRCRSMatrix range_crsmatrix_t;
     typedef TSparseConfig config_type;
+    typedef typename range_crsmatrix_t::ordinal_type ordinal_type;
     typedef typename config_type::execution_space execution_space;
 
     assert( a.numCols() == b.numRows() );
+    ASSERT( a.numCols() <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( b.numCols() <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     execution_space space{};
 
@@ -858,8 +875,7 @@ namespace psi {
     auto c_entries = range_crsmatrix_t::make_entries_device_view( space );
     auto c_rowmap = range_crsmatrix_t::make_rowmap_device_view( space );
 
-    SparseRangeHandle< range_crsmatrix_t > handle;
-    handle.b_ncols = b.numCols();
+    SparseRangeHandle handle( a, b );
 
     range_spgemm( handle, a_rowmap, a_entries, b_rowmap, b_entries, c_rowmap,
                   c_entries, config );

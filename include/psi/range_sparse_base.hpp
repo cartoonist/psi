@@ -80,7 +80,16 @@ namespace psi {
     /* === MEMBERS TYPES === */
     using ordinal_type = typename TRCRSMatrix::ordinal_type;
     using size_type = typename TRCRSMatrix::size_type;
+    /* === LIFECYCLE === */
+    SparseRangeHandle() = delete;
+
+    SparseRangeHandle( TRCRSMatrix const& a, TRCRSMatrix const& b )
+    {
+      this->a_ncols = a.numCols();
+      this->b_ncols = b.numCols();
+    }
     /* === DATA MEMBERS === */
+    ordinal_type a_ncols;
     ordinal_type b_ncols;
   };
 
