@@ -145,7 +145,7 @@ namespace psi {
           KOKKOS_LAMBDA ( const uint64_t ii, size_type& nnz_local ) {
             nnz_local += d_entries( ii*2 + 1 ) - d_entries( ii*2 ) + 1;
           },
-          nnz_counter );
+          nnz_counter );  // reduce to scalar is blocking
 
       return nnz_counter;
     }
@@ -1863,6 +1863,9 @@ namespace psi {
     build( const_entries_device_view_type< TDeviceSpace > d_entries,
            const_rowmap_device_view_type< TDeviceSpace > d_rowmap )
     {
+      // FIXME: An extra copy takes place here when views are on the same
+      // device. Probably, a specialised CRSMatrix with an internal
+      // `Kokkos::StaticCrsGraph` will resolve the issue.
       psi::resize( this->entries, d_entries.extent( 0 ) );
       psi::resize( this->rowmap, d_rowmap.extent( 0 ) );
       auto h_entries_view = CRSMatrixBase::entries_view< TDeviceSpace >( this->entries );

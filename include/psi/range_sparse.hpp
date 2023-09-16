@@ -193,9 +193,11 @@ namespace psi {
 
     assert( n > 1 && nnz > 0 && nnz / n <= n );
 
-    values_t a_values( "R", nnz );
-    row_map_t a_row_map( "rowmap", n + 1 );
-    entries_t a_entries( "entries", nnz );
+    values_t a_values( Kokkos::ViewAllocateWithoutInitializing( "R" ), nnz );
+    row_map_t a_row_map( Kokkos::ViewAllocateWithoutInitializing( "rowmap" ),
+                         n + 1 );
+    entries_t a_entries( Kokkos::ViewAllocateWithoutInitializing( "entries" ),
+                         nnz );
 
     auto h_a_entries = Kokkos::create_mirror_view( a_entries );
     auto h_a_values = Kokkos::create_mirror_view( a_values );
@@ -204,13 +206,14 @@ namespace psi {
     // Zero initialisation: the rest will be initialized later
     h_a_row_map( 0 ) = 0;
 
-    Kokkos::parallel_for( "random_values",
-                          Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, nnz ),
-                          KOKKOS_LAMBDA ( const uint64_t i ) {
-                            value_type v = 0;
-                            while ( v == 0 ) v = psi::random::random_integer( lower, upper + 1 );
-                            h_a_values( i ) = v;
-                          } );
+    Kokkos::parallel_for(
+        "psi::crs_matrix::::create_random_matrix_on_host::random_values",
+        Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, nnz ),
+        KOKKOS_LAMBDA ( const uint64_t i ) {
+          value_type v = 0;
+          while ( v == 0 ) v = psi::random::random_integer( lower, upper + 1 );
+          h_a_values( i ) = v;
+        } );
 
     {
       // Distributing nnz values into rows
@@ -228,34 +231,38 @@ namespace psi {
       }
 
       //for ( i = 1; i < n; ++i ) h_a_row_map( i + 1 ) += h_a_row_map( i );
-      Kokkos::parallel_scan ( "compute_row_map",
-                              Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, n ),
-                              KOKKOS_LAMBDA (const int i, size_type& update, const bool final) {
-                                // Load old value in case we update it before accumulating
-                                const size_type val_ip1 = h_a_row_map( i + 1 );
-                                update += val_ip1;
-                                if ( final ) h_a_row_map( i + 1 ) = update; // only update array on final pass
-                              });
-
-      assert( h_a_row_map( n ) == nnz );
+      Kokkos::parallel_scan(
+          "psi::crs_matrix::::create_random_matrix_on_host::compute_row_map",
+          Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, n ),
+          KOKKOS_LAMBDA ( const int i, size_type& update, const bool final ) {
+            // Load old value in case we update it before accumulating
+            const size_type val_ip1 = h_a_row_map( i + 1 );
+            update += val_ip1;
+            if ( final )
+              h_a_row_map( i + 1 )
+                  = update;  // only update array on final pass
+          } );
     }
 
-    Kokkos::parallel_for( "random_entries",
-                          Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, n ),
-                          KOKKOS_LAMBDA ( const uint64_t i ) {
-                            auto l = h_a_row_map( i );
-                            auto u = h_a_row_map( i + 1 );
-                            auto begin = h_a_entries.data() + l;
-                            auto end = h_a_entries.data() + u;
-                            std::sample( psi::RangeIterator< decltype( n ) >{ 0 },
-                                        psi::RangeIterator{ n },
-                                        begin, u - l, psi::random::gen );
-                            std::sort( begin, end );
-                          } );
+    Kokkos::parallel_for(
+        "psi::crs_matrix::::create_random_matrix_on_host::random_entries",
+        Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, n ),
+        KOKKOS_LAMBDA ( const uint64_t i ) {
+          auto l = h_a_row_map( i );
+          auto u = h_a_row_map( i + 1 );
+          auto begin = h_a_entries.data() + l;
+          auto end = h_a_entries.data() + u;
+          std::sample( psi::RangeIterator< decltype( n ) >{ 0 },
+                       psi::RangeIterator{ n }, begin, u - l,
+                       psi::random::gen );
+          std::sort( begin, end );
+        } );
 
     Kokkos::deep_copy( a_entries, h_a_entries );
     Kokkos::deep_copy( a_values, h_a_values );
     Kokkos::deep_copy( a_row_map, h_a_row_map );
+
+    assert( h_a_row_map( n ) == nnz );
 
     return xcrsmatrix_t( "Random Matrix", n, n, nnz, a_values, a_row_map, a_entries );
   }
@@ -276,14 +283,19 @@ namespace psi {
    *  NOTE: The output matrix is constructed on device memory space. It does
    *    not performs any deep copy between device and host.
    */
-  template< typename TXCRSMatrix, typename THostSpace=Kokkos::DefaultHostExecutionSpace >
+  template< typename TXCRSMatrix,
+            typename THostSpace=Kokkos::DefaultHostExecutionSpace >
   inline TXCRSMatrix
-  create_random_matrix( typename TXCRSMatrix::ordinal_type n,
-                        typename TXCRSMatrix::size_type nnz,
-                        typename TXCRSMatrix::value_type lower=std::numeric_limits< typename TXCRSMatrix::value_type >::min(),
-                        typename TXCRSMatrix::value_type upper=std::numeric_limits< typename TXCRSMatrix::value_type >::max() )
+  create_random_matrix(
+      typename TXCRSMatrix::ordinal_type n,
+      typename TXCRSMatrix::size_type nnz,
+      typename TXCRSMatrix::value_type lower
+      = std::numeric_limits< typename TXCRSMatrix::value_type >::min(),
+      typename TXCRSMatrix::value_type upper
+      = std::numeric_limits< typename TXCRSMatrix::value_type >::max() )
   {
     typedef TXCRSMatrix xcrsmatrix_t;
+    typedef typename TXCRSMatrix::execution_space execution_space;
     typedef typename xcrsmatrix_t::value_type value_type;
     typedef typename xcrsmatrix_t::ordinal_type ordinal_type;
     typedef typename xcrsmatrix_t::size_type size_type;
@@ -291,17 +303,19 @@ namespace psi {
     typedef typename xcrsmatrix_t::row_map_type::non_const_type row_map_t;
     typedef typename xcrsmatrix_t::index_type::non_const_type entries_t;
     typedef typename xcrsmatrix_t::memory_space xcrsmatrix_memory_space;
-    typedef Kokkos::RangePolicy<> range_policy_t;
-    typedef Kokkos::TeamPolicy<> team_policy_t;
-    typedef team_policy_t::member_type team_member_t;
+    typedef Kokkos::RangePolicy< execution_space > range_policy_t;
+    typedef Kokkos::TeamPolicy< execution_space > team_policy_t;
+    typedef typename team_policy_t::member_type team_member_t;
     typedef Kokkos::Random_XorShift64_Pool<> random_pool_t;
     typedef random_pool_t::generator_type generator_t;
 
     assert( n > 1 && nnz > 0 && nnz / n <= n );
 
-    values_t r_values( "R", nnz );
-    row_map_t r_row_map( "rowmap", n + 1 );
-    entries_t r_entries( "entries", nnz );
+    values_t r_values( Kokkos::ViewAllocateWithoutInitializing( "R" ), nnz );
+    row_map_t r_row_map( Kokkos::ViewAllocateWithoutInitializing( "rowmap" ),
+                         n + 1 );
+    entries_t r_entries( Kokkos::ViewAllocateWithoutInitializing( "entries" ),
+                         nnz );
 
     random_pool_t random_pool( psi::random::rd() );
 
@@ -309,118 +323,127 @@ namespace psi {
                           range_policy_t( 0, nnz ),
                           KOKKOS_LAMBDA ( const uint64_t i ) {
                             generator_t generator = random_pool.get_state();
-
                             value_type v = 0;
-                            while ( v == 0 ) v = Kokkos::rand< generator_t, value_type >::draw( generator, lower, upper );
+                            while ( v == 0 ) {
+                              v = Kokkos::rand< generator_t,
+                                                value_type >::draw( generator,
+                                                                    lower,
+                                                                    upper );
+                            }
                             r_values( i ) = v;
-
                             random_pool.free_state( generator );
                           } );
 
     if ( nnz / n == n ) {  // if nnz = n*n (n*n may be really large to fit in an integer)
-      Kokkos::parallel_for( "psi::crs_matrix::create_random_matrix::fill_nnz",
-                            range_policy_t( 0, n ),
-                            KOKKOS_LAMBDA ( const uint64_t i ) {
-                              r_row_map( i + 1 ) = n;
-                            } );
+      Kokkos::parallel_for(
+          "psi::crs_matrix::create_random_matrix::fill_nnz",
+          range_policy_t( 0, n ),
+          KOKKOS_LAMBDA ( const uint64_t i ) { r_row_map( i + 1 ) = n; } );
     }
     else {
       auto d_nnz = nnz;
       auto nnz_per_row = nnz / n;
       if ( nnz_per_row > n / 2 ) {  // in this case, distribute the zero values is cheaper.
-        d_nnz = ( n - ( nnz / n ) )*n - ( nnz % n );
+        d_nnz = ( n - ( nnz / n ) ) * n - ( nnz % n );
       }
 
-      Kokkos::parallel_for( "psi::crs_matrix::create_random_matrix::distribute_nnz",
-                            range_policy_t( 0, d_nnz ),
-                            KOKKOS_LAMBDA ( const uint64_t ) {
-                              generator_t generator = random_pool.get_state();
+      Kokkos::parallel_for(
+          "psi::crs_matrix::create_random_matrix::distribute_nnz",
+          range_policy_t( 0, d_nnz ), KOKKOS_LAMBDA ( const uint64_t ) {
+            generator_t generator = random_pool.get_state();
 
-                              ordinal_type idx = Kokkos::rand< generator_t, ordinal_type >::draw( generator, n );
+            ordinal_type idx =
+              Kokkos::rand< generator_t, ordinal_type >::draw( generator, n );
 
-                              bool exchanged = false;
-                              do {
-                                auto ptr = &r_row_map( idx + 1 );
-                                auto value = Kokkos::atomic_load( ptr );
-                                while ( value < n ) {
-                                  exchanged = Kokkos::atomic_compare_exchange_strong( ptr, value, value+1 );
-                                  if ( exchanged ) break;
-                                  value = Kokkos::atomic_load( ptr );
-                                }
-                                idx = ( idx + 1 ) % n;
-                              } while( !exchanged );
+            bool exchanged = false;
+            do {
+              auto ptr = &r_row_map( idx + 1 );
+              auto value = Kokkos::atomic_load( ptr );
+              while ( value < n ) {
+                exchanged = Kokkos::atomic_compare_exchange_strong(
+                    ptr, value, value + 1 );
+                if ( exchanged ) break;
+                value = Kokkos::atomic_load( ptr );
+              }
+              idx = ( idx + 1 ) % n;
+            } while ( !exchanged );
 
-                              random_pool.free_state( generator );
-                            } );
+            random_pool.free_state( generator );
+          } );
 
       if ( d_nnz != nnz ) {
-        Kokkos::parallel_for( "psi::crs_matrix::create_random_matrix::reverse_nnz_dist",
-                              range_policy_t( 0, n ),
-                              KOKKOS_LAMBDA ( const uint64_t i ) {
-                                r_row_map( i + 1 ) = n - r_row_map( i + 1 );
-                              } );
+        Kokkos::parallel_for(
+            "psi::crs_matrix::create_random_matrix::reverse_nnz_dist",
+            range_policy_t( 0, n ), KOKKOS_LAMBDA ( const uint64_t i ) {
+              r_row_map( i + 1 ) = n - r_row_map( i + 1 );
+            } );
       }
     }
 
-    Kokkos::parallel_scan( "psi::crs_matrix::create_random_matrix::compute_row_map",
-                          range_policy_t( 0, n ),
-                          KOKKOS_LAMBDA ( const int i, size_type& partial_sum, const bool final ) {
-                            // Load old value in case we update it before accumulating
-                            const size_type value = r_row_map( i + 1 );
-                            partial_sum += value;
-                            // only update array on final pass
-                            if ( final ) r_row_map( i + 1 ) = partial_sum;
-                            if ( i == 0 ) r_row_map( 0 ) = 0;
-                          } );
+    Kokkos::parallel_scan(
+        "psi::crs_matrix::create_random_matrix::compute_row_map",
+        range_policy_t( 0, n ),
+        KOKKOS_LAMBDA ( const int i, size_type& partial_sum,
+                        const bool final ) {
+          // Load old value in case we update it before accumulating
+          const size_type value = r_row_map( i + 1 );
+          partial_sum += value;
+          // only update array on final pass
+          if ( final ) r_row_map( i + 1 ) = partial_sum;
+          if ( i == 0 ) r_row_map( 0 ) = 0;
+        } );
 
-    assert( r_row_map( n ) == nnz );
+    Kokkos::parallel_for(
+        "psi::crs_matrix::create_random_matrix::random_entries",
+        range_policy_t( 0, n ), KOKKOS_LAMBDA ( const uint64_t i ) {
+          auto l = r_row_map( i );
+          auto u = r_row_map( i + 1 );
+          auto begin = r_entries.data() + l;
+          auto end = r_entries.data() + u;
+          auto k = end - begin;
+          if ( k != 0 ) {
+            generator_t generator = random_pool.get_state();
 
-    Kokkos::parallel_for( "psi::crs_matrix::create_random_matrix::random_entries",
-                          range_policy_t( 0, n ),
-                          KOKKOS_LAMBDA ( const uint64_t i ) {
-                            auto l = r_row_map( i );
-                            auto u = r_row_map( i + 1 );
-                            auto begin = r_entries.data() + l;
-                            auto end = r_entries.data() + u;
-                            auto k = end - begin;
-                            if ( k != 0 ) {
-                              generator_t generator = random_pool.get_state();
+            // Reservoir sampling algorithm
+            ordinal_type j = 0;
+            for ( j = 0; j < k; ++j ) *( begin + j ) = j;
+            for ( ; j < n; ++j ) {
+              ordinal_type r = Kokkos::rand< generator_t, ordinal_type >::draw(
+                  generator, j );
+              if ( r < k ) *( begin + r ) = j;
+            }
 
-                              // Reservoir sampling algorithm
-                              ordinal_type j = 0;
-                              for ( j = 0; j < k; ++j ) *( begin + j ) = j;
-                              for ( ; j < n; ++j ) {
-                                ordinal_type r = Kokkos::rand< generator_t, ordinal_type >::draw( generator, j );
-                                if ( r < k ) *( begin + r ) = j;
-                              }
-
-                              random_pool.free_state( generator );
-                            }
-                          } );
+            random_pool.free_state( generator );
+          }
+        } );
 
     // `std::sort` is much faster than `Kokkos::sort` on host
-    if constexpr ( Kokkos::SpaceAccessibility< THostSpace, xcrsmatrix_memory_space >::accessible ) {
-      Kokkos::parallel_for( "random_entries",
-                            Kokkos::RangePolicy< THostSpace >( 0, n ),
-                            KOKKOS_LAMBDA ( const uint64_t i ) {
-                              auto begin = r_entries.data() + r_row_map( i );
-                              auto end = r_entries.data() + r_row_map( i + 1 );
-                              std::sort( begin, end );
-                            } );
+    if constexpr ( Kokkos::SpaceAccessibility<
+                       THostSpace, xcrsmatrix_memory_space >::accessible ) {
+      Kokkos::parallel_for(
+          "random_entries", Kokkos::RangePolicy< THostSpace >( 0, n ),
+          KOKKOS_LAMBDA ( const uint64_t i ) {
+            auto begin = r_entries.data() + r_row_map( i );
+            auto end = r_entries.data() + r_row_map( i + 1 );
+            std::sort( begin, end );
+          } );
     }
     else {
-      Kokkos::parallel_for( "psi::crs_matrix::create_random_matrix::sort_entries",
-                            team_policy_t( n, Kokkos::AUTO ),
-                            KOKKOS_LAMBDA ( const team_member_t& team_member ) {
-                              auto i = team_member.league_rank();
-                              auto l = r_row_map( i );
-                              auto u = r_row_map( i + 1 );
-                              auto subview = Kokkos::subview( r_entries, std::make_pair( l, u ) );
-                              Kokkos::Experimental::sort_team( team_member, subview );
-                            } );
+      Kokkos::parallel_for(
+          "psi::crs_matrix::create_random_matrix::sort_entries",
+          team_policy_t( n, Kokkos::AUTO ),
+          KOKKOS_LAMBDA ( const team_member_t& team_member ) {
+            auto i = team_member.league_rank();
+            auto l = r_row_map( i );
+            auto u = r_row_map( i + 1 );
+            auto subview
+                = Kokkos::subview( r_entries, std::make_pair( l, u ) );
+            Kokkos::Experimental::sort_team( team_member, subview );
+          } );
     }
 
-    return xcrsmatrix_t( "Random Matrix", n, n, nnz, r_values, r_row_map, r_entries );
+    return xcrsmatrix_t( "Random Matrix", n, n, nnz, r_values, r_row_map,
+                         r_entries );
   }
 
   /**
@@ -620,7 +643,7 @@ namespace psi {
 
     Kokkos::parallel_for(
         "psi::crs_matrix::range_spgemm_numeric::compute_numeric",
-        policy_type( 0, a_nrows ), KOKKOS_LAMBDA( const uint64_t row ) {
+        policy_type( 0, a_nrows ), KOKKOS_LAMBDA ( const uint64_t row ) {
           auto a_idx = a_rowmap( row );
           auto a_end = a_rowmap( row + 1 );
           int id = token.acquire();
@@ -723,7 +746,9 @@ namespace psi {
     typedef typename c_row_map_type::value_type size_type;
 
     ordinal_type n = a_rowmap.extent( 0 ) - 1;
-    c_rowmap = c_row_map_type( "c_rowmap", a_rowmap.extent( 0 ) );
+    c_rowmap = c_row_map_type(
+        Kokkos::ViewAllocateWithoutInitializing( "c_rowmap" ),
+        a_rowmap.extent( 0 ) );
 
 #ifdef PSI_STATS
     Kokkos::Timer timer;
@@ -740,7 +765,8 @@ namespace psi {
 
     size_type c_rnnz;
     Kokkos::deep_copy( c_rnnz, Kokkos::subview( c_rowmap, n ) );
-    c_entries = c_entries_type( "C", c_rnnz );
+    c_entries = c_entries_type( Kokkos::ViewAllocateWithoutInitializing( "C" ),
+                                c_rnnz );
 
 #ifdef PSI_STATS
     timer.reset();
@@ -784,6 +810,10 @@ namespace psi {
     range_spgemm( handle, a_rowmap, a_entries, b_rowmap, b_entries, c_rowmap,
                   c_entries, config );
 
+    // FIXME: since entries and rowmap arrays of range CRS is not a view, there
+    // would be an extra copy here and the `c_entries` and `c_rowmap` cannot be
+    // moved when the views are on the same memory space (the RCRS ctor does call
+    // `deep_copy`).
     return TRCRSMatrix( b.numCols(), c_entries, c_rowmap );
   }
 }  // namespace psi
