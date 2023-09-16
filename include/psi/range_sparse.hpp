@@ -142,20 +142,74 @@ namespace psi {
   create_identity_matrix( typename TXCRSMatrix::ordinal_type n )
   {
     typedef TXCRSMatrix xcrsmatrix_t;
-    typedef Kokkos::RangePolicy<> range_policy_t;
+    typedef typename xcrsmatrix_t::execution_space execution_space;
+    typedef Kokkos::RangePolicy< execution_space > range_policy_t;
 
-    typename xcrsmatrix_t::values_type::non_const_type  i_values( "I", n );
-    typename xcrsmatrix_t::row_map_type::non_const_type i_row_map( "rowmap", n + 1 );
-    typename xcrsmatrix_t::index_type::non_const_type   i_entries( "entries", n );
+    typename xcrsmatrix_t::values_type::non_const_type i_values(
+        Kokkos::ViewAllocateWithoutInitializing( "I" ), n );
+    typename xcrsmatrix_t::row_map_type::non_const_type i_row_map(
+        Kokkos::ViewAllocateWithoutInitializing( "I_rowmap" ), n + 1 );
+    typename xcrsmatrix_t::index_type::non_const_type i_entries(
+        Kokkos::ViewAllocateWithoutInitializing( "I_entries" ), n );
 
-    Kokkos::parallel_for( "identity_matrix", range_policy_t( 0, n ),
-                          KOKKOS_LAMBDA ( const uint64_t i ) {
-                            i_values( i ) = 1;
-                            i_row_map( i + 1 ) = i + 1;
-                            i_entries( i ) = i;
-                          } );
+    Kokkos::parallel_for(
+        "psi::crs_matrix::create_identity_matrix", range_policy_t( 0, n ),
+        KOKKOS_LAMBDA ( const uint64_t i ) {
+          i_values( i ) = 1;
+          i_row_map( i + 1 ) = i + 1;
+          i_entries( i ) = i;
+          if ( i == 0 ) i_row_map( 0 ) = 0;
+        } );
 
     return xcrsmatrix_t( "Identity Matrix", n, n, n, i_values, i_row_map, i_entries );
+  }
+
+  template< typename TRowMapDeviceView, typename TEntriesDeviceView >
+  inline void
+  create_range_identity_matrix(
+      TRowMapDeviceView& i_rowmap, TEntriesDeviceView& i_entries,
+      typename TEntriesDeviceView::value_type n )
+  {
+    typedef typename TEntriesDeviceView::execution_space execution_space;
+    typedef Kokkos::RangePolicy< execution_space > range_policy_t;
+
+    i_entries = TEntriesDeviceView(
+        Kokkos::ViewAllocateWithoutInitializing( "I" ), n * 2 );
+    i_rowmap = TRowMapDeviceView(
+        Kokkos::ViewAllocateWithoutInitializing( "I_rowmap" ), n + 1 );
+
+    Kokkos::parallel_for(
+        "psi::crs_matrix::create_range_identity_matrix",
+        range_policy_t( 0, n ), KOKKOS_LAMBDA ( const uint64_t ii ) {
+          i_entries( ii * 2 ) = ii;
+          i_entries( ii * 2 + 1 ) = ii;
+          i_rowmap( ii + 1 ) = ( ii + 1 ) * 2;
+          if ( ii == 0 ) i_rowmap( 0 ) = 0;
+        } );
+  }
+
+  /**
+   *  @brief  Create the identity matrix of order `n` in RCRS format.
+   *
+   *  NOTE: `TRCRSMatrix` should be a `psi::CRSMatrix`-like type from Range group.
+   */
+  template< typename TRCRSMatrix, typename TExecSpace=Kokkos::DefaultExecutionSpace >
+  inline TRCRSMatrix
+  create_range_identity_matrix( typename TRCRSMatrix::ordinal_type n, TExecSpace space={} )
+  {
+    typedef TRCRSMatrix rcrsmatrix_t;
+    typedef typename rcrsmatrix_t::spec_type rcrs_spec_type;
+    typedef typename crs_matrix::Group< rcrs_spec_type >::type group_type;
+
+    auto i_entries = rcrsmatrix_t::make_entries_device_view( space );
+    auto i_rowmap = rcrsmatrix_t::make_rowmap_device_view( space );
+
+    create_range_identity_matrix( i_rowmap, i_entries, n );
+
+    if constexpr ( std::is_same< group_type, crs_matrix::RangeGroup >::value )
+      return rcrsmatrix_t( n, i_entries, i_rowmap, n /* nnz */ );
+    else
+      return rcrsmatrix_t( n, i_entries, i_rowmap );
   }
 
   /**
