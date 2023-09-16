@@ -870,6 +870,52 @@ namespace psi {
     // `deep_copy`).
     return TRCRSMatrix( b.numCols(), c_entries, c_rowmap );
   }
+
+  template< typename TRCRSMatrix,
+            typename TSparseConfig=DefaultSparseConfiguration >
+  inline TRCRSMatrix
+  range_power( TRCRSMatrix const& a, unsigned int k, TSparseConfig config={} )
+  {
+    typedef TRCRSMatrix rcrsmatrix_t;
+    typedef TSparseConfig config_type;
+    typedef typename config_type::execution_space execution_space;
+
+    execution_space space{};
+
+    auto c_entries = rcrsmatrix_t::make_entries_device_view( space );
+    auto c_rowmap = rcrsmatrix_t::make_rowmap_device_view( space );
+
+    create_range_identity_matrix( c_rowmap, c_entries, a.numRows() );
+
+    auto a2n_entries = a.entries_device_view( space );
+    auto a2n_rowmap = a.rowmap_device_view( space );
+
+    auto tmp_entries = rcrsmatrix_t::make_entries_device_view( space );
+    auto tmp_rowmap = rcrsmatrix_t::make_rowmap_device_view( space );
+
+    SparseRangeHandle handle( a, a );
+
+    while ( true ) {
+      if ( k & 1 ) {
+        range_spgemm( handle, c_rowmap, c_entries, a2n_rowmap, a2n_entries,
+                      tmp_rowmap, tmp_entries, config );
+        c_entries = tmp_entries;
+        c_rowmap = tmp_rowmap;
+      }
+
+      k = k >> 1;
+
+      if ( k != 0 ) {
+        range_spgemm( handle, a2n_rowmap, a2n_entries, a2n_rowmap, a2n_entries,
+                      tmp_rowmap, tmp_entries, config );
+        a2n_entries = tmp_entries;
+        a2n_rowmap = tmp_rowmap;
+      }
+      else break;
+    }
+
+    return TRCRSMatrix( a.numCols(), c_entries, c_rowmap );
+  }
 }  // namespace psi
 
 #endif  // PSI_RANGE_SPARSE_HPP_
