@@ -383,12 +383,14 @@ namespace psi {
               rowmap( irow++ ) = i;
             }
             ++cursor;
+            auto entries_begin = entries.data() + i;
             graph.for_each_edges_out(
                 id,
                 [&graph, &entries, &i, start]( id_type to, linktype_type ) {
                   entries( i++ ) = gum::util::id_to_charorder( graph, to ) - start;
                   return true;
                 } );
+            std::sort( entries_begin, entries.data() + i );
             rowmap( irow++ ) = i;
             if ( rank + 1 == upper ) return false;
             return true;
