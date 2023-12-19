@@ -16,6 +16,8 @@
 #ifndef PSI_RANGE_SPARSE_BASE_HPP_
 #define PSI_RANGE_SPARSE_BASE_HPP_
 
+#include <cstddef>
+#include <stdexcept>
 #include <algorithm>
 
 #include <Kokkos_Core.hpp>
@@ -31,11 +33,17 @@ namespace psi {
 
   // Accumulator specialisation tag
   struct BTreeTag {};
-  struct HBitVectorTag {};
+
+  template< unsigned int TL1Size >
+  struct HBitVectorTag {
+    static constexpr const unsigned int L1SizeParam = TL1Size;
+  };
 
   using NoAccumulator = Accumulator< void >;
   using BTreeAccumulator = Accumulator< BTreeTag >;
-  using HBitVectorAccumulator = Accumulator< HBitVectorTag >;
+
+  template< unsigned int TL1Size=2048 >
+  using HBitVectorAccumulator = Accumulator< HBitVectorTag< TL1Size > >;
 
   // Partition tag
   template< typename TSpec >
@@ -47,15 +55,14 @@ namespace psi {
   struct ThreadRangeTag {};
   struct ThreadSequentialTag {};
   struct TeamSequentialTag {};
-  // Unused specialisation tags yet
-  //struct ThreadParallelTag {};
-  //struct TeamFlatParallelTag {};
+  struct ThreadParallelTag {};
+  struct TeamFlatParallelTag {};
 
   using ThreadRangePartition = ExecPartition< ThreadRangeTag >;
   using ThreadSequentialPartition = ExecPartition< ThreadSequentialTag >;
   using TeamSequentialPartition = ExecPartition< TeamSequentialTag >;
-  //using ThreadParallelPartition = ExecPartition< ThreadParallelTag >;
-  //using TeamFlatParallelPartition = ExecPartition< TeamFlatParallelTag >;
+  using ThreadParallelPartition = ExecPartition< ThreadParallelTag >;
+  using TeamFlatParallelPartition = ExecPartition< TeamFlatParallelTag >;
 
   // Supported execution space by accumulators
   template< typename TAccumulator >
@@ -186,8 +193,8 @@ namespace psi {
   template< typename TExecSpace >
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            TExecSpace )
+                             const std::size_t,
+                             TExecSpace )
   {
     throw std::runtime_error( "`get_suggested_vector_size` is not implemented for requested execution space" );
   }
@@ -195,8 +202,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_CUDA)
   inline int
   get_suggested_vector_size( const std::size_t nr,
-                            const std::size_t nnz,
-                            Kokkos::Cuda )
+                             const std::size_t nnz,
+                             Kokkos::Cuda )
   {
     int suggested_vector_size_ = 1;
     int max_vector_size        = 32;
@@ -223,8 +230,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_OPENMP)
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            Kokkos::OpenMP )
+                             const std::size_t,
+                             Kokkos::OpenMP )
   {
     //int suggested_vector_size_ = 1;
     //int max_vector_size        = 1;
@@ -235,8 +242,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_SERIAL)
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            Kokkos::Serial )
+                             const std::size_t,
+                             Kokkos::Serial )
   {
     //int suggested_vector_size_ = 1;
     //int max_vector_size        = 1;
@@ -247,8 +254,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_THREADS)
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            Kokkos::Threads )
+                             const std::size_t,
+                             Kokkos::Threads )
   {
     //int suggested_vector_size_ = 1;
     //int max_vector_size        = 1;
