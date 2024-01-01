@@ -58,7 +58,7 @@ namespace psi {
       using member_type = typename Kokkos::TeamPolicy< execution_space >::member_type;
       using size_type = TSize;
       using bitset_type = TBitset;
-      using view_type = bitset_type* /*Kokkos::View< bitset_type*, scratch_space, Kokkos::MemoryUnmanaged >*/;
+      using view_type = Kokkos::View< bitset_type*, scratch_space, Kokkos::MemoryUnmanaged >;
       using value_type = bool;
       /* === MEMBER CONSTANTS === */
       static constexpr const size_type BITSET_WIDTH            = gum::widthof< bitset_type >::value;  // 64 bits (if uint64_t)
@@ -102,13 +102,10 @@ namespace psi {
         }
         else this->l1_begin = 0;
 
-        auto l1size = HierarchicalBitVector::l1_scratch_size();
-        this->l1_data = ( view_type )
-          ( tm.team_scratch( 0 ).get_shmem_aligned( l1size, space_alignment ) );
-        auto l2size = HierarchicalBitVector::l2_scratch_size( n );
+        this->l1_data = view_type( tm.team_scratch( 0 ), this->l1_num_bitsets() );
+        auto l2size = HierarchicalBitVector::l2_num_bitsets( n );
         if ( l2size != 0 ) {
-          this->l2_data = ( view_type )
-            ( tm.team_scratch( 1 ).get_shmem_aligned( l2size, space_alignment ) );
+          this->l2_data = view_type( tm.team_scratch( 1 ), l2size );
         }
       }
       /* === STATIC MEMBERS === */
@@ -127,8 +124,7 @@ namespace psi {
       static constexpr inline size_type
       l1_scratch_size( )
       {
-        //return view_type::shmem_size( HierarchicalBitVector::l1_num_bitsets( ) );
-        return L1_SIZE_BYTES;
+        return view_type::shmem_size( HierarchicalBitVector::l1_num_bitsets( ) );
       }
 
       static constexpr inline size_type
@@ -148,8 +144,7 @@ namespace psi {
       static inline size_type
       l2_scratch_size( size_type n )
       {
-        // return view_type::shmem_size( HierarchicalBitVector::l2_num_bitsets( n ) )
-        return HierarchicalBitVector::l2_num_bitsets( n ) * sizeof( bitset_type );
+        return view_type::shmem_size( HierarchicalBitVector::l2_num_bitsets( n ) );
       }
 
       static inline size_type
@@ -228,11 +223,11 @@ namespace psi {
         auto mask = 1ULL << ( ridx & BITSET_MASK );
 
         if ( ridx < this->l1_size() ) {  // most probable
-          this->l1_data[ bitset ] |= mask;
+          this->l1_data( bitset ) |= mask;
         }
         else {
           bitset -= this->l1_num_bitsets();
-          this->l2_data[ bitset ] |= mask;
+          this->l2_data( bitset ) |= mask;
         }
       }
 
@@ -255,14 +250,14 @@ namespace psi {
 
             if ( s_bitset != f_bitset ) {
               auto mask = ( BITSET_ALL_SET << s_offset );
-              data_ptr[ s_bitset ] |= mask;
-              for ( auto i = s_bitset + 1; i < f_bitset; ++i ) data_ptr[ i ] |= BITSET_ALL_SET;
+              data_ptr( s_bitset ) |= mask;
+              for ( auto i = s_bitset + 1; i < f_bitset; ++i ) data_ptr( i ) |= BITSET_ALL_SET;
               mask = ( BITSET_ALL_SET >> ( BITSET_MASK - f_offset ) );
-              data_ptr[ f_bitset ] |= mask;
+              data_ptr( f_bitset ) |= mask;
             }
             else {
               auto mask = ( ( 1ULL << ( f_offset - s_offset + 1 ) ) - 1 ) << s_offset;
-              data_ptr[ s_bitset ] |= mask;
+              data_ptr( s_bitset ) |= mask;
             }
           };
 
@@ -312,19 +307,19 @@ namespace psi {
 
             if ( s_bitset != f_bitset ) {
               auto mask = ( BITSET_ALL_SET << s_offset );
-              data_ptr[ s_bitset ] |= mask;
+              data_ptr( s_bitset ) |= mask;
 
               Kokkos::parallel_for( Kokkos::ThreadVectorRange( tm, s_bitset+1, f_bitset ),
                                     [=] ( const uint64_t k ) {
-                                      data_ptr[ k ] |= BITSET_ALL_SET;
+                                      data_ptr( k ) |= BITSET_ALL_SET;
                                     } );
 
               mask = ( BITSET_ALL_SET >> ( BITSET_MASK - f_offset ) );
-              data_ptr[ f_bitset ] |= mask;
+              data_ptr( f_bitset ) |= mask;
             }
             else {
               auto mask = ( ( 1ULL << ( f_offset - s_offset + 1 ) ) - 1 ) << s_offset;
-              data_ptr[ s_bitset ] |= mask;
+              data_ptr( s_bitset ) |= mask;
             }
           };
 
