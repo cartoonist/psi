@@ -216,6 +216,84 @@ namespace psi {
         return ( static_cast< std::ptrdiff_t >( i ) - static_cast< std::ptrdiff_t >( this->l1_begin ) ) % this->m_size;
       }
 
+      inline size_type
+      relative_bitset( size_type bitset_idx ) const
+      {
+        auto start_idx = bitset_idx << BITSET_SHIFT;
+        auto ridx = this->relative_idx( start_idx );
+        return ridx >> BITSET_SHIFT;
+      }
+
+      inline void
+      clear_l1( const member_type& tm )
+      {
+        Kokkos::parallel_for(
+            Kokkos::TeamVectorRange( tm, 0, l1_num_bitsets() ),
+            [=]( const uint64_t j ) { this->l1_data[ j ] = 0; } );
+      }
+
+      /**
+       *   @brief Clear the range of bitsets [start, end) which occurs on L2
+       *
+       *   @param tm  Team Policy member
+       *   @param start Absolute bitset start index in the vector
+       *   @param end Absolute bitset end index in the vector
+       *
+       *   NOTE: `start` and `end` are absolute bitset indexes (not relative).
+       *   NOTE: The caller should make sure that both [start, end) does not
+       *         span over L1.
+       */
+      inline void
+      clear_l2_by_bidx( const member_type& tm, size_type start, size_type end )
+      {
+        assert( end != 0 );
+
+        auto rstart = this->relative_bitset( start ) - l1_num_bitsets();
+        auto rend = this->relative_bitset( end - 1 ) + 1 - l1_num_bitsets();
+        Kokkos::parallel_for( Kokkos::TeamVectorRange( tm, rstart, rend ),
+                              [=]( const uint64_t j ) {
+                                this->l2_data[ j ] = 0;
+                              } );
+      }
+
+      /**
+       *   @brief Clear the range of bitsets [start, end) which occurs on L2
+       *
+       *   @param tm  Team Policy member
+       *   @param start Absolute start index in the vector
+       *   @param end Absolute end index in the vector
+       *
+       *   NOTE: `start` and `end` are absolute bit indexes (not relative).
+       *   NOTE: The caller should make sure that both [start, end) does not
+       *         span over L1.
+       */
+      inline void
+      clear_l2_by_idx( const member_type& tm, size_type start, size_type end )
+      {
+        assert( end != 0 );
+
+        auto rstart = this->relative_idx( start ) - l1_size();
+        auto rend = this->relative_idx( end - 1 ) + 1 - l1_size();
+        auto lbs = ( rstart >> BITSET_SHIFT );
+        auto rbs = ( rend >> BITSET_SHIFT );
+        Kokkos::parallel_for( Kokkos::TeamVectorRange( tm, lbs, rbs ),
+                              [=]( const uint64_t j ) {
+                                this->l2_data[ j ] = 0;
+                              } );
+      }
+
+      /**
+       *   @brief Clear all bitsets in L2
+       */
+      inline void
+      clear_l2( const member_type& tm )
+      {
+        Kokkos::parallel_for( Kokkos::TeamVectorRange( tm, this->l2_num_bitsets() ),
+                              [=]( const uint64_t j ) {
+                                this->l2_data[ j ] = 0;
+                              } );
+      }
+
       inline void
       set( size_type i )
       {
