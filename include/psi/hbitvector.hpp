@@ -1,8 +1,8 @@
 /**
- *    @file  hierarchical_bitvector.hpp
- *   @brief  HierarchicalBitVector class definition header file.
+ *    @file  hbitvector.hpp
+ *   @brief  HBitVector class definition header file.
  *
- *  This header file contains `HierarchicalBitVector` class definition and related
+ *  This header file contains `HBitVector` class definition and related
  *  interface functions and type definitions.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@uni-bielefeld.de>
@@ -16,8 +16,8 @@
  *  See LICENSE file for more information.
  */
 
-#ifndef PSI_HIERARCHICAL_BITVECTOR_HPP_
-#define PSI_HIERARCHICAL_BITVECTOR_HPP_
+#ifndef PSI_HBITVECTOR_HPP_
+#define PSI_HBITVECTOR_HPP_
 
 #include <climits>
 #include <cstdint>
@@ -29,7 +29,7 @@
 
 namespace psi {
   /**
-   *  @brief  Two-level bit vector
+   *  @brief  Hierarchical (two-level) bit vector
    *
    *  @tparam  TL1_Size Size of the first level bit vector
    *
@@ -49,7 +49,7 @@ namespace psi {
             typename TSize=uint32_t,
             typename TBitset=uint64_t,
             typename TDevice=Kokkos::DefaultExecutionSpace >
-  class HierarchicalBitVector {
+  class HBitVector {
     public:
       /* === MEMBER TYPES === */
       using device_type = TDevice;
@@ -84,14 +84,14 @@ namespace psi {
       view_type l1_data;   //!< First level bit vector view
       view_type l2_data;   //!< Second level bit vector view
       /* === LIFECYCLE === */
-      HierarchicalBitVector( size_type n, size_type centre, const member_type& tm )
+      HBitVector( size_type n, size_type centre, const member_type& tm )
         : m_size( n ), l1_begin( 0 ), l1_data( ), l2_data( )
       {
         assert( centre < n );
 
         auto bitset = ( centre >> BITSET_SHIFT );
         // range is [bitset-(L1_NUM_BITSETS/2)+1...bitset+(L1_NUM_BITSETS/2)] (inclusive)
-        auto nof_bitsets = HierarchicalBitVector::num_bitsets( n );
+        auto nof_bitsets = HBitVector::num_bitsets( n );
         if ( L1_NUM_BITSETS < nof_bitsets ) {
           unsigned short int l_pad = ( L1_NUM_BITSETS >> 1 ) - 1;
           auto r_fit = nof_bitsets - L1_NUM_BITSETS;
@@ -102,10 +102,10 @@ namespace psi {
         }
         else this->l1_begin = 0;
 
-        auto l1size = HierarchicalBitVector::l1_scratch_size();
+        auto l1size = HBitVector::l1_scratch_size();
         this->l1_data = ( view_type )
           ( tm.team_scratch( 0 ).get_shmem_aligned( l1size, space_alignment ) );
-        auto l2size = HierarchicalBitVector::l2_scratch_size( n );
+        auto l2size = HBitVector::l2_scratch_size( n );
         if ( l2size != 0 ) {
           this->l2_data = ( view_type )
             ( tm.team_scratch( 1 ).get_shmem_aligned( l2size, space_alignment ) );
@@ -140,35 +140,35 @@ namespace psi {
       static inline size_type
       l2_num_bitsets( size_type n )
       {
-        auto nbitsets = HierarchicalBitVector::num_bitsets( n );
-        return ( nbitsets  > HierarchicalBitVector::l1_num_bitsets() ) ? nbitsets - HierarchicalBitVector::l1_num_bitsets() : 0;
+        auto nbitsets = HBitVector::num_bitsets( n );
+        return ( nbitsets  > HBitVector::l1_num_bitsets() ) ? nbitsets - HBitVector::l1_num_bitsets() : 0;
       }
 
       static inline size_type
       l2_scratch_size( size_type n )
       {
-        return HierarchicalBitVector::l2_num_bitsets( n ) * sizeof( bitset_type );
+        return HBitVector::l2_num_bitsets( n ) * sizeof( bitset_type );
       }
 
       static inline size_type
       l2_size( size_type n )
       {
-        return HierarchicalBitVector::l2_scratch_size( n ) * CHAR_BIT;
+        return HBitVector::l2_scratch_size( n ) * CHAR_BIT;
       }
 
       static inline size_type
       capacity( size_type n )
       {
-        return HierarchicalBitVector::l2_scratch_size( n ) +
-               HierarchicalBitVector::l1_scratch_size();
+        return HBitVector::l2_scratch_size( n ) +
+               HBitVector::l1_scratch_size();
       }
 
       template< typename TPolicy >
       static inline TPolicy
       set_scratch_size( TPolicy& policy, size_type n )
       {
-        auto l1size = HierarchicalBitVector::l1_scratch_size();
-        auto l2size = HierarchicalBitVector::l2_scratch_size( n );
+        auto l1size = HBitVector::l1_scratch_size();
+        auto l2size = HBitVector::l2_scratch_size( n );
         auto new_policy = policy.set_scratch_size( 0, Kokkos::PerTeam( l1size ) );
         if ( l2size == 0 ) return new_policy;
         return new_policy.set_scratch_size( 1, Kokkos::PerTeam( l2size ) );
@@ -183,31 +183,31 @@ namespace psi {
       inline size_type
       capacity( ) const
       {
-        return HierarchicalBitVector::capacity( this->m_size );
+        return HBitVector::capacity( this->m_size );
       }
 
       inline size_type
       num_bitsets( ) const
       {
-        return HierarchicalBitVector::num_bitsets( this->m_size );
+        return HBitVector::num_bitsets( this->m_size );
       }
 
       inline size_type
       l2_size() const
       {
-        return HierarchicalBitVector::l2_size( this->m_size );
+        return HBitVector::l2_size( this->m_size );
       }
 
       inline size_type
       l2_num_bitsets( ) const
       {
-        return HierarchicalBitVector::l2_num_bitsets( this->m_size );
+        return HBitVector::l2_num_bitsets( this->m_size );
       }
 
       inline size_type
       l2_scratch_size( ) const
       {
-        return HierarchicalBitVector::l2_scratch_size( this->m_size );
+        return HBitVector::l2_scratch_size( this->m_size );
       }
 
       inline size_type
@@ -356,4 +356,4 @@ namespace psi {
 }  /* --- end of namespace psi --- */
 
 
-#endif // PSI_HIERARCHICAL_BITVECTOR_HPP_
+#endif // PSI_HBITVECTOR_HPP_

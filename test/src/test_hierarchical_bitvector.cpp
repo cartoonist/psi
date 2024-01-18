@@ -1,8 +1,8 @@
 /**
- *    @file  test_hierarchical_bitvector.cpp
- *   @brief  Test scenarios for `HierarchicalBitVector` template class.
+ *    @file  test_hbitvector.cpp
+ *   @brief  Test scenarios for `HBitVector` template class.
  *
- *  This test module contains all test scenarios for `HierarchicalBitVector` class.
+ *  This test module contains all test scenarios for `HBitVector` class.
  *
  *  @author  Ali Ghaffaari (\@cartoonist), <ali.ghaffaari@mpi-inf.mpg.de>
  *
@@ -19,7 +19,7 @@
 
 #include <sstream>
 
-#include <psi/hierarchical_bitvector.hpp>
+#include <psi/hbitvector.hpp>
 #include <psi/graph.hpp>
 #include <psi/crs_matrix.hpp>
 #include <gum/gfa_utils.hpp>
@@ -30,44 +30,45 @@
 
 using namespace psi;
 
-TEMPLATE_SCENARIO_SIG( "L1 begin position in bitvectors", "[hbitvector]",
-                       ( ( typename T, int L ), T, L ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint64_t >, 11431 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint64_t >, 4096 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint64_t >, 128 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint64_t >, 64 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint64_t >, 38 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint64_t >, 11431 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint64_t >, 4096 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint64_t >, 256 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint64_t >, 128 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint64_t >, 73 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint64_t >, 11431 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint64_t >, 4096 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint64_t >, 1024 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint64_t >, 64 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint64_t >, 11431 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint64_t >, 4096 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint64_t >, 2048 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint64_t >, 256 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint32_t >, 11431 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint32_t >, 4096 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint32_t >, 128 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint32_t >, 64 ),
-                       ( HierarchicalBitVector< 128,  uint32_t, uint32_t >, 38 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint32_t >, 11431 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint32_t >, 4096 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint32_t >, 256 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint32_t >, 128 ),
-                       ( HierarchicalBitVector< 256,  uint32_t, uint32_t >, 73 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint32_t >, 11431 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint32_t >, 4096 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint32_t >, 1024 ),
-                       ( HierarchicalBitVector< 1024, uint32_t, uint32_t >, 64 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint32_t >, 11431 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint32_t >, 4096 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint32_t >, 2048 ),
-                       ( HierarchicalBitVector< 2048, uint32_t, uint32_t >, 256 ) )
+TEMPLATE_SCENARIO_SIG(
+    "L1 begin position in bitvectors", "[hbitvector]",
+    ( ( typename T, int L ), T, L ),
+    ( HBitVector< 128, uint32_t, uint64_t >, 11431 ),
+    ( HBitVector< 128, uint32_t, uint64_t >, 4096 ),
+    ( HBitVector< 128, uint32_t, uint64_t >, 128 ),
+    ( HBitVector< 128, uint32_t, uint64_t >, 64 ),
+    ( HBitVector< 128, uint32_t, uint64_t >, 38 ),
+    ( HBitVector< 256, uint32_t, uint64_t >, 11431 ),
+    ( HBitVector< 256, uint32_t, uint64_t >, 4096 ),
+    ( HBitVector< 256, uint32_t, uint64_t >, 256 ),
+    ( HBitVector< 256, uint32_t, uint64_t >, 128 ),
+    ( HBitVector< 256, uint32_t, uint64_t >, 73 ),
+    ( HBitVector< 1024, uint32_t, uint64_t >, 11431 ),
+    ( HBitVector< 1024, uint32_t, uint64_t >, 4096 ),
+    ( HBitVector< 1024, uint32_t, uint64_t >, 1024 ),
+    ( HBitVector< 1024, uint32_t, uint64_t >, 64 ),
+    ( HBitVector< 2048, uint32_t, uint64_t >, 11431 ),
+    ( HBitVector< 2048, uint32_t, uint64_t >, 4096 ),
+    ( HBitVector< 2048, uint32_t, uint64_t >, 2048 ),
+    ( HBitVector< 2048, uint32_t, uint64_t >, 256 ),
+    ( HBitVector< 128, uint32_t, uint32_t >, 11431 ),
+    ( HBitVector< 128, uint32_t, uint32_t >, 4096 ),
+    ( HBitVector< 128, uint32_t, uint32_t >, 128 ),
+    ( HBitVector< 128, uint32_t, uint32_t >, 64 ),
+    ( HBitVector< 128, uint32_t, uint32_t >, 38 ),
+    ( HBitVector< 256, uint32_t, uint32_t >, 11431 ),
+    ( HBitVector< 256, uint32_t, uint32_t >, 4096 ),
+    ( HBitVector< 256, uint32_t, uint32_t >, 256 ),
+    ( HBitVector< 256, uint32_t, uint32_t >, 128 ),
+    ( HBitVector< 256, uint32_t, uint32_t >, 73 ),
+    ( HBitVector< 1024, uint32_t, uint32_t >, 11431 ),
+    ( HBitVector< 1024, uint32_t, uint32_t >, 4096 ),
+    ( HBitVector< 1024, uint32_t, uint32_t >, 1024 ),
+    ( HBitVector< 1024, uint32_t, uint32_t >, 64 ),
+    ( HBitVector< 2048, uint32_t, uint32_t >, 11431 ),
+    ( HBitVector< 2048, uint32_t, uint32_t >, 4096 ),
+    ( HBitVector< 2048, uint32_t, uint32_t >, 2048 ),
+    ( HBitVector< 2048, uint32_t, uint32_t >, 256 ) )
 {
   using hbv_type = T;
   using bitset_type = typename hbv_type::bitset_type;
@@ -80,7 +81,9 @@ TEMPLATE_SCENARIO_SIG( "L1 begin position in bitvectors", "[hbitvector]",
   auto nof_bitsets = ( L/width + ((bool)(L%width)) );
   auto bitset_size = sizeof( bitset_type );
 
-  GIVEN( "A Kokkos Team Execution Policy consisting of " + std::to_string( len ) + " teams" ) {
+  GIVEN( "A Kokkos Team Execution Policy consisting of "
+         + std::to_string( len ) + " teams" )
+  {
     auto policy = policy_type( len, Kokkos::AUTO );
 
     WHEN( "Setting scratch size" ) {
@@ -103,7 +106,9 @@ TEMPLATE_SCENARIO_SIG( "L1 begin position in bitvectors", "[hbitvector]",
     }
   }
 
-  GIVEN( "A hierarchical bitvector of length " + std::to_string( len ) + " of width " + std::to_string( width ) ) {
+  GIVEN( "A hierarchical bitvector of length " + std::to_string( len )
+         + " and width " + std::to_string( width ) )
+  {
     Kokkos::View< uint64_t* > true_begins( "t", len );
     auto h_tb = Kokkos::create_mirror_view( true_begins );
 
@@ -129,41 +134,46 @@ TEMPLATE_SCENARIO_SIG( "L1 begin position in bitvectors", "[hbitvector]",
 
     Kokkos::deep_copy( true_begins, h_tb );
 
-    WHEN( "Initialising the hierarchical bitvector inside a Kokkos kernel" ) {
+    WHEN( "Initialising the hierarchical bitvector inside a Kokkos kernel" )
+    {
       auto policy = policy_type( len, Kokkos::AUTO );
       policy = hbv_type::set_scratch_size( policy, len );
 
       Kokkos::View< unsigned char* > flags( "flags", len );
-      Kokkos::parallel_for( "psi::test_hierarchical_bitvector::l1_begin",
-                            policy,
-                            KOKKOS_LAMBDA ( const member_type& tm ) {
-                              auto row = tm.league_rank();
-                              hbv_type h_bv( len, row, tm );
-                              Kokkos::single( Kokkos::PerTeam( tm ), [&]() {
-                                if ( h_bv.l1_begin == true_begins( row ) ) flags( row ) = 1;
-                                /*
-                                // NOTE: uncomment `#include <cxxabi.h>`
-                                else {  // For debugging on CPU
-                                  std::stringstream ss;
-                                  auto hbv_type_name = abi::__cxa_demangle( typeid( hbv_type ).name(), NULL, NULL, NULL );
-                                  ss << "=== " << hbv_type_name << " ===\n";
-                                  std::free( hbv_type_name );
-                                  ss << "Error: " << row << ": "
-                                    << h_bv.l1_begin << " != " << true_begins( row ) << "\n";
-                                  std::cout << ss.str() << std::endl;
-                                  assert( false );
-                                }
-                                */
-                              } );
-                            } );
+      Kokkos::parallel_for(
+          "psi::test_hbitvector::l1_begin", policy,
+          KOKKOS_LAMBDA ( const member_type& tm ) {
+            auto row = tm.league_rank();
+            hbv_type h_bv( len, row, tm );
+            Kokkos::single( Kokkos::PerTeam( tm ), [ & ]() {
+              if ( h_bv.l1_begin == true_begins( row ) ) flags( row ) = 1;
+              /*
+              // NOTE: uncomment `#include <cxxabi.h>`
+              else {  // For debugging on CPU
+                std::stringstream ss;
+                auto hbv_type_name = abi::__cxa_demangle(
+                    typeid( hbv_type ).name(), NULL, NULL, NULL );
+                ss << "=== " << hbv_type_name << " ===\n";
+                std::free( hbv_type_name );
+                ss << "Error: " << row << ": " << h_bv.l1_begin
+                   << " != " << true_begins( row ) << "\n";
+                std::cout << ss.str() << std::endl;
+                assert( false );
+              }
+              */
+            } );
+          } );
 
-      THEN( "The begin position of the bitvector for each team should be 64-bit aligned and centred around the given row" ) {
+      THEN( "The begin position of the bitvector for each team should be "
+            "64-bit aligned and centred around the given row" )
+      {
         std::size_t all_set = 0;
-        Kokkos::parallel_reduce( "psi::test_hierarchical_bit_vector::l1_begin_assess",
-                                 len,
-                                 KOKKOS_LAMBDA ( const uint64_t i, std::size_t& all_set_local ) {
-                                   if ( flags( i ) == 1 ) all_set_local += 1;
-                                 }, all_set );
+        Kokkos::parallel_reduce(
+            "psi::test_hbit_vector::l1_begin_assess", len,
+            KOKKOS_LAMBDA( const uint64_t i, std::size_t& all_set_local ) {
+              if ( flags( i ) == 1 ) all_set_local += 1;
+            },
+            all_set );
 
         REQUIRE( all_set == len );
       }
