@@ -657,9 +657,10 @@ namespace psi {
       m_rowmap[ 0 ] = 0;
       mutable_trait_type::assign( m_entries, m_rowmap, e_entries, e_rowmap, crs_matrix::RangeGroup{} );
 
-      gum::RandomAccessNonConstProxyContainer< m_entries_type, uint64_t > proxy_entries(
-          &m_entries,
-          []( typename m_entries_type::value_type e ) { return static_cast< uint64_t >( e ); } );
+      gum::RandomAccessProxyContainer proxy_entries( &m_entries,
+                                                     []( typename m_entries_type::value_type e ) -> uint64_t {
+                                                       return static_cast< uint64_t >( e );
+                                                     } );
       assign( entries, rowmap, proxy_entries, m_rowmap, crs_matrix::BasicGroup{} );
     }
 
@@ -923,9 +924,10 @@ namespace psi {
       m_rowmap[ 0 ] = 0;
       mutable_trait_type::assign( m_entries, m_rowmap, e_entries, e_rowmap, crs_matrix::BasicGroup{} );
 
-      gum::RandomAccessNonConstProxyContainer< m_entries_type, uint64_t > proxy_entries(
-          &m_entries,
-          []( typename m_entries_type::value_type e ) { return static_cast< uint64_t >( e ); } );
+      gum::RandomAccessProxyContainer proxy_entries( &m_entries,
+                                                     []( typename m_entries_type::value_type e ) -> uint64_t {
+                                                       return static_cast< uint64_t >( e );
+                                                     } );
       assign( entries, rowmap, proxy_entries, m_rowmap, crs_matrix::RangeGroup{} );
     }
 
@@ -1030,9 +1032,10 @@ namespace psi {
       typedef typename std::decay_t< TCrsMatrixBase >::spec_type ext_spec_type;
       typedef typename crs_matrix::Group< ext_spec_type >::type ext_group_type;
 
-      gum::RandomAccessNonConstProxyContainer< ext_entries_type, uint64_t > proxy_entries(
-          &matrix.entries,
-          []( ext_value_type e ) { return static_cast< uint64_t >( e ); } );
+      gum::RandomAccessProxyContainer proxy_entries( &matrix.entries,
+                                                     []( ext_value_type e ) -> uint64_t {
+                                                       return static_cast< uint64_t >( e );
+                                                     } );
       psi::resize( this->rowmap, matrix.numRows() + 1 );
       psi::clear( this->entries );
       traits_type::assign( this->entries, this->rowmap, proxy_entries, matrix.rowmap,

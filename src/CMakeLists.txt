@@ -14,10 +14,17 @@ if(NOT TARGET spdlog::spdlog)
   add_subdirectory(${SPDLOG_SOURCE_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# Default compile option
+set(PSIKT_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
+
+if (EASY_PSI_EASY)
+  list(REMOVE_ITEM PSIKT_DEFAULT_CXXOPS -Werror)
+endif(EASY_PSI_EASY)
+
 # Defining target 'psikt': PSI indexing/seeding tool
 set(SOURCES "psikt.cpp")
 add_executable(psikt ${SOURCES})
-target_compile_options(psikt PRIVATE -g -Wall -Wpedantic -Werror)
+target_compile_options(psikt PRIVATE ${PSIKT_DEFAULT_CXXOPS})
 target_include_directories(psikt
   PRIVATE ${PROJECT_BINARY_DIR}/src
   PRIVATE psi::psi

@@ -3,7 +3,7 @@
 	url = https://github.com/philsquared/Catch.git
 [submodule "src/ext/spdlog"]
 	path = src/ext/spdlog
-	url = https://github.com/gabime/spdlog.git
+	url = https://github.com/cartoonist/spdlog.git
 [submodule "ext/seqan"]
 	path = ext/seqan
 	url = https://github.com/seqan/seqan

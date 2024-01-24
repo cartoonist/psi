@@ -70,25 +70,25 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
 
   if ( !result.count( "prefix" ) ) {
-    throw cxxopts::OptionParseException( "Index prefix must be specified" );
+    throw cxxopts::exceptions::parsing( "Index prefix must be specified" );
   }
   if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Index file not found" );
+    throw cxxopts::exceptions::parsing( "Index file not found" );
   }
 
   if ( !result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph must be specified" );
   }
   if ( !readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
 
   if ( !result.count( "seed-length" ) ) {
-    throw cxxopts::OptionParseException( "Seed length must be specified" );
+    throw cxxopts::exceptions::parsing( "Seed length must be specified" );
   }
 
   if ( !result.count( "step-size" ) ) {
-    throw cxxopts::OptionParseException( "Step size must be specified" );
+    throw cxxopts::exceptions::parsing( "Step size must be specified" );
   }
 
   return result;
@@ -169,11 +169,11 @@ template< typename TGraph, typename TFinder >
       unsigned int seedlen, unsigned int stepsize, unsigned int max_nodes, bool noloci )
   {
     if ( !finder.load_path_index_only( pindex_prefix, ctx ) ) {
-      throw cxxopts::OptionException( "Index file seems corrupted" );
+      throw cxxopts::exceptions::exception( "Index file seems corrupted" );
     }
 
     if ( !finder.open_starts( pindex_prefix, seedlen, stepsize ) ) {
-      throw cxxopts::OptionException( "Starting loci file seems corrupted" );
+      throw cxxopts::exceptions::exception( "Starting loci file seems corrupted" );
     }
 
     auto const& pindex = finder.get_pindex();
@@ -242,7 +242,7 @@ main( int argc, char* argv[] )
     inspect_pathindex( graph, finder, pindex_prefix, output, context, seedlen, stepsize,
                        max_nodes, noloci );
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }

@@ -374,21 +374,21 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
   // `graph` option (positional)
   if ( ! result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph file must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph file must be specified" );
   }
   if ( ! readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
   // `type` option
   if ( ! result.count( "type" ) &&
       result[ "output" ].as< std::string >() == DEFAULT_OUTPUT ) {
-    throw cxxopts::OptionParseException( "File type must be specified" );
+    throw cxxopts::exceptions::parsing( "File type must be specified" );
   }
   // `read-length` and `num-reads` options
   bool has_readlen = result[ "read-length" ].as< unsigned int >();
   bool has_numreads = result[ "num-reads" ].as< unsigned long int >();
   if ( has_readlen != has_numreads ) {
-    throw cxxopts::OptionParseException(
+    throw cxxopts::exceptions::parsing(
         "Options `read-length` and `num-reads` should be either both defined "
         "indicating to output simulated reads or not defined at all, in which case it "
         "outputs simulated haplotypes." );
@@ -442,7 +442,7 @@ main( int argc, char* argv[] )
     if ( params.distance != 0 ) simulate< PairedEnd >( type, graph, params );
     else simulate< SingleEnd >( type, graph, params );
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }

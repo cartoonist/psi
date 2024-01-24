@@ -782,7 +782,8 @@ namespace psi {
         class KokkosHandler {
         public:
           /* === LIFECYCLE === */
-          KokkosHandler( bool fin=true ) : finaliser( fin )
+          KokkosHandler( bool fin=true,
+                         Kokkos::InitializationSettings settings={} ) : finaliser( fin )
           {
             /* Ensure no concurrent dtor is running */
             ReaderLock constructor( KokkosHandler::get_final_lock() );
@@ -791,7 +792,7 @@ namespace psi {
               UniqWriterLock initialiser( KokkosHandler::get_init_lock() );
               if ( initialiser ) {
                 /* Initialise Kokkos */
-                Kokkos::initialize();
+                Kokkos::initialize( settings );
               }
             }
             /* Sync ctors with the initialiser ctor to ensure that the object is ready */
@@ -920,8 +921,10 @@ namespace psi {
             unsigned int len,
             unsigned int gocc_thr = 0,
             unsigned int mxmem = 0,
-            unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), handler( get_kokkos_handling_status() ),
+            unsigned char mismatches = 0,
+            Kokkos::InitializationSettings kokkos_settings = {} )
+          : graph_ptr( &g ), pindex( g, true ),
+          handler( get_kokkos_handling_status(), kokkos_settings ),
           seed_len( len ), seed_mismatches( mismatches ),
           gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
           max_mem( ( mxmem != 0 ? mxmem : UINT_MAX ) ),
@@ -1603,8 +1606,6 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          typedef gum::RandomAccessProxyContainer< std::vector< Position<> >, Position<> > proxy_container_type;
-
           std::string filepath = SeedFinder::get_sloci_filepath( prefix, seed_len, step_size );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
@@ -1612,13 +1613,13 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::write_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
-          std::function< Position<>( const Position<>& ) > lambda =
-              [this]( const Position<>& pos ) {
-                Position<> p = pos;
-                p.set_node_id( this->graph_ptr->coordinate_id( p.node_id() ) );
-                return p;
-              };
-          proxy_container_type sloci( &this->starting_loci, lambda );
+          auto lambda =
+            [this]( const Position<>& pos ) -> Position<> {
+              Position<> p = pos;
+              p.set_node_id( this->graph_ptr->coordinate_id( p.node_id() ) );
+              return p;
+            };
+          gum::RandomAccessProxyContainer sloci( &this->starting_loci, lambda );
           SeedFinder::serialize_starts( ofs, sloci );
           return true;
         }

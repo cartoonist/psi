@@ -6,6 +6,7 @@ option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
 option(BUILD_PSI_AUX_TOOLS "Build PSI auxiliary tools" OFF)
 option(BUILD_TESTING "Build test programs" OFF)
 option(BUILD_DOC "Build documentation" OFF)
+option(EASY_PSI_EASY "Turn off '-Werror' (no worries; just warnings!)" OFF)
 option(USE_BUNDLED_SEQAN "Use bundled SeqAn library" OFF)
 option(USE_BUNDLED_GUM "Use bundled gum library" OFF)
 option(USE_BUNDLED_KSEQPP "Use bundled kseq++ library" OFF)
@@ -30,7 +31,7 @@ find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
-find_package(gum 1.2.1 QUIET)
+find_package(gum 2.0.1 QUIET)
 find_package(kseq++ 1.0.0 QUIET)
 find_package(pairg 0.2.1 QUIET)
 # Handle bundled dependencies
@@ -45,15 +46,20 @@ endif(BUILD_DOC)
 include(CheckGitRevision)
 include(StdAtomic)
 
+# NOTE: (temporarily) go easy on warnings when building with nvcc or for Release
+if ((CMAKE_BUILD_TYPE MATCHES Release) OR Kokkos_ENABLE_CUDA)
+  set(EASY_PSI_EASY on)
+endif()
+
 # Creating the INTERFACE library
 add_library(psi INTERFACE)
 # Defining include directories
 target_include_directories(psi
   INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/gum::gum>;$<INSTALL_INTERFACE:gum::gum>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>)
+  INTERFACE $<TARGET_PROPERTY:gum::gum,INTERFACE_INCLUDE_DIRECTORIES>
+  INTERFACE $<TARGET_PROPERTY:kseq++::kseq++,INTERFACE_INCLUDE_DIRECTORIES>
+  INTERFACE $<TARGET_PROPERTY:SeqAn::SeqAn,INTERFACE_INCLUDE_DIRECTORIES>
+  INTERFACE $<TARGET_PROPERTY:pairg::libpairg,INTERFACE_INCLUDE_DIRECTORIES>)
 # Defining link libraries
 target_link_libraries(psi
   INTERFACE $<BUILD_INTERFACE:gum::gum>;$<INSTALL_INTERFACE:gum::gum>
@@ -113,6 +119,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 
 if(BUILD_PSIKT OR BUILD_PSI_AUX_TOOLS OR BUILD_TESTING)
+  set(Protobuf_USE_STATIC_LIBS ON)
   find_package(Threads REQUIRED)
   find_package(Protobuf REQUIRED)
   # Prepare `psi::minivgio` library

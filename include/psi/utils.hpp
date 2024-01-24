@@ -839,14 +839,14 @@ namespace psi {
     assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       typedef TContainer container_type;
-      typedef typename TContainer::value_type value_type;
+      typedef typename container_type::const_reference const_reference;
+      typedef typename container_type::value_type value_type;
       typedef std::make_unsigned_t< value_type > unsigned_value_type;
-      typedef gum::RandomAccessProxyContainer< container_type, unsigned_value_type > proxy_type;
 
-      proxy_type bproxy( &b,
-                         []( value_type x ) -> unsigned_value_type {
-                           return ( unsigned_value_type )(x);
-                         } );
+      gum::RandomAccessProxyContainer bproxy( &b,
+                                              []( const_reference x ) -> unsigned_value_type {
+                                                return static_cast< unsigned_value_type >( x );
+                                              } );
       sdsl::util::assign( a, bproxy );
     }
 
@@ -1396,13 +1396,29 @@ namespace psi {
     thread_local static std::random_device rd;
     thread_local static std::mt19937 gen( rd() );
 
+    template< typename TFloat, typename TGenerator >
+    inline TFloat
+    random_real( TFloat low, TFloat high, TGenerator&& rgen )
+    {
+      assert( low < high );  // half-open range: [low, high) imposed by std::uniform_real_distribution<>
+      std::uniform_real_distribution< TFloat > dis( low, high );
+      return dis( rgen );
+    }
+
+    template< typename TFloat >
+    inline TFloat
+    random_real( TFloat low=0, TFloat high=1 )
+    {
+      return random_real( low, high, gen );
+    }
+
     template< typename TInteger, typename TGenerator >
     inline TInteger
     random_integer( TInteger low,
                     TInteger high,
                     TGenerator&& rgen )
     {
-      assert( low <= high );
+      assert( low <= high );  // closed range: [low, high] imposed by std::uniform_int_distribution<>
       std::uniform_int_distribution< TInteger > dis( low, high );
       return dis( rgen );
     }

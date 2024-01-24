@@ -32,6 +32,11 @@
 
 
 namespace psi {
+  // Define position with default template parameters (since `gum` identifier is declared here)
+  template< typename TId = typename gum::GraphBaseTrait< gum::Dynamic >::id_type,
+            typename TOffset = typename gum::GraphBaseTrait< gum::Dynamic >::offset_type >
+  using Position = psi::PositionBase< TId, TOffset >;
+
   namespace util {
     template< class TGraph >
     inline typename TGraph::offset_type
@@ -64,7 +69,8 @@ namespace psi {
       for ( ; nbegin != nend; ++nbegin ) {
         auto new_node = induced->add_node();
         new_node->set_id( coord( *nbegin ) );
-        new_node->set_sequence( graph.node_sequence( *nbegin ) );
+        std::string label = graph.node_sequence( *nbegin );
+        new_node->set_sequence( label );
       }
 
       for ( ; ebegin != eend; ++ebegin ) {

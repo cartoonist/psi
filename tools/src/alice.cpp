@@ -107,7 +107,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       throw EXIT_SUCCESS;
     }
     std::cerr << help_message << "\n" /* extra vertical space */ << std::endl;
-    throw cxxopts::OptionParseException( "No command specified" );
+    throw cxxopts::exceptions::parsing( "No command specified" );
   }
   else if ( result[ "command" ].as< std::string >() == "dstats" ) {  // dstats
     options.custom_help( "dstats [OPTION...]" );
@@ -120,7 +120,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     if ( ! result[ "psi-index-prefix" ].as< std::string >().empty() &&
          ( result[ "min-distance" ].as< unsigned int >() == 0 ||
            result[ "max-distance" ].as< unsigned int >() == 0 ) ) {
-      throw cxxopts::OptionParseException( "Both minimum and maximum distance constraints should be specified" );
+      throw cxxopts::exceptions::parsing( "Both minimum and maximum distance constraints should be specified" );
     }
 
     if ( result[ "psi-index-prefix" ].as< std::string >().empty() &&
@@ -139,7 +139,7 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
 
     if ( result.count( "ground-truth" ) &&
          ! readable( result[ "ground-truth" ].as< std::string >() ) ) {
-      throw cxxopts::OptionParseException( "Ground truth alignment file not found" );
+      throw cxxopts::exceptions::parsing( "Ground truth alignment file not found" );
     }
 
     if ( result.count( "full-report" ) && ( result.count( "sample-rate" ) ||
@@ -147,31 +147,31 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       std::cerr << "! Warning: `full-report` flag has overridden sampling arguments." << std::endl;
     }
     else if ( result.count( "sample-rate" ) && !result.count( "sample-group" ) ) {
-      throw cxxopts::OptionParseException( "Specified sample rate without any sample group" );
+      throw cxxopts::exceptions::parsing( "Specified sample rate without any sample group" );
     }
     else if ( !result.count( "sample-rate" ) && result.count( "sample-group" ) ) {
-      throw cxxopts::OptionParseException( "Specified sample group without any sample rate" );
+      throw cxxopts::exceptions::parsing( "Specified sample group without any sample rate" );
     }
   }
   else {
-    throw cxxopts::OptionParseException( "Unknown command '" +
+    throw cxxopts::exceptions::parsing( "Unknown command '" +
                                          result[ "command" ].as< std::string >() + "'" );
   }
 
   /* Verifying general arguments */
   if ( ! result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph file must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph file must be specified" );
   }
   if ( ! readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
 
   /* Verifying positional arguments */
   if ( !result.count( "alignment" ) ) {
-    throw cxxopts::OptionParseException( "Alignment file must be specified" );
+    throw cxxopts::exceptions::parsing( "Alignment file must be specified" );
   }
   if ( !readable( result[ "alignment" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Alignment file not found" );
+    throw cxxopts::exceptions::parsing( "Alignment file not found" );
   }
 
   return result;
@@ -525,7 +525,8 @@ index_reference_paths( TPathSet& pathset, TGraph& graph )
         typedef typename TPathSet::value_type path_type;
         std::cerr << "Fetching reference path " << rank << "..." << std::endl;
         for ( auto n : graph.path( pid ) ) nodes.push_back( n );
-        typename path_type::nodes_type cnodes( nodes );
+        typename path_type::nodes_type cnodes;
+        psi::assign( cnodes, nodes );
         pathset.push_back( path_type( &graph, std::move( cnodes ) ) );
         nodes.clear();
         return true;
@@ -1204,7 +1205,7 @@ main( int argc, char* argv[] )
       assert( false );
     }
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }
