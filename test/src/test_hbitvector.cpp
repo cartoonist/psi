@@ -1129,33 +1129,3 @@ TEMPLATE_SCENARIO_SIG(
     }
   }
 }
-
-SCENARIO( "Unorganised scenario", "[temp]" )
-{
-  typedef int scalar_t;
-  typedef Kokkos::DefaultHostExecutionSpace host_space;
-  typedef KokkosSparse::CrsMatrix< scalar_t, int32_t, host_space > xcrsmatrix_t;
-  typedef psi::CRSMatrix< psi::crs_matrix::RangeDynamic, bool, uint32_t, uint64_t > range_crsmatrix_t;
-  typedef gum::SeqGraph< gum::Succinct > graph_type;
-
-  std::string graph_path = test_data_dir + "/small/x.gfa";
-  graph_type graph;
-  gum::util::load( graph, graph_path, gum::util::GFAFormat{}, true );
-
-  auto a = psi::util::adjacency_matrix< xcrsmatrix_t >( graph );
-  range_crsmatrix_t ra( a );
-
-  auto h_a_entries = ra.entries_view();
-  auto h_a_rowmap = ra.rowmap_view();
-
-  auto a_entries = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace{}, h_a_entries );
-  auto a_rowmap = Kokkos::create_mirror_view_and_copy( Kokkos::DefaultExecutionSpace{}, h_a_rowmap );
-
-  auto ch_a_entries = Kokkos::create_mirror_view( a_entries );
-  auto ch_a_rowmap = Kokkos::create_mirror_view( a_rowmap );
-
-  for ( std::size_t i = 0; i < a_entries.extent( 0 ); ++i )
-    REQUIRE( h_a_entries( i ) == ch_a_entries( i ) );
-  for ( std::size_t i = 0; i < a_rowmap.extent( 0 ); ++i )
-    REQUIRE( h_a_rowmap( i ) == ch_a_rowmap( i ) );
-}
