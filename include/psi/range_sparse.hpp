@@ -544,6 +544,202 @@ namespace psi {
     return crs;
   }
 
+  template< typename THandle,
+            typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
+            typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
+            typename TRowMapDeviceViewC >
+  inline void
+  _range_spadd_symbolic( const THandle&,
+                         TRowMapDeviceViewA a_rowmap,
+                         TEntriesDeviceViewA a_entries,
+                         TRowMapDeviceViewB b_rowmap,
+                         TEntriesDeviceViewB b_entries,
+                         TRowMapDeviceViewC& c_rowmap )
+  {
+    typedef TEntriesDeviceViewA a_entries_type;
+    typedef TEntriesDeviceViewB b_entries_type;
+    typedef TRowMapDeviceViewC  c_row_map_type;
+    typedef typename a_entries_type::non_const_value_type ordinal_type;
+    typedef typename c_row_map_type::value_type size_type;
+    typedef typename c_row_map_type::execution_space execution_space;
+    typedef Kokkos::RangePolicy< execution_space > policy_type;
+
+    // TODO: Extend static asserts to all views
+    static_assert(
+        std::is_same< typename a_entries_type::memory_space,
+                      typename b_entries_type::memory_space >::value,
+        "both entries and row map views should be in the same memory space" );
+
+    static_assert(
+        std::is_same< typename a_entries_type::memory_space,
+                      typename c_row_map_type::memory_space >::value,
+        "both entries and row map views should be in the same memory space" );
+
+    auto a_nrows = a_rowmap.extent( 0 ) - 1;
+
+    Kokkos::parallel_for(
+        "psi::crs_matrix::range_spadd_symbolic::count_row_nnz",
+        policy_type( 0, a_nrows ), KOKKOS_LAMBDA ( const uint64_t row ) {
+          auto a_idx = a_rowmap( row );
+          auto a_end = a_rowmap( row + 1 );
+          auto b_idx = b_rowmap( row );
+          auto b_end = b_rowmap( row + 1 );
+
+          assert( ( a_end - a_idx ) % 2 == 0 );
+          assert( ( b_end - b_idx ) % 2 == 0 );
+
+          size_type count = 0;
+          if ( a_idx < a_end && b_idx < b_end ) {
+            ordinal_type lo;
+            ordinal_type hi;
+            if ( a_entries( a_idx ) <= b_entries( b_idx ) ) {
+              lo = a_entries( a_idx );
+              hi = a_entries( a_idx + 1 );
+              a_idx += 2;
+            }
+            else {
+              lo = b_entries( b_idx );
+              hi = b_entries( b_idx + 1 );
+              b_idx += 2;
+            }
+            while ( a_idx < a_end && b_idx < b_end ) {
+              ordinal_type rs;  // range start
+              ordinal_type re;  // range end
+              if ( a_entries( a_idx ) <= b_entries( b_idx ) ) {
+                rs = a_entries( a_idx );
+                re = a_entries( a_idx + 1 );
+                a_idx += 2;
+              }
+              else {
+                rs = b_entries( b_idx );
+                re = b_entries( b_idx + 1 );
+                b_idx += 2;
+              }
+
+              if ( rs <= hi + 1 ) {  // merge
+                lo = PSI_MACRO_MIN( lo, rs );
+                hi = PSI_MACRO_MAX( hi, re );
+                continue;
+              }
+              lo = rs;
+              hi = re;
+              count += 2;
+            }
+            count += 2;  // last one from the previous loop
+          }
+
+          count += ( b_end - b_idx ) + ( a_end - a_idx );  // the rest
+
+          c_rowmap( row + 1 ) = count;
+          if ( row == 0 ) c_rowmap( 0 ) = 0;
+        } );
+
+    Kokkos::parallel_scan(
+        "psi::crs_matrix::range_spgemm_symbolic::computing_row_map_c",
+        policy_type( 0, a_nrows ),
+        KOKKOS_LAMBDA ( const int i, size_type& update, const bool final ) {
+          // Load old value in case we update it before accumulating
+          const size_type val_ip1 = c_rowmap( i + 1 );
+          update += val_ip1;
+          if ( final )
+            c_rowmap( i + 1 ) = update;  // only update array on final pass
+        } );
+  }
+
+  template< typename THandle,
+            typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
+            typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
+            typename TRowMapDeviceViewC, typename TEntriesDeviceViewC >
+  inline void
+  _range_spadd_numeric( const THandle&,
+                        TRowMapDeviceViewA a_rowmap,
+                        TEntriesDeviceViewA a_entries,
+                        TRowMapDeviceViewB b_rowmap,
+                        TEntriesDeviceViewB b_entries,
+                        TRowMapDeviceViewC c_rowmap,
+                        TEntriesDeviceViewC& c_entries )
+  {
+    typedef TEntriesDeviceViewA a_entries_type;
+    typedef TEntriesDeviceViewB b_entries_type;
+    typedef TEntriesDeviceViewC c_entries_type;
+    typedef TRowMapDeviceViewC  c_row_map_type;
+    typedef typename c_entries_type::value_type ordinal_type;
+    typedef typename c_row_map_type::value_type size_type;
+    typedef typename c_row_map_type::execution_space execution_space;
+    typedef Kokkos::RangePolicy< execution_space > policy_type;
+
+    // TODO: Extend static asserts to all views
+    static_assert(
+        std::is_same< typename a_entries_type::memory_space,
+                      typename b_entries_type::memory_space >::value,
+        "both entries and row map views should be in the same memory space" );
+
+    static_assert(
+        std::is_same< typename a_entries_type::memory_space,
+                      typename c_entries_type::memory_space >::value,
+        "both entries and row map views should be in the same memory space" );
+
+    auto a_nrows = a_rowmap.extent( 0 ) - 1;
+
+    Kokkos::parallel_for(
+        "psi::crs_matrix::range_spadd_symbolic::count_row_nnz",
+        policy_type( 0, a_nrows ), KOKKOS_LAMBDA ( const uint64_t row ) {
+          auto a_idx = a_rowmap( row );
+          auto a_end = a_rowmap( row + 1 );
+          auto b_idx = b_rowmap( row );
+          auto b_end = b_rowmap( row + 1 );
+
+          assert( ( a_end - a_idx ) % 2 == 0 );
+          assert( ( b_end - b_idx ) % 2 == 0 );
+
+          size_type c_idx = c_rowmap( row );
+          if ( a_idx < a_end && b_idx < b_end ) {
+            ordinal_type lo;
+            ordinal_type hi;
+            if ( a_entries( a_idx ) <= b_entries( b_idx ) ) {
+              lo = a_entries( a_idx );
+              hi = a_entries( a_idx + 1 );
+              a_idx += 2;
+            }
+            else {
+              lo = b_entries( b_idx );
+              hi = b_entries( b_idx + 1 );
+              b_idx += 2;
+            }
+            while ( a_idx < a_end && b_idx < b_end ) {
+              ordinal_type rs;  // range start
+              ordinal_type re;  // range end
+              if ( a_entries( a_idx ) <= b_entries( b_idx ) ) {
+                rs = a_entries( a_idx );
+                re = a_entries( a_idx + 1 );
+                a_idx += 2;
+              }
+              else {
+                rs = b_entries( b_idx );
+                re = b_entries( b_idx + 1 );
+                b_idx += 2;
+              }
+
+              if ( rs <= hi + 1 ) {  // merge
+                lo = PSI_MACRO_MIN( lo, rs );
+                hi = PSI_MACRO_MAX( hi, re );
+                continue;
+              }
+              c_entries( c_idx++ ) = lo;
+              c_entries( c_idx++ ) = hi;
+              lo = rs;
+              hi = re;
+            }
+            c_entries( c_idx++ ) = lo;
+            c_entries( c_idx++ ) = hi;
+          }
+          for ( ; a_idx < a_end; ++a_idx )
+            c_entries( c_idx++ ) = a_entries( a_idx );
+          for ( ; b_idx < b_end; ++b_idx )
+            c_entries( c_idx++ ) = b_entries( b_idx );
+        } );
+  }
+
   /**
    *  @brief Symbolic phase of computing matrix c as the product of a and b
    *  (ThreadRangePartition-BTreeAccumulator specialisation).
@@ -750,8 +946,13 @@ namespace psi {
                         TEntriesDeviceViewB b_entries,
                         TRowMapDeviceViewC& c_rowmap, TSparseConfig = {} )
   {
+    typedef typename TEntriesDeviceViewA::non_const_value_type ordinal_type;
     typedef typename TSparseConfig::partition_type partition_type;
     typedef typename TSparseConfig::accumulator_type accumulator_type;
+
+    assert( handle.a_ncols == ( b_rowmap.extent( 0 ) - 1 ) );
+    ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     _range_spgemm_symbolic( handle, a_rowmap, a_entries, b_rowmap, b_entries,
                             c_rowmap, partition_type(), accumulator_type() );
@@ -769,8 +970,13 @@ namespace psi {
                         TRowMapDeviceViewC c_rowmap, TEntriesDeviceViewC& c_entries,
                         TSparseConfig={} )
   {
+    typedef typename TEntriesDeviceViewC::value_type ordinal_type;
     typedef typename TSparseConfig::partition_type partition_type;
     typedef typename TSparseConfig::accumulator_type accumulator_type;
+
+    assert( handle.a_ncols == ( b_rowmap.extent( 0 ) - 1 ) );
+    ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     _range_spgemm_numeric( handle, a_rowmap, a_entries, b_rowmap, b_entries,
                            c_rowmap, c_entries, partition_type(),
@@ -798,6 +1004,10 @@ namespace psi {
     typedef TRowMapDeviceViewC  c_row_map_type;
     typedef typename c_entries_type::value_type ordinal_type;
     typedef typename c_row_map_type::value_type size_type;
+
+    assert( handle.a_ncols == ( b_rowmap.extent( 0 ) - 1 ) );
+    ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     ordinal_type n = a_rowmap.extent( 0 ) - 1;
     c_rowmap = c_row_map_type(
@@ -844,9 +1054,12 @@ namespace psi {
   {
     typedef TRCRSMatrix range_crsmatrix_t;
     typedef TSparseConfig config_type;
+    typedef typename range_crsmatrix_t::ordinal_type ordinal_type;
     typedef typename config_type::execution_space execution_space;
 
     assert( a.numCols() == b.numRows() );
+    ASSERT( a.numCols() <= std::numeric_limits< ordinal_type >::max() - 1 );
+    ASSERT( b.numCols() <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     execution_space space{};
 
@@ -858,8 +1071,7 @@ namespace psi {
     auto c_entries = range_crsmatrix_t::make_entries_device_view( space );
     auto c_rowmap = range_crsmatrix_t::make_rowmap_device_view( space );
 
-    SparseRangeHandle< range_crsmatrix_t > handle;
-    handle.b_ncols = b.numCols();
+    SparseRangeHandle handle( a, b );
 
     range_spgemm( handle, a_rowmap, a_entries, b_rowmap, b_entries, c_rowmap,
                   c_entries, config );
