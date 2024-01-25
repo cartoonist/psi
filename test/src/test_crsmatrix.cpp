@@ -199,23 +199,26 @@ namespace test_util {
   }
 
   /* NOTE: The `matrix` cannot be const reference because of Buffered specialisations. */
-  template< typename TMatrix, typename TExternalMatrixTraits = pairg::matrixOps >
-  inline typename TExternalMatrixTraits::crsMat_t
+  template< typename TMatrix,
+            typename TExternalMatrix = KokkosSparse::CrsMatrix<
+                char, int, Kokkos::DefaultHostExecutionSpace > >
+  inline TExternalMatrix
   to_external_crs( TMatrix& matrix, std::size_t nnz=0 )
   {
-    typedef typename TExternalMatrixTraits::size_type size_type;
-    typedef typename TExternalMatrixTraits::lno_nnz_view_t lno_nnz_view_t;
-    typedef typename TExternalMatrixTraits::scalar_view_t scalar_view_t;
-    typedef typename TExternalMatrixTraits::lno_view_t lno_view_t;
-    typedef typename TExternalMatrixTraits::crsMat_t crsMat_t;
+    typedef TExternalMatrix xcrsmat_type;
+    typedef typename xcrsmat_type::staticcrsgraph_type staticcrsgraph_type;
+    typedef typename staticcrsgraph_type::size_type size_type;
+    typedef typename staticcrsgraph_type::entries_type::non_const_type entries_type;
+    typedef typename staticcrsgraph_type::row_map_type::non_const_type row_map_type;
+    typedef typename xcrsmat_type::values_type::non_const_type values_type;
 
     auto nrows = numRows( matrix );
     auto ncols = numCols( matrix );
     if ( nnz == 0 ) nnz = get_nnz( matrix );
 
-    lno_nnz_view_t entries( "entries", nnz );
-    scalar_view_t values( "values", nnz );
-    lno_view_t rowmap( "rowmap", nrows + 1 );
+    entries_type entries( "entries", nnz );
+    values_type values( "values", nnz );
+    row_map_type rowmap( "rowmap", nrows + 1 );
 
     for ( size_type i = 0; i < nnz; ++i ) values( i ) = 1;  // boolean
 
@@ -231,7 +234,7 @@ namespace test_util {
     assert( eidx == nnz );
     assert( ridx == nrows + 1 );
 
-    return crsMat_t( "matrix", nrows, ncols, nnz, values, rowmap, entries );
+    return xcrsmat_type( "matrix", nrows, ncols, nnz, values, rowmap, entries );
   }
 
   template< typename TMatrix1, typename TMatrix2 >
