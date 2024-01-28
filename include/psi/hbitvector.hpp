@@ -32,21 +32,18 @@
 
 namespace psi {
   template< typename TDevice >
-  struct HBitVectorTrait;
+  struct HBitVectorTraits {
+    using size_type = uint32_t;
+    using bitset_type = uint64_t;
+  };
 
 #if defined( KOKKOS_ENABLE_CUDA )
   template< >
-  struct HBitVectorTrait< Kokkos::Cuda > {
+  struct HBitVectorTraits< Kokkos::Cuda > {
     using size_type = uint32_t;
     using bitset_type = uint32_t;
   };
 #endif
-
-  template< >
-  struct HBitVectorTrait< Kokkos::OpenMP > {
-    using size_type = uint32_t;
-    using bitset_type = uint64_t;
-  };
 
   /**
    *  @brief  Hierarchical (two-level) bit vector
@@ -68,7 +65,7 @@ namespace psi {
    */
   template< unsigned int TL1_Size = 2048, /*bits*/
             typename TDevice = Kokkos::DefaultExecutionSpace,
-            typename TTrait = HBitVectorTrait< TDevice > >
+            typename TTrait = HBitVectorTraits< TDevice > >
   class HBitVector {
     public:
       /* === MEMBER TYPES === */
