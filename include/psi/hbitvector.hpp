@@ -193,6 +193,21 @@ namespace psi {
       }
 
       /**
+       *   @brief Get the right closest 'aligned index' relative to index `idx`
+       *
+       *   @param idx Bit index
+       *
+       *   @return the index of the starting bit of the bitset immediately
+       *   after the one including the bit at `idx` unless `idx` is itself a
+       *   starting bit of a bitset.
+       */
+      static constexpr inline size_type
+      aligned_index_ceil( size_type idx ) noexcept
+      {
+        return ( idx + ( BITSET_WIDTH - 1 ) ) & ( INDEX_ALIGN_MASK );
+      }
+
+      /**
        *   @brief Return aligned size for a vector of `n` bits
        *
        *   The aligned size is the smallest multiple of `BITSET_WIDTH` which is
@@ -202,7 +217,7 @@ namespace psi {
       static inline size_type
       aligned_size( size_type n )
       {
-        auto asize = ( n + ( BITSET_WIDTH - 1 ) ) & ( INDEX_ALIGN_MASK );
+        auto asize = ( n + ( BITSET_WIDTH - 1 ) ) & ( INDEX_ALIGN_MASK );  // aligned_index_ceil( n );
         return Kokkos::max( asize, L1_SIZE );
       }
 
