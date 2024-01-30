@@ -67,12 +67,28 @@ namespace psi {
   // Supported execution space by accumulators
   template< typename TAccumulator >
   struct AccumulatorExecSpace {
-    using execution_space = Kokkos::DefaultExecutionSpace;      // By default run on device
+    using type = Kokkos::DefaultExecutionSpace;      // By default run on device
   };
 
   template<>
   struct AccumulatorExecSpace< BTreeAccumulator > {
-    using execution_space = Kokkos::DefaultHostExecutionSpace;  // Can only be executed on host
+    using type = Kokkos::DefaultHostExecutionSpace;  // Can only be executed on host
+  };
+
+  // Default partitioning by accumulators
+  template< typename TAccumulator >
+  struct AccumulatorDefaultPartition;
+
+  template< >
+  struct AccumulatorDefaultPartition< BTreeAccumulator >
+  {
+    using type = ThreadRangePartition;
+  };
+
+  template< unsigned int TL1Size >
+  struct AccumulatorDefaultPartition< HBitVectorAccumulator< TL1Size > >
+  {
+    using type = TeamSequentialPartition;
   };
 
   /**
@@ -264,12 +280,13 @@ namespace psi {
   #endif
 
   // Configuration tag
-  template< typename TPartition, typename TAccumulator,
-      template< typename > typename TGrid >
+  template< typename TAccumulator,
+      typename TPartition = typename AccumulatorDefaultPartition< TAccumulator >::type,
+      template< typename > typename TGrid = AutoExecGrid >
   struct SparseConfig {
     using partition_type = TPartition;
     using accumulator_type = TAccumulator;
-    using execution_space = typename AccumulatorExecSpace< accumulator_type >::execution_space;
+    using execution_space = typename AccumulatorExecSpace< accumulator_type >::type;
     using grid_type = TGrid< execution_space >;
     /* === MEMBERS === */
     partition_type   part;
@@ -278,7 +295,7 @@ namespace psi {
     grid_type        grid;
   };
 
-  using DefaultSparseConfiguration = SparseConfig< ThreadRangePartition, BTreeAccumulator, AutoExecGrid >;
+  using DefaultSparseConfiguration = SparseConfig< BTreeAccumulator >;
 
   template< typename TRCRSMatrix >
   struct SparseRangeHandle {
