@@ -877,7 +877,7 @@ namespace psi {
   template< typename THandle,
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
-            typename TRowMapDeviceViewC >
+            typename TRowMapDeviceViewC, typename TExecGrid >
   inline void
   _range_spgemm_symbolic( const THandle&,
                           TRowMapDeviceViewA a_rowmap,
@@ -885,7 +885,7 @@ namespace psi {
                           TRowMapDeviceViewB b_rowmap,
                           TEntriesDeviceViewB b_entries,
                           TRowMapDeviceViewC& c_rowmap,
-                          ThreadRangePartition, BTreeAccumulator )
+                          TExecGrid, ThreadRangePartition, BTreeAccumulator )
   {
     typedef TEntriesDeviceViewA a_entries_type;
     typedef TEntriesDeviceViewB b_entries_type;
@@ -979,16 +979,17 @@ namespace psi {
   template< typename THandle,
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
-            typename TRowMapDeviceViewC, typename TEntriesDeviceViewC >
+            typename TRowMapDeviceViewC, typename TEntriesDeviceViewC,
+            typename TExecGrid >
   inline void
   _range_spgemm_numeric( const THandle&,
-                        TRowMapDeviceViewA a_rowmap,
-                        TEntriesDeviceViewA a_entries,
-                        TRowMapDeviceViewB b_rowmap,
-                        TEntriesDeviceViewB b_entries,
-                        TRowMapDeviceViewC c_rowmap,
-                        TEntriesDeviceViewC& c_entries,
-                        ThreadRangePartition, BTreeAccumulator )
+                         TRowMapDeviceViewA a_rowmap,
+                         TEntriesDeviceViewA a_entries,
+                         TRowMapDeviceViewB b_rowmap,
+                         TEntriesDeviceViewB b_entries,
+                         TRowMapDeviceViewC c_rowmap,
+                         TEntriesDeviceViewC& c_entries,
+                         TExecGrid, ThreadRangePartition, BTreeAccumulator )
   {
     typedef TEntriesDeviceViewA a_entries_type;
     typedef TEntriesDeviceViewB b_entries_type;
@@ -1070,7 +1071,7 @@ namespace psi {
   template< typename THandle,
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
-            typename TRowMapDeviceViewC,
+            typename TRowMapDeviceViewC, typename TExecGrid,
             unsigned int TL1Size >
   inline void
   _range_spgemm_symbolic( const THandle& handle,
@@ -1079,6 +1080,7 @@ namespace psi {
                           TRowMapDeviceViewB b_rowmap,
                           TEntriesDeviceViewB b_entries,
                           TRowMapDeviceViewC& c_rowmap,
+                          TExecGrid grid,
                           TeamSequentialPartition part,
                           HBitVectorAccumulator< TL1Size > )
   {
@@ -1105,7 +1107,9 @@ namespace psi {
 
     auto a_nrows = a_rowmap.extent( 0 ) - 1;
     auto b_ncols = handle.b_ncols;
-    auto policy = policy_type( a_nrows, Kokkos::AUTO, Kokkos::AUTO );
+    auto vector_size = grid.vector_size();  // or hbv_type::l1_num_bitsets();
+    auto team_size = grid.team_size();
+    auto policy = policy_type( a_nrows, team_size, vector_size );
     hbv_type::set_scratch_size( policy, b_ncols );
 
     Kokkos::parallel_for(
@@ -1206,7 +1210,7 @@ namespace psi {
             typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
             typename TRowMapDeviceViewC, typename TEntriesDeviceViewC,
-            unsigned int TL1Size >
+            typename TExecGrid, unsigned int TL1Size >
   inline void
   _range_spgemm_numeric( const THandle& handle,
                          TRowMapDeviceViewA a_rowmap,
@@ -1215,6 +1219,7 @@ namespace psi {
                          TEntriesDeviceViewB b_entries,
                          TRowMapDeviceViewC c_rowmap,
                          TEntriesDeviceViewC& c_entries,
+                         TExecGrid grid,
                          TeamSequentialPartition part,
                          HBitVectorAccumulator< TL1Size > )
   {
@@ -1242,7 +1247,9 @@ namespace psi {
 
     auto a_nrows = a_rowmap.extent( 0 ) - 1;
     auto b_ncols = handle.b_ncols;
-    auto policy = policy_type( a_nrows, Kokkos::AUTO, Kokkos::AUTO );
+    auto vector_size = grid.vector_size();  // or hbv_type::l1_num_bitsets();
+    auto team_size = grid.team_size();
+    auto policy = policy_type( a_nrows, team_size, vector_size );
     hbv_type::set_scratch_size( policy, b_ncols );
 
     Kokkos::parallel_for(
@@ -1354,22 +1361,24 @@ namespace psi {
             typename TSparseConfig=DefaultSparseConfiguration >
   inline void
   range_spgemm_symbolic( const THandle& handle,
-                        TRowMapDeviceViewA a_rowmap,
-                        TEntriesDeviceViewA a_entries,
-                        TRowMapDeviceViewB b_rowmap,
-                        TEntriesDeviceViewB b_entries,
-                        TRowMapDeviceViewC& c_rowmap, TSparseConfig = {} )
+                         TRowMapDeviceViewA a_rowmap,
+                         TEntriesDeviceViewA a_entries,
+                         TRowMapDeviceViewB b_rowmap,
+                         TEntriesDeviceViewB b_entries,
+                         TRowMapDeviceViewC& c_rowmap,
+                         TSparseConfig config={} )
   {
     typedef typename TEntriesDeviceViewA::non_const_value_type ordinal_type;
-    typedef typename TSparseConfig::partition_type partition_type;
-    typedef typename TSparseConfig::accumulator_type accumulator_type;
+    //typedef typename TSparseConfig::partition_type partition_type;
+    //typedef typename TSparseConfig::accumulator_type accumulator_type;
+    //typedef typename TSparseConfig::grid_type grid_type;
 
     assert( handle.a_ncols == static_cast< ordinal_type >( b_rowmap.extent( 0 ) - 1 ) );
     ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
     ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     _range_spgemm_symbolic( handle, a_rowmap, a_entries, b_rowmap, b_entries,
-                            c_rowmap, partition_type(), accumulator_type() );
+                            c_rowmap, config.grid, config.part, config.accm );
   }
 
   template< typename THandle,
@@ -1382,19 +1391,20 @@ namespace psi {
                         TRowMapDeviceViewA a_rowmap, TEntriesDeviceViewA a_entries,
                         TRowMapDeviceViewB b_rowmap, TEntriesDeviceViewB b_entries,
                         TRowMapDeviceViewC c_rowmap, TEntriesDeviceViewC& c_entries,
-                        TSparseConfig={} )
+                        TSparseConfig config={} )
   {
     typedef typename TEntriesDeviceViewC::value_type ordinal_type;
-    typedef typename TSparseConfig::partition_type partition_type;
-    typedef typename TSparseConfig::accumulator_type accumulator_type;
+    //typedef typename TSparseConfig::partition_type partition_type;
+    //typedef typename TSparseConfig::accumulator_type accumulator_type;
+    //typedef typename TSparseConfig::grid_type grid_type;
 
     assert( handle.a_ncols == static_cast< ordinal_type >( b_rowmap.extent( 0 ) - 1 ) );
     ASSERT( handle.a_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
     ASSERT( handle.b_ncols <= std::numeric_limits< ordinal_type >::max() - 1 );
 
     _range_spgemm_numeric( handle, a_rowmap, a_entries, b_rowmap, b_entries,
-                           c_rowmap, c_entries, partition_type(),
-                           accumulator_type() );
+                           c_rowmap, c_entries, config.grid, config.part,
+                           config.accm );
   }
 
   /**
@@ -1467,23 +1477,21 @@ namespace psi {
                 TSparseConfig config={} )
   {
     typedef TRCRSMatrix range_crsmatrix_t;
-    typedef TSparseConfig config_type;
     typedef typename range_crsmatrix_t::ordinal_type ordinal_type;
-    typedef typename config_type::execution_space execution_space;
+    //typedef TSparseConfig config_type;
+    //typedef typename config_type::execution_space execution_space;
 
     assert( a.numCols() == b.numRows() );
     ASSERT( a.numCols() <= std::numeric_limits< ordinal_type >::max() - 1 );
     ASSERT( b.numCols() <= std::numeric_limits< ordinal_type >::max() - 1 );
 
-    execution_space space{};
+    auto a_entries = a.entries_device_view( config.space );
+    auto a_rowmap = a.rowmap_device_view( config.space );
+    auto b_entries = b.entries_device_view( config.space );
+    auto b_rowmap = b.rowmap_device_view( config.space );
 
-    auto a_entries = a.entries_device_view( space );
-    auto a_rowmap = a.rowmap_device_view( space );
-    auto b_entries = b.entries_device_view( space );
-    auto b_rowmap = b.rowmap_device_view( space );
-
-    auto c_entries = range_crsmatrix_t::make_entries_device_view( space );
-    auto c_rowmap = range_crsmatrix_t::make_rowmap_device_view( space );
+    auto c_entries = range_crsmatrix_t::make_entries_device_view( config.space );
+    auto c_rowmap = range_crsmatrix_t::make_rowmap_device_view( config.space );
 
     SparseRangeHandle handle( a, b );
 
@@ -1503,21 +1511,19 @@ namespace psi {
   range_power( TRCRSMatrix const& a, unsigned int k, TSparseConfig config={} )
   {
     typedef TRCRSMatrix rcrsmatrix_t;
-    typedef TSparseConfig config_type;
-    typedef typename config_type::execution_space execution_space;
+    //typedef TSparseConfig config_type;
+    //typedef typename config_type::execution_space execution_space;
 
-    execution_space space{};
-
-    auto c_entries = rcrsmatrix_t::make_entries_device_view( space );
-    auto c_rowmap = rcrsmatrix_t::make_rowmap_device_view( space );
+    auto c_entries = rcrsmatrix_t::make_entries_device_view( config.space );
+    auto c_rowmap = rcrsmatrix_t::make_rowmap_device_view( config.space );
 
     create_range_identity_matrix( c_rowmap, c_entries, a.numRows() );
 
-    auto a2n_entries = a.entries_device_view( space );
-    auto a2n_rowmap = a.rowmap_device_view( space );
+    auto a2n_entries = a.entries_device_view( config.space );
+    auto a2n_rowmap = a.rowmap_device_view( config.space );
 
-    auto tmp_entries = rcrsmatrix_t::make_entries_device_view( space );
-    auto tmp_rowmap = rcrsmatrix_t::make_rowmap_device_view( space );
+    auto tmp_entries = rcrsmatrix_t::make_entries_device_view( config.space );
+    auto tmp_rowmap = rcrsmatrix_t::make_rowmap_device_view( config.space );
 
     SparseRangeHandle handle( a, a );
 

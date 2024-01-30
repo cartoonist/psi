@@ -75,15 +75,210 @@ namespace psi {
     using execution_space = Kokkos::DefaultHostExecutionSpace;  // Can only be executed on host
   };
 
+  /**
+   *   @brief Suggested grid dimensions as a form of config class.
+   */
+  template< typename TExecSpace >
+  struct SuggestedExecGrid {
+    static constexpr inline int
+    vector_size( )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    vector_size( const int row_density )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    vector_size( const int nnz, const int nr )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    team_size( )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    team_size( const int vector_size )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    team_work_size( )
+    {
+      return 16;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return 16;
+    }
+  };
+
+  template< typename TExecSpace >
+  struct AutoExecGrid {
+    static constexpr inline auto
+    vector_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int row_density )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int nnz, const int nr )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( const int vector_size )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline int
+    team_work_size( )
+    {
+      return 16;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return 16;
+    }
+  };
+
+  #if defined(KOKKOS_ENABLE_CUDA)
+  template< >
+  struct SuggestedExecGrid< Kokkos::Cuda > {
+    /* === STATIC MEMBERS === */
+    static constexpr const int MAX_VECTOR_SIZE = 32;
+    /* === STATIC METHODS === */
+    static constexpr inline int
+    row_density( const std::size_t nnz, const std::size_t nr )
+    {
+      if ( nr > 0 ) return nnz / double( nr ) + 0.5;
+      return 1;
+    }
+
+    static constexpr inline int
+    vector_size( const int rdense )
+    {
+      int vsize = rdense;
+      if ( vsize < 3 ) {
+        vsize = 2;
+      } else if ( vsize <= 6 ) {
+        vsize = 4;
+      } else if ( vsize <= 12 ) {
+        vsize = 8;
+      } else if ( vsize <= 24 ) {
+        vsize = 16;
+      } else if ( vsize <= 48 ) {
+        vsize = 32;
+      } else {
+        vsize = 64;
+      }
+      vsize = Kokkos::min( vsize, MAX_VECTOR_SIZE );
+      return vsize;
+    }
+
+    static constexpr inline int
+    vector_size( const std::size_t nnz, const std::size_t nr )
+    {
+      return vector_size( row_density( nnz, nr ) );
+    }
+
+    static constexpr inline int
+    team_size( const int vector_size )
+    {
+      // TODO: where this is used, tune the target value for
+      // threads per block (but 256 is probably OK for CUDA and HIP)
+      return 256 / vector_size;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return team_size;
+    }
+  };
+
+  template< >
+  struct AutoExecGrid< Kokkos::Cuda > {
+    static constexpr inline auto
+    vector_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int row_density )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int nnz, const int nr )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( const int vector_size )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return team_size;
+    }
+  };
+  #endif
+
   // Configuration tag
-  template< typename TPartition, typename TAccumulator >
+  template< typename TPartition, typename TAccumulator,
+      template< typename > typename TGrid >
   struct SparseConfig {
     using partition_type = TPartition;
     using accumulator_type = TAccumulator;
     using execution_space = typename AccumulatorExecSpace< accumulator_type >::execution_space;
+    using grid_type = TGrid< execution_space >;
+    /* === MEMBERS === */
+    partition_type   part;
+    accumulator_type accm;
+    execution_space  space;
+    grid_type        grid;
   };
 
-  using DefaultSparseConfiguration = SparseConfig< ThreadRangePartition, BTreeAccumulator >;
+  using DefaultSparseConfiguration = SparseConfig< ThreadRangePartition, BTreeAccumulator, AutoExecGrid >;
 
   template< typename TRCRSMatrix >
   struct SparseRangeHandle {
