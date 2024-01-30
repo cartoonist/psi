@@ -295,7 +295,7 @@ namespace psi {
     grid_type        grid;
   };
 
-  using DefaultSparseConfiguration = SparseConfig< BTreeAccumulator >;
+  using DefaultSparseConfiguration = SparseConfig< HBitVectorAccumulator<> >;
 
   template< typename TRCRSMatrix >
   struct SparseRangeHandle {
