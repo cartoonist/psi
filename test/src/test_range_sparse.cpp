@@ -356,11 +356,14 @@ kokkos_kernels_power( TXCRSMatrix const& a, unsigned int n )
 }
 
 TEMPLATE_SCENARIO_SIG( "Validation and verification of range SpGEMM", "[range_sparse]",
-    ( ( typename TSpec, typename TScalar, typename TOrdinal, typename TSize, int N, int NNZ ),
-      TSpec, TScalar, TOrdinal, TSize, N, NNZ ),
-    ( ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 200000 ) )
+    ( ( typename TAccumulator, typename TSpec, typename TScalar, typename TOrdinal, typename TSize, int N, int NNZ ),
+      TAccumulator, TSpec, TScalar, TOrdinal, TSize, N, NNZ ),
+    ( ( BTreeAccumulator ), ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 200000 ),
+    ( ( HBitVectorAccumulator<> ), ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 200000 ) )
 {
-  typedef Kokkos::DefaultExecutionSpace device_t;
+  typedef SparseConfig< TAccumulator > config_type;
+  typedef typename config_type::execution_space execution_space;
+  typedef typename execution_space::device_type device_t;
   typedef CRSMatrix< TSpec, bool, TOrdinal, TSize > rcrsmatrix_t;
   typedef KokkosSparse::CrsMatrix< TScalar, TOrdinal, device_t > xcrsmatrix_t;
   typedef typename xcrsmatrix_t::HostMirror xcrs_host_mirror;
@@ -379,7 +382,7 @@ TEMPLATE_SCENARIO_SIG( "Validation and verification of range SpGEMM", "[range_sp
     WHEN( "It is multiplied to itself" )
     {
       auto xc = kokkos_kernels_spgemm( xrand_mat, xrand_mat );
-      auto rc = range_spgemm( rrand_mat, rrand_mat );
+      auto rc = range_spgemm( rrand_mat, rrand_mat, config_type{} );
       REQUIRE( is_same( xc, rc ) );
     }
   }
@@ -399,19 +402,21 @@ TEMPLATE_SCENARIO_SIG( "Validation and verification of range SpGEMM", "[range_sp
     WHEN( "It is multiplied to itself" )
     {
       auto xc = kokkos_kernels_spgemm( a, a );
-      auto rc = range_spgemm( ra, ra );
+      auto rc = range_spgemm( ra, ra, config_type{} );
       REQUIRE( is_same( xc, rc ) );
     }
   }
 }
 
 TEMPLATE_SCENARIO_SIG( "Validation and verification of range power", "[range_sparse]",
-    ( ( typename TSpec, typename TScalar, typename TOrdinal, typename TSize, int N, int NNZ, int K ),
-      TSpec, TScalar, TOrdinal, TSize, N, NNZ, K ),
-    ( ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 4000, 100 ) )
+    ( ( typename TAccumulator, typename TSpec, typename TScalar, typename TOrdinal, typename TSize, int N, int NNZ, int K ),
+      TAccumulator, TSpec, TScalar, TOrdinal, TSize, N, NNZ, K ),
+    ( ( BTreeAccumulator ), ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 4000, 100 ),
+    ( ( HBitVectorAccumulator<> ), ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 4000, 100 ) )
 {
-  typedef Kokkos::DefaultExecutionSpace execution_space;
-  typedef execution_space::device_type device_t;
+  typedef SparseConfig< TAccumulator > config_type;
+  typedef typename config_type::execution_space execution_space;
+  typedef typename execution_space::device_type device_t;
   typedef CRSMatrix< TSpec, bool, TOrdinal, TSize > rcrsmatrix_t;
   typedef KokkosSparse::CrsMatrix< TScalar, TOrdinal, device_t > xcrsmatrix_t;
   typedef typename xcrsmatrix_t::HostMirror xcrs_host_mirror;
@@ -430,7 +435,7 @@ TEMPLATE_SCENARIO_SIG( "Validation and verification of range power", "[range_spa
     WHEN( "It is raised to the power of " + std::to_string( K ) )
     {
       auto xc = kokkos_kernels_power( xrand_mat, K );
-      auto rc = range_power( rrand_mat, K );
+      auto rc = range_power( rrand_mat, K, config_type{} );
       REQUIRE( is_same( xc, rc ) );
     }
   }
@@ -450,7 +455,7 @@ TEMPLATE_SCENARIO_SIG( "Validation and verification of range power", "[range_spa
     WHEN( "It is raised to the power of " + std::to_string( K ) )
     {
       auto xc = kokkos_kernels_power( a, K );
-      auto rc = range_power( ra, K );
+      auto rc = range_power( ra, K, config_type{} );
       REQUIRE( is_same( xc, rc ) );
     }
   }
