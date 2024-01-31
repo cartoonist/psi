@@ -90,8 +90,8 @@ namespace psi {
       static constexpr const size_type L1_SIZE                 = TL1_Size;
       static constexpr const size_type L1_SIZE_BYTES           = TL1_Size / CHAR_BIT;
       static constexpr const size_type L1_NUM_BITSETS          = TL1_Size >> BINDEX_SHIFT;
-      static constexpr std::size_t value_alignment             = Kokkos::max( sizeof( bitset_type ), alignof( bitset_type ) );
-      static constexpr std::size_t space_alignment             = Kokkos::max( value_alignment, static_cast< size_t >( scratch_space::ALIGN ) );
+      static constexpr const std::size_t value_alignment       = Kokkos::max( sizeof( bitset_type ), alignof( bitset_type ) );
+      static constexpr const std::size_t space_alignment       = Kokkos::max( value_alignment, static_cast< size_t >( scratch_space::ALIGN ) );
       /* === STATIC ASSERTS === */
       // Accepting 64-bit L1 size requires spending extra time checking for corner cases
       static_assert( ( TL1_Size >= ( BITSET_WIDTH << 1 ) ), "L1 size should be at least twice larger than bitset width" );
@@ -107,6 +107,7 @@ namespace psi {
       view_type l1_data;        //!< First level bit vector view
       view_type l2_data;        //!< Second level bit vector view
       /* === LIFECYCLE === */
+      KOKKOS_FUNCTION
       HBitVector( const member_type& tm, size_type n, size_type centre )
         : /*m_size( n ),*/ l1_begin( 0 ), l1_data( ), l2_data( )
       {
@@ -147,7 +148,7 @@ namespace psi {
        *
        *   @param idx Bit index
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       bindex( size_type idx ) noexcept
       {
         return idx >> BINDEX_SHIFT;
@@ -158,7 +159,7 @@ namespace psi {
        *
        *   @param idx Bit index
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       boffset( size_type idx ) noexcept
       {
         return idx & BOFFSET_MASK;
@@ -169,7 +170,7 @@ namespace psi {
        *
        *   @param bidx Bitset index
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       start_index( size_type bidx ) noexcept
       {
         return bidx << BINDEX_SHIFT;
@@ -183,7 +184,7 @@ namespace psi {
        *   Aligned index of an index, lets say `idx`, is the index of the
        *   starting bit of the bitset which includes the bit at `idx`.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       aligned_index( size_type idx ) noexcept
       {
         return idx & INDEX_ALIGN_MASK;
@@ -198,7 +199,7 @@ namespace psi {
        *   after the one including the bit at `idx` unless `idx` is itself a
        *   starting bit of a bitset.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       aligned_index_ceil( size_type idx ) noexcept
       {
         return ( idx + ( BITSET_WIDTH - 1 ) ) & ( INDEX_ALIGN_MASK );
@@ -211,11 +212,11 @@ namespace psi {
        *   larger than the actual size of the bitvector. The minimum aligned
        *   size is the size of L1.
        */
-      static inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       aligned_size( size_type n )
       {
         auto asize = ( n + ( BITSET_WIDTH - 1 ) ) & ( INDEX_ALIGN_MASK );  // aligned_index_ceil( n );
-        return Kokkos::max( asize, L1_SIZE );
+        return Kokkos::max( asize, TL1_Size );
       }
 
       /**
@@ -224,7 +225,7 @@ namespace psi {
        *   NOTE: The vector itself might occupy less bitsets than the number of
        *   allocated ones as the L1 allocated size is fixed in compile time.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       l1_num_bitsets( ) noexcept
       {
         return L1_NUM_BITSETS;
@@ -236,7 +237,7 @@ namespace psi {
        *   NOTE: The vector itself might occupy less bits than the value return
        *   by this function as the L1 allocated size is fixed in compile time.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       l1_size( ) noexcept
       {
         return TL1_Size;
@@ -249,7 +250,7 @@ namespace psi {
        *   return by this function as the L1 allocated size is fixed in compile
        *   time.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       l1_scratch_size( ) noexcept
       {
         return L1_SIZE_BYTES;
@@ -258,7 +259,7 @@ namespace psi {
       /**
        *   @brief Return the required number of bitsets for a vector of `n` bits
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       num_bitsets( size_type n ) noexcept
       {
         auto x_size = HBitVector::aligned_size( n );
@@ -269,7 +270,7 @@ namespace psi {
        *   @brief Return the required number of bitsets in L2 for a vector of
        *          `n` bits
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       l2_num_bitsets( size_type n ) noexcept
       {
         auto nbitsets = HBitVector::num_bitsets( n );
@@ -284,7 +285,7 @@ namespace psi {
        *   NOTE: The vector itself might occupy less bits in L2 than the value
        *   return by this function which is the size need to be *allocated*.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       l2_size( size_type n ) noexcept
       {
         auto x_size = HBitVector::aligned_size( n );
@@ -299,7 +300,7 @@ namespace psi {
        *   NOTE: The vector itself might occupy less bytes in L2 than the value
        *   return by this function which is the size need to be *allocated*.
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       l2_scratch_size( size_type n ) noexcept
       {
         return HBitVector::l2_size( n ) / CHAR_BIT;
@@ -308,7 +309,7 @@ namespace psi {
       /**
        *   @brief Return the required number of bytes for a vector of `n` bits
        */
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       capacity( size_type n ) noexcept
       {
         return HBitVector::aligned_size( n ) / CHAR_BIT;
@@ -325,7 +326,7 @@ namespace psi {
         return policy;
       }
 
-      static inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       cnt( bitset_type x ) noexcept
       {
         return Kokkos::Experimental::popcount_builtin( x );  // Requires Kokkos >=4.1.00
@@ -337,7 +338,7 @@ namespace psi {
        *   @param x Input bitset value
        *   @param i Argument i must be in the range [1..cnt(x)].
        */
-      static inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       sel( bitset_type x, size_type i )
       {
         KOKKOS_IF_ON_DEVICE( ( return HBitVector::sel_device( x, i ); ) )
@@ -352,7 +353,7 @@ namespace psi {
        *   @param x Input bitset value
        *   @param i Argument i must be in the range [1..cnt(x)].
        */
-      static inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       sel_device( bitset_type x, size_type i )
       {
         if constexpr ( BITSET_WIDTH == 64 ) {
@@ -370,38 +371,38 @@ namespace psi {
       }
 #endif
 
-      static constexpr inline bitset_type
+      static KOKKOS_INLINE_FUNCTION bitset_type
       msb( bitset_type x ) noexcept
       {
         return x >> ( BITSET_WIDTH - 1 );
       }
 
-      static constexpr inline bitset_type
+      static KOKKOS_INLINE_FUNCTION bitset_type
       lsb( bitset_type x ) noexcept
       {
         return x % 2;
       }
 
       // Following methods are taken from sdsl::bits
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       cnt10( bitset_type x, bitset_type c ) noexcept
       {
         return HBitVector::cnt( ( ( x << 1 ) | c ) & ( ~x ) );
       }
 
-      static constexpr inline bitset_type
+      static KOKKOS_INLINE_FUNCTION bitset_type
       map10( bitset_type x, bitset_type c ) noexcept
       {
         return ( ( ( x << 1 ) | c ) & ( ~x ) );
       }
 
-      static constexpr inline size_type
+      static KOKKOS_INLINE_FUNCTION size_type
       cnt01( bitset_type x, bitset_type c ) noexcept
       {
         return HBitVector::cnt( ( x ^ ( ( x << 1 ) | c ) ) & x );
       }
 
-      static constexpr inline bitset_type
+      static KOKKOS_INLINE_FUNCTION bitset_type
       map01( bitset_type x, bitset_type c ) noexcept
       {
         return ( ( x ^ ( ( x << 1 ) | c ) ) & x );
@@ -410,7 +411,7 @@ namespace psi {
       /**
        *   @brief Get bitset by *global* bitset index.
        */
-      inline bitset_type&
+      KOKKOS_INLINE_FUNCTION bitset_type&
       operator()( size_type bidx ) const
       {
         auto r_bidx = this->relative_bitset( bidx );
@@ -423,7 +424,7 @@ namespace psi {
         }
       }
 
-      inline value_type
+      KOKKOS_INLINE_FUNCTION value_type
       operator[]( size_type idx ) const
       {
         auto r_idx = this->relative_idx( idx );
@@ -439,7 +440,7 @@ namespace psi {
       }
       /* === ACCESSORS === */
       /*
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       size( ) const
       {
         return this->m_size;
@@ -452,25 +453,25 @@ namespace psi {
        *   The aligned size is the smallest multiple of `BITSET_WIDTH` which is
        *   larger than the actual size of the bitvector.
        */
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       aligned_size( ) const
       {
         return this->m_x_size;
       }
 
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       num_bitsets( ) const
       {
         return this->m_num_bitsets;
       }
 
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       l1_begin_bindex( ) const
       {
         return this->l1_begin_bidx;
       }
 
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       l1_begin_idx( ) const
       {
         return this->l1_begin;
@@ -479,13 +480,13 @@ namespace psi {
       /**
        *   @brief Returns the allocated size (L1+L2) in bytes
        */
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       capacity( ) const noexcept
       {
         return this->m_x_size / CHAR_BIT;
       }
 
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       l2_num_bitsets( ) const noexcept
       {
         auto nbitsets = this->num_bitsets();
@@ -500,7 +501,7 @@ namespace psi {
        *   NOTE: The vector itself might occupy less bits in L2 than the value
        *   return by this function which is the *allocated* size.
        */
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       l2_size( ) const noexcept
       {
         return ( this->m_x_size > HBitVector::l1_size() )
@@ -514,7 +515,7 @@ namespace psi {
        *   NOTE: The vector itself might occupy less bytes in L2 than the value
        *   return by this function which is the *allocated* size.
        */
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       l2_scratch_size( ) const noexcept
       {
         return this->l2_size() / CHAR_BIT;
@@ -527,7 +528,7 @@ namespace psi {
        *   untouched meaning that rearranging the bits for multi-level
        *   decompistion is done as if all allocated bits are used.
        */
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       relative_idx( size_type idx ) const noexcept
       {
         // NOTE: Using if-else is faster than computing modulo on both CPU and GPU
@@ -536,7 +537,7 @@ namespace psi {
         else return this->m_x_size + idx - this->l1_begin;
       }
 
-      inline size_type
+      KOKKOS_INLINE_FUNCTION size_type
       relative_bitset( size_type bidx ) const noexcept
       {
         // NOTE: Using if-else is faster than computing modulo on both CPU and GPU
@@ -549,7 +550,7 @@ namespace psi {
       /**
        *   @brief Zero all bitsets in L1
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       clear_l1( const member_type& tm ) noexcept
       {
         Kokkos::parallel_for(
@@ -560,7 +561,7 @@ namespace psi {
       /**
        *   @brief Zero all bitsets in L2
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       clear_l2( const member_type& tm ) noexcept
       {
         Kokkos::parallel_for(
@@ -579,7 +580,7 @@ namespace psi {
        *
        *   NOTE: Caller should make sure that the range does not span over L1.
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       clear_l2( const member_type& tm, size_type ls_bidx,
                 size_type lf_bidx ) noexcept
       {
@@ -599,7 +600,7 @@ namespace psi {
        *
        *   NOTE: Caller should make sure that the range does not span over L1.
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       clear_l2_by_bidx( const member_type& tm, size_type s_bidx,
                         size_type f_bidx ) noexcept
       {
@@ -625,7 +626,7 @@ namespace psi {
        *
        *   NOTE: Caller should make sure that the range does not span over L1.
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       clear_l2_by_idx( const member_type& tm, size_type s_idx,
                        size_type f_idx ) noexcept
       {
@@ -649,7 +650,7 @@ namespace psi {
        *
        *   NOTE: All write access are NON-atomic.
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       set( size_type idx, ThreadSequentialPartition ) noexcept
       {
         assert( idx < this->m_x_size );
@@ -677,7 +678,7 @@ namespace psi {
        *   NOTE: All write access are atomic.
        */
       template< typename TSpec >
-      inline std::enable_if_t<
+      KOKKOS_INLINE_FUNCTION std::enable_if_t<
           !std::is_same< TSpec, ThreadSequentialTag >::value >
       set( size_type idx, ExecPartition< TSpec > ) noexcept
       {
@@ -705,7 +706,7 @@ namespace psi {
        *   NOTE: This function assumes that no other thread setting any bits in
        *         range [s_idx, f_idx] except for bitsets at end points.
        */
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       set( const member_type& tm, size_type s_idx, size_type f_idx,
            TeamSequentialPartition tag ) noexcept
       {
@@ -784,7 +785,7 @@ namespace psi {
         }
       }
 
-      inline void
+      KOKKOS_INLINE_FUNCTION void
       set( size_type s_idx, size_type f_idx )
       {
         assert( s_idx <= f_idx );
