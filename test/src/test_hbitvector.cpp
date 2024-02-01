@@ -813,9 +813,16 @@ TEMPLATE_SCENARIO_SIG(
     auto policy = policy_type( nrows, Kokkos::AUTO );
     hbv_type::set_scratch_size( policy, len );
 
-    auto func = [&policy, len]( auto callback ) {
+    WHEN( "L1 region is cleared completely" )
+    {
+      Kokkos::View< unsigned int > flag ( "" );
+      auto h_flag = Kokkos::create_mirror_view( flag );
+
+      h_flag() = 0;
+      Kokkos::deep_copy( flag, h_flag );
+
       Kokkos::parallel_for(
-          "psi::test_hbitvector::count_row_nnz", policy,
+          "psi::test_hbitvector::clear_l1", policy,
           KOKKOS_LAMBDA ( const member_type& tm ) {
             auto row = tm.league_rank();
             auto hbv = hbv_type( tm, len, row * 1000 );
@@ -826,31 +833,18 @@ TEMPLATE_SCENARIO_SIG(
                   hbv( i ) = hbv_type::BITSET_ALL_SET;
                 } );
 
-            callback( tm, hbv );
+            hbv.clear_l1( tm );
+            auto begin = hbv.l1_begin_bindex();
+            auto end = begin + hbv.l1_num_bitsets();
+            Kokkos::parallel_for( Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                                  [=]( const uint64_t i ) {
+                                    if ( ( i < begin && hbv( i ) == 0 )
+                                         || ( end <= i && hbv( i ) == 0 )
+                                         || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
+                                      Kokkos::atomic_add( &flag(), 1 );
+                                    }
+                                  } );
           } );
-    };
-
-    WHEN( "L1 region is cleared completely" )
-    {
-      Kokkos::View< unsigned int > flag ( "" );
-      auto h_flag = Kokkos::create_mirror_view( flag );
-
-      h_flag() = 0;
-      Kokkos::deep_copy( flag, h_flag );
-
-      func( [flag]( auto tm, auto hbv ) {
-        hbv.clear_l1( tm );
-        auto begin = hbv.l1_begin_bindex();
-        auto end = begin + hbv.l1_num_bitsets();
-        Kokkos::parallel_for( Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
-                              [=]( const uint64_t i ) {
-                                if ( ( i < begin && hbv( i ) == 0 )
-                                     || ( end <= i && hbv( i ) == 0 )
-                                     || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
-                                  Kokkos::atomic_add( &flag(), 1 );
-                                }
-                              } );
-      } );
 
       Kokkos::deep_copy( h_flag, flag );
 
@@ -868,19 +862,30 @@ TEMPLATE_SCENARIO_SIG(
       h_flag() = 0;
       Kokkos::deep_copy( flag, h_flag );
 
-      func( [flag]( auto tm, auto hbv ) {
-        hbv.clear_l2( tm );
-        auto begin = hbv.l1_begin_bindex();
-        auto end = begin + hbv.l1_num_bitsets();
-        Kokkos::parallel_for( Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
-                              [=]( const uint64_t i ) {
-                                if ( ( i < begin && hbv( i ) != 0 )
-                                     || ( end <= i && hbv( i ) != 0 )
-                                     || ( begin <= i && i < end && hbv( i ) == 0 ) ) {
-                                  Kokkos::atomic_add( &flag(), 1 );
-                                }
-                              } );
-      } );
+      Kokkos::parallel_for(
+          "psi::test_hbitvector::clear_l2_all", policy,
+          KOKKOS_LAMBDA ( const member_type& tm ) {
+            auto row = tm.league_rank();
+            auto hbv = hbv_type( tm, len, row * 1000 );
+
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [&hbv]( const uint64_t i ) {
+                  hbv( i ) = hbv_type::BITSET_ALL_SET;
+                } );
+
+            hbv.clear_l2( tm );
+            auto begin = hbv.l1_begin_bindex();
+            auto end = begin + hbv.l1_num_bitsets();
+            Kokkos::parallel_for( Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                                  [=]( const uint64_t i ) {
+                                    if ( ( i < begin && hbv( i ) != 0 )
+                                         || ( end <= i && hbv( i ) != 0 )
+                                         || ( begin <= i && i < end && hbv( i ) == 0 ) ) {
+                                      Kokkos::atomic_add( &flag(), 1 );
+                                    }
+                                  } );
+          } );
 
       Kokkos::deep_copy( h_flag, flag );
 
@@ -899,32 +904,43 @@ TEMPLATE_SCENARIO_SIG(
       Kokkos::deep_copy( flag, h_flag );
 
       size_type clen = 70;  // number of bitsets to clear in L2
-      func( [=]( auto tm, auto hbv ) {
-        auto lb_bidx = ( hbv.l2_num_bitsets() - clen ) / 2;
-        hbv.clear_l2( tm, lb_bidx, lb_bidx + clen );
-        auto begin = lb_bidx + hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
-        if ( begin >= hbv.num_bitsets() ) begin -= hbv.num_bitsets();
-        auto end = begin + clen;
-        if ( end >= hbv.num_bitsets() ) end -= hbv.num_bitsets();
+      Kokkos::parallel_for(
+          "psi::test_hbitvector::clear_l2_lbidx", policy,
+          KOKKOS_LAMBDA ( const member_type& tm ) {
+            auto row = tm.league_rank();
+            auto hbv = hbv_type( tm, len, row * 1000 );
 
-        typename hbv_type::bitset_type value = 0;
-        if ( end < begin ) {
-          auto tmp = end;
-          end = begin;
-          begin = tmp;
-          value = hbv_type::BITSET_ALL_SET;
-        }
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [&hbv]( const uint64_t i ) {
+                  hbv( i ) = hbv_type::BITSET_ALL_SET;
+                } );
 
-        Kokkos::parallel_for(
-            Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
-            [=]( const uint64_t i ) {
-              if ( ( i < begin && hbv( i ) == value )
-                   || ( end <= i && hbv( i ) == value )
-                   || ( begin <= i && i < end && hbv( i ) != value ) ) {
-                Kokkos::atomic_add( &flag(), 1 );
-              }
+            auto lb_bidx = ( hbv.l2_num_bitsets() - clen ) / 2;
+            hbv.clear_l2( tm, lb_bidx, lb_bidx + clen );
+            auto begin = lb_bidx + hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
+            if ( begin >= hbv.num_bitsets() ) begin -= hbv.num_bitsets();
+            auto end = begin + clen;
+            if ( end >= hbv.num_bitsets() ) end -= hbv.num_bitsets();
+
+            typename hbv_type::bitset_type value = 0;
+            if ( end < begin ) {
+              auto tmp = end;
+              end = begin;
+              begin = tmp;
+              value = hbv_type::BITSET_ALL_SET;
+            }
+
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [=]( const uint64_t i ) {
+                  if ( ( i < begin && hbv( i ) == value )
+                       || ( end <= i && hbv( i ) == value )
+                       || ( begin <= i && i < end && hbv( i ) != value ) ) {
+                    Kokkos::atomic_add( &flag(), 1 );
+                  }
             } );
-      } );
+          } );
 
       Kokkos::deep_copy( h_flag, flag );
 
@@ -943,31 +959,42 @@ TEMPLATE_SCENARIO_SIG(
       Kokkos::deep_copy( flag, h_flag );
 
       size_type clen = 25;
-      func( [=]( auto tm, auto hbv ) {
-        auto begin = hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
-        // space_len: the length of bigger space between lo-L2 or hi-L2
-        size_type space_len = hbv.num_bitsets() - begin;
-        if ( hbv.l1_begin_bindex() >= hbv.num_bitsets() / 2 ) {
-          space_len = hbv.l1_begin_bindex();
-          begin = 0;
-        }
+      Kokkos::parallel_for(
+          "psi::test_hbitvector::clear_l2_bidx", policy,
+          KOKKOS_LAMBDA ( const member_type& tm ) {
+            auto row = tm.league_rank();
+            auto hbv = hbv_type( tm, len, row * 1000 );
 
-        assert( space_len > clen );
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [&hbv]( const uint64_t i ) {
+                  hbv( i ) = hbv_type::BITSET_ALL_SET;
+                } );
 
-        begin += ( space_len - clen ) / 2;
-        auto end = begin + clen;
-        hbv.clear_l2_by_bidx( tm, begin, end );
+            auto begin = hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
+            // space_len: the length of bigger space between lo-L2 or hi-L2
+            size_type space_len = hbv.num_bitsets() - begin;
+            if ( hbv.l1_begin_bindex() >= hbv.num_bitsets() / 2 ) {
+              space_len = hbv.l1_begin_bindex();
+              begin = 0;
+            }
 
-        Kokkos::parallel_for(
-            Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
-            [=]( const uint64_t i ) {
-              if ( ( i < begin && hbv( i ) == 0 )
-                   || ( end <= i && hbv( i ) == 0 )
-                   || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
-                Kokkos::atomic_add( &flag(), 1 );
-              }
-            } );
-      } );
+            assert( space_len > clen );
+
+            begin += ( space_len - clen ) / 2;
+            auto end = begin + clen;
+            hbv.clear_l2_by_bidx( tm, begin, end );
+
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [=]( const uint64_t i ) {
+                  if ( ( i < begin && hbv( i ) == 0 )
+                       || ( end <= i && hbv( i ) == 0 )
+                       || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
+                    Kokkos::atomic_add( &flag(), 1 );
+                  }
+                } );
+          } );
 
       Kokkos::deep_copy( h_flag, flag );
 
@@ -988,32 +1015,43 @@ TEMPLATE_SCENARIO_SIG(
       size_type clen = 25;
       size_type s_offset = psi::random::random_index( 64 );
       size_type e_offset = psi::random::random_index( 64 );
-      func( [=]( auto tm, auto hbv ) {
-        auto begin = hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
-        // space_len: the length of bigger space between lo-L2 or hi-L2
-        size_type space_len = hbv.num_bitsets() - begin;
-        if ( hbv.l1_begin_bindex() >= hbv.num_bitsets() / 2 ) {
-          space_len = hbv.l1_begin_bindex();
-          begin = 0;
-        }
+      Kokkos::parallel_for(
+          "psi::test_hbitvector::clear_l2_idx", policy,
+          KOKKOS_LAMBDA ( const member_type& tm ) {
+            auto row = tm.league_rank();
+            auto hbv = hbv_type( tm, len, row * 1000 );
 
-        assert( space_len > clen );
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [&hbv]( const uint64_t i ) {
+                  hbv( i ) = hbv_type::BITSET_ALL_SET;
+                } );
 
-        begin += ( space_len - clen ) / 2;
-        auto end = begin + clen;
-        hbv.clear_l2_by_idx( tm, hbv_type::start_index( begin ) + s_offset,
-                             hbv_type::start_index( end ) + e_offset );
+            auto begin = hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
+            // space_len: the length of bigger space between lo-L2 or hi-L2
+            size_type space_len = hbv.num_bitsets() - begin;
+            if ( hbv.l1_begin_bindex() >= hbv.num_bitsets() / 2 ) {
+              space_len = hbv.l1_begin_bindex();
+              begin = 0;
+            }
 
-        Kokkos::parallel_for(
-            Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
-            [=]( const uint64_t i ) {
-              if ( ( i < begin && hbv( i ) == 0 )
-                   || ( end <= i && hbv( i ) == 0 )
-                   || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
-                Kokkos::atomic_add( &flag(), 1 );
-              }
-            } );
-      } );
+            assert( space_len > clen );
+
+            begin += ( space_len - clen ) / 2;
+            auto end = begin + clen;
+            hbv.clear_l2_by_idx( tm, hbv_type::start_index( begin ) + s_offset,
+                                 hbv_type::start_index( end ) + e_offset );
+
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [=]( const uint64_t i ) {
+                  if ( ( i < begin && hbv( i ) == 0 )
+                       || ( end <= i && hbv( i ) == 0 )
+                       || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
+                    Kokkos::atomic_add( &flag(), 1 );
+                  }
+                } );
+          } );
 
       Kokkos::deep_copy( h_flag, flag );
 
