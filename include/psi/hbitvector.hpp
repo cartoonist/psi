@@ -323,9 +323,9 @@ namespace psi {
       {
         auto l1size = HBitVector::l1_scratch_size();
         auto l2size = HBitVector::l2_scratch_size( n );
-        auto new_policy = policy.set_scratch_size( 0, Kokkos::PerTeam( l1size ) );
-        if ( l2size == 0 ) return new_policy;
-        return new_policy.set_scratch_size( 1, Kokkos::PerTeam( l2size ) );
+        policy.set_scratch_size( 0, Kokkos::PerTeam( l1size ) );
+        if ( l2size != 0 ) policy.set_scratch_size( 1, Kokkos::PerTeam( l2size ) );
+        return policy;
       }
 
       static inline size_type

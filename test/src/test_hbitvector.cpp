@@ -70,7 +70,7 @@ TEMPLATE_SCENARIO_SIG(
     auto policy = policy_type( len, Kokkos::AUTO );
 
     WHEN( "Setting scratch size" ) {
-      policy = hbv_type::set_scratch_size( policy, len );
+      hbv_type::set_scratch_size( policy, len );
 
       THEN( "L1 scratch size should be equal to the given template parameter" ) {
         REQUIRE( policy.scratch_size( 0 ) == hbv_type::L1_SIZE_BYTES );
@@ -121,7 +121,7 @@ TEMPLATE_SCENARIO_SIG(
     WHEN( "Initialising the hierarchical bitvector inside a Kokkos kernel" )
     {
       auto policy = policy_type( len, Kokkos::AUTO );
-      policy = hbv_type::set_scratch_size( policy, len );
+      hbv_type::set_scratch_size( policy, len );
 
       Kokkos::View< unsigned char* > flags( "flags", len );
       Kokkos::parallel_for(
@@ -254,7 +254,7 @@ TEMPLATE_SCENARIO_SIG(
           KOKKOS_LAMBDA( const uint64_t i ) { flags( i ) = 0; } );
 
       auto policy = policy_type( nrows, Kokkos::AUTO );
-      policy = hbv_type::set_scratch_size( policy, len );
+      hbv_type::set_scratch_size( policy, len );
       Kokkos::parallel_for(
           "psi::test_hbitvector::set_range", policy,
           KOKKOS_LAMBDA( const member_type& tm ) {
@@ -410,7 +410,7 @@ TEMPLATE_SCENARIO_SIG(
           } );
 
       auto policy = policy_type( nrows, Kokkos::AUTO );
-      policy = hbv_type::set_scratch_size( policy, len );
+      hbv_type::set_scratch_size( policy, len );
       Kokkos::parallel_for(
           "psi::test_hbitvector::set_range", policy,
           KOKKOS_LAMBDA( const member_type& tm ) {
@@ -654,7 +654,7 @@ TEMPLATE_SCENARIO_SIG(
 
       // Allocating space required for hbitvector
       auto policy = policy_type( nrows, Kokkos::AUTO );
-      policy = hbv_type::set_scratch_size( policy, len );
+      hbv_type::set_scratch_size( policy, len );
 
       // Computing `c_rowmap`
       Kokkos::parallel_for(
@@ -811,7 +811,7 @@ TEMPLATE_SCENARIO_SIG(
 
     // Allocating space required for hbitvector
     auto policy = policy_type( nrows, Kokkos::AUTO );
-    policy = hbv_type::set_scratch_size( policy, len );
+    hbv_type::set_scratch_size( policy, len );
 
     auto func = [&policy, len]( auto callback ) {
       Kokkos::parallel_for(
