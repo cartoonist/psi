@@ -30,19 +30,19 @@ using namespace psi;
 
 TEMPLATE_SCENARIO_SIG( "Test if index iterator is movable", "[index][iterator]",
                       ( ( typename T, typename U, int V /* dummy type unless compile error */ ), T, U, V ),
-                      ( seqan::IndexWotd<>, seqan::Preorder, 0 ),
-                      ( seqan::IndexEsa<>, seqan::Preorder, 0 ),
-                      ( seqan::IndexWotd<>, seqan::ParentLinks<>, 0 ),
-                      ( seqan::IndexEsa<>, seqan::ParentLinks<>, 0 ) )
+                      ( seqan2::IndexWotd<>, seqan2::Preorder, 0 ),
+                      ( seqan2::IndexEsa<>, seqan2::Preorder, 0 ),
+                      ( seqan2::IndexWotd<>, seqan2::ParentLinks<>, 0 ),
+                      ( seqan2::IndexEsa<>, seqan2::ParentLinks<>, 0 ) )
 {
   typedef T indexspec_type;
   typedef U iterspec_type;
-  typedef seqan::String< seqan::Dna, seqan::External<> > text_type;
-  typedef seqan::Index< text_type, indexspec_type > index_type;
+  typedef seqan2::String< seqan2::Dna, seqan2::External<> > text_type;
+  typedef seqan2::Index< text_type, indexspec_type > index_type;
   typedef TFineIndexIter< index_type, iterspec_type > iterator_type;
 
   std::string textpath = test_data_dir + "/text/sample_long_sequence.txt";
-  text_type  text( textpath.c_str(), seqan::OPEN_RDONLY );
+  text_type  text( textpath.c_str(), seqan2::OPEN_RDONLY );
   index_type index( text );
   iterator_type iter( index );
 
@@ -69,15 +69,15 @@ TEMPLATE_SCENARIO_SIG( "Test if index iterator is movable", "[index][iterator]",
 }
 
 TEMPLATE_SCENARIO( "Fine top-down index iterator basic functionalities", "[index][iterator]",
-                   ( seqan::IndexWotd<> ),
-                   ( seqan::IndexEsa<> ) )
+                   ( seqan2::IndexWotd<> ),
+                   ( seqan2::IndexEsa<> ) )
 {
   GIVEN( "A sample small path and ESA index" )
   {
     typedef TestType TIndexSpec;
-    typedef seqan::Dna5QString TString;
-    typedef seqan::Index< TString, TIndexSpec > TIndex;
-    typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
+    typedef seqan2::Dna5QString TString;
+    typedef seqan2::Index< TString, TIndexSpec > TIndex;
+    typedef TFineIndexIter< TIndex, seqan2::ParentLinks<> > TIter;
 
     TString str = "GATAGACTAGCCA";
     TIndex index( str );
@@ -103,12 +103,12 @@ TEMPLATE_SCENARIO( "Fine top-down index iterator basic functionalities", "[index
   {
     typedef psi::MemString TString;
     typedef psi::FMIndex<> TIndexSpec;
-    typedef seqan::Index< TString, TIndexSpec > TIndex;
-    typedef TFineIndexIter< TIndex, seqan::ParentLinks<> > TIter;
+    typedef seqan2::Index< TString, TIndexSpec > TIndex;
+    typedef TFineIndexIter< TIndex, seqan2::ParentLinks<> > TIter;
 
     TString str = "ACCGATCAGATAG";
     TIndex index( str );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
     TIter itr( index );
 
     REQUIRE( go_down( itr, 'A' ) );
@@ -129,8 +129,8 @@ TEMPLATE_SCENARIO( "Fine top-down index iterator basic functionalities", "[index
 }
 
 TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down index iterators", "[index][iterator]",
-                   ( seqan::IndexWotd<> ),
-                   ( seqan::IndexEsa<> ) )
+                   ( seqan2::IndexWotd<> ),
+                   ( seqan2::IndexEsa<> ) )
 {
   typedef TestType TIndexSpec;
   std::vector< Seed<> > seeds;
@@ -147,20 +147,20 @@ TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down in
     Records< Dna5QStringSet<> > rec2;
     appendValue(rec2.str, "GGGCGTAGCCA");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex1 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
-    TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
-    TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
+    TFineIndexIter< TIndex1, seqan2::ParentLinks<> > itr1( index1 );
+    TFineIndexIter< TIndex2, seqan2::ParentLinks<> > itr2( index2 );
 
     seeds.clear();
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
-      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+      typedef typename seqan2::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan2::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
 
       TSeedsIterator1 seeds_itr1( &rec1, 4 );
       kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
@@ -195,20 +195,20 @@ TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down in
     Records< Dna5QStringSet<> > rec2;
     appendValue(rec2.str, "ATATAC");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex1 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
-    TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
-    TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
+    TFineIndexIter< TIndex1, seqan2::ParentLinks<> > itr1( index1 );
+    TFineIndexIter< TIndex2, seqan2::ParentLinks<> > itr2( index2 );
 
     seeds.clear();
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
-      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+      typedef typename seqan2::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan2::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
 
       TSeedsIterator1 seeds_itr1( &rec1, 3 );
       kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
@@ -247,20 +247,20 @@ TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down in
     appendValue(rec2.str, "GGATTTAAATC");
     appendValue(rec2.str, "CGATTTAAATA");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex1 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
-    TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
-    TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
+    TFineIndexIter< TIndex1, seqan2::ParentLinks<> > itr1( index1 );
+    TFineIndexIter< TIndex2, seqan2::ParentLinks<> > itr2( index2 );
 
     seeds.clear();
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
-      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+      typedef typename seqan2::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan2::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
 
       TSeedsIterator1 seeds_itr1( &rec1, 10 );
       kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
@@ -299,20 +299,20 @@ TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down in
     appendValue(rec2.str, "GGATTNAAATC");
     appendValue(rec2.str, "CGATTNAAATA");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex1 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
-    TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
-    TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
+    TFineIndexIter< TIndex1, seqan2::ParentLinks<> > itr1( index1 );
+    TFineIndexIter< TIndex2, seqan2::ParentLinks<> > itr2( index2 );
 
     seeds.clear();
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
-      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+      typedef typename seqan2::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan2::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
 
       TSeedsIterator1 seeds_itr1( &rec1, 10 );
       kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );
@@ -359,20 +359,20 @@ TEMPLATE_SCENARIO( "Find k-mer exact matches between two texts using top-down in
         "TTGCAGGGCTCTCTTGCTCGCAGTGTAGTGGCGGCACGCCGCCTGCTGGCAGCTAGGGACATTGCAGAGCCCTCTTGCT"
         "CACAGTG");
 
-    using TIndex1 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
-    using TIndex2 = seqan::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex1 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
+    using TIndex2 = seqan2::Index< Dna5QStringSet<>, TIndexSpec >;
 
     TIndex1 index1(rec1.str);
     TIndex2 index2(rec2.str);
-    TFineIndexIter< TIndex1, seqan::ParentLinks<> > itr1( index1 );
-    TFineIndexIter< TIndex2, seqan::ParentLinks<> > itr2( index2 );
+    TFineIndexIter< TIndex1, seqan2::ParentLinks<> > itr1( index1 );
+    TFineIndexIter< TIndex2, seqan2::ParentLinks<> > itr2( index2 );
 
     seeds.clear();
 
     WHEN( "Query all k-mers in one to index of the other" )
     {
-      typedef typename seqan::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
-      typedef typename seqan::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
+      typedef typename seqan2::Iterator< decltype( rec1 ), GreedyOverlapping >::Type TSeedsIterator1;
+      typedef typename seqan2::Iterator< decltype( rec2 ), GreedyOverlapping >::Type TSeedsIterator2;
 
       TSeedsIterator1 seeds_itr1( &rec1, 30 );
       kmer_exact_matches( index2, &rec2.str, seeds_itr1, callback );

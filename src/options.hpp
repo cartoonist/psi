@@ -35,8 +35,8 @@ namespace psi {
     FM                    /**< @brief FM index. */
   };
 
-  typedef seqan::IndexWotd<> UsingIndexWotd;
-  typedef seqan::IndexEsa<> UsingIndexEsa;
+  typedef seqan2::IndexWotd<> UsingIndexWotd;
+  typedef seqan2::IndexEsa<> UsingIndexEsa;
 
     inline IndexType
   index_from_str(std::string str)

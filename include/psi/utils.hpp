@@ -98,7 +98,7 @@ namespace psi {
       inline bool
     ends_with( const TText& str, const TText& suf )
     {
-      typedef typename seqan::Size< TText >::Type TSize;
+      typedef typename seqan2::Size< TText >::Type TSize;
       bool retval = false;
       if( length( suf ) <= length( str ) ) {
         retval = true;
@@ -148,7 +148,7 @@ namespace psi {
       inline bool
     starts_with( const TText& str, const TText& pre )
     {
-      typedef typename seqan::Size< TText >::Type TSize;
+      typedef typename seqan2::Size< TText >::Type TSize;
       bool retval = false;
       if( length( pre ) <= length( str ) ) {
         retval = true;

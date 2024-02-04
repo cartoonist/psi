@@ -49,11 +49,11 @@ namespace psi {
         typedef std::vector< value_type > container_type;
         typedef typename container_type::iterator iterator;
         typedef typename container_type::const_iterator const_iterator;
-        typedef seqan::StringSet< YaString< TSpec > > stringset_type;
+        typedef seqan2::StringSet< YaString< TSpec > > stringset_type;
         /* XXX: `stringset_type::string_type` is underlying internal (in-memory) string
          *      ... type which might not be equivalent to `YaString<TSpec>`. */
         typedef typename stringset_type::string_type string_type;
-        typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+        typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
         typedef std::pair< size_type, typename value_type::size_type > pos_type;
         /* ====================  CONST MEMBERS  ====================================== */
         const char ID_SEPARATOR = PATHSET_ID_SEPARATOR_CHAR;
@@ -180,7 +180,7 @@ namespace psi {
         get_occurrences( const string_type& idstr )
         {
           std::vector< pos_type > retval;
-          seqan::Finder< index_type > finder( this->encids_index );
+          seqan2::Finder< index_type > finder( this->encids_index );
           while( find( finder, idstr ) ) {
             auto str_pos = beginPosition( finder );
             pos_type pos = { 0, 0 };
@@ -203,7 +203,7 @@ namespace psi {
           inline bool
         found( const string_type& idstr )
         {
-          seqan::Finder< index_type > finder( this->encids_index );
+          seqan2::Finder< index_type > finder( this->encids_index );
           find( finder, idstr );
           return finder.count() != 0;
         }
@@ -250,7 +250,7 @@ namespace psi {
           inline void
         initialize( )
         {
-          indexRequire( this->encids_index, seqan::FibreSALF() );
+          indexRequire( this->encids_index, seqan2::FibreSALF() );
           for ( size_type i = 0; i < this->bv_ids_set.size(); ++i ) {
             sdsl::util::init_support( this->rs_ids_set[ i ], &this->bv_ids_set[ i ] );
           }
@@ -264,7 +264,7 @@ namespace psi {
             psi::save( path, out );
           }
 
-          indexRequire( this->encids_index, seqan::FibreSALF() );
+          indexRequire( this->encids_index, seqan2::FibreSALF() );
           save( this->encids_index, out );
 
           for ( auto&& bv_id_breaks : this->bv_ids_set ) {

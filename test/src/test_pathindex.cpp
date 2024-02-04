@@ -48,7 +48,7 @@ SCENARIO ( "Serialize/deserialize path index into/from the file", "[pathindex]" 
 
   GIVEN ( "Two paths from a small graph" )
   {
-    typedef seqan::IndexEsa<> TIndexSpec;
+    typedef seqan2::IndexEsa<> TIndexSpec;
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
@@ -97,7 +97,7 @@ SCENARIO( "Get node ID/offset by position in the PathIndex", "[pathindex]" )
 
   GIVEN( "A graph and PathIndex within the graph" )
   {
-    typedef seqan::IndexEsa<> TIndexSpec;
+    typedef seqan2::IndexEsa<> TIndexSpec;
 
     std::string vgpath = test_data_dir + "/small/x.gfa";
     graph_type graph;
@@ -142,7 +142,7 @@ SCENARIO( "String set of PathIndex with non-zero context", "[pathindex]" )
 
   GIVEN( "A graph" )
   {
-    typedef seqan::IndexEsa<> TIndexSpec;
+    typedef seqan2::IndexEsa<> TIndexSpec;
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;

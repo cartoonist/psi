@@ -41,7 +41,7 @@ namespace psi {
     };
 }  /* --- end of namespace psi --- */
 
-namespace seqan {
+namespace seqan2 {
   /* Forwards */
   template< class TWT, uint32_t TDens, uint32_t TInvDens >
       void
@@ -205,8 +205,8 @@ namespace seqan {
         getFibre< TText, TWT, TDens, TInvDens >( Index const&, FibreText );
         /* ====================  FRIENDSHIPS   ======================================= */
         friend class Finder< Index >;
-        friend class Iter< Index, seqan::TopDown<> >;
-        friend class Iter< Index, seqan::TopDown< seqan::ParentLinks<> > >;
+        friend class Iter< Index, seqan2::TopDown<> >;
+        friend class Iter< Index, seqan2::TopDown< seqan2::ParentLinks<> > >;
         template< typename TPath, typename TSpec >
           friend class PathSet;
     };
@@ -1039,6 +1039,6 @@ namespace seqan {
     struct Iterator< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > {
       typedef Iter< Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, TopDown< TSpec > > Type;
     };
-}  /* -----  end of namespace seqan  ----- */
+}  /* -----  end of namespace seqan2  ----- */
 
 #endif  /* --- #ifndef PSI_FMINDEX_HPP__ --- */

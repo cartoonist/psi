@@ -32,16 +32,16 @@
 
 
 using namespace std;
-using namespace seqan;
+using namespace seqan2;
 using namespace grem;
 
 // TODO: Localize Options (it is written for the main program).
 
 typedef struct
 {
-  typedef seqan::Index< Dna5QStringSet<>, IndexWotd<> > TIndex;
+  typedef seqan2::Index< Dna5QStringSet<>, IndexWotd<> > TIndex;
   typedef typename Iterator < TIndex, TopDownFine<> >::Type TIndexIter;
-  typedef seqan::SAValue< TIndex >::Type TSAValue;
+  typedef seqan2::SAValue< TIndex >::Type TSAValue;
 
   TIndexIter index_iter;
   unsigned int   ref_len;
@@ -49,7 +49,7 @@ typedef struct
 
 
 void
-setup_argparser(seqan::ArgumentParser& parser)
+setup_argparser(seqan2::ArgumentParser& parser)
 {
   // positional arguments.
   std::string POSARG1 = "REF_FILE";
@@ -58,44 +58,44 @@ setup_argparser(seqan::ArgumentParser& parser)
   addUsageLine(parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"");
 
   // reference file -- positional argument.
-  seqan::ArgParseArgument ref_file_arg(seqan::ArgParseArgument::INPUT_FILE, POSARG1);
+  seqan2::ArgParseArgument ref_file_arg(seqan2::ArgParseArgument::INPUT_FILE, POSARG1);
   setValidValues(ref_file_arg, "fa fasta");
   addArgument(parser, ref_file_arg);
 
   // reads in FASTQ format -- **required** option.
-  seqan::ArgParseOption fqfile_arg("f", "fastq", "Reads in FASTQ format.",
-                                   seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE");
+  seqan2::ArgParseOption fqfile_arg("f", "fastq", "Reads in FASTQ format.",
+                                   seqan2::ArgParseArgument::INPUT_FILE, "FASTQ_FILE");
   setValidValues(fqfile_arg, "fq fastq");
   addOption(parser, fqfile_arg);
   setRequired(parser, "f");
 
   // seed length -- **required** option.
-  addOption(parser, seqan::ArgParseOption("l", "seed-length", "Seed length.",
-                                          seqan::ArgParseArgument::INTEGER, "INT"));
+  addOption(parser, seqan2::ArgParseOption("l", "seed-length", "Seed length.",
+                                          seqan2::ArgParseArgument::INTEGER, "INT"));
   setRequired(parser, "l");
 
   // chunk size -- **required** option.
-  addOption(parser, seqan::ArgParseOption("c", "chunk-size", "Reads chunk size.",
-                                          seqan::ArgParseArgument::INTEGER, "INT"));
+  addOption(parser, seqan2::ArgParseOption("c", "chunk-size", "Reads chunk size.",
+                                          seqan2::ArgParseArgument::INTEGER, "INT"));
   setRequired(parser, "c");
 
   // quiet -- no output to console
-  addOption(parser, seqan::ArgParseOption("q", "quiet", "Quiet mode. No output will be printed to console."));
+  addOption(parser, seqan2::ArgParseOption("q", "quiet", "Quiet mode. No output will be printed to console."));
 
   // no colored output
-  addOption(parser, seqan::ArgParseOption("C", "no-color", "Do not use a colored output."));
+  addOption(parser, seqan2::ArgParseOption("C", "no-color", "Do not use a colored output."));
 
   // verbosity options
-  addOption(parser, seqan::ArgParseOption("v", "verbose",
+  addOption(parser, seqan2::ArgParseOption("v", "verbose",
                                           "Activates maximum verbosity."));
 }
 
 
-seqan::ArgumentParser::ParseResult
+seqan2::ArgumentParser::ParseResult
 parse_args(Options & options, int argc, char *argv[])
 {
   // setup ArgumentParser.
-  seqan::ArgumentParser parser("test_linear");
+  seqan2::ArgumentParser parser("test_linear");
   setup_argparser(parser);
 
   // Embedding program's meta data and build information.
@@ -110,10 +110,10 @@ parse_args(Options & options, int argc, char *argv[])
                  "in order to find seed hits.");
 
   // parse command line.
-  auto res = seqan::parse(parser, argc, argv);
+  auto res = seqan2::parse(parser, argc, argv);
 
   // only extract options if the program will continue after parse_args()
-  if (res != seqan::ArgumentParser::PARSE_OK) return res;
+  if (res != seqan2::ArgumentParser::PARSE_OK) return res;
 
   getOptionValue(options.fq_path, parser, "fastq");
   getOptionValue(options.seed_len, parser, "seed-length");
@@ -123,7 +123,7 @@ parse_args(Options & options, int argc, char *argv[])
   options.verbose = isSet( parser, "verbose" );
   getArgumentValue(options.rf_path, parser, 0);
 
-  return seqan::ArgumentParser::PARSE_OK;
+  return seqan2::ArgumentParser::PARSE_OK;
 }
 
 
@@ -134,8 +134,8 @@ int main(int argc, char *argv[])
   auto res = parse_args( options, argc, argv );
   // If parsing was not successful then exit with code 1 if there were errors.
   // Otherwise, exit with code 0 (e.g. help was printed).
-  if ( res != seqan::ArgumentParser::PARSE_OK )
-    return res == seqan::ArgumentParser::PARSE_ERROR;
+  if ( res != seqan2::ArgumentParser::PARSE_OK )
+    return res == seqan2::ArgumentParser::PARSE_ERROR;
 
   options.nolog = false;
   options.nologfile = true;
@@ -212,8 +212,8 @@ int main(int argc, char *argv[])
           if ( found )
           {
             assert( iter_state.ref_len == options.seed_len );
-            seqan::String< IterState::TSAValue > saPositions = getOccurrences( iter_state.index_iter.get_iter_() );
-            typename seqan::Size< decltype( saPositions ) >::Type i;
+            seqan2::String< IterState::TSAValue > saPositions = getOccurrences( iter_state.index_iter.get_iter_() );
+            typename seqan2::Size< decltype( saPositions ) >::Type i;
             for ( i = 0; i < length( saPositions ); ++i )
             {
               Seed<> hit;
