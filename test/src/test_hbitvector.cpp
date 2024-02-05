@@ -245,13 +245,15 @@ TEMPLATE_SCENARIO_SIG(
           + " (Team-Sequential Partitioning)" )
     {
       Kokkos::View< unsigned char* > flags( "flags", nnz / 2 );
-      Kokkos::View< size_type > crs_nnz( "" );
-      crs_nnz() = 0;
+      Kokkos::View< size_type > crs_nnz( "crs_nnz" );
 
       // Zero initialise `flags`
       Kokkos::parallel_for(
           "psi::test_hbitvector::initialise_flags", nnz / 2,
-          KOKKOS_LAMBDA ( const uint64_t i ) { flags( i ) = 0; } );
+          KOKKOS_LAMBDA ( const uint64_t i ) {
+            flags( i ) = 0;
+            if ( i == 0 ) crs_nnz() = 0;
+          } );
 
       auto policy = policy_type( nrows, Kokkos::AUTO );
       hbv_type::set_scratch_size( policy, len );
@@ -314,8 +316,11 @@ TEMPLATE_SCENARIO_SIG(
             },
             all_set );
 
+        auto h_crs_nnz = Kokkos::create_mirror_view( crs_nnz );
+        Kokkos::deep_copy( h_crs_nnz, crs_nnz );
+
         REQUIRE( all_set == flags.extent( 0 ) );
-        REQUIRE( crs_nnz() == true_crs_nnz );
+        REQUIRE( h_crs_nnz() == true_crs_nnz );
       }
     }
   }
@@ -398,8 +403,7 @@ TEMPLATE_SCENARIO_SIG(
     {
       Kokkos::View< unsigned char* > msb_flags( "flags", hbv_type::num_bitsets( len ) );
       Kokkos::View< unsigned char* > lsb_flags( "flags", hbv_type::num_bitsets( len ) );
-      Kokkos::View< size_type > crs_nnz( "" );
-      crs_nnz() = 0;
+      Kokkos::View< size_type > crs_nnz( "crs_nnz" );
 
       // Zero initialise `msb_flags` and `lsb_flags`
       Kokkos::parallel_for(
@@ -407,6 +411,7 @@ TEMPLATE_SCENARIO_SIG(
           hbv_type::num_bitsets( len ), KOKKOS_LAMBDA ( const uint64_t i ) {
             msb_flags( i ) = 0;
             lsb_flags( i ) = 0;
+            if ( i == 0 ) crs_nnz() = 0;
           } );
 
       auto policy = policy_type( nrows, Kokkos::AUTO );
@@ -485,7 +490,10 @@ TEMPLATE_SCENARIO_SIG(
             },
             true_crs_nnz );
 
-        REQUIRE( crs_nnz() == true_crs_nnz );
+        auto h_crs_nnz = Kokkos::create_mirror_view( crs_nnz );
+        Kokkos::deep_copy( h_crs_nnz, crs_nnz );
+
+        REQUIRE( h_crs_nnz() == true_crs_nnz );
       }
 
       THEN( "Calling 'msb' on a bitset should give its most significant bit" )
@@ -601,8 +609,9 @@ TEMPLATE_SCENARIO_SIG(
           + " populated by nnz values (Team-Sequential Partitioning)" )
     {
       // The answer
+      size_type t_nnz = 32;
       Kokkos::View< uint32_t*, Kokkos::DefaultHostExecutionSpace > h_t_e(
-          "true entries", nnz );
+          "true entries", t_nnz );
       Kokkos::View< uint32_t*, Kokkos::DefaultHostExecutionSpace > h_t_row_map(
           "true row_map", nrows + 1 );
 
@@ -646,10 +655,7 @@ TEMPLATE_SCENARIO_SIG(
       h_t_row_map( 5 ) = 32;
 
       // Output views
-      Kokkos::View< uint32_t* > c_e( "acc_entries", nnz );
       Kokkos::View< uint32_t* > c_rowmap( "acc_rowmap", nrows + 1 );
-
-      auto h_c_e = Kokkos::create_mirror( c_e );
       auto h_c_rowmap = Kokkos::create_mirror_view( c_rowmap );
 
       // Allocating space required for hbitvector
@@ -704,9 +710,23 @@ TEMPLATE_SCENARIO_SIG(
               c_rowmap( i + 1 ) = update;
           } );
 
+      Kokkos::deep_copy( h_c_rowmap, c_rowmap );
+
+      THEN( "Total number of '01's and '10's should be equal to nnz" )
+      {
+        REQUIRE( h_c_rowmap( nrows ) == t_nnz );
+
+        for ( auto i = 0u; i <= nrows; ++i ) {
+          REQUIRE( h_c_rowmap( i ) == h_t_row_map( i ) );
+        }
+      }
+
       AND_WHEN( "'sel'ecting all set bits in the result of calling "
                 "('map01' | 'map10') on bitsets" )
       {
+        Kokkos::View< uint32_t* > c_e( "acc_entries", h_c_rowmap( nrows ) );
+        auto h_c_e = Kokkos::create_mirror( c_e );
+
         // Calculating `c_e`
         Kokkos::parallel_for(
             "psi::test_hbitvector::accumulate_entries", policy,
@@ -765,23 +785,14 @@ TEMPLATE_SCENARIO_SIG(
                   } );
             } );
 
+        Kokkos::deep_copy( h_c_e, c_e );
+
         THEN( "Using 'sel', 'map01', and 'map10' on bitsets can reconstruct "
               "the entries" )
         {
-          Kokkos::deep_copy( h_c_e, c_e );
-
-          for ( auto i = 0u; i <= nnz; ++i ) {
+          for ( auto i = 0u; i < t_nnz; ++i ) {
             REQUIRE( h_c_e( i ) == h_t_e( i ) );
           }
-        }
-      }
-
-      THEN( "Total number of '01's and '10's should be equal to nnz" )
-      {
-        Kokkos::deep_copy( h_c_rowmap, c_rowmap );
-
-        for ( auto i = 0u; i <= nrows; ++i ) {
-          REQUIRE( h_c_rowmap( i ) == h_t_row_map( i ) );
         }
       }
     }
@@ -1006,15 +1017,15 @@ TEMPLATE_SCENARIO_SIG(
 
     WHEN( "A region of L2 indicated by by global bit indices is cleared" )
     {
-      Kokkos::View< unsigned int > flag ( "" );
+      Kokkos::View< unsigned int > flag ( "flag" );
       auto h_flag = Kokkos::create_mirror_view( flag );
 
       h_flag() = 0;
       Kokkos::deep_copy( flag, h_flag );
 
       size_type clen = 25;
-      size_type s_offset = psi::random::random_index( 64 );
-      size_type e_offset = psi::random::random_index( 64 );
+      size_type s_offset = psi::random::random_index( width );
+      size_type e_offset = psi::random::random_index( width );
       Kokkos::parallel_for(
           "psi::test_hbitvector::clear_l2_idx", policy,
           KOKKOS_LAMBDA ( const member_type& tm ) {
