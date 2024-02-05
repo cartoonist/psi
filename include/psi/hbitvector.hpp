@@ -622,6 +622,9 @@ namespace psi {
        *   @param s_idx Global bit index in the vector (inclusive)
        *   @param f_idx Global bit index in the vector (exclusive)
        *
+       *   NOTE: The function clears whole bitsets covering the range including
+       *   the bitset on which `f_idx` lies unless `f_idx` is an aligned index.
+       *
        *   NOTE: `s_idx` and `f_idx` are global *bit* indices (i.e. not local).
        *
        *   NOTE: Caller should make sure that the range does not span over L1.
@@ -633,7 +636,13 @@ namespace psi {
         assert( f_idx != 0 );
 
         auto rs_idx = this->relative_idx( s_idx );
-        auto rf_idx = this->relative_idx( f_idx - 1 ) + 1;
+        // `f_idx` can be equal to L1 begin index which would be mapped to 0
+        // instead of |L1|+|L2| when computing the relative index.
+        // `rel( f_idx - 1 ) + 1` gives the right answer without branching. The
+        // following line combines this trick with computing the aligned index
+        // ceiling method.
+        auto rf_idx = ( this->relative_idx( f_idx - 1 ) + BITSET_WIDTH )
+                      & ( INDEX_ALIGN_MASK );
         auto ls_idx = rs_idx - HBitVector::l1_size();
         auto lf_idx = rf_idx - HBitVector::l1_size();
         auto ls_bidx = HBitVector::bindex( ls_idx );

@@ -1015,7 +1015,7 @@ TEMPLATE_SCENARIO_SIG(
       }
     }
 
-    WHEN( "A region of L2 indicated by by global bit indices is cleared" )
+    WHEN( "A region of L2 indicated is cleared by global bit indices (non-zero end offset)" )
     {
       Kokkos::View< unsigned int > flag ( "flag" );
       auto h_flag = Kokkos::create_mirror_view( flag );
@@ -1025,7 +1025,7 @@ TEMPLATE_SCENARIO_SIG(
 
       size_type clen = 25;
       size_type s_offset = psi::random::random_index( width );
-      size_type e_offset = psi::random::random_index( width );
+      size_type e_offset = psi::random::random_integer( 1, width - 1 );
       Kokkos::parallel_for(
           "psi::test_hbitvector::clear_l2_idx", policy,
           KOKKOS_LAMBDA ( const member_type& tm ) {
@@ -1057,8 +1057,64 @@ TEMPLATE_SCENARIO_SIG(
                 Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
                 [=]( const uint64_t i ) {
                   if ( ( i < begin && hbv( i ) == 0 )
+                       || ( end < i && hbv( i ) == 0 )
+                       || ( begin <= i && i <= end && hbv( i ) != 0 ) ) {  // end bitset should be cleared
+                    Kokkos::atomic_add( &flag(), 1 );
+                  }
+                } );
+          } );
+
+      Kokkos::deep_copy( h_flag, flag );
+
+      THEN( "All bitsets in the region should be zero" )
+      {
+        REQUIRE( h_flag() == 0 );
+      }
+    }
+
+    WHEN( "A region of L2 indicated is cleared by global bit indices (zero end offset)" )
+    {
+      Kokkos::View< unsigned int > flag ( "flag" );
+      auto h_flag = Kokkos::create_mirror_view( flag );
+
+      h_flag() = 0;
+      Kokkos::deep_copy( flag, h_flag );
+
+      size_type clen = 25;
+      size_type s_offset = psi::random::random_index( width );
+      Kokkos::parallel_for(
+          "psi::test_hbitvector::clear_l2_idx", policy,
+          KOKKOS_LAMBDA ( const member_type& tm ) {
+            auto row = tm.league_rank();
+            auto hbv = hbv_type( tm, len, row * 1000 );
+
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [&hbv]( const uint64_t i ) {
+                  hbv( i ) = hbv_type::BITSET_ALL_SET;
+                } );
+
+            auto begin = hbv.l1_begin_bindex() + hbv.l1_num_bitsets();
+            // space_len: the length of bigger space between lo-L2 or hi-L2
+            size_type space_len = hbv.num_bitsets() - begin;
+            if ( hbv.l1_begin_bindex() >= hbv.num_bitsets() / 2 ) {
+              space_len = hbv.l1_begin_bindex();
+              begin = 0;
+            }
+
+            assert( space_len > clen );
+
+            begin += ( space_len - clen ) / 2;
+            auto end = begin + clen;
+            hbv.clear_l2_by_idx( tm, hbv_type::start_index( begin ) + s_offset,
+                                 hbv_type::start_index( end ) /* no offset */);
+
+            Kokkos::parallel_for(
+                Kokkos::TeamThreadRange( tm, hbv.num_bitsets() ),
+                [=]( const uint64_t i ) {
+                  if ( ( i < begin && hbv( i ) == 0 )
                        || ( end <= i && hbv( i ) == 0 )
-                       || ( begin <= i && i < end && hbv( i ) != 0 ) ) {
+                       || ( begin <= i && i < end && hbv( i ) != 0 ) ) {  // end bitset is not cleared
                     Kokkos::atomic_add( &flag(), 1 );
                   }
                 } );
