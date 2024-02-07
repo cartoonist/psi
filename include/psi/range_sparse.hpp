@@ -24,7 +24,6 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
-#include <Kokkos_NestedSort.hpp>
 #include <KokkosKernels_Utils.hpp>
 
 #include "crs_matrix.hpp"
@@ -356,10 +355,7 @@ namespace psi {
     typedef typename xcrsmatrix_t::values_type::non_const_type values_t;
     typedef typename xcrsmatrix_t::row_map_type::non_const_type row_map_t;
     typedef typename xcrsmatrix_t::index_type::non_const_type entries_t;
-    typedef typename xcrsmatrix_t::memory_space xcrsmatrix_memory_space;
     typedef Kokkos::RangePolicy< execution_space > range_policy_t;
-    typedef Kokkos::TeamPolicy< execution_space > team_policy_t;
-    typedef typename team_policy_t::member_type team_member_t;
     typedef typename Kokkos::Random_XorShift64_Pool< execution_space > random_pool_t;
     typedef typename random_pool_t::generator_type generator_t;
 
@@ -474,31 +470,11 @@ namespace psi {
           }
         } );
 
-    // `std::sort` is much faster than `Kokkos::sort` on host
-    if constexpr ( Kokkos::SpaceAccessibility<
-                       THostSpace, xcrsmatrix_memory_space >::accessible ) {
-      Kokkos::parallel_for(
-          "psi::crs_matrix::create_random_matrix::sort_entries_host",
-          Kokkos::RangePolicy< THostSpace >( 0, n ),
-          KOKKOS_LAMBDA ( const uint64_t i ) {
-            auto begin = r_entries.data() + r_row_map( i );
-            auto end = r_entries.data() + r_row_map( i + 1 );
-            std::sort( begin, end );
-          } );
-    }
-    else {
-      Kokkos::parallel_for(
-          "psi::crs_matrix::create_random_matrix::sort_entries_device",
-          team_policy_t( n, Kokkos::AUTO ),
-          KOKKOS_LAMBDA ( const team_member_t& team_member ) {
-            auto i = team_member.league_rank();
-            auto l = r_row_map( i );
-            auto u = r_row_map( i + 1 );
-            auto subview
-                = Kokkos::subview( r_entries, Kokkos::pair( l, u ) );
-            Kokkos::Experimental::sort_team( team_member, subview );
-          } );
-    }
+    auto func = SortEntriesFunctor( r_row_map, r_entries );
+
+    Kokkos::parallel_for(
+        "psi::crs_matrix::create_random_matrix::sort_entries",
+        func.policy( n ), func );
 
     return xcrsmatrix_t( "Random Matrix", n, n, nnz, r_values, r_row_map,
                          r_entries );

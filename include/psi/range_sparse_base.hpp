@@ -16,7 +16,10 @@
 #ifndef PSI_RANGE_SPARSE_BASE_HPP_
 #define PSI_RANGE_SPARSE_BASE_HPP_
 
+#include <algorithm>
+
 #include <Kokkos_Core.hpp>
+#include <Kokkos_NestedSort.hpp>
 
 
 namespace psi {
@@ -92,6 +95,92 @@ namespace psi {
     ordinal_type a_ncols;
     ordinal_type b_ncols;
   };
+
+  template<
+      typename TRowMapView,
+      typename TEntriesView,
+      typename TExecSpace=typename TRowMapView::execution_space >
+  struct SortEntriesFunctor {
+    /* === TYPE MEMBERS === */
+    using policy_type = Kokkos::RangePolicy< TExecSpace >;
+    using size_type = typename TRowMapView::non_const_value_type;
+    /* === STATIC ASSERTS === */
+    static_assert(
+        std::is_same< typename TRowMapView::execution_space,
+                      TExecSpace >::value,
+        "execution space parameter is incompatible with input views" );
+    static_assert(
+        std::is_same< typename TEntriesView::execution_space,
+                      TExecSpace >::value,
+        "execution space parameter is incompatible with input views" );
+    /* === DATA MEMBERS === */
+    TRowMapView row_map;
+    TEntriesView entries;
+    /* === LIFE CYCLE === */
+    SortEntriesFunctor( TRowMapView r, TEntriesView e )
+      : row_map( r ), entries( e )
+    { }
+    /* === METHODS === */
+    inline auto
+    policy( const size_type nrows ) const
+    {
+      return policy_type( 0, nrows );
+    }
+    /* === OPERATORS === */
+    KOKKOS_INLINE_FUNCTION void
+    operator()( const uint64_t i ) const
+    {
+      auto begin = this->entries.data() + this->row_map( i );
+      auto end = this->entries.data() + this->row_map( i + 1 );
+      std::sort( begin, end );
+    }
+  };
+
+#if defined(KOKKOS_ENABLE_CUDA)
+  template< typename TRowMapView, typename TEntriesView >
+  struct SortEntriesFunctor< TRowMapView, TEntriesView, Kokkos::Cuda > {
+    /* === TYPE MEMBERS === */
+    using execution_space = Kokkos::Cuda;
+    using policy_type = Kokkos::TeamPolicy< execution_space >;
+    using member_type = typename policy_type::member_type;
+    using size_type = typename TRowMapView::non_const_value_type;
+    /* === STATIC ASSERTS === */
+    static_assert(
+        std::is_same< typename TRowMapView::execution_space,
+                      execution_space >::value,
+        "execution space parameter is incompatible with input views" );
+    static_assert(
+        std::is_same< typename TEntriesView::execution_space,
+                      execution_space >::value,
+        "execution space parameter is incompatible with input views" );
+    /* === DATA MEMBERS === */
+    TRowMapView row_map;
+    TEntriesView entries;
+    /* === LIFE CYCLE === */
+    SortEntriesFunctor( TRowMapView r, TEntriesView e )
+      : row_map( r ), entries( e )
+    { }
+    /* === METHODS === */
+    inline auto
+    policy( const size_type nrows ) const
+    {
+      return policy_type( nrows, Kokkos::AUTO );
+    }
+    /* === OPERATORS === */
+    KOKKOS_INLINE_FUNCTION void
+    operator()( member_type const& tm ) const
+    {
+      auto i = tm.league_rank();
+      auto l = this->row_map( i );
+      auto u = this->row_map( i + 1 );
+      assert( u >= l );
+      if ( u != l ) {
+        auto subview = Kokkos::subview( this->entries, Kokkos::pair( l, u ) );
+        Kokkos::Experimental::sort_team( tm, subview );
+      }
+    }
+  };
+#endif
 
   /* borrowed from kokkos-kernel */
   template< typename TExecSpace >
