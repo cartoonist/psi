@@ -154,7 +154,7 @@ TEMPLATE_SCENARIO_SIG(
         std::size_t all_set = 0;
         Kokkos::parallel_reduce(
             "psi::test_hbit_vector::l1_begin_assess", len,
-            KOKKOS_LAMBDA( const uint64_t i, std::size_t& all_set_local ) {
+            KOKKOS_LAMBDA ( const uint64_t i, std::size_t& all_set_local ) {
               if ( flags( i ) == 1 ) all_set_local += 1;
             },
             all_set );
@@ -251,13 +251,13 @@ TEMPLATE_SCENARIO_SIG(
       // Zero initialise `flags`
       Kokkos::parallel_for(
           "psi::test_hbitvector::initialise_flags", nnz / 2,
-          KOKKOS_LAMBDA( const uint64_t i ) { flags( i ) = 0; } );
+          KOKKOS_LAMBDA ( const uint64_t i ) { flags( i ) = 0; } );
 
       auto policy = policy_type( nrows, Kokkos::AUTO );
       hbv_type::set_scratch_size( policy, len );
       Kokkos::parallel_for(
           "psi::test_hbitvector::set_range", policy,
-          KOKKOS_LAMBDA( const member_type& tm ) {
+          KOKKOS_LAMBDA ( const member_type& tm ) {
             auto row = tm.league_rank();
             hbv_type hbv( tm, len, ( row + 1 ) * 1000 );
             auto e_idx = row_map( row );
@@ -268,7 +268,7 @@ TEMPLATE_SCENARIO_SIG(
 
             Kokkos::parallel_for(
                 Kokkos::TeamThreadRange( tm, e_idx / 2, e_end / 2 ),
-                [ & ]( const uint64_t jj ) {
+                [&]( const uint64_t jj ) {
                   auto j = jj * 2;
                   auto s = e( j );
                   auto f = e( j + 1 );
@@ -306,11 +306,11 @@ TEMPLATE_SCENARIO_SIG(
         Kokkos::parallel_reduce(
             "psi::test_hbit_vector::set_range_assess",
             flags.extent( 0 ),
-            KOKKOS_LAMBDA( const uint64_t i, std::size_t& all_set_local ) {
+            KOKKOS_LAMBDA ( const uint64_t i, std::size_t& all_set_local ) {
               if ( flags( i ) == 1 )
                 all_set_local += 1;
               else
-                std::cout << "i: " << i << std::endl;
+                printf( "i: %" PRIu64 "\n", i );
             },
             all_set );
 
@@ -404,7 +404,7 @@ TEMPLATE_SCENARIO_SIG(
       // Zero initialise `msb_flags` and `lsb_flags`
       Kokkos::parallel_for(
           "psi::test_hbitvector::initialise_flags",
-          hbv_type::num_bitsets( len ), KOKKOS_LAMBDA( const uint64_t i ) {
+          hbv_type::num_bitsets( len ), KOKKOS_LAMBDA ( const uint64_t i ) {
             msb_flags( i ) = 0;
             lsb_flags( i ) = 0;
           } );
@@ -413,7 +413,7 @@ TEMPLATE_SCENARIO_SIG(
       hbv_type::set_scratch_size( policy, len );
       Kokkos::parallel_for(
           "psi::test_hbitvector::set_range", policy,
-          KOKKOS_LAMBDA( const member_type& tm ) {
+          KOKKOS_LAMBDA ( const member_type& tm ) {
             auto row = tm.league_rank();
             hbv_type hbv( tm, len, ( row + 1 ) * 1000 );
             auto e_idx = row_map( row );
@@ -439,7 +439,7 @@ TEMPLATE_SCENARIO_SIG(
                   bitset_type mask = hbv_type::BITSET_ALL_SET
                                      - ( hbv_type::BITSET_ALL_SET >> 1 );
                   auto x = hbv( j );
-                  auto truth = ( x & mask ) ? 1 : 0;
+                  auto truth = ( x & mask ) ? 1u : 0u;
                   msb_flags( j ) = ( hbv_type::msb( x ) == truth );
 
                   truth = ( x & hbv_type::BITSET_ONE );
@@ -465,7 +465,7 @@ TEMPLATE_SCENARIO_SIG(
         Kokkos::parallel_reduce(
             "psi::test_hbit_vector::compute_crs_nnz",
             policy_type( nrows, Kokkos::AUTO ),
-            KOKKOS_LAMBDA( const member_type& tm, size_type& tcnnz ) {
+            KOKKOS_LAMBDA ( const member_type& tm, size_type& tcnnz ) {
               auto row = tm.league_rank();
               auto e_idx = row_map( row );
               auto e_end = row_map( row + 1 );
@@ -494,11 +494,11 @@ TEMPLATE_SCENARIO_SIG(
         Kokkos::parallel_reduce(
             "psi::test_hbit_vector::set_range_assess",
             msb_flags.extent( 0 ),
-            KOKKOS_LAMBDA( const uint64_t i, std::size_t& all_set_local ) {
+            KOKKOS_LAMBDA ( const uint64_t i, std::size_t& all_set_local ) {
               if ( msb_flags( i ) == 1 )
                 all_set_local += 1;
               else
-                std::cout << "i: " << i << std::endl;
+                printf( "i: %" PRIu64 "\n", i );
             },
             all_set );
 
@@ -511,11 +511,11 @@ TEMPLATE_SCENARIO_SIG(
         Kokkos::parallel_reduce(
             "psi::test_hbit_vector::set_range_assess",
             lsb_flags.extent( 0 ),
-            KOKKOS_LAMBDA( const uint64_t i, std::size_t& all_set_local ) {
+            KOKKOS_LAMBDA ( const uint64_t i, std::size_t& all_set_local ) {
               if ( lsb_flags( i ) == 1 )
                 all_set_local += 1;
               else
-                std::cout << "i: " << i << std::endl;
+                printf( "i: %" PRIu64 "\n", i );
             },
             all_set );
 
@@ -709,8 +709,8 @@ TEMPLATE_SCENARIO_SIG(
       {
         // Calculating `c_e`
         Kokkos::parallel_for(
-            "psi::test_hbitvector::count_row_nnz", policy,
-            KOKKOS_LAMBDA( const member_type& tm ) {
+            "psi::test_hbitvector::accumulate_entries", policy,
+            KOKKOS_LAMBDA ( const member_type& tm ) {
               auto row = tm.league_rank();
               hbv_type hbv( tm, len, ( row + 1 ) * 1000 );
               auto e_idx = row_map( row );
@@ -909,7 +909,9 @@ TEMPLATE_SCENARIO_SIG(
 
         typename hbv_type::bitset_type value = 0;
         if ( end < begin ) {
-          std::swap( end, begin );
+          auto tmp = end;
+          end = begin;
+          begin = tmp;
           value = hbv_type::BITSET_ALL_SET;
         }
 
