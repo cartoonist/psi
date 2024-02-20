@@ -76,14 +76,21 @@ namespace test_util {
   inline std::size_t
   get_nnz( std::array< std::array< TValue, NCols >, NRows >& matrix )
   {
+    using host_space = Kokkos::DefaultHostExecutionSpace;
+    using rank_type = Kokkos::Rank< 2 >;
+
     auto nrows = numRows( matrix );
     auto ncols = numCols( matrix );
+    auto mat_ptr = &matrix;
+
     std::size_t nnz = 0;
-    for ( std::size_t i = 0; i < nrows; ++i ) {
-      for ( std::size_t j = 0; j < ncols; ++j ) {
-        if ( access( matrix, i, j ) == 1 ) ++nnz;
-      }
-    }
+    Kokkos::parallel_reduce(
+        "psi::test_crsmatrix::compute_nnz",
+        Kokkos::MDRangePolicy< host_space, rank_type >( { 0, 0 }, { nrows, ncols } ),
+        KOKKOS_LAMBDA ( const uint64_t i, const uint64_t j, std::size_t& l_nnz ) {
+          if ( access( *mat_ptr, i, j ) == 1 ) l_nnz += 1;
+        }, nnz );
+
     return nnz;
   }
 
@@ -98,11 +105,19 @@ namespace test_util {
   inline void
   zero_matrix( TMatrix& matrix )
   {
+    using host_space = Kokkos::DefaultHostExecutionSpace;
+    using rank_type = Kokkos::Rank< 2 >;
+
     auto nrows = numRows( matrix );
     auto ncols = numCols( matrix );
-    for ( std::size_t i = 0; i < nrows; ++i ) {
-      for ( std::size_t j = 0; j < ncols; ++j ) matrix[i][j] = 0;
-    }
+    auto mat_ptr = &matrix;
+
+    Kokkos::parallel_for(
+        "psi::test_crsmatrix::zero_matrix",
+        Kokkos::MDRangePolicy< host_space, rank_type >( { 0, 0 }, { nrows, ncols } ),
+        KOKKOS_LAMBDA ( const uint64_t i, const uint64_t j ) {
+          ( *mat_ptr )[i][j] = 0;
+        } );
   }
 
   template< typename TMatrix >
@@ -153,9 +168,8 @@ namespace test_util {
 
     std::iota( therange.begin(), therange.end(), 1 );
 
-    auto partition = [&therange, ncols]( std::vector< std::size_t >& out,
-                                         std::size_t len, std::size_t nfrag,
-                                         bool can_empty=false ) {
+    auto partition = [&]( std::vector< std::size_t >& out, std::size_t len,
+                            std::size_t nfrag, bool can_empty = false ) {
       assert( 1 <= len && len <= ncols );
       if ( can_empty ) {
         std::generate_n( out.begin(), nfrag - 1, [&](){ return random::random_index( len ); } );
@@ -205,6 +219,10 @@ namespace test_util {
   inline TExternalMatrix
   to_external_crs( TMatrix& matrix, std::size_t nnz=0 )
   {
+    typedef Kokkos::DefaultHostExecutionSpace host_space;
+    typedef Kokkos::TeamPolicy< host_space > policy_type;
+    typedef typename policy_type::member_type member_type;
+
     typedef TExternalMatrix xcrsmat_type;
     typedef typename xcrsmat_type::staticcrsgraph_type staticcrsgraph_type;
     typedef typename staticcrsgraph_type::size_type size_type;
@@ -220,19 +238,55 @@ namespace test_util {
     values_type values( "values", nnz );
     row_map_type rowmap( "rowmap", nrows + 1 );
 
-    for ( size_type i = 0; i < nnz; ++i ) values( i ) = 1;  // boolean
+    Kokkos::parallel_for(
+        "psi::test_crsmatrix::to_external_crs::set_values",
+        Kokkos::RangePolicy< host_space >( 0, nnz ),
+        KOKKOS_LAMBDA ( const uint64_t i ) {
+          values( i ) = 1;  // boolean
+        } );
 
-    size_type eidx = 0;
-    size_type ridx = 0;
-    for ( size_type i = 0; i < nrows; ++i ) {
-      rowmap[ ridx++ ] = eidx;
-      for ( size_type j = 0; j < ncols; ++j ) {
-        if ( matrix[i][j] == 1 ) entries[ eidx++ ] = j;
-      }
-    }
-    rowmap[ ridx++ ] = eidx;
-    assert( eidx == nnz );
-    assert( ridx == nrows + 1 );
+    auto mat_ptr = &matrix;
+
+    Kokkos::parallel_for(
+        "psi::test_crsmatrix::to_external_crs::count_row_nnz",
+        policy_type( nrows, Kokkos::AUTO ),
+        KOKKOS_LAMBDA ( const member_type& tm ) {
+          auto i = tm.league_rank();
+          size_type row_nnz = 0;
+          Kokkos::parallel_reduce(
+              Kokkos::TeamThreadRange( tm, ncols ),
+              [=]( const uint64_t j, size_type& l_row_nnz ) {
+                if ( ( *mat_ptr )[ i ][ j ] == 1 ) ++l_row_nnz;
+              }, row_nnz );
+
+          Kokkos::single( Kokkos::PerTeam( tm ),
+                          [=]() { rowmap( i + 1 ) = row_nnz; } );
+        } );
+
+    rowmap( 0 ) = 0;
+    Kokkos::parallel_scan(
+        "psi::test_crsmatrix::to_external_crs::computing_rowmap",
+        Kokkos::RangePolicy< host_space >( 0, nrows ),
+        KOKKOS_LAMBDA ( const uint64_t i, size_type& update, const bool final ) {
+          // Load old value in case we update it before accumulating
+          const size_type val_ip1 = rowmap( i + 1 );
+          update += val_ip1;
+          if ( final )
+            rowmap( i + 1 ) = update;  // only update array on final pass
+        } );
+
+    Kokkos::parallel_for(
+        "psi::test_crsmatrix::to_external_crs::fill_entries",
+        Kokkos::RangePolicy< host_space >( 0, nrows ),
+        KOKKOS_LAMBDA ( const uint64_t i ) {
+          auto eidx = rowmap( i );
+          for ( size_type j = 0; j < ncols; ++j ) {
+            if ( ( *mat_ptr )[ i ][ j ] == 1 ) entries( eidx++ ) = j;
+          }
+          assert( eidx == rowmap( i + 1 ) );
+        } );
+
+    assert( rowmap( nrows ) == nnz );
 
     return xcrsmat_type( "matrix", nrows, ncols, nnz, values, rowmap, entries );
   }
@@ -242,11 +296,20 @@ namespace test_util {
   fill_block( TMatrix1& matrix, TMatrix2 const& block,
               unsigned int& si, unsigned int& sj )
   {
-    for ( std::size_t i = 0; i < block.size(); ++i ) {
-      for ( std::size_t j = 0; j < block[0].size(); ++j ) {
-        matrix[si + i][sj + j] = block[i][j];
-      }
-    }
+    using host_space = Kokkos::DefaultHostExecutionSpace;
+    using rank_type = Kokkos::Rank< 2 >;
+
+    auto mat_ptr = &matrix;
+    auto block_ptr = &block;
+
+    Kokkos::parallel_for(
+        "psi::test_crsmatrix::fill_block",
+        Kokkos::MDRangePolicy< host_space, rank_type >(
+            { 0, 0 }, { block.size(), block[ 0 ].size() } ),
+        KOKKOS_LAMBDA ( const uint64_t i, const uint64_t j ) {
+          ( *mat_ptr )[si + i][sj + j] = ( *block_ptr )[i][j];
+        } );
+
     si += numRows( block );
     sj += numCols( block );
   }
@@ -255,23 +318,38 @@ namespace test_util {
   inline void
   is_identical( TMatrix1& matrix1, TMatrix2& matrix2 )
   {
+    using host_space = Kokkos::DefaultHostExecutionSpace;
+    using rank_type = Kokkos::Rank< 2 >;
+
     REQUIRE( numRows( matrix1 ) != 0 );
     REQUIRE( numCols( matrix1 ) != 0 );
     REQUIRE( numRows( matrix1 ) == numRows( matrix2 ) );
     REQUIRE( numCols( matrix1 ) == numCols( matrix2 ) );
     REQUIRE( get_nnz( matrix1 ) == get_nnz( matrix2 ) );
-    for ( std::size_t i = 0; i < numRows( matrix1 ); ++i ) {
-      for ( std::size_t j = 0; j < numCols( matrix1 ); ++j ) {
-        INFO( "With i, j: " << i << ", " << j );
-        REQUIRE( access( matrix1, i, j ) == access( matrix2, i, j ) );
-      }
-    }
+
+    auto M = numRows( matrix1 );
+    auto N = numCols( matrix1 );
+    auto mat1_ptr = &matrix1;
+    auto mat2_ptr = &matrix2;
+
+    std::size_t num_matches = 0;
+
+    Kokkos::parallel_reduce(
+        "psi::test_crsmatrix::elem-wise-compare",
+        Kokkos::MDRangePolicy< host_space, rank_type >( { 0, 0 }, { M, N } ),
+        KOKKOS_LAMBDA ( const uint64_t i, const uint64_t j, std::size_t& l_nm ) {
+          if ( access( *mat1_ptr, i, j ) == access( *mat2_ptr, i, j ) ) l_nm += 1;
+        }, num_matches );
+
+    REQUIRE( num_matches == M*N );
   }
 
   template< typename TCRSMatrix1, typename TCRSMatrix2 >
   inline void
   is_identical_crs( TCRSMatrix1& matrix1, TCRSMatrix2& matrix2 )
   {
+    using host_space = Kokkos::DefaultHostExecutionSpace;
+
     REQUIRE( numRows( matrix1 ) != 0 );
     REQUIRE( numCols( matrix1 ) != 0 );
     REQUIRE( numRows( matrix1 ) == numRows( matrix2 ) );
@@ -281,13 +359,27 @@ namespace test_util {
     std::size_t nrows = numRows( matrix1 );
     std::size_t entries_size = matrix1.rowMap( nrows );
 
-    for ( std::size_t i = 0; i < entries_size; ++i ) {
-      REQUIRE( matrix1.entry( i ) == matrix2.entry( i ) );
-    }
+    auto mat1_ptr = &matrix1;
+    auto mat2_ptr = &matrix2;
 
-    for ( std::size_t j = 0; j < nrows + 1; ++j ) {
-      REQUIRE( matrix1.rowMap( j ) == matrix2.rowMap( j ) );
-    }
+    std::size_t num_matches = 0;
+
+    Kokkos::parallel_reduce(
+        "psi::test_crsmatrix::crs_compare_entries",
+        Kokkos::RangePolicy< host_space >( 0, entries_size ),
+        KOKKOS_LAMBDA ( const uint64_t i, std::size_t& l_nm ) {
+          if ( mat1_ptr->entry( i ) == mat2_ptr->entry( i ) ) l_nm += 1;
+        }, num_matches );
+    REQUIRE( num_matches == entries_size );
+
+    num_matches = 0;
+    Kokkos::parallel_reduce(
+        "psi::test_crsmatrix::crs_compare_rowmap",
+        Kokkos::RangePolicy< host_space >( 0, nrows + 1 ),
+        KOKKOS_LAMBDA ( const uint64_t i, std::size_t& l_nm ) {
+          if ( mat1_ptr->rowMap( i ) == mat2_ptr->rowMap( i ) ) l_nm += 1;
+        }, num_matches );
+    REQUIRE( num_matches == nrows + 1 );
   }
 
   template< typename TCRSMatrix >

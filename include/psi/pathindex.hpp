@@ -43,8 +43,8 @@ namespace psi {
         typedef TGraph graph_type;
         typedef Path< graph_type, Compact > value_type;
         typedef PathSet< value_type > container_type;
-        typedef seqan::StringSet< TText, seqan::Owner<> > stringset_type;
-        typedef seqan::Index< stringset_type, TIndexSpec > index_type;
+        typedef seqan2::StringSet< TText, seqan2::Owner<> > stringset_type;
+        typedef seqan2::Index< stringset_type, TIndexSpec > index_type;
         typedef uint64_t size_type;    /* The max size type can be (de)serialized now. */
         typedef uint64_t context_type;
         /* ====================  DATA MEMBERS  ======================================= */
@@ -90,9 +90,9 @@ namespace psi {
           inline void
         clear( )
         {
-          seqan::clear( this->index );
+          seqan2::clear( this->index );
           this->paths_set.clear();
-          seqan::clear( this->string_set );
+          seqan2::clear( this->string_set );
         }
 
         /**
@@ -220,7 +220,7 @@ namespace psi {
           inline void
         reserve( size_type size )
         {
-          seqan::reserve( this->string_set, size );
+          seqan2::reserve( this->string_set, size );
           this->paths_set.reserve( size );
         }  /* -----  end of method reserve  ----- */
 
@@ -334,7 +334,7 @@ namespace psi {
   /* Typedefs  ----------------------------------------------------------------- */
 
   template< typename TGraph, typename TIndexSpec, typename TSequenceDirection = Forward >
-    using Dna5QPathIndex = PathIndex< TGraph, seqan::Dna5QString, TIndexSpec, TSequenceDirection >;
+    using Dna5QPathIndex = PathIndex< TGraph, seqan2::Dna5QString, TIndexSpec, TSequenceDirection >;
 
   /**
    *  @brief  Meta-function getting direction of paths in a `PathIndex`.
@@ -354,7 +354,7 @@ namespace psi {
     }
 
   template< typename TIndex >
-    using TSAValue = typename seqan::SAValue< TIndex >::Type;
+    using TSAValue = typename seqan2::SAValue< TIndex >::Type;
 
   template< typename TGraph, typename TText, typename TIndexSpec >
       inline typename TGraph::offset_type

@@ -724,13 +724,13 @@ namespace psi {
 
   template< typename TGraphSpec = gum::Succinct,
             typename TReadsStringSet = Dna5QStringSet<>,
-            typename TReadsIndexSpec = seqan::IndexWotd<>,
+            typename TReadsIndexSpec = seqan2::IndexWotd<>,
             typename TPathsStringSetSpec = DiskBased,
             typename TStrategy = BFS,
             template<typename, typename> class TMatchingTraits = ExactMatching >
   struct SeedFinderTraits {
     typedef gum::SeqGraph< TGraphSpec > graph_type;
-    typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > seedindex_type;
+    typedef seqan2::Index< TReadsStringSet, TReadsIndexSpec > seedindex_type;
 
     template< typename TStatsSpec = NoStats >
       using traverser_type = typename Traverser< graph_type, seedindex_type,
@@ -1382,9 +1382,9 @@ namespace psi {
           seeds_on_paths( readsrecord_type const& reads, readsindex_type& reads_index,
                           std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
-            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
-            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
-            typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
+            typedef TopDownFine< seqan2::ParentLinks<> > TIterSpec;
+            typedef typename seqan2::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+            typedef typename seqan2::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
@@ -1417,7 +1417,7 @@ namespace psi {
                           std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
             typedef TopDownFine<> TIterSpec;
-            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+            typedef typename seqan2::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
 
             if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 

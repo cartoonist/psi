@@ -179,7 +179,7 @@ template< typename TGraph, typename TFinder >
     auto const& pindex = finder.get_pindex();
     auto nofpaths = pindex.get_paths_set().size();
     std::cout << "Number of paths: " << nofpaths << std::endl;
-    auto totseqlen = getFibre( pindex.index, seqan::FibreText() ).raw_length();
+    auto totseqlen = getFibre( pindex.index, seqan2::FibreText() ).raw_length();
     std::cout << "Total sequence length: " << totseqlen << std::endl;
     std::cout << "Context size: " << pindex.get_context() << std::endl;
     std::cout << "Number of uncovered loci: " << finder.get_starting_loci().size()

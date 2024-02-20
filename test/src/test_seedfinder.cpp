@@ -47,7 +47,7 @@ SCENARIO ( "Pick genome-wide paths", "[seedfinder]" )
   GIVEN ( "A tiny variation graph" )
   {
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
-    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<>, InMemory > finder_traits_type;
+    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan2::IndexEsa<>, InMemory > finder_traits_type;
     typedef SeedFinder< NoStats, finder_traits_type > finder_type;
 
     finder_type::set_kokkos_handling_status( false );
@@ -88,7 +88,7 @@ SCENARIO ( "Add starting loci when using paths index", "[seedfinder]" )
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
     typedef graph_type::id_type id_type;
     typedef graph_type::offset_type offset_type;
-    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<> > finder_traits_type;
+    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan2::IndexEsa<> > finder_traits_type;
 
     std::string vgpath = test_data_dir + "/tiny/tiny.gfa";
     graph_type graph;
@@ -168,7 +168,7 @@ SCENARIO( "Load and save starting loci", "[seedfinder]" )
   GIVEN ( "A tiny variation graph" )
   {
     typedef gum::SeqGraph< gum::Dynamic > graph_type;
-    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan::IndexEsa<> > finder_traits_type;
+    typedef SeedFinderTraits< gum::Dynamic, Dna5QStringSet<>, seqan2::IndexEsa<> > finder_traits_type;
     typedef SeedFinder< WithStats, finder_traits_type > finder_type;
 
     finder_type::set_kokkos_handling_status( false );
@@ -218,7 +218,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
     typedef gum::SeqGraph< gum::Succinct > graph_type;
     typedef typename graph_type::id_type id_type;
     typedef typename graph_type::offset_type offset_type;
-    typedef SeedFinderTraits< gum::Succinct, Dna5QStringSet<>, seqan::IndexEsa<>, InMemory > finder_traits_type;
+    typedef SeedFinderTraits< gum::Succinct, Dna5QStringSet<>, seqan2::IndexEsa<>, InMemory > finder_traits_type;
     typedef SeedFinder< NoStats, finder_traits_type > finder_type;
     typedef std::tuple< id_type, offset_type, id_type, offset_type > ends_type;
 
@@ -319,7 +319,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
     typedef gum::SeqGraph< gum::Succinct > graph_type;
     typedef typename graph_type::id_type id_type;
     typedef typename graph_type::offset_type offset_type;
-    typedef SeedFinderTraits< gum::Succinct, Dna5QStringSet<>, seqan::IndexEsa<>, InMemory > finder_traits_type;
+    typedef SeedFinderTraits< gum::Succinct, Dna5QStringSet<>, seqan2::IndexEsa<>, InMemory > finder_traits_type;
     typedef SeedFinder< NoStats, finder_traits_type > finder_type;
     typedef std::tuple< id_type, offset_type, id_type, offset_type > ends_type;
 

@@ -32,10 +32,10 @@ namespace psi {
    *
    *  @tparam  TSpec The type for further specialization of the `TopDownFine` tag type.
    *
-   *  The `TSpec` can `seqan::Preorder` or `seqan::ParentLinks<>`. It specifies internal
+   *  The `TSpec` can `seqan2::Preorder` or `seqan2::ParentLinks<>`. It specifies internal
    *  SeqAn iterator of IndexIter class.
    */
-  template< typename TSpec = seqan::Preorder >
+  template< typename TSpec = seqan2::Preorder >
     struct TopDownFine;
 
   /**
@@ -51,12 +51,12 @@ namespace psi {
   template< typename TIndex, typename TSpec >
       bool
     go_down( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
-        typename seqan::Value< TIndex >::Type c);
+        typename seqan2::Value< TIndex >::Type c);
 
   template< typename TIndex, typename TSpec >
       bool
     go_down_on_edge( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
-        typename seqan::Value< TIndex >::Type c );
+        typename seqan2::Value< TIndex >::Type c );
 
   template< typename TIndex, typename TSpec >
       bool
@@ -68,7 +68,7 @@ namespace psi {
 
   template< typename TIndex >
       bool
-    go_up( IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
+    go_up( IndexIter< TIndex, TopDownFine< seqan2::ParentLinks<> > > &iterator );
 
   template< typename TIndex, typename TSpec >
       void
@@ -79,11 +79,11 @@ namespace psi {
     go_right( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
   template< typename TIndex, typename TSpec >
-      typename seqan::Value< TIndex >::Type
+      typename seqan2::Value< TIndex >::Type
     parent_edge_label( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
   template< typename TIndex, typename TSpec >
-      typename seqan::Size< TIndex >::Type
+      typename seqan2::Size< TIndex >::Type
     rep_length( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator );
   /* END OF Forwards  ------------------------------------------------------------ */
 
@@ -100,12 +100,12 @@ namespace psi {
       /* ====================  FRIENDSHIP    ======================================= */
       friend bool
         go_down< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
-            typename seqan::Value< TIndex >::Type c );
+            typename seqan2::Value< TIndex >::Type c );
 
       friend bool
         go_down_on_edge< TIndex, TSpec >(
             IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
-            typename seqan::Value< TIndex >::Type c );
+            typename seqan2::Value< TIndex >::Type c );
 
       friend bool
         is_root< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
@@ -115,7 +115,7 @@ namespace psi {
 
       friend bool
         go_up< TIndex >(
-            IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator );
+            IndexIter< TIndex, TopDownFine< seqan2::ParentLinks<> > > &iterator );
 
       friend void
         go_root< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
@@ -123,18 +123,18 @@ namespace psi {
       friend bool
         go_right< TIndex, TSpec >( IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
-      friend typename seqan::Value< TIndex >::Type
+      friend typename seqan2::Value< TIndex >::Type
         parent_edge_label< TIndex, TSpec >(
             IndexIter< TIndex, TopDownFine< TSpec > > &iterator );
 
-      friend typename seqan::Size< TIndex >::Type
+      friend typename seqan2::Size< TIndex >::Type
         rep_length< TIndex, TSpec >(
             const IndexIter< TIndex, TopDownFine< TSpec > >& iterator );
 
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef typename seqan::Iterator< TIndex, seqan::TopDown< TSpec > >::Type base_type;
-        typedef typename seqan::Container< base_type >::Type container_type;
+        typedef typename seqan2::Iterator< TIndex, seqan2::TopDown< TSpec > >::Type base_type;
+        typedef typename seqan2::Container< base_type >::Type container_type;
         /* ====================  LIFECYCLE     ======================================= */
         IndexIter( TIndex &index ) :                             /* constructor */
           iter_(index), boffset(0) { }
@@ -144,7 +144,7 @@ namespace psi {
         /**
          *  @brief  getter function for iter_.
          */
-        inline const typename seqan::Iterator< TIndex, seqan::TopDown< TSpec > >::Type &
+        inline const typename seqan2::Iterator< TIndex, seqan2::TopDown< TSpec > >::Type &
           get_iter_(  ) const
           {
             return iter_;
@@ -184,15 +184,15 @@ namespace psi {
    *  The index iterator supports trie traversal by default.
    */
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-    class IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >
-    : public seqan::Iter< seqan::Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, seqan::TopDown< TSpec > >
+    class IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >
+    : public seqan2::Iter< seqan2::Index< TText, psi::FMIndex< TWT, TDens, TInvDens > >, seqan2::TopDown< TSpec > >
     {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef TSpec spec_type;
-        typedef seqan::Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > index_type;
+        typedef seqan2::Index< TText, psi::FMIndex< TWT, TDens, TInvDens > > index_type;
         typedef index_type container_type;
-        typedef seqan::Iter< index_type, seqan::TopDown< TSpec > > base_type;
+        typedef seqan2::Iter< index_type, seqan2::TopDown< TSpec > > base_type;
         /* ====================  LIFECYCLE     ======================================= */
         IndexIter( index_type const* index_ptr )
           : base_type( index_ptr ) { }
@@ -213,7 +213,7 @@ namespace psi {
    *  @param[in]      c `iterator` goes down the edge beginning with `c`.
    *  @return `true` if the edge or path to go down exists, otherwise `false`.
    *
-   *  A wrapper function for `seqan::goDown` allowing to go down the virtual suffix
+   *  A wrapper function for `seqan2::goDown` allowing to go down the virtual suffix
    *  tree finer; i.e. one character at a time. A regular `TopDown` iterator cannot
    *  perform the same because the virtual suffix tree is a compressed trie so that
    *  the new representative string of iterator after going down might be extended
@@ -222,12 +222,12 @@ namespace psi {
   template< typename TIndex, typename TSpec >
       bool
     go_down( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
-        typename seqan::Value< TIndex >::Type c )
+        typename seqan2::Value< TIndex >::Type c )
     {
       // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
       if ( iterator.boffset == 0 ) {          // iterator points a node.
-        // Go down using `seqan::goDown` function updating the internal iterator.
-        if ( seqan::goDown( iterator.iter_, c ) ) {
+        // Go down using `seqan2::goDown` function updating the internal iterator.
+        if ( seqan2::goDown( iterator.iter_, c ) ) {
           // Set `boffset` such that it points to the first char of the parent edge.
           iterator.boffset = parentEdgeLength( iterator.iter_ ) - 1;
           return true;
@@ -241,8 +241,8 @@ namespace psi {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    go_down( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator,
-        typename seqan::Value< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > > >::Type c )
+    go_down( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator,
+        typename seqan2::Value< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > > >::Type c )
     {
       return goDown( iterator, c );
     }
@@ -261,7 +261,7 @@ namespace psi {
   template< typename TIndex, typename TSpec >
       bool
     go_down_on_edge( IndexIter< TIndex, TopDownFine< TSpec > > &iterator,
-        typename seqan::Value< TIndex >::Type c )
+        typename seqan2::Value< TIndex >::Type c )
     {
       auto const &parent_edge_str = parentEdgeLabel( iterator.iter_ );
       auto const &parent_edge_len = parentEdgeLength( iterator.iter_ );
@@ -280,7 +280,7 @@ namespace psi {
    *  @param[in,out]  iterator The iterator of virtual suffix tree.
    *  @return `true` if it points to the root node, otherwise `false`.
    *
-   *  This function is just a wrapper for `seqan::isRoot` function which is called on
+   *  This function is just a wrapper for `seqan2::isRoot` function which is called on
    *  internal index iterator.
    */
   template< typename TIndex, typename TSpec >
@@ -291,13 +291,13 @@ namespace psi {
         return false;
       }
       else {
-        return seqan::isRoot ( iterator.iter_ );
+        return seqan2::isRoot ( iterator.iter_ );
       }
     }  /* -----  end of template function is_root  ----- */
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    is_root( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+    is_root( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       return isRoot( iterator );
     }
@@ -316,8 +316,8 @@ namespace psi {
     {
       // :TODO:Thu Mar 02 05:21:\@cartoonist: Handle "N" outside of the function.
       if ( iterator.boffset == 0 ) {          // iterator points a node.
-        // Go down using `seqan::goDown` function updating the internal iterator.
-        if ( seqan::goDown(iterator.iter_) ) {
+        // Go down using `seqan2::goDown` function updating the internal iterator.
+        if ( seqan2::goDown(iterator.iter_) ) {
           // Set `boffset` such that it points to the first char of the parent edge.
           iterator.boffset = parentEdgeLength( iterator.iter_ ) - 1;
           return true;
@@ -336,21 +336,21 @@ namespace psi {
    *  @param[in,out]  iterator The iterator of virtual suffix tree.
    *  @return `true` when go up is possible, otherwise (root node) `false`.
    *
-   *  A wrapper function for `seqan::goUp` allowing to go up the virtual suffix tree
+   *  A wrapper function for `seqan2::goUp` allowing to go up the virtual suffix tree
    *  finer; i.e. one character at a time. This function is only specialized for
    *  `TopDownFine< ParentLinks<> >` iterator with history.
    */
   template< typename TIndex >
       bool
-    go_up ( IndexIter< TIndex, TopDownFine< seqan::ParentLinks<> > > &iterator )
+    go_up ( IndexIter< TIndex, TopDownFine< seqan2::ParentLinks<> > > &iterator )
     {
       if ( is_root (iterator) ) {
         return false;
       }
 
       if ( iterator.boffset == parentEdgeLength(iterator.iter_) - 1 ) {  // first char on edge?
-        // Go up using `seqan::goUp` function updating the internal iterator.
-        if ( seqan::goUp ( iterator.iter_ ) ) {
+        // Go up using `seqan2::goUp` function updating the internal iterator.
+        if ( seqan2::goUp ( iterator.iter_ ) ) {
           // Set `boffset` such that it points to the last char of the parent edge.
           iterator.boffset = 0;
           return true;
@@ -370,7 +370,7 @@ namespace psi {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline bool
-    go_up( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< seqan::ParentLinks<> > >& iterator )
+    go_up( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< seqan2::ParentLinks<> > >& iterator )
     {
       return goUp( iterator );
     }
@@ -379,13 +379,13 @@ namespace psi {
       inline void
     go_root( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
     {
-      seqan::goRoot( iterator.iter_ );
+      seqan2::goRoot( iterator.iter_ );
       iterator.boffset = 0;
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline void
-    go_root( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+    go_root( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       goRoot( iterator );
     }
@@ -396,15 +396,15 @@ namespace psi {
    *  @param[in,out]  iterator The iterator of virtual suffix tree.
    *  @return `true` when go right is possible, otherwise `false`.
    *
-   *  This function is a wrapper for `seqan::goRight`.
+   *  This function is a wrapper for `seqan2::goRight`.
    */
   template< typename TIndex, typename TSpec >
       bool
     go_right( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
     {
       if ( iterator.boffset == parentEdgeLength( iterator.iter_ ) - 1 ) {  // iterator points a node?
-        // Go right using `seqan::goRight` function updating the internal iterator.
-        if ( seqan::goRight ( iterator.iter_ ) ) {
+        // Go right using `seqan2::goRight` function updating the internal iterator.
+        if ( seqan2::goRight ( iterator.iter_ ) ) {
           // Set `boffset` such that it points to the first char of the parent edge.
           iterator.boffset = parentEdgeLength ( iterator.iter_ ) - 1;
           return true;
@@ -420,7 +420,7 @@ namespace psi {
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
       inline bool
-    go_right( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+    go_right( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       return goRight( iterator );
     }
@@ -432,10 +432,10 @@ namespace psi {
    *  @return The label of the incoming (parent) edge which is a one character in
    *  `TopDownFine` iterators.
    *
-   *  This function is a wrapper for `seqan::parentEdgeLabel` method.
+   *  This function is a wrapper for `seqan2::parentEdgeLabel` method.
    */
   template< typename TIndex, typename TSpec >
-      typename seqan::Value< TIndex >::Type
+      typename seqan2::Value< TIndex >::Type
     parent_edge_label( IndexIter< TIndex, TopDownFine< TSpec > > &iterator )
     {
       auto const &parent_edge_str = parentEdgeLabel ( iterator.iter_ );
@@ -444,8 +444,8 @@ namespace psi {
     }  /* -----  end of template function parent_edge_label  ----- */
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename seqan::Value< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > > >::Type
-    parent_edge_label( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+      inline typename seqan2::Value< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > > >::Type
+    parent_edge_label( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       return parentEdgeLabel( iterator );
     }
@@ -456,24 +456,24 @@ namespace psi {
    *  @param  iterator The iterator of virtual suffix tree.
    *  @return The length of the representative string of the given iterator.
    *
-   *  This is a wrapper function for `seqan::repLength` method.
+   *  This is a wrapper function for `seqan2::repLength` method.
    */
   template< typename TIndex, typename TSpec >
-      typename seqan::Size< TIndex >::Type
+      typename seqan2::Size< TIndex >::Type
     rep_length( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
     {
       return repLength( iterator.iter_ ) - iterator.boffset;
     }  /* -----  end of template function rep_length  ----- */
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens, typename TSpec >
-      inline typename seqan::Size< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > > >::Type
-    rep_length( IndexIter< seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
+      inline typename seqan2::Size< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > > >::Type
+    rep_length( IndexIter< seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >, TopDownFine< TSpec > >& iterator )
     {
       return repLength( iterator );
     }
 
   template< typename TIndex, typename TSpec >
-      typename seqan::Size< TIndex >::Type
+      typename seqan2::Size< TIndex >::Type
     count_occurrences( const IndexIter< TIndex, TopDownFine< TSpec > >& iterator )
     {
       return countOccurrences( iterator.get_iter_() );
@@ -491,26 +491,26 @@ namespace psi {
    *  @brief  Shorter alias for `Iterator<>::Type` syntax.
    */
   template< typename TIndex, typename TSpec >
-    using TIndexIter = typename seqan::Iterator< TIndex, TSpec >::Type;
+    using TIndexIter = typename seqan2::Iterator< TIndex, TSpec >::Type;
 
   template< typename TIter >
-    using TIterIndex = typename seqan::Container< TIter >::Type;
+    using TIterIndex = typename seqan2::Container< TIter >::Type;
 
   template< typename TIter >
-    using TIterText = typename seqan::Fibre< TIterIndex< TIter >, seqan::FibreText >::Type;
+    using TIterText = typename seqan2::Fibre< TIterIndex< TIter >, seqan2::FibreText >::Type;
 
   template< typename TIter >
-    using TIterRawText = typename seqan::Value< TIterText< TIter > >::Type;
+    using TIterRawText = typename seqan2::Value< TIterText< TIter > >::Type;
 
   /* END OF Typedefs  ------------------------------------------------------------ */
 
 }  /* --- end of namespace psi --- */
 
-namespace seqan {
+namespace seqan2 {
   /**
    *  @brief  Iterator type specialization for `psi::TopDownFine< TSpec >` tag.
    *
-   *  This class extends existing Iterator class in seqan namespace.
+   *  This class extends existing Iterator class in seqan2 namespace.
    */
   template< typename TIndex, typename TSpec >
     class Iterator< TIndex, psi::TopDownFine< TSpec > >
@@ -527,102 +527,102 @@ namespace seqan {
         typedef typename psi::IndexIter< TIndex, TSpec >::container_type Type;
     };  /* ----------  end of template class Container  ---------- */
 
-}  /* -----  end of namespace seqan  ----- */
+}  /* -----  end of namespace seqan2  ----- */
 
 namespace psi {
 
   /* Typedefs  ------------------------------------------------------------------- */
-  template< typename TIndex, typename TSpec = seqan::Preorder >
+  template< typename TIndex, typename TSpec = seqan2::Preorder >
     using TFineIndexIter =
-      typename seqan::Iterator< TIndex, TopDownFine< TSpec > >::Type;
+      typename seqan2::Iterator< TIndex, TopDownFine< TSpec > >::Type;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   /* Index interator interface functions  ---------------------------------------- */
 
   template< typename TIndex, typename TIterSpec >
       inline bool
-    go_right_stree( seqan::Iter< TIndex, TIterSpec >& iter )
+    go_right_stree( seqan2::Iter< TIndex, TIterSpec >& iter )
     {
       return goRight( iter );
     }
 
   template< typename TText, typename TIterSpec >
       inline bool
-    go_right_stree( seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
+    go_right_stree( seqan2::Iter< seqan2::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
-      return goRight( iter, seqan::Rev() );
+      return goRight( iter, seqan2::Rev() );
     }
 
   template< typename TIndex, typename TIterSpec >
       inline bool
-    go_down_stree( seqan::Iter< TIndex, TIterSpec >& iter )
+    go_down_stree( seqan2::Iter< TIndex, TIterSpec >& iter )
     {
       return goDown( iter );
     }
 
   template< typename TText, typename TIterSpec >
       inline bool
-    go_down_stree( seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
+    go_down_stree( seqan2::Iter< seqan2::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
-      return goDown( iter, seqan::Rev() );
+      return goDown( iter, seqan2::Rev() );
     }
 
   template< typename TIndex, typename TIterSpec, typename TPattern >
       inline bool
-    go_down_stree( seqan::Iter< TIndex, TIterSpec >& iter, TPattern&& p )
+    go_down_stree( seqan2::Iter< TIndex, TIterSpec >& iter, TPattern&& p )
     {
       return goDown( iter, p );
     }
 
   template< typename TText, typename TIterSpec, typename TPattern >
       inline bool
-    go_down_stree( seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter,
+    go_down_stree( seqan2::Iter< seqan2::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter,
         TPattern&& p )
     {
-      return goDown( iter, p, seqan::Rev() );
+      return goDown( iter, p, seqan2::Rev() );
     }
 
   template< typename TIndex, typename TIterSpec >
       inline auto
-    parent_edge_char_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    parent_edge_char_stree( const seqan2::Iter< TIndex, TIterSpec >& iter )
     {
       return parentEdgeLabel( iter )[0];
     }
 
   template< typename TText, typename TIterSpec >
       inline auto
-    parent_edge_char_stree( const seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
+    parent_edge_char_stree( const seqan2::Iter< seqan2::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
-      return parentEdgeLabel( iter, seqan::Rev() );
+      return parentEdgeLabel( iter, seqan2::Rev() );
     }
 
   template< typename TIndex, typename TIterSpec >
       inline unsigned int
-    parent_edge_len_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    parent_edge_len_stree( const seqan2::Iter< TIndex, TIterSpec >& iter )
     {
       return length( parentEdgeLabel( iter ) );
     }
 
   template< typename TText, typename TIterSpec >
       inline unsigned int
-    parent_edge_len_stree( const seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
+    parent_edge_len_stree( const seqan2::Iter< seqan2::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
       if ( isRoot( iter ) ) return 0;
-      return length( parentEdgeLabel( iter, seqan::Rev() ) );
+      return length( parentEdgeLabel( iter, seqan2::Rev() ) );
     }
 
   template< typename TIndex, typename TIterSpec >
       inline auto
-    get_occurrences_stree( const seqan::Iter< TIndex, TIterSpec >& iter )
+    get_occurrences_stree( const seqan2::Iter< TIndex, TIterSpec >& iter )
     {
       return getOccurrences( iter );
     }
 
   template< typename TText, typename TIterSpec >
       inline auto
-    get_occurrences_stree( const seqan::Iter< seqan::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
+    get_occurrences_stree( const seqan2::Iter< seqan2::Index< TText, psi::CBiFMIndex >, TIterSpec >& iter )
     {
-      return getOccurrences( iter, seqan::Rev() );
+      return getOccurrences( iter, seqan2::Rev() );
     }
 
   /* END OF Index interator interface functions  --------------------------------- */
@@ -652,7 +652,7 @@ namespace psi {
     }
 
   template< typename TIter >
-      inline typename seqan::Size< TIter >::Type
+      inline typename seqan2::Size< TIter >::Type
     upto_prefix( TIter& itr, unsigned int cp_len )
     {
       while( repLength( itr ) > cp_len ) goUp( itr );
@@ -732,7 +732,7 @@ namespace psi {
     {
       typedef typename Direction< TRecords1 >::Type TPathDir;
 
-      using seqan::length;
+      using seqan2::length;
 
       const auto& occurrences1 = get_occurrences_stree( itr1 );
       const auto& occurrences2 = get_occurrences_stree( itr2 );
@@ -763,8 +763,8 @@ namespace psi {
 
   template< typename TText1, typename TText2, typename TIndexSpec1, typename TIndexSpec2, typename TRecords1, typename TRecords2, typename TCallback >
       inline void
-    kmer_exact_matches( seqan::Index< TText1, TIndexSpec1 >& fst,
-        seqan::Index< TText2, TIndexSpec2 >& snd,
+    kmer_exact_matches( seqan2::Index< TText1, TIndexSpec1 >& fst,
+        seqan2::Index< TText2, TIndexSpec2 >& snd,
         const TRecords1* rec1,
         const TRecords2* rec2,
         unsigned int k,
@@ -781,9 +781,9 @@ namespace psi {
       auto fst_len = length( indexRawText( fst ) );
       auto snd_len = length( indexRawText( snd ) );
 
-      typedef seqan::Index< TText1, TIndexSpec1 > TIndex1;
-      typedef seqan::Index< TText2, TIndexSpec2 > TIndex2;
-      typedef seqan::TopDown< seqan::ParentLinks<> > TIterSpec;
+      typedef seqan2::Index< TText1, TIndexSpec1 > TIndex1;
+      typedef seqan2::Index< TText2, TIndexSpec2 > TIndex2;
+      typedef seqan2::TopDown< seqan2::ParentLinks<> > TIterSpec;
       TIndexIter< TIndex1, TIterSpec > fst_itr( fst );
       TIndexIter< TIndex2, TIterSpec > snd_itr( snd );
 
@@ -808,8 +808,8 @@ namespace psi {
   template< typename TIndex1, typename TIndex2, typename TRecords1, typename TRecords2,
             typename TCallback, typename TStats = std::function< void( std::size_t, bool ) > >
       inline void
-    kmer_exact_matches( IndexIter< TIndex1, TopDownFine< seqan::ParentLinks<> > >& fst_itr,
-        IndexIter< TIndex2, TopDownFine< seqan::ParentLinks<> > >& snd_itr,
+    kmer_exact_matches( IndexIter< TIndex1, TopDownFine< seqan2::ParentLinks<> > >& fst_itr,
+        IndexIter< TIndex2, TopDownFine< seqan2::ParentLinks<> > >& snd_itr,
         const TRecords1* rec1,
         const TRecords2* rec2,
         unsigned int k,
@@ -817,9 +817,9 @@ namespace psi {
         unsigned int gocc_threshold = 0,
         TStats collect_stats=[]( std::size_t, bool )->void{} )
     {
-      static_assert( ( is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
+      static_assert( ( is_fmindex< typename seqan2::Spec< TIndex1 >::Type >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Reversed >::value ) ||
-          ( !is_fmindex< typename seqan::Spec< TIndex1 >::Type >::value &&
+          ( !is_fmindex< typename seqan2::Spec< TIndex1 >::Type >::value &&
             std::is_same< typename Direction< TRecords1 >::Type, Forward >::value ),
           "The paths direction and the path index used are not compatible." );
 
@@ -828,7 +828,7 @@ namespace psi {
         gocc_threshold = std::numeric_limits< decltype( gocc_threshold ) >::max();
       }
 
-      seqan::DnaString seed;                   // seed = A..(k)..A
+      seqan2::DnaString seed;                   // seed = A..(k)..A
       for ( unsigned int i = 0; i < k; ++i ) appendValue( seed, 'A' );
 
       unsigned int plen = 0;
@@ -875,7 +875,7 @@ namespace psi {
       std::size_t nof_hits = 0;
       while( start + plen < pattern.size() ) {
         if ( plen >= minlen && count_occurrences( idx_itr ) <= gocc_threshold ) {
-          using seqan::length;
+          using seqan2::length;
 
           has_hit = true;
           auto const& occs = get_occurrences( idx_itr );
@@ -913,7 +913,7 @@ namespace psi {
       static_assert( std::is_same< typename Direction< TRecords1 >::Type, Forward >::value,
           "The paths should be forward sequences." );
 
-      seqan::Finder< TIndex > paths_finder( paths_index );
+      seqan2::Finder< TIndex > paths_finder( paths_index );
       while ( !at_end( seeds_itr ) ) {
         while ( find( paths_finder, *seeds_itr ) ) {
           // TODO: set `gocc` value for the hit
@@ -936,7 +936,7 @@ namespace psi {
       static_assert( std::is_same< typename Direction< TRecords1 >::Type, Forward >::value,
           "The paths should be forward sequences." );
 
-      seqan::Finder< TIndex > paths_finder( paths_index );
+      seqan2::Finder< TIndex > paths_finder( paths_index );
       for ( size_type i = 0; i < length( *reads ); ++i ) {
         while ( find( paths_finder, reads->str[i] ) ) {
           // TODO: set `gocc` value for the hit

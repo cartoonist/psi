@@ -53,21 +53,21 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
 
   GIVEN ( "A small graph and a set of reads" )
   {
-    typedef seqan::IndexWotd<> TIndexSpec;
-    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
+    typedef seqan2::IndexWotd<> TIndexSpec;
+    typedef seqan2::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
     gum::util::extend( graph, vgpath, vg_loader, true );
     std::string readspath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
-    seqan::SeqFileIn reads_file;
+    seqan2::SeqFileIn reads_file;
     if ( !open( reads_file, readspath.c_str() ) ) {
       throw std::runtime_error( "cannot open file " + readspath );
     }
 
     Records< Dna5QStringSet<> > reads;
     readRecords( reads, reads_file, 10 );
-    seqan::Index< Dna5QStringSet<>, TIndexSpec > reads_index( reads.str );
+    seqan2::Index< Dna5QStringSet<>, TIndexSpec > reads_index( reads.str );
 
     unsigned int seed_len = 10;
 

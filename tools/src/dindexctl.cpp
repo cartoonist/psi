@@ -70,14 +70,14 @@ config_parser( cxxopts::Options& options )
       ( "o, output", "Write to this file instead of stdout",
         cxxopts::value< std::string >()->default_value( DEFAULT_OUTPUT ) )
       ( "b, basic-mode", "Consider indices as Basic CRS matrices" )
-      ( "h, help", "Print this message and exit" )
-      ;
-
-  options.add_options( "compress" )
       ( "d, min-insert-size", "Distance index minimum read insert size",
         cxxopts::value< unsigned int >() )
       ( "D, max-insert-size", "Distance index maximum read insert size",
         cxxopts::value< unsigned int >() )
+      ( "h, help", "Print this message and exit" )
+      ;
+
+  options.add_options( "compress" )
       ( "g, graph", "Corresponding graph file (vg or gfa)",
         cxxopts::value< std::string >() )
       ( "V, verify", "Verify if the distance index is compressed" )
@@ -92,6 +92,10 @@ config_parser( cxxopts::Options& options )
         cxxopts::value< std::vector< unsigned int > >() )
       ( "2, second-range", "Distance constraint range of the second index (comma-separated: min,max)",
         cxxopts::value< std::vector< unsigned int > >() )
+      ;
+
+  options.add_options( "stats" )
+      ( "u, dynamic", "Consider input index as Dynamic rather than Compressed" )
       ;
 
   options.add_options( "positional" )
@@ -111,7 +115,8 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
     auto help_message = ( options.help( { "general" } )
                           + "\n COMMANDS:\n"
                           + "  compress\tCompress a distance index\n"
-                          + "  merge\t\tMerge two distance indices" );
+                          + "  merge\t\tMerge two distance indices\n"
+                          + "  stats\t\tReport some statistics\n" );
     if ( result.count( "help" ) )
     {
       std::cout << help_message << std::endl;
@@ -151,6 +156,11 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       throw EXIT_SUCCESS;
     }
 
+    if ( result.count( "min-insert-size" ) || result.count( "max-insert-size" ) ) {
+      std::cerr << "[WARNING] Unused parameters '-d | --min-insert-size' and "
+                   "'-D | --max-insert-size'";
+    }
+
     if ( !result.count( "first-range" ) ) {
       throw cxxopts::exceptions::parsing( "First distance constraint range must be specified" );
     }
@@ -169,6 +179,26 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
       if ( range.size() != 2 ) {
         throw cxxopts::exceptions::parsing( "Invalid range for the second constraint" );
       }
+    }
+  }
+  else if ( result[ "command" ].as< std::string >() == "stats" ) {  // stats
+    options.custom_help( "stats [OPTION...]" );
+    options.positional_help( "PREFIX" );
+    if ( result.count( "help" ) ) {
+      std::cout << options.help( { "general", "stats" } ) << std::endl;
+      throw EXIT_SUCCESS;
+    }
+
+    if ( !result.count( "min-insert-size" ) ) {
+      throw cxxopts::exceptions::parsing( "Minimum insert size must be specified" );
+    }
+
+    if ( !result.count( "max-insert-size" ) ) {
+      throw cxxopts::exceptions::parsing( "Maximum insert size must be specified" );
+    }
+
+    if ( result.count( "dynamic" ) && result.count( "basic-mode" ) ) {
+      throw cxxopts::exceptions::parsing( "Options '-u' and '-b' are incompatible" );
     }
   }
   else {
@@ -473,6 +503,43 @@ merge( cxxopts::ParseResult& res )
   mindex.serialize( ofs );
 }
 
+template< typename TCRSMatrix >
+void
+stats( cxxopts::ParseResult& res )
+{
+  typedef TCRSMatrix crsmat_type;
+
+  std::string pindex_prefix = res[ "prefix" ].as< std::string >();
+  std::string output = res[ "output" ].as< std::string >();
+  unsigned int min_size = res[ "min-insert-size" ].as< unsigned int >();
+  unsigned int max_size = res[ "max-insert-size" ].as< unsigned int >();
+
+  // Opening output file for writing
+  std::ostream ost( nullptr );
+  std::ofstream ofs;
+  if ( output == "-" ) ost.rdbuf( std::cout.rdbuf() );
+  else{
+    ofs.open( output, std::ofstream::out | std::ofstream::binary );
+    ost.rdbuf( ofs.rdbuf() );
+  }
+
+  auto index_path = psi::SeedFinder<>::get_distance_index_path( pindex_prefix, min_size, max_size );
+
+  std::cout << "Loading distance index..." << std::endl;
+  std::ifstream ifs( index_path, std::ifstream::in | std::ifstream::binary );
+  if ( !ifs ) throw std::runtime_error( "distance matrix cannot be opened" );
+
+  crsmat_type dindex;
+  dindex.load( ifs );
+
+  auto entries_size = dindex.rowMap( dindex.numRows() );
+  double comp_rate = static_cast< double >( dindex.nnz() ) / entries_size;
+  std::cout << "Distance index (" << dindex.numRows() << "x"
+            << dindex.numCols() << ") holds " << dindex.nnz()
+            << " non-zero elements with compression rate " << comp_rate << " ("
+            << entries_size << ")" << std::endl;
+}
+
 int
 main( int argc, char* argv[] )
 {
@@ -483,6 +550,7 @@ main( int argc, char* argv[] )
     auto res = parse_opts( options, argc, argv );
     std::string command = res[ "command" ].as< std::string >();
     bool basic_mode = res[ "basic-mode" ].as< bool >();
+    bool dynamic = res["dynamic"].as< bool >();
 
     typedef typename SeedFinder<>::crsmat_type crsmat_type;
     typedef make_basic_t< crsmat_type > crsmat_basic_type;
@@ -497,6 +565,11 @@ main( int argc, char* argv[] )
     else if ( command == "merge" ) {
       if ( basic_mode ) merge< crsmat_basic_type, crsmat_basic_mut_type >( res );
       else merge< crsmat_type, crsmat_mut_type >( res );
+    }
+    else if ( command == "stats" ) {
+      if ( basic_mode ) stats< crsmat_basic_type >( res );
+      else if ( dynamic ) stats< crsmat_mut_type >( res );
+      else stats< crsmat_type >( res );
     }
     else {
       // should not reach here!

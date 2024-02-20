@@ -43,17 +43,17 @@ namespace psi {
   struct MicroStrategy;
   struct CompactStrategy;
   struct HaplotypeStrategy;
-  typedef seqan::Tag< DefaultStrategy > Default;
-  typedef seqan::Tag< DynamicStrategy > Dynamic;
-  typedef seqan::Tag< CompactStrategy > Compact;
-  typedef seqan::Tag< MicroStrategy > Micro;
-  typedef seqan::Tag< HaplotypeStrategy > Haplotype;
+  typedef seqan2::Tag< DefaultStrategy > Default;
+  typedef seqan2::Tag< DynamicStrategy > Dynamic;
+  typedef seqan2::Tag< CompactStrategy > Compact;
+  typedef seqan2::Tag< MicroStrategy > Micro;
+  typedef seqan2::Tag< HaplotypeStrategy > Haplotype;
 
   /* Path node existence query strategies */
   struct OrderedStrategy;
   struct UnorderedStrategy;
-  typedef seqan::Tag< OrderedStrategy > Ordered;
-  typedef seqan::Tag< UnorderedStrategy > Unordered;
+  typedef seqan2::Tag< OrderedStrategy > Ordered;
+  typedef seqan2::Tag< UnorderedStrategy > Unordered;
 
   template< typename TGraph, typename TSpec >
     struct PathTraits;

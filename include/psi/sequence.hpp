@@ -36,13 +36,13 @@
 
 
 namespace psi {
-  // :TODO:Tue Sep 05 09:36:\@cartoonist: clear the code up from direct usage of seqan::Dna5QString.
+  // :TODO:Tue Sep 05 09:36:\@cartoonist: clear the code up from direct usage of seqan2::Dna5QString.
   /* Typedefs  ------------------------------------------------------------------- */
-  template< typename TSpec = seqan::Owner<> >
-    using CharStringSet = seqan::StringSet< seqan::CharString, TSpec >;
-  template< typename TSpec = seqan::Owner<> >
-    using Dna5QStringSet = seqan::StringSet< seqan::Dna5QString, TSpec >;
-  typedef seqan::Dependent< seqan::Generous > Dependent;
+  template< typename TSpec = seqan2::Owner<> >
+    using CharStringSet = seqan2::StringSet< seqan2::CharString, TSpec >;
+  template< typename TSpec = seqan2::Owner<> >
+    using Dna5QStringSet = seqan2::StringSet< seqan2::Dna5QString, TSpec >;
+  typedef seqan2::Dependent< seqan2::Generous > Dependent;
   /* END OF Typedefs  ------------------------------------------------------------ */
 
   /* Meta-functions  ------------------------------------------------------------- */
@@ -54,42 +54,42 @@ namespace psi {
     class MakeDependent;
 
   template< typename TText >
-    class MakeOwner< seqan::StringSet< TText, psi::Dependent > > {
+    class MakeOwner< seqan2::StringSet< TText, psi::Dependent > > {
       public:
-        typedef seqan::StringSet< TText, seqan::Owner<> > Type;
+        typedef seqan2::StringSet< TText, seqan2::Owner<> > Type;
     };
 
   template< typename TText >
-    class MakeOwner< seqan::StringSet< TText, seqan::Owner<> > > {
+    class MakeOwner< seqan2::StringSet< TText, seqan2::Owner<> > > {
       public:
-        typedef seqan::StringSet< TText, seqan::Owner<> > Type;
+        typedef seqan2::StringSet< TText, seqan2::Owner<> > Type;
     };
 
   template< typename TText >
-    class MakeDependent< seqan::StringSet< TText, seqan::Owner<> > > {
+    class MakeDependent< seqan2::StringSet< TText, seqan2::Owner<> > > {
       public:
-        typedef seqan::StringSet< TText, psi::Dependent > Type;
+        typedef seqan2::StringSet< TText, psi::Dependent > Type;
     };
 
   template< typename TText >
-    class MakeDependent< seqan::StringSet< TText, psi::Dependent > > {
+    class MakeDependent< seqan2::StringSet< TText, psi::Dependent > > {
       public:
-        typedef seqan::StringSet< TText, psi::Dependent > Type;
+        typedef seqan2::StringSet< TText, psi::Dependent > Type;
     };
 
   template< typename TContainer >
     class Ownership;
 
   template< typename TText, typename TSpec >
-    class Ownership< seqan::StringSet< TText, TSpec > > {
+    class Ownership< seqan2::StringSet< TText, TSpec > > {
       public:
         typedef psi::Dependent Type;
     };
 
   template< typename TText >
-    class Ownership< seqan::StringSet< TText, seqan::Owner<> > > {
+    class Ownership< seqan2::StringSet< TText, seqan2::Owner<> > > {
       public:
-        typedef seqan::Owner<> Type;
+        typedef seqan2::Owner<> Type;
     };
 
   /* END OF Meta-functions  ------------------------------------------------------ */
@@ -102,8 +102,8 @@ namespace psi {
 
   struct DiskBasedStrategy;
   struct InMemoryStrategy;
-  typedef seqan::Tag< DiskBasedStrategy > DiskBased;
-  typedef seqan::Tag< InMemoryStrategy > InMemory;
+  typedef seqan2::Tag< DiskBasedStrategy > DiskBased;
+  typedef seqan2::Tag< InMemoryStrategy > InMemory;
 
   typedef YaString< DiskBased > DiskString;
   typedef YaString< InMemory > MemString;
@@ -238,7 +238,7 @@ namespace psi {
           this->len = 0;
         }
 
-        template< typename TSize, typename TTag = seqan::Exact >
+        template< typename TSize, typename TTag = seqan2::Exact >
           inline void reserve( TSize size, TTag = TTag() ) { /* NO-OP */ }
 
           inline void
@@ -394,12 +394,12 @@ namespace psi {
         { }
 
         template< typename TSpec >
-          YaPair( seqan::Pair< T1, T2, TSpec > const& other )
+          YaPair( seqan2::Pair< T1, T2, TSpec > const& other )
             : base_type( other.i1, other.i2 ), i1( this->first ), i2( this->second )
           { }
 
         template< typename TSpec >
-          YaPair( seqan::Pair< T1, T2, TSpec >&& other )
+          YaPair( seqan2::Pair< T1, T2, TSpec >&& other )
             : base_type( other.i1, other.i2 ), i1( this->first ), i2( this->second )
           { }
 
@@ -423,7 +423,7 @@ namespace psi {
 
         template< typename TSpec >
             inline YaPair&
-          operator=( seqan::Pair< T1, T2, TSpec > const& other )
+          operator=( seqan2::Pair< T1, T2, TSpec > const& other )
           {
             this->first = other.i1;
             this->second = other.i2;
@@ -432,7 +432,7 @@ namespace psi {
 
         template< typename TSpec >
             inline YaPair&
-          operator=( seqan::Pair< T1, T2, TSpec >&& other )
+          operator=( seqan2::Pair< T1, T2, TSpec >&& other )
           {
             this->first = other.i1;
             this->second = other.i2;
@@ -444,7 +444,7 @@ namespace psi {
     };
 }  /* --- end of namespace psi --- */
 
-namespace seqan {
+namespace seqan2 {
   template< >
     class StringSet< psi::DiskString, Owner<> > : public psi::DiskString {
       public:
@@ -577,7 +577,7 @@ namespace seqan {
           initialized = false;
         }
 
-        template< typename TSize, typename TTag = seqan::Exact >
+        template< typename TSize, typename TTag = seqan2::Exact >
           inline void reserve( TSize, TTag = TTag() ) { /* NO-OP */ }
 
           inline void
@@ -837,7 +837,7 @@ namespace seqan {
           initialized = false;
         }
 
-        template< typename TSize, typename TTag = seqan::Exact >
+        template< typename TSize, typename TTag = seqan2::Exact >
           inline void reserve( TSize, TTag = TTag() ) { /* NO-OP */ }
 
           inline void
@@ -955,14 +955,14 @@ namespace seqan {
     {
       dstr.reserve( size );
     }
-}  /* -----  end of namespace seqan  ----- */
+}  /* -----  end of namespace seqan2  ----- */
 
 namespace psi {
   /* StringSets interface functions */
   template< typename TText >
-      inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
-    position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
-        typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type rel_id )
+      inline typename seqan2::Id< seqan2::StringSet< TText, seqan2::Owner<> > >::Type
+    position_to_id( const seqan2::StringSet< TText, seqan2::Owner<> >& strset,
+        typename seqan2::Id< seqan2::StringSet< TText, seqan2::Owner<> > >::Type rel_id )
     {
       if ( rel_id >= length( strset ) || rel_id < 0 ) {
         throw std::runtime_error( "position out of range" );
@@ -971,19 +971,19 @@ namespace psi {
     }
 
   template< typename TText >
-      inline typename seqan::Id< seqan::StringSet< TText, seqan::Owner<> > >::Type
-    position_to_id( const seqan::StringSet< TText, seqan::Owner<> >& strset,
-        typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
+      inline typename seqan2::Id< seqan2::StringSet< TText, seqan2::Owner<> > >::Type
+    position_to_id( const seqan2::StringSet< TText, seqan2::Owner<> >& strset,
+        typename seqan2::StringSetPosition< seqan2::StringSet< TText, seqan2::Owner<> > >::Type const& pos )
     {
       return position_to_id( strset, pos.i1 );
     }
 
   template< typename TText >
-      inline typename seqan::Position< seqan::StringSet< TText, seqan::Owner<> > >::Type
-    position_to_offset( const seqan::StringSet< TText, seqan::Owner<> >& strset,
-        typename seqan::StringSetPosition< seqan::StringSet< TText, seqan::Owner<> > >::Type const& pos )
+      inline typename seqan2::Position< seqan2::StringSet< TText, seqan2::Owner<> > >::Type
+    position_to_offset( const seqan2::StringSet< TText, seqan2::Owner<> >& strset,
+        typename seqan2::StringSetPosition< seqan2::StringSet< TText, seqan2::Owner<> > >::Type const& pos )
     {
-      using seqan::length;
+      using seqan2::length;
       if ( pos.i2 >= length( strset[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -995,22 +995,22 @@ namespace psi {
     class Records;
 
   template< typename TText, typename TSpec >
-    class Ownership< Records< seqan::StringSet< TText, TSpec > > > {
+    class Ownership< Records< seqan2::StringSet< TText, TSpec > > > {
       public:
         typedef psi::Dependent Type;
     };
 
   template< typename TText >
-    class Ownership< Records< seqan::StringSet< TText, seqan::Owner<> > > > {
+    class Ownership< Records< seqan2::StringSet< TText, seqan2::Owner<> > > > {
       public:
-        typedef seqan::Owner<> Type;
+        typedef seqan2::Owner<> Type;
     };
 
   /* Records interface functions */
   template< typename TText >
-      inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId
-    position_to_id( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TId rec_id )
+      inline typename Records< seqan2::StringSet< TText, seqan2::Owner<> > >::TId
+    position_to_id( const Records< seqan2::StringSet< TText, seqan2::Owner<> > >& records,
+        typename Records< seqan2::StringSet< TText, seqan2::Owner<> > >::TId rec_id )
     {
       if ( rec_id >= length( records.str ) || rec_id < 0 ) {
         throw std::runtime_error( "position out of range" );
@@ -1019,9 +1019,9 @@ namespace psi {
     }
 
   template< typename TText >
-      inline typename Records< seqan::StringSet< TText, psi::Dependent > >::TId
-    position_to_id( const Records< seqan::StringSet< TText, psi::Dependent > >& records,
-        typename Records< seqan::StringSet< TText, psi::Dependent > >::TId rec_id )
+      inline typename Records< seqan2::StringSet< TText, psi::Dependent > >::TId
+    position_to_id( const Records< seqan2::StringSet< TText, psi::Dependent > >& records,
+        typename Records< seqan2::StringSet< TText, psi::Dependent > >::TId rec_id )
     {
       if ( rec_id >= length( records.str ) || rec_id < 0 ) {
         throw std::runtime_error( "position out of range" );
@@ -1031,19 +1031,19 @@ namespace psi {
     }
 
   template< typename TText, typename TSpec >
-      inline typename Records< seqan::StringSet< TText, TSpec > >::TId
-    position_to_id( const Records< seqan::StringSet< TText, TSpec > >& records,
-        typename Records< seqan::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
+      inline typename Records< seqan2::StringSet< TText, TSpec > >::TId
+    position_to_id( const Records< seqan2::StringSet< TText, TSpec > >& records,
+        typename Records< seqan2::StringSet< TText, TSpec > >::TStringSetPosition const& pos )
     {
       return position_to_id( records, pos.i1 );
     }
 
   template< typename TText >
-      inline typename Records< seqan::StringSet< TText, psi::Dependent > >::TPosition
-    position_to_offset( const Records< seqan::StringSet< TText, psi::Dependent > >& records,
-        typename Records< seqan::StringSet< TText, psi::Dependent > >::TStringSetPosition const& pos )
+      inline typename Records< seqan2::StringSet< TText, psi::Dependent > >::TPosition
+    position_to_offset( const Records< seqan2::StringSet< TText, psi::Dependent > >& records,
+        typename Records< seqan2::StringSet< TText, psi::Dependent > >::TStringSetPosition const& pos )
     {
-      using seqan::length;
+      using seqan2::length;
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -1051,11 +1051,11 @@ namespace psi {
     }
 
   template< typename TText >
-      inline typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition
-    position_to_offset( const Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TStringSetPosition const& pos )
+      inline typename Records< seqan2::StringSet< TText, seqan2::Owner<> > >::TPosition
+    position_to_offset( const Records< seqan2::StringSet< TText, seqan2::Owner<> > >& records,
+        typename Records< seqan2::StringSet< TText, seqan2::Owner<> > >::TStringSetPosition const& pos )
     {
-      using seqan::length;
+      using seqan2::length;
       if ( pos.i2 >= length( records.str[pos.i1] ) || pos.i2 < 0 ) {
         throw std::runtime_error( "position out of range" );
       }
@@ -1064,14 +1064,14 @@ namespace psi {
 
   template< typename TText >
       inline void
-    clear( Records< seqan::StringSet< TText, seqan::Owner<> > >& records )
+    clear( Records< seqan2::StringSet< TText, seqan2::Owner<> > >& records )
     {
       records.clear();
     }
 
   template< typename TText >
       inline void
-    clear( Records< seqan::StringSet< TText, psi::Dependent > >& records )
+    clear( Records< seqan2::StringSet< TText, psi::Dependent > >& records )
     {
       clear( records.str );
       records.rec_offset = 0;
@@ -1079,30 +1079,30 @@ namespace psi {
     }
 
   template< typename TText, typename TStringSetSpec >
-      inline typename Records< seqan::StringSet< TText, TStringSetSpec > >::TSize
-    length( const Records< seqan::StringSet< TText, TStringSetSpec > >& records )
+      inline typename Records< seqan2::StringSet< TText, TStringSetSpec > >::TSize
+    length( const Records< seqan2::StringSet< TText, TStringSetSpec > >& records )
     {
       return length( records.str );
     }
 
   template< typename TText, typename TStringSetSpec >
       inline bool
-    empty( const Records< seqan::StringSet< TText, TStringSetSpec > >& records )
+    empty( const Records< seqan2::StringSet< TText, TStringSetSpec > >& records )
     {
       return length( records.str ) == 0;
     }
 
   template< typename TText, typename TStringSetSpec, typename TPosition >
-      inline typename seqan::Reference< seqan::StringSet< TText, TStringSetSpec > const >::Type
-    get_value( const Records< seqan::StringSet< TText, TStringSetSpec > >& records,
+      inline typename seqan2::Reference< seqan2::StringSet< TText, TStringSetSpec > const >::Type
+    get_value( const Records< seqan2::StringSet< TText, TStringSetSpec > >& records,
         TPosition pos )
     {
       return records.str[pos];
     }
 
   template< typename TText, typename TStringSetSpec, typename TPosition >
-      inline typename seqan::Reference< seqan::StringSet< TText, TStringSetSpec > >::Type
-    get_value( Records< seqan::StringSet< TText, TStringSetSpec > >& records,
+      inline typename seqan2::Reference< seqan2::StringSet< TText, TStringSetSpec > >::Type
+    get_value( Records< seqan2::StringSet< TText, TStringSetSpec > >& records,
         TPosition pos )
     {
       return records.str[pos];
@@ -1110,10 +1110,10 @@ namespace psi {
 
   template< typename TText >
       inline bool
-    load_chunk( Records< seqan::StringSet< TText, psi::Dependent > >& records,
-        const Records< seqan::StringSet< TText, seqan::Owner<> > >& ref,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition n,
-        typename Records< seqan::StringSet< TText, seqan::Owner<> > >::TPosition start_pos )
+    load_chunk( Records< seqan2::StringSet< TText, psi::Dependent > >& records,
+        const Records< seqan2::StringSet< TText, seqan2::Owner<> > >& ref,
+        typename Records< seqan2::StringSet< TText, seqan2::Owner<> > >::TPosition n,
+        typename Records< seqan2::StringSet< TText, seqan2::Owner<> > >::TPosition start_pos )
     {
       if ( start_pos >= length( ref.str ) || start_pos < 0 ) return false;
 
@@ -1128,16 +1128,16 @@ namespace psi {
     }
 
   template< typename TText >
-    class Records< seqan::StringSet< TText, seqan::Owner<> > > {
+    class Records< seqan2::StringSet< TText, seqan2::Owner<> > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
-        typedef seqan::Owner<> TSpec;
-        typedef seqan::StringSet< TText, TSpec > TStringSet;
+        typedef seqan2::Owner<> TSpec;
+        typedef seqan2::StringSet< TText, TSpec > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
-        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
-        typedef typename seqan::Position< TStringSet >::Type TPosition;
-        typedef typename seqan::Id< TStringSet >::Type TId;
-        typedef typename seqan::Size< TStringSet >::Type TSize;
+        typedef typename seqan2::StringSetPosition< TStringSet >::Type TStringSetPosition;
+        typedef typename seqan2::Position< TStringSet >::Type TPosition;
+        typedef typename seqan2::Id< TStringSet >::Type TId;
+        typedef typename seqan2::Size< TStringSet >::Type TSize;
         /* ====================  CLASSES       ======================================= */
         /**
          *  @brief  Map seeds to their location in the reads set.
@@ -1226,9 +1226,9 @@ namespace psi {
         /* ====================  LIFECYCLE     ======================================= */
         Records( TId roff=0 ) : rec_offset( roff ) { }
         /* ====================  OPERATORS     ======================================= */
-          inline typename seqan::Reference< TStringSet const >::Type
+          inline typename seqan2::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
-          inline typename seqan::Reference< TStringSet >::Type
+          inline typename seqan2::Reference< TStringSet >::Type
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
         /* ====================  ACCESSORS     ======================================= */
           inline bool
@@ -1264,7 +1264,7 @@ namespace psi {
           inline void
         clear( )
         {
-          using seqan::clear;
+          using seqan2::clear;
           using psi::clear;
           clear( this->name );
           //clear( records.comment );
@@ -1294,24 +1294,24 @@ namespace psi {
     };
 
   template< typename TText >
-    class Records< seqan::StringSet< TText, psi::Dependent > > {
+    class Records< seqan2::StringSet< TText, psi::Dependent > > {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef psi::Dependent TSpec;
-        typedef seqan::StringSet< TText, TSpec > TStringSet;
+        typedef seqan2::StringSet< TText, TSpec > TStringSet;
         typedef typename MakeOwner< TStringSet >::Type TRefStringSet;
-        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
-        typedef typename seqan::Position< TStringSet >::Type TPosition;
-        typedef typename seqan::Id< TStringSet >::Type TId;
-        typedef typename seqan::Size< TStringSet >::Type TSize;
+        typedef typename seqan2::StringSetPosition< TStringSet >::Type TStringSetPosition;
+        typedef typename seqan2::Position< TStringSet >::Type TPosition;
+        typedef typename seqan2::Id< TStringSet >::Type TId;
+        typedef typename seqan2::Size< TStringSet >::Type TSize;
         /* ====================  DATA MEMBERS  ======================================= */
         TStringSet str;
         /* ====================  LIFECYCLE     ======================================= */
         Records( TId roff=0 ) : rec_offset( roff ), o_str( nullptr ) { }
         /* ====================  METHODS       ======================================= */
-          inline typename seqan::Reference< TStringSet const >::Type
+          inline typename seqan2::Reference< TStringSet const >::Type
         operator[]( TPosition pos ) const { return get_value( *this, pos ); }
-          inline typename seqan::Reference< TStringSet >::Type
+          inline typename seqan2::Reference< TStringSet >::Type
         operator[]( TPosition pos ) { return get_value( *this, pos ); }
         /* ====================  INTERFACE FUNCTIONS  ================================ */
           friend TId
@@ -1336,8 +1336,8 @@ namespace psi {
   struct ReversedStrategy;
 
   /* Sequence direction tags */
-  typedef seqan::Tag< ForwardStrategy > Forward;
-  typedef seqan::Tag< ReversedStrategy > Reversed;
+  typedef seqan2::Tag< ForwardStrategy > Forward;
+  typedef seqan2::Tag< ReversedStrategy > Reversed;
 
   /**
    *  @brief  Meta-function getting direction of a set of paths.
@@ -1349,7 +1349,7 @@ namespace psi {
    *  @brief  Meta-function getting direction of paths in a `StringSet`.
    */
   template< typename TText, typename TSpec >
-    struct Direction< seqan::StringSet< TText, TSpec > > {
+    struct Direction< seqan2::StringSet< TText, TSpec > > {
       typedef Forward Type;
     };
 
@@ -1360,10 +1360,10 @@ namespace psi {
   struct GreedyNonOverlapStrategy;
 
   /* Seeding strategy tags */
-  typedef seqan::Tag< OverlapStrategy > Overlapping;
-  typedef seqan::Tag< GreedyOverlapStrategy > GreedyOverlapping;
-  typedef seqan::Tag< NonOverlapStrategy > NonOverlapping;
-  typedef seqan::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
+  typedef seqan2::Tag< OverlapStrategy > Overlapping;
+  typedef seqan2::Tag< GreedyOverlapStrategy > GreedyOverlapping;
+  typedef seqan2::Tag< NonOverlapStrategy > NonOverlapping;
+  typedef seqan2::Tag< GreedyNonOverlapStrategy > GreedyNonOverlapping;
 
   /* _RecordsIterBase forward declaration  --------------------------------------- */
   template< typename TRecords, typename TSpec >
@@ -1390,11 +1390,11 @@ namespace psi {
       public:
         /* ====================  TYPEDEFS      ======================================= */
         typedef Records< TStringSet > TRecords;
-        typedef typename seqan::StringSetPosition< TStringSet >::Type TStringSetPosition;
-        typedef typename seqan::Value< TStringSet >::Type TText;
-        typedef typename seqan::Id< TStringSet >::Type TId;
-        typedef typename seqan::Position< TText >::Type TTextPosition;
-        typedef typename seqan::Infix< TText const >::Type TInfix;
+        typedef typename seqan2::StringSetPosition< TStringSet >::Type TStringSetPosition;
+        typedef typename seqan2::Value< TStringSet >::Type TText;
+        typedef typename seqan2::Id< TStringSet >::Type TId;
+        typedef typename seqan2::Position< TText >::Type TTextPosition;
+        typedef typename seqan2::Infix< TText const >::Type TInfix;
         /* ====================  LIFECYCLE     ======================================= */
         _RecordsIterBase( const TRecords* recs, TTextPosition len )
           : records( recs ), current_pos( { 0, 0 } ), infix_len( len ) { }
@@ -1584,22 +1584,22 @@ namespace psi {
    *  @param[in]  num_record Read this number of record from the input file.
    *  @return The number of read records loaded from the input file.
    *
-   *  A wrapper function for `seqan::readRecords` method to read the records into
+   *  A wrapper function for `seqan2::readRecords` method to read the records into
    *  sequence record set. If `num_record` is equal to zero, it reads all recrods.
    */
   template< typename TText >
       inline std::size_t
-    readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
-        seqan::SeqFileIn& infile,
+    readRecords( Records< seqan2::StringSet< TText, seqan2::Owner<> > >& records,
+        seqan2::SeqFileIn& infile,
         unsigned int num_record = 0 )
     {
       CharStringSet<> quals;
       clear( records );
       if ( num_record != 0 ) {
-        seqan::readRecords( records.name, records.str, quals, infile, num_record );
+        seqan2::readRecords( records.name, records.str, quals, infile, num_record );
       }
       else {
-        seqan::readRecords( records.name, records.str, quals, infile );
+        seqan2::readRecords( records.name, records.str, quals, infile );
       }
       assignQualities( records.str, quals );
       return length( records );
@@ -1607,7 +1607,7 @@ namespace psi {
 
   template< typename TText >
       inline std::size_t
-    readRecords( Records< seqan::StringSet< TText, seqan::Owner<> > >& records,
+    readRecords( Records< seqan2::StringSet< TText, seqan2::Owner<> > >& records,
         klibpp::SeqStreamIn& iss,
         unsigned int num_record=0 )
     {
@@ -1637,11 +1637,11 @@ namespace psi {
    *  the character is modified will be returned.
    */
   template< typename TText >
-      inline typename seqan::Size< TText >::Type
-    increment_kmer( TText& str, typename seqan::Size< TText >::Type pos, bool continuous=false )
+      inline typename seqan2::Size< TText >::Type
+    increment_kmer( TText& str, typename seqan2::Size< TText >::Type pos, bool continuous=false )
     {
-      static const unsigned int max_value = ordValue( seqan::MaxValue< std::decay_t< decltype( str[0] ) > >::VALUE );
-      static const unsigned int min_value = ordValue( seqan::MinValue< std::decay_t< decltype( str[0] ) > >::VALUE );
+      static const unsigned int max_value = ordValue( seqan2::MaxValue< std::decay_t< decltype( str[0] ) > >::VALUE );
+      static const unsigned int min_value = ordValue( seqan2::MinValue< std::decay_t< decltype( str[0] ) > >::VALUE );
 
       assert( pos < length( str ) );
 
@@ -1667,7 +1667,7 @@ namespace psi {
     }
 
   template< typename TText >
-      inline typename seqan::Size< TText >::Type
+      inline typename seqan2::Size< TText >::Type
     increment_kmer( TText& str )
     {
       return increment_kmer( str, length(str) - 1 );
@@ -1687,16 +1687,16 @@ namespace psi {
    */
   template< typename TText, typename TStringSetSpec >
       inline void
-    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
-        const seqan::StringSet< TText, TStringSetSpec >& string_set,
+    seeding( seqan2::StringSet< TText, seqan2::Owner<> >& seeds,
+        const seqan2::StringSet< TText, TStringSetSpec >& string_set,
         unsigned int k,
         unsigned int step,
         sdsl::bit_vector* bv_ptr=nullptr )
     {
-      typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
-      typedef typename seqan::Position< TText >::Type pos_type;
+      typedef typename seqan2::Size< seqan2::StringSet< TText, TStringSetSpec > >::Type size_type;
+      typedef typename seqan2::Position< TText >::Type pos_type;
 
-      using seqan::length;
+      using seqan2::length;
       clear( seeds );
       // The total number of seeds is always less than: (len(R) - |R|k)/s + |R|;
       // where len(R) is the total sequence length of reads set R, and |R| is the number
@@ -1710,7 +1710,7 @@ namespace psi {
 
       for ( size_type idx = 0; idx < length( string_set ); ++idx ) {
         for ( pos_type i = 0; i < length( string_set[idx] ) - k + 1; i += step ) {
-          appendValue( seeds, seqan::infixWithLength( string_set[idx], i, k ) );
+          appendValue( seeds, seqan2::infixWithLength( string_set[idx], i, k ) );
         }
         if ( bv_ptr ) ( *bv_ptr )[ length( seeds ) - 1 ] = 1;
       }
@@ -1730,7 +1730,7 @@ namespace psi {
    *  `k`, it gets non-overlapping substrings of length k.
    */
   template< typename TRecords1, typename TRecords2,
-    typename = std::enable_if_t< std::is_same< typename TRecords1::TSpec, seqan::Owner<> >::value, void > >
+    typename = std::enable_if_t< std::is_same< typename TRecords1::TSpec, seqan2::Owner<> >::value, void > >
       inline void
     seeding( TRecords1& seeds,
         TRecords2 const& reads,
@@ -1755,7 +1755,7 @@ namespace psi {
    *  Extract a set of overlapping seeds of length k.
    */
   template< typename T1, typename T2,
-    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan::Owner<> >::value, void > >
+    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan2::Owner<> >::value, void > >
       inline void
     seeding( T1& seeds, const T2& string_set, unsigned int k, GreedyOverlapping )
     {
@@ -1773,7 +1773,7 @@ namespace psi {
    *  Extract a set of non-overlapping seeds of length k.
    */
   template< typename T1, typename T2,
-    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan::Owner<> >::value, void > >
+    typename = std::enable_if_t< std::is_same< typename Ownership< T1 >::Type, seqan2::Owner<> >::value, void > >
       inline void
     seeding( T1& seeds, const T2& string_set, unsigned int k, NonOverlapping )
     {
@@ -1795,13 +1795,13 @@ namespace psi {
    */
   template< typename TText, typename TStringSetSpec >
       inline void
-    seeding( seqan::StringSet< TText, seqan::Owner<> >& seeds,
-        const seqan::StringSet< TText, TStringSetSpec >& string_set,
+    seeding( seqan2::StringSet< TText, seqan2::Owner<> >& seeds,
+        const seqan2::StringSet< TText, TStringSetSpec >& string_set,
         unsigned int k,
         GreedyNonOverlapping )
     {
-      typedef typename seqan::Size< seqan::StringSet< TText, TStringSetSpec > >::Type size_type;
-      typedef typename seqan::Position< TText >::Type pos_type;
+      typedef typename seqan2::Size< seqan2::StringSet< TText, TStringSetSpec > >::Type size_type;
+      typedef typename seqan2::Position< TText >::Type pos_type;
 
       clear( seeds );
       reserve( seeds, static_cast<int>( lengthSum( string_set ) / k ) );
@@ -1818,11 +1818,11 @@ namespace psi {
   /* END OF Interface functions  ------------------------------------------------- */
 }  /* --- end of namespace psi --- */
 
-namespace seqan {
+namespace seqan2 {
   template< typename TStringSet, typename TSpec >
     struct Iterator< psi::Records< TStringSet >, TSpec > {
       typedef psi::RecordsIter< psi::Records< TStringSet >, TSpec > Type;
     };
-}  /* -----  end of namespace seqan  ----- */
+}  /* -----  end of namespace seqan2  ----- */
 
 #endif  /* --- #ifndef PSI_SEQUENCE_HPP__ --- */

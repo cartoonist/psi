@@ -57,8 +57,8 @@ SCENARIO( "Two strings can be checked for suffix match", "[utils]" )
 
   GIVEN( "A seqan string" )
   {
-    seqan::CharString str( "mississipi" );
-    seqan::CharString pattern;
+    seqan2::CharString str( "mississipi" );
+    seqan2::CharString pattern;
 
     THEN( "Suffix strings should be matched" )
     {
@@ -117,8 +117,8 @@ SCENARIO( "Two strings can be checked for prefix match", "[utils]" )
 
   GIVEN( "A seqan string" )
   {
-    seqan::CharString str( "mississipi" );
-    seqan::CharString pattern;
+    seqan2::CharString str( "mississipi" );
+    seqan2::CharString pattern;
 
     THEN( "Prefix strings should be matched" )
     {
