@@ -773,6 +773,99 @@ namespace psi {
   }
 
   /**
+   *  @brief Computing matrix c as the addition of a and b.
+   *
+   *  NOTE: All matrices are assumed to be in Range CRS format.
+   */
+  template< typename THandle,
+            typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
+            typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
+            typename TRowMapDeviceViewC, typename TEntriesDeviceViewC >
+  inline void
+  range_spadd( const THandle& handle,
+               TRowMapDeviceViewA a_rowmap, TEntriesDeviceViewA a_entries,
+               TRowMapDeviceViewB b_rowmap, TEntriesDeviceViewB b_entries,
+               TRowMapDeviceViewC& c_rowmap, TEntriesDeviceViewC& c_entries )
+  {
+    typedef TEntriesDeviceViewC c_entries_type;
+    typedef TRowMapDeviceViewC  c_row_map_type;
+    typedef typename c_entries_type::value_type ordinal_type;
+    typedef typename c_row_map_type::value_type size_type;
+
+    assert( handle.a_ncols == handle.b_ncols );
+    assert( a_rowmap.extent( 0 ) == b_rowmap.extent( 0 ) );
+
+    ordinal_type n = a_rowmap.extent( 0 ) - 1;
+    c_rowmap = c_row_map_type(
+        Kokkos::ViewAllocateWithoutInitializing( "c_rowmap" ),
+        a_rowmap.extent( 0 ) );
+
+#ifdef PSI_STATS
+    Kokkos::Timer timer;
+#endif
+
+    range_spadd_symbolic( handle, a_rowmap, a_entries, b_rowmap, b_entries,
+                          c_rowmap );
+
+#ifdef PSI_STATS
+    double d = timer.seconds();
+    std::cout << "psi::range_spadd_symbolic time: " << d * 1000 << "ms"
+              << std::endl;
+#endif
+
+    size_type c_rnnz;
+    Kokkos::deep_copy( c_rnnz, Kokkos::subview( c_rowmap, n ) );
+    c_entries = c_entries_type( Kokkos::ViewAllocateWithoutInitializing( "C" ),
+                                c_rnnz );
+
+#ifdef PSI_STATS
+    timer.reset();
+#endif
+
+    range_spadd_numeric( handle, a_rowmap, a_entries, b_rowmap, b_entries,
+                         c_rowmap, c_entries );
+
+#ifdef PSI_STATS
+    d = timer.seconds();
+    std::cout << "psi::range_spadd_numeric time: " << d * 1000 << "ms"
+              << std::endl;
+#endif
+  }
+
+  template< typename TRCRSMatrix,
+            typename TExecSpace=Kokkos::DefaultExecutionSpace >
+  inline TRCRSMatrix
+  range_spadd( TRCRSMatrix const& a, TRCRSMatrix const& b )
+  {
+    typedef TRCRSMatrix range_crsmatrix_t;
+    typedef TExecSpace execution_space;
+
+    assert( a.numCols() == b.numCols() );
+    assert( a.numRows() == b.numRows() );
+
+    execution_space space{};
+
+    auto a_entries = a.entries_device_view( space );
+    auto a_rowmap = a.rowmap_device_view( space );
+    auto b_entries = b.entries_device_view( space );
+    auto b_rowmap = b.rowmap_device_view( space );
+
+    auto c_entries = range_crsmatrix_t::make_entries_device_view( space );
+    auto c_rowmap = range_crsmatrix_t::make_rowmap_device_view( space );
+
+    SparseRangeHandle handle( a, b );
+
+    range_spadd( handle, a_rowmap, a_entries, b_rowmap, b_entries, c_rowmap,
+                 c_entries );
+
+    // FIXME: since entries and rowmap arrays of range CRS is not a view, there
+    // would be an extra copy here and the `c_entries` and `c_rowmap` cannot be
+    // moved when the views are on the same memory space (the RCRS ctor does call
+    // `deep_copy`).
+    return TRCRSMatrix( a.numCols(), c_entries, c_rowmap );
+  }
+
+  /**
    *  @brief Symbolic phase of computing matrix c as the product of a and b
    *  (ThreadRangePartition-BTreeAccumulator specialisation).
    *
