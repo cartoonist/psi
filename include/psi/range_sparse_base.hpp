@@ -16,6 +16,8 @@
 #ifndef PSI_RANGE_SPARSE_BASE_HPP_
 #define PSI_RANGE_SPARSE_BASE_HPP_
 
+#include <cstddef>
+#include <stdexcept>
 #include <algorithm>
 
 #include <Kokkos_Core.hpp>
@@ -31,11 +33,17 @@ namespace psi {
 
   // Accumulator specialisation tag
   struct BTreeTag {};
-  struct HBitVectorTag {};
+
+  template< unsigned int TL1Size >
+  struct HBitVectorTag {
+    static constexpr const unsigned int L1SizeParam = TL1Size;
+  };
 
   using NoAccumulator = Accumulator< void >;
   using BTreeAccumulator = Accumulator< BTreeTag >;
-  using HBitVectorAccumulator = Accumulator< HBitVectorTag >;
+
+  template< unsigned int TL1Size=2048 >
+  using HBitVectorAccumulator = Accumulator< HBitVectorTag< TL1Size > >;
 
   // Partition tag
   template< typename TSpec >
@@ -47,36 +55,247 @@ namespace psi {
   struct ThreadRangeTag {};
   struct ThreadSequentialTag {};
   struct TeamSequentialTag {};
-  // Unused specialisation tags yet
-  //struct ThreadParallelTag {};
-  //struct TeamFlatParallelTag {};
+  struct ThreadParallelTag {};
+  struct TeamFlatParallelTag {};
 
   using ThreadRangePartition = ExecPartition< ThreadRangeTag >;
   using ThreadSequentialPartition = ExecPartition< ThreadSequentialTag >;
   using TeamSequentialPartition = ExecPartition< TeamSequentialTag >;
-  //using ThreadParallelPartition = ExecPartition< ThreadParallelTag >;
-  //using TeamFlatParallelPartition = ExecPartition< TeamFlatParallelTag >;
+  using ThreadParallelPartition = ExecPartition< ThreadParallelTag >;
+  using TeamFlatParallelPartition = ExecPartition< TeamFlatParallelTag >;
 
   // Supported execution space by accumulators
   template< typename TAccumulator >
   struct AccumulatorExecSpace {
-    using execution_space = Kokkos::DefaultExecutionSpace;      // By default run on device
+    using type = Kokkos::DefaultExecutionSpace;      // By default run on device
   };
 
   template<>
   struct AccumulatorExecSpace< BTreeAccumulator > {
-    using execution_space = Kokkos::DefaultHostExecutionSpace;  // Can only be executed on host
+    using type = Kokkos::DefaultHostExecutionSpace;  // Can only be executed on host
   };
 
+  // Default partitioning by accumulators
+  template< typename TAccumulator >
+  struct AccumulatorDefaultPartition;
+
+  template< >
+  struct AccumulatorDefaultPartition< BTreeAccumulator >
+  {
+    using type = ThreadRangePartition;
+  };
+
+  template< unsigned int TL1Size >
+  struct AccumulatorDefaultPartition< HBitVectorAccumulator< TL1Size > >
+  {
+    using type = TeamSequentialPartition;
+  };
+
+  /**
+   *   @brief Suggested grid dimensions as a form of config class.
+   */
+  template< typename TExecSpace >
+  struct SuggestedExecGrid {
+    static constexpr inline int
+    vector_size( )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    vector_size( const int row_density )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    vector_size( const int nnz, const int nr )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    team_size( )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    team_size( const int vector_size )
+    {
+      return 1;
+    }
+
+    static constexpr inline int
+    team_work_size( )
+    {
+      return 16;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return 16;
+    }
+  };
+
+  template< typename TExecSpace >
+  struct AutoExecGrid {
+    static constexpr inline auto
+    vector_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int row_density )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int nnz, const int nr )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( const int vector_size )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline int
+    team_work_size( )
+    {
+      return 16;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return 16;
+    }
+  };
+
+  #if defined(KOKKOS_ENABLE_CUDA)
+  template< >
+  struct SuggestedExecGrid< Kokkos::Cuda > {
+    /* === STATIC MEMBERS === */
+    static constexpr const int MAX_VECTOR_SIZE = 32;
+    /* === STATIC METHODS === */
+    static constexpr inline int
+    row_density( const std::size_t nnz, const std::size_t nr )
+    {
+      if ( nr > 0 ) return nnz / double( nr ) + 0.5;
+      return 1;
+    }
+
+    static constexpr inline int
+    vector_size( const int rdense )
+    {
+      int vsize = rdense;
+      if ( vsize < 3 ) {
+        vsize = 2;
+      } else if ( vsize <= 6 ) {
+        vsize = 4;
+      } else if ( vsize <= 12 ) {
+        vsize = 8;
+      } else if ( vsize <= 24 ) {
+        vsize = 16;
+      } else if ( vsize <= 48 ) {
+        vsize = 32;
+      } else {
+        vsize = 64;
+      }
+      vsize = Kokkos::min( vsize, MAX_VECTOR_SIZE );
+      return vsize;
+    }
+
+    static constexpr inline int
+    vector_size( const std::size_t nnz, const std::size_t nr )
+    {
+      return vector_size( row_density( nnz, nr ) );
+    }
+
+    static constexpr inline int
+    team_size( const int vector_size )
+    {
+      // TODO: where this is used, tune the target value for
+      // threads per block (but 256 is probably OK for CUDA and HIP)
+      return 256 / vector_size;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return team_size;
+    }
+  };
+
+  template< >
+  struct AutoExecGrid< Kokkos::Cuda > {
+    static constexpr inline auto
+    vector_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int row_density )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    vector_size( const int nnz, const int nr )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline auto
+    team_size( const int vector_size )
+    {
+      return Kokkos::AUTO;
+    }
+
+    static constexpr inline int
+    team_work_size( const int team_size )
+    {
+      return team_size;
+    }
+  };
+  #endif
+
   // Configuration tag
-  template< typename TPartition, typename TAccumulator >
+  template< typename TAccumulator,
+      typename TPartition = typename AccumulatorDefaultPartition< TAccumulator >::type,
+      template< typename > typename TGrid = AutoExecGrid >
   struct SparseConfig {
     using partition_type = TPartition;
     using accumulator_type = TAccumulator;
-    using execution_space = typename AccumulatorExecSpace< accumulator_type >::execution_space;
+    using execution_space = typename AccumulatorExecSpace< accumulator_type >::type;
+    using grid_type = TGrid< execution_space >;
+    /* === MEMBERS === */
+    partition_type   part;
+    accumulator_type accm;
+    execution_space  space;
+    grid_type        grid;
   };
 
-  using DefaultSparseConfiguration = SparseConfig< ThreadRangePartition, BTreeAccumulator >;
+  using DefaultSparseConfiguration = SparseConfig< HBitVectorAccumulator<> >;
 
   template< typename TRCRSMatrix >
   struct SparseRangeHandle {
@@ -186,8 +405,8 @@ namespace psi {
   template< typename TExecSpace >
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            TExecSpace )
+                             const std::size_t,
+                             TExecSpace )
   {
     throw std::runtime_error( "`get_suggested_vector_size` is not implemented for requested execution space" );
   }
@@ -195,8 +414,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_CUDA)
   inline int
   get_suggested_vector_size( const std::size_t nr,
-                            const std::size_t nnz,
-                            Kokkos::Cuda )
+                             const std::size_t nnz,
+                             Kokkos::Cuda )
   {
     int suggested_vector_size_ = 1;
     int max_vector_size        = 32;
@@ -223,8 +442,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_OPENMP)
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            Kokkos::OpenMP )
+                             const std::size_t,
+                             Kokkos::OpenMP )
   {
     //int suggested_vector_size_ = 1;
     //int max_vector_size        = 1;
@@ -235,8 +454,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_SERIAL)
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            Kokkos::Serial )
+                             const std::size_t,
+                             Kokkos::Serial )
   {
     //int suggested_vector_size_ = 1;
     //int max_vector_size        = 1;
@@ -247,8 +466,8 @@ namespace psi {
   #if defined(KOKKOS_ENABLE_THREADS)
   inline int
   get_suggested_vector_size( const std::size_t,
-                            const std::size_t,
-                            Kokkos::Threads )
+                             const std::size_t,
+                             Kokkos::Threads )
   {
     //int suggested_vector_size_ = 1;
     //int max_vector_size        = 1;
