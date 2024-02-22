@@ -530,12 +530,12 @@ namespace psi {
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
             typename TRowMapDeviceViewC >
   inline void
-  _range_spadd_symbolic( const THandle&,
-                         TRowMapDeviceViewA a_rowmap,
-                         TEntriesDeviceViewA a_entries,
-                         TRowMapDeviceViewB b_rowmap,
-                         TEntriesDeviceViewB b_entries,
-                         TRowMapDeviceViewC& c_rowmap )
+  range_spadd_symbolic( const THandle&,
+                        TRowMapDeviceViewA a_rowmap,
+                        TEntriesDeviceViewA a_entries,
+                        TRowMapDeviceViewB b_rowmap,
+                        TEntriesDeviceViewB b_entries,
+                        TRowMapDeviceViewC& c_rowmap )
   {
     typedef TEntriesDeviceViewA a_entries_type;
     typedef TEntriesDeviceViewB b_entries_type;
@@ -583,6 +583,7 @@ namespace psi {
               hi = b_entries( b_idx + 1 );
               b_idx += 2;
             }
+
             while ( a_idx < a_end && b_idx < b_end ) {
               ordinal_type rs;  // range start
               ordinal_type re;  // range end
@@ -606,6 +607,29 @@ namespace psi {
               hi = re;
               count += 2;
             }
+
+            while ( a_idx < a_end || b_idx < b_end ) {
+              ordinal_type rs;  // range start
+              ordinal_type re;  // range end
+              if ( a_idx == a_end ) {
+                rs = b_entries( b_idx );
+                re = b_entries( b_idx + 1 );
+                b_idx += 2;
+              }
+              else {
+                rs = a_entries( a_idx );
+                re = a_entries( a_idx + 1 );
+                a_idx += 2;
+              }
+
+              if ( rs <= hi + 1 ) {  // merge
+                lo = PSI_MACRO_MIN( lo, rs );
+                hi = PSI_MACRO_MAX( hi, re );
+                continue;
+              }
+              count += 2;
+              break;
+            }
             count += 2;  // last one from the previous loop
           }
 
@@ -616,7 +640,7 @@ namespace psi {
         } );
 
     Kokkos::parallel_scan(
-        "psi::crs_matrix::range_spgemm_symbolic::computing_row_map_c",
+        "psi::crs_matrix::range_spadd_symbolic::computing_row_map_c",
         policy_type( 0, a_nrows ),
         KOKKOS_LAMBDA ( const int i, size_type& update, const bool final ) {
           // Load old value in case we update it before accumulating
@@ -632,13 +656,13 @@ namespace psi {
             typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
             typename TRowMapDeviceViewC, typename TEntriesDeviceViewC >
   inline void
-  _range_spadd_numeric( const THandle&,
-                        TRowMapDeviceViewA a_rowmap,
-                        TEntriesDeviceViewA a_entries,
-                        TRowMapDeviceViewB b_rowmap,
-                        TEntriesDeviceViewB b_entries,
-                        TRowMapDeviceViewC c_rowmap,
-                        TEntriesDeviceViewC& c_entries )
+  range_spadd_numeric( const THandle&,
+                       TRowMapDeviceViewA a_rowmap,
+                       TEntriesDeviceViewA a_entries,
+                       TRowMapDeviceViewB b_rowmap,
+                       TEntriesDeviceViewB b_entries,
+                       TRowMapDeviceViewC c_rowmap,
+                       TEntriesDeviceViewC& c_entries )
   {
     typedef TEntriesDeviceViewA a_entries_type;
     typedef TEntriesDeviceViewB b_entries_type;
@@ -663,7 +687,7 @@ namespace psi {
     auto a_nrows = a_rowmap.extent( 0 ) - 1;
 
     Kokkos::parallel_for(
-        "psi::crs_matrix::range_spadd_symbolic::count_row_nnz",
+        "psi::crs_matrix::range_spadd_numeric::count_row_nnz",
         policy_type( 0, a_nrows ), KOKKOS_LAMBDA ( const uint64_t row ) {
           auto a_idx = a_rowmap( row );
           auto a_end = a_rowmap( row + 1 );
@@ -687,6 +711,7 @@ namespace psi {
               hi = b_entries( b_idx + 1 );
               b_idx += 2;
             }
+
             while ( a_idx < a_end && b_idx < b_end ) {
               ordinal_type rs;  // range start
               ordinal_type re;  // range end
@@ -711,6 +736,32 @@ namespace psi {
               lo = rs;
               hi = re;
             }
+
+            while ( a_idx < a_end || b_idx < b_end ) {
+              ordinal_type rs;  // range start
+              ordinal_type re;  // range end
+              if ( a_idx == a_end ) {
+                rs = b_entries( b_idx );
+                re = b_entries( b_idx + 1 );
+                b_idx += 2;
+              }
+              else {
+                rs = a_entries( a_idx );
+                re = a_entries( a_idx + 1 );
+                a_idx += 2;
+              }
+
+              if ( rs <= hi + 1 ) {  // merge
+                lo = PSI_MACRO_MIN( lo, rs );
+                hi = PSI_MACRO_MAX( hi, re );
+                continue;
+              }
+              c_entries( c_idx++ ) = lo;
+              c_entries( c_idx++ ) = hi;
+              lo = rs;
+              hi = re;
+              break;
+            }
             c_entries( c_idx++ ) = lo;
             c_entries( c_idx++ ) = hi;
           }
@@ -719,6 +770,99 @@ namespace psi {
           for ( ; b_idx < b_end; ++b_idx )
             c_entries( c_idx++ ) = b_entries( b_idx );
         } );
+  }
+
+  /**
+   *  @brief Computing matrix c as the addition of a and b.
+   *
+   *  NOTE: All matrices are assumed to be in Range CRS format.
+   */
+  template< typename THandle,
+            typename TRowMapDeviceViewA, typename TEntriesDeviceViewA,
+            typename TRowMapDeviceViewB, typename TEntriesDeviceViewB,
+            typename TRowMapDeviceViewC, typename TEntriesDeviceViewC >
+  inline void
+  range_spadd( const THandle& handle,
+               TRowMapDeviceViewA a_rowmap, TEntriesDeviceViewA a_entries,
+               TRowMapDeviceViewB b_rowmap, TEntriesDeviceViewB b_entries,
+               TRowMapDeviceViewC& c_rowmap, TEntriesDeviceViewC& c_entries )
+  {
+    typedef TEntriesDeviceViewC c_entries_type;
+    typedef TRowMapDeviceViewC  c_row_map_type;
+    typedef typename c_entries_type::value_type ordinal_type;
+    typedef typename c_row_map_type::value_type size_type;
+
+    assert( handle.a_ncols == handle.b_ncols );
+    assert( a_rowmap.extent( 0 ) == b_rowmap.extent( 0 ) );
+
+    ordinal_type n = a_rowmap.extent( 0 ) - 1;
+    c_rowmap = c_row_map_type(
+        Kokkos::ViewAllocateWithoutInitializing( "c_rowmap" ),
+        a_rowmap.extent( 0 ) );
+
+#ifdef PSI_STATS
+    Kokkos::Timer timer;
+#endif
+
+    range_spadd_symbolic( handle, a_rowmap, a_entries, b_rowmap, b_entries,
+                          c_rowmap );
+
+#ifdef PSI_STATS
+    double d = timer.seconds();
+    std::cout << "psi::range_spadd_symbolic time: " << d * 1000 << "ms"
+              << std::endl;
+#endif
+
+    size_type c_rnnz;
+    Kokkos::deep_copy( c_rnnz, Kokkos::subview( c_rowmap, n ) );
+    c_entries = c_entries_type( Kokkos::ViewAllocateWithoutInitializing( "C" ),
+                                c_rnnz );
+
+#ifdef PSI_STATS
+    timer.reset();
+#endif
+
+    range_spadd_numeric( handle, a_rowmap, a_entries, b_rowmap, b_entries,
+                         c_rowmap, c_entries );
+
+#ifdef PSI_STATS
+    d = timer.seconds();
+    std::cout << "psi::range_spadd_numeric time: " << d * 1000 << "ms"
+              << std::endl;
+#endif
+  }
+
+  template< typename TRCRSMatrix,
+            typename TExecSpace=Kokkos::DefaultExecutionSpace >
+  inline TRCRSMatrix
+  range_spadd( TRCRSMatrix const& a, TRCRSMatrix const& b )
+  {
+    typedef TRCRSMatrix range_crsmatrix_t;
+    typedef TExecSpace execution_space;
+
+    assert( a.numCols() == b.numCols() );
+    assert( a.numRows() == b.numRows() );
+
+    execution_space space{};
+
+    auto a_entries = a.entries_device_view( space );
+    auto a_rowmap = a.rowmap_device_view( space );
+    auto b_entries = b.entries_device_view( space );
+    auto b_rowmap = b.rowmap_device_view( space );
+
+    auto c_entries = range_crsmatrix_t::make_entries_device_view( space );
+    auto c_rowmap = range_crsmatrix_t::make_rowmap_device_view( space );
+
+    SparseRangeHandle handle( a, b );
+
+    range_spadd( handle, a_rowmap, a_entries, b_rowmap, b_entries, c_rowmap,
+                 c_entries );
+
+    // FIXME: since entries and rowmap arrays of range CRS is not a view, there
+    // would be an extra copy here and the `c_entries` and `c_rowmap` cannot be
+    // moved when the views are on the same memory space (the RCRS ctor does call
+    // `deep_copy`).
+    return TRCRSMatrix( a.numCols(), c_entries, c_rowmap );
   }
 
   /**

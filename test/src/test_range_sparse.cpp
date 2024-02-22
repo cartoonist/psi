@@ -22,6 +22,7 @@
 #include <gum/gfa_utils.hpp>
 #include <string>
 
+#include "gum/seqgraph_interface.hpp"
 #include "test_base.hpp"
 
 
@@ -252,6 +253,68 @@ kokkos_kernels_spgemm( TXCRSMatrix const& a, TXCRSMatrix const& b )
 #endif
   }
 
+  handle.destroy_spgemm_handle();
+
+//  Kokkos::parallel_for(
+//      "psi::test_range_sparse::set_values",
+//      Kokkos::RangePolicy< execution_space >( 0, c.nnz() ),
+//      KOKKOS_LAMBDA ( const uint64_t i ) {
+//        c.values( i ) = 1;
+//      } );
+
+  return c;
+}
+
+template< typename TXCRSMatrix >
+inline TXCRSMatrix
+kokkos_kernels_spadd( TXCRSMatrix const& a, TXCRSMatrix const& b )
+{
+  typedef typename TXCRSMatrix::ordinal_type ordinal_t;
+  typedef typename TXCRSMatrix::size_type size_type;
+  typedef typename TXCRSMatrix::value_type scalar_t;
+  typedef typename TXCRSMatrix::execution_space execution_space;
+  typedef typename TXCRSMatrix::memory_space memory_space;
+  typedef typename KokkosKernels::Experimental::KokkosKernelsHandle<
+    size_type, ordinal_t, scalar_t,
+    execution_space, memory_space, memory_space > kernel_handle_t;
+
+  kernel_handle_t handle;
+  handle.create_spadd_handle( true /* sorted rows */ );
+
+  TXCRSMatrix c;
+
+  {
+#ifdef PSI_STATS
+    Kokkos::Timer timer;
+#endif
+
+    KokkosSparse::spadd_symbolic( &handle, a, b, c );
+    execution_space{}.fence();
+
+#ifdef PSI_STATS
+    auto duration = timer.seconds();
+    std::cout << "Kokkos::SpAdd_symbolic time: " << duration * 1000 << "ms"
+              << std::endl;
+#endif
+  }
+
+  {
+#ifdef PSI_STATS
+    Kokkos::Timer timer;
+#endif
+
+    KokkosSparse::spadd_numeric( &handle, 1, a, 1, b, c );
+    execution_space{}.fence();
+
+#ifdef PSI_STATS
+    auto duration = timer.seconds();
+    std::cout << "Kokkos::SpGEMM_numeric time: " << duration * 1000 << "ms"
+              << std::endl;
+#endif
+  }
+
+  handle.destroy_spadd_handle();
+
 //  Kokkos::parallel_for(
 //      "psi::test_range_sparse::set_values",
 //      Kokkos::RangePolicy< execution_space >( 0, c.nnz() ),
@@ -388,6 +451,65 @@ TEMPLATE_SCENARIO_SIG( "Validation and verification of range power", "[range_spa
     {
       auto xc = kokkos_kernels_power( a, K );
       auto rc = range_power( ra, K );
+      REQUIRE( is_same( xc, rc ) );
+    }
+  }
+}
+
+TEMPLATE_SCENARIO_SIG( "Validation and verification of range SpAdd", "[range_sparse]",
+    ( ( typename TSpec, typename TScalar, typename TOrdinal, typename TSize, int N, int NNZ ),
+      TSpec, TScalar, TOrdinal, TSize, N, NNZ ),
+    ( ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 6521, 4000 ),
+    ( ( crs_matrix::RangeDynamic ), char, int32_t, uint64_t, 20, 220 ) )
+{
+  typedef Kokkos::DefaultExecutionSpace execution_space;
+  typedef typename execution_space::device_type device_t;
+  typedef CRSMatrix< TSpec, bool, TOrdinal, TSize > rcrsmatrix_t;
+  typedef KokkosSparse::CrsMatrix< TScalar, TOrdinal, device_t > xcrsmatrix_t;
+  typedef typename xcrsmatrix_t::HostMirror xcrs_host_mirror;
+  typedef gum::SeqGraph< gum::Succinct > graph_type;
+
+  GIVEN( "Two random square matrices of order " + std::to_string( N ) + " with "
+         + std::to_string( NNZ ) + " non-zero values" )
+  {
+    rcrsmatrix_t rrand_mat1;
+    rcrsmatrix_t rrand_mat2;
+    xcrsmatrix_t xrand_mat1 = create_random_binary_matrix< xcrsmatrix_t >( N, NNZ, rrand_mat1 );
+    xcrsmatrix_t xrand_mat2 = create_random_binary_matrix< xcrsmatrix_t >( N, NNZ, rrand_mat2 );
+
+    REQUIRE( rrand_mat1.nnz() == xrand_mat1.nnz() );
+    REQUIRE( rrand_mat2.nnz() == xrand_mat2.nnz() );
+    REQUIRE( rrand_mat1.nnz() == NNZ );
+    REQUIRE( is_same( xrand_mat1, rrand_mat1 ) );
+    REQUIRE( is_same( xrand_mat2, rrand_mat2 ) );
+
+    WHEN( "They are added" )
+    {
+      auto xc = kokkos_kernels_spadd( xrand_mat1, xrand_mat2 );
+      auto rc = range_spadd( rrand_mat1, rrand_mat2 );
+      REQUIRE( is_same( xc, rc ) );
+    }
+  }
+
+  GIVEN( "A sequence graph" )
+  {
+    std::string graph_path = test_data_dir + "/middle/m.gfa";
+    graph_type graph;
+    gum::util::load( graph, graph_path, gum::util::GFAFormat{}, true );
+    auto h_a = psi::util::adjacency_matrix< xcrs_host_mirror >( graph );
+    auto a = copy_xcrs< xcrsmatrix_t >( h_a );
+    rcrsmatrix_t ra( h_a );
+
+    REQUIRE( ra.nnz() == a.nnz() );
+    REQUIRE( is_same( h_a, ra ) );
+
+    WHEN( "It is added by identity matrix" )
+    {
+      auto nloci = gum::util::total_nof_loci( graph );
+      auto I = create_identity_matrix< xcrsmatrix_t >( nloci );
+      auto rI = create_range_identity_matrix< rcrsmatrix_t >( nloci );
+      auto xc = kokkos_kernels_spadd( a, I );
+      auto rc = range_spadd( ra, rI );
       REQUIRE( is_same( xc, rc ) );
     }
   }
