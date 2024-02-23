@@ -1514,6 +1514,10 @@ namespace psi {
     //typedef TSparseConfig config_type;
     //typedef typename config_type::execution_space execution_space;
 
+#ifdef PSI_STATS
+  Kokkos::Timer timer;
+#endif
+
     auto c_entries = rcrsmatrix_t::make_entries_device_view( config.space );
     auto c_rowmap = rcrsmatrix_t::make_rowmap_device_view( config.space );
 
@@ -1545,6 +1549,12 @@ namespace psi {
       }
       else break;
     }
+
+#ifdef PSI_STATS
+    auto duration = timer.seconds();
+    std::cout << "range_power time: " << duration * 1000 << "ms"
+              << std::endl;
+#endif
 
     return TRCRSMatrix( a.numCols(), c_entries, c_rowmap );
   }
