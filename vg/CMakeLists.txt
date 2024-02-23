@@ -23,8 +23,10 @@ target_compile_options(minivgio PRIVATE ${PSI_MINIVG_DEFAULT_CXXOPS})
 target_include_directories(minivgio
   PUBLIC ${PROJECT_SOURCE_DIR}  # vg/stream.hpp
   PUBLIC ${PROJECT_BINARY_DIR}  # vg/vg.pb.*
-  PUBLIC protobuf::libprotobuf)
+  PUBLIC protobuf::libprotobuf
+  PUBLIC ZLIB::ZLIB)
 target_link_libraries(minivgio
-  PUBLIC protobuf::libprotobuf)
+  PUBLIC protobuf::libprotobuf
+  PUBLIC ZLIB::ZLIB)            # the order matters for some reason!
 
 add_library(psi::minivgio ALIAS minivgio)
