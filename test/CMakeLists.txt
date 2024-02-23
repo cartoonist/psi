@@ -14,6 +14,8 @@ configure_file(src/test_config.hpp.in ${PROJECT_BINARY_DIR}/test/src/test_config
 
 # Default compile option
 set(PSI_TESTS_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
+# Default link option
+set(PSI_TESTS_DEFAULT_LDOPS -Wl,-ld_classic)
 
 if (EASY_PSI_EASY)
   list(REMOVE_ITEM PSI_TESTS_DEFAULT_CXXOPS -Werror)
@@ -23,6 +25,7 @@ endif(EASY_PSI_EASY)
 file(GLOB TEST_SOURCES "src/*.cpp")
 add_executable(psi-tests ${TEST_SOURCES})
 target_compile_options(psi-tests PRIVATE ${PSI_TESTS_DEFAULT_CXXOPS})
+target_link_options(psi-tests PRIVATE ${PSI_TESTS_DEFAULT_LDOPS})
 target_include_directories(psi-tests
   PRIVATE ${PROJECT_BINARY_DIR}/test/src
   PRIVATE psi::psi

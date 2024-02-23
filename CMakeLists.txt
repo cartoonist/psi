@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
-project(psi VERSION 0.9.2 LANGUAGES CXX)
+
+# Adding CMake module path.
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 # Options
 option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
@@ -12,6 +14,7 @@ option(USE_BUNDLED_GUM "Use bundled gum library" OFF)
 option(USE_BUNDLED_KSEQPP "Use bundled kseq++ library" OFF)
 option(USE_BUNDLED_PAIRG "Use bundled PairG library" OFF)
 option(USE_BUNDLED_ALL "Use all bundled dependencies" OFF)
+option(PSI_USE_VCPKG "Use vcpkg for installing dependencies" OFF)
 
 if(USE_BUNDLED_ALL)
   set(USE_BUNDLED_SEQAN on)
@@ -20,11 +23,20 @@ if(USE_BUNDLED_ALL)
   set(USE_BUNDLED_PAIRG on)
 endif(USE_BUNDLED_ALL)
 
+# Load AutoVcpkg module
+if(PSI_USE_VCPKG)
+  include(AutoVcpkg)
+  vcpkg_lazy_configure()
+  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    CACHE FILEPATH "Vcpkg toolchain file")
+endif(PSI_USE_VCPKG)
+
+project(psi VERSION 0.9.2 LANGUAGES CXX)
+
 # Include external modules
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-# Adding CMake module path.
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
+
 # Finding dependencies.
 find_package(ZLIB REQUIRED)   # required by SeqAn
 find_package(BZip2 REQUIRED)  # required by SeqAn

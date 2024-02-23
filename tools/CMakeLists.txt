@@ -24,6 +24,8 @@ endif()
 
 # Default compile option
 set(PSI_TOOLS_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
+# Default link option
+set(PSI_TOOLS_DEFAULT_LDOPS -Wl,-ld_classic)
 
 if (EASY_PSI_EASY)
   list(REMOVE_ITEM PSI_TOOLS_DEFAULT_CXXOPS -Werror)
@@ -33,6 +35,7 @@ endif(EASY_PSI_EASY)
 set(GGSIM_SOURCES "src/ggsim.cpp")
 add_executable(ggsim ${GGSIM_SOURCES})
 target_compile_options(ggsim PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
+target_link_options(ggsim PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
 target_include_directories(ggsim
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
@@ -50,6 +53,7 @@ install(TARGETS ggsim DESTINATION ${CMAKE_INSTALL_BINDIR})
 set(DINDEXCTL_SOURCES "src/dindexctl.cpp")
 add_executable(dindexctl ${DINDEXCTL_SOURCES})
 target_compile_options(dindexctl PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
+target_link_options(dindexctl PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
 target_include_directories(dindexctl
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
@@ -67,6 +71,7 @@ install(TARGETS dindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 set(PINDEXCTL_SOURCES "src/pindexctl.cpp")
 add_executable(pindexctl ${PINDEXCTL_SOURCES})
 target_compile_options(pindexctl PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
+target_link_options(pindexctl PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
 target_include_directories(pindexctl
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
@@ -84,6 +89,7 @@ install(TARGETS pindexctl DESTINATION ${CMAKE_INSTALL_BINDIR})
 set(LOCI_STATS_SOURCES "src/loci_stats.cpp")
 add_executable(loci_stats ${LOCI_STATS_SOURCES})
 target_compile_options(loci_stats PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
+target_link_options(loci_stats PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
 target_include_directories(loci_stats
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
@@ -101,6 +107,7 @@ install(TARGETS loci_stats DESTINATION ${CMAKE_INSTALL_BINDIR})
 set(SLOCI_SOURCES "src/sloci.cpp")
 add_executable(sloci ${SLOCI_SOURCES})
 target_compile_options(sloci PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
+target_link_options(sloci PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
 target_include_directories(sloci
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts
@@ -118,6 +125,7 @@ install(TARGETS sloci DESTINATION ${CMAKE_INSTALL_BINDIR})
 set(ALICE_SOURCES "src/alice.cpp")
 add_executable(alice ${ALICE_SOURCES})
 target_compile_options(alice PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
+target_link_options(alice PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
 target_include_directories(alice
   PRIVATE psi::psi
   PRIVATE cxxopts::cxxopts

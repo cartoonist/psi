@@ -16,6 +16,8 @@ endif()
 
 # Default compile option
 set(PSIKT_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
+# Default link option
+set(PSIKT_DEFAULT_LDOPS -Wl,-ld_classic)
 
 if (EASY_PSI_EASY)
   list(REMOVE_ITEM PSIKT_DEFAULT_CXXOPS -Werror)
@@ -25,6 +27,7 @@ endif(EASY_PSI_EASY)
 set(SOURCES "psikt.cpp")
 add_executable(psikt ${SOURCES})
 target_compile_options(psikt PRIVATE ${PSIKT_DEFAULT_CXXOPS})
+target_link_options(psikt PRIVATE ${PSIKT_DEFAULT_LDOPS})
 target_include_directories(psikt
   PRIVATE ${PROJECT_BINARY_DIR}/src
   PRIVATE psi::psi
