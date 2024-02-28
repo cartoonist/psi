@@ -1,0 +1,97 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base-all",
+            "displayName": "Base configuration (all)",
+            "description": "Base configuration including all targets",
+            "cacheVariables": {
+                "CMAKE_CXX_STANDARD": "17",
+                "PSI_USE_VCPKG": true,
+                "USE_BUNDLED_ALL": true,
+                "BUILD_TESTING": true,
+                "BUILD_PSI_AUX_TOOLS": true,
+                "PSI_STATS": true
+            }
+        },
+        {
+            "name": "default-debug-all-omp",
+            "displayName": "Debug configuration for OpenMP",
+            "description": "Debug build for OpenMP using default generator",
+            "inherits": "base-all",
+            "binaryDir": "${sourceDir}/build/Debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "Kokkos_ENABLE_OPENMP": true
+            }
+        },
+        {
+            "name": "ninja-debug-all-omp",
+            "displayName": "Debug configuration for OpenMP (Ninja)",
+            "description": "Debug build for OpenMP using Ninja generator",
+            "inherits": "default-debug-all-omp",
+            "generator": "Ninja"
+        },
+        {
+            "name": "default-release-all-omp",
+            "displayName": "Release configuration for OpenMP",
+            "description": "Release build for OpenMP using default generator",
+            "inherits": "base-all",
+            "binaryDir": "${sourceDir}/build/Release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "Kokkos_ENABLE_OPENMP": true
+            }
+        },
+        {
+            "name": "ninja-release-all-omp",
+            "displayName": "Release configuration for OpenMP (Ninja)",
+            "description": "Release build for OpenMP using Ninja generator",
+            "inherits": "default-release-all-omp",
+            "generator": "Ninja"
+        },
+        {
+            "name": "default-debug-all-cuda",
+            "displayName": "Debug configuration for Cuda",
+            "description": "Debug build for Cuda using default generator",
+            "inherits": "base-all",
+            "binaryDir": "${sourceDir}/build/DebugCuda",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "Kokkos_ENABLE_CUDA": true
+            }
+        },
+        {
+            "name": "ninja-debug-all-cuda",
+            "displayName": "Debug configuration for Cuda (Ninja)",
+            "description": "Debug build for Cuda using Ninja generator",
+            "inherits": "default-debug-all-cuda",
+            "generator": "Ninja"
+        },
+        {
+            "name": "default-release-all-cuda",
+            "displayName": "Release configuration for Cuda",
+            "description": "Release build for Cuda using default generator",
+            "inherits": "base-all",
+            "binaryDir": "${sourceDir}/build/ReleaseCuda",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "Kokkos_ENABLE_CUDA": true
+            }
+        },
+        {
+            "name": "ninja-release-all-cuda",
+            "displayName": "Release configuration for Cuda (Ninja)",
+            "description": "Release build for Cuda using Ninja generator",
+            "inherits": "default-release-all-cuda",
+            "generator": "Ninja"
+        }
+    ]
+}
