@@ -29,6 +29,12 @@ if (DEFINED AUTO_VCPKG_GIT_TAG)
     set(USE_AUTO_VCPKG_GIT_TAG "GIT_TAG ${AUTO_VCPKG_GIT_TAG}")
 endif ()
 
+if (DEFINED CMAKE_CURRENT_FUNCTION_LIST_DIR)
+    set(THIS_CURRENT_LIST_DIR "${CMAKE_CURRENT_FUNCTION_LIST_DIR}")
+else ()
+    set(THIS_CURRENT_LIST_DIR "${CMAKE_CURRENT_LIST_DIR}")
+endif ()
+
 function (vcpkg_setroot)
     if (DEFINED AUTO_VCPKG_ROOT)
         return()
@@ -79,7 +85,7 @@ function (vcpkg_bootstrap)
     find_program(AUTO_VCPKG_EXECUTABLE
             vcpkg PATHS ${AUTO_VCPKG_ROOT})
     if (NOT AUTO_VCPKG_EXECUTABLE)
-        execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/vcpkg-bootstrap.cmake" "${AUTO_VCPKG_ROOT}")
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${THIS_CURRENT_LIST_DIR}/vcpkg-bootstrap.cmake" "${AUTO_VCPKG_ROOT}")
         execute_process(COMMAND ${CMAKE_COMMAND} -P "${AUTO_VCPKG_ROOT}/vcpkg-bootstrap.cmake"
                 WORKING_DIRECTORY ${AUTO_VCPKG_ROOT})
     endif ()
