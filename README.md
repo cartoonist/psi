@@ -59,7 +59,7 @@ for you. If you want PSI to to do so, specify `-DUSE_BUNDLED_ALL=on` when runnin
 (explained later). These dependencies are:
 
 - SeqAn, version 2.4.0
-- GUM, version 1.2.2
+- GUM, version 2.0.2
 - kseq++, version 1.1.2
 - PairG, version 0.2.1
 

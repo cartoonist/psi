@@ -44,7 +44,7 @@ find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
-find_package(gum 2.0.1 QUIET)
+find_package(gum 2.0.2 QUIET)
 find_package(kseq++ 1.1.2 QUIET)
 find_package(pairg 0.3.0 QUIET)
 # Handle bundled dependencies
