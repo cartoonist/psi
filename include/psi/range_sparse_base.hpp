@@ -383,9 +383,10 @@ namespace psi {
   /* === End of ExecGrid meta-functions === */
 
   // Configuration tag
-  template< typename TAccumulator,
-      typename TPartition = typename AccumulatorDefaultPartition< TAccumulator >::type,
-      typename TGridSpec = grid::Auto >
+  template< typename TGridSpec,
+            typename TAccumulator,
+            typename TPartition =
+                typename AccumulatorDefaultPartition< TAccumulator >::type >
   struct SparseConfig {
     using partition_type = TPartition;
     using accumulator_type = TAccumulator;
@@ -398,7 +399,7 @@ namespace psi {
     grid_type        grid;
   };
 
-  using DefaultSparseConfiguration = SparseConfig< HBitVectorAccumulator<> >;
+  using DefaultSparseConfiguration = SparseConfig< grid::Auto, HBitVectorAccumulator<> >;
 
   template< typename TRCRSMatrix >
   struct SparseRangeHandle {
