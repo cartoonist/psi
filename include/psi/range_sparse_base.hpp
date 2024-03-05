@@ -91,11 +91,19 @@ namespace psi {
     using type = TeamSequentialPartition;
   };
 
+  namespace grid {
+    struct Auto {};
+    struct Suggested {};
+  }
+
+  template< typename TExecSpace, typename TSpec >
+  struct ExecGrid;
+
   /**
    *   @brief Suggested grid dimensions as a form of config class.
    */
   template< typename TExecSpace >
-  struct SuggestedExecGrid {
+  struct ExecGrid< TExecSpace, grid::Suggested > {
     static constexpr inline int
     vector_size( )
     {
@@ -140,7 +148,7 @@ namespace psi {
   };
 
   template< typename TExecSpace >
-  struct AutoExecGrid {
+  struct ExecGrid< TExecSpace, grid::Auto > {
     static constexpr inline auto
     vector_size( )
     {
@@ -186,7 +194,7 @@ namespace psi {
 
   #if defined(KOKKOS_ENABLE_CUDA)
   template< >
-  struct SuggestedExecGrid< Kokkos::Cuda > {
+  struct ExecGrid< Kokkos::Cuda, grid::Suggested > {
     /* === STATIC MEMBERS === */
     static constexpr const int MAX_VECTOR_SIZE = 32;
     /* === STATIC METHODS === */
@@ -240,7 +248,7 @@ namespace psi {
   };
 
   template< >
-  struct AutoExecGrid< Kokkos::Cuda > {
+  struct ExecGrid< Kokkos::Cuda, grid::Auto > {
     static constexpr inline auto
     vector_size( )
     {
@@ -279,15 +287,27 @@ namespace psi {
   };
   #endif
 
+  /* === ExecGrid meta-functions === */
+
+  template< typename TExecSpace, typename TSpec >
+  struct GetExecGrid {
+    using type = ExecGrid< TExecSpace, TSpec >;
+  };
+
+  template< typename TExecSpace, typename TSpec >
+  using ExecGridType = typename GetExecGrid< TExecSpace, TSpec >::type;
+
+  /* === End of ExecGrid meta-functions === */
+
   // Configuration tag
   template< typename TAccumulator,
       typename TPartition = typename AccumulatorDefaultPartition< TAccumulator >::type,
-      template< typename > typename TGrid = AutoExecGrid >
+      typename TGridSpec = grid::Auto >
   struct SparseConfig {
     using partition_type = TPartition;
     using accumulator_type = TAccumulator;
     using execution_space = typename AccumulatorExecSpace< accumulator_type >::type;
-    using grid_type = TGrid< execution_space >;
+    using grid_type = ExecGridType< execution_space, TGridSpec >;
     /* === MEMBERS === */
     partition_type   part;
     accumulator_type accm;
