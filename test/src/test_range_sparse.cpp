@@ -16,13 +16,12 @@
 #include <KokkosSparse_CrsMatrix.hpp>
 #include <KokkosSparse_spgemm.hpp>
 #include <KokkosSparse_spadd.hpp>
-#include <psi/range_sparse.hpp>
-#include <psi/graph.hpp>
 #include <gum/graph.hpp>
 #include <gum/gfa_utils.hpp>
+#include <psi/range_sparse.hpp>
+#include <psi/graph.hpp>
 #include <string>
 
-#include "gum/seqgraph_interface.hpp"
 #include "test_base.hpp"
 
 
@@ -80,6 +79,136 @@ SCENARIO( "Sanity check of Kokkos views created by CRSMatrix", "[range_sparse]" 
           REQUIRE( h_a_entries( i ) == ch_a_entries( i ) );
         for ( std::size_t i = 0; i < a_row_map.extent( 0 ); ++i )
           REQUIRE( h_a_row_map( i ) == ch_a_row_map( i ) );
+      }
+    }
+  }
+}
+
+SCENARIO( "Basic functionality of `MatchingGridSpec` meta-functions", "[range_sparse]" )
+{
+  using target_type = short int;
+  using non_target_type = float;
+  using non_target2_type = long long int;
+  using default_arg_type = grid::Auto;
+  using arg1_type = double;  // just a type different from other `*arg*_type`s
+  using arg2_type = grid::Suggested;
+  using arg3_type = char;
+
+  GIVEN( "Both argument sets are provided" )
+  {
+    WHEN( "The first argument set matches with the target type" )
+    {
+      using ret_type
+          = MatchingGridSpecType< target_type, target_type, arg1_type,
+                                  non_target_type, arg2_type >;
+
+      THEN( "The return type should be the first argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, arg1_type >::value );
+      }
+    }
+
+    WHEN( "The second argument set matches with the target type" )
+    {
+      using ret_type
+          = MatchingGridSpecType< target_type, non_target_type, arg1_type,
+                                  target_type, arg2_type >;
+
+      THEN( "The return type should be the second argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, arg2_type >::value );
+      }
+    }
+
+    WHEN( "The none of argument sets match with the target type" )
+    {
+      using ret_type
+          = MatchingGridSpecType< target_type, non_target_type, arg1_type,
+                                  non_target_type, arg2_type >;
+
+      THEN( "The return type should be void" )
+      {
+        REQUIRE( std::is_same< ret_type, void >::value );
+      }
+    }
+  }
+
+  GIVEN( "One argument set is provided" )
+  {
+    WHEN( "The first argument set matches with the target type" )
+    {
+      using ret_type
+          = MatchingGridSpecType< target_type, target_type, arg1_type >;
+
+      THEN( "The return type should be the first argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, arg1_type >::value );
+      }
+    }
+
+    WHEN( "The first argument set DOES NOT match with the target type" )
+    {
+      using ret_type
+          = MatchingGridSpecType< target_type, non_target_type, arg1_type >;
+
+      THEN( "The return type should be the first argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, default_arg_type >::value );
+      }
+    }
+
+    WHEN( "Using `MatchingGridSpec` directly instead of `MatchingGridSpecType`" )
+    {
+      using ret1_type
+          = MatchingGridSpecType< target_type, non_target_type, arg1_type >;
+      using ret2_type
+          = typename MatchingGridSpec< target_type, non_target_type, arg1_type >::type;
+
+      THEN( "The default arguments should be in sync" )
+      {
+        REQUIRE( std::is_same< ret1_type, ret2_type >::value );
+      }
+    }
+  }
+
+  GIVEN( "Chaining the meta-function with three argument sets" )
+  {
+    WHEN( "The first argument set matches with the target type" )
+    {
+      using nested_ret_type
+          = MatchingGridSpecType< target_type, non_target_type, arg2_type, non_target2_type, arg3_type >;
+      using ret_type
+          = MatchingGridSpecType< target_type, target_type, arg1_type, void, nested_ret_type >;
+
+      THEN( "The return type should be the first argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, arg1_type >::value );
+      }
+    }
+
+    WHEN( "The second argument set matches with the target type" )
+    {
+      using nested_ret_type
+          = MatchingGridSpecType< target_type, target_type, arg2_type, non_target2_type, arg3_type >;
+      using ret_type
+          = MatchingGridSpecType< target_type, non_target_type, arg1_type, void, nested_ret_type >;
+
+      THEN( "The return type should be the second argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, arg2_type >::value );
+      }
+    }
+
+    WHEN( "The third argument set matches with the target type" )
+    {
+      using nested_ret_type
+          = MatchingGridSpecType< target_type, non_target2_type, arg2_type, target_type, arg3_type >;
+      using ret_type
+          = MatchingGridSpecType< target_type, non_target_type, arg1_type, void, nested_ret_type >;
+
+      THEN( "The return type should be the third argument type" )
+      {
+        REQUIRE( std::is_same< ret_type, arg3_type >::value );
       }
     }
   }

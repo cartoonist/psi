@@ -329,6 +329,57 @@ namespace psi {
   template< typename TExecSpace, typename TSpec >
   using ExecGridType = typename GetExecGrid< TExecSpace, TSpec >::type;
 
+  template< typename TTargetExecSpace,
+            typename TExecSpace1, typename TGridSpec1,
+            typename TExecSpace2=void, typename TGridSpec2=grid::Auto >
+  struct MatchingGridSpec {
+    using type = void;
+  };
+
+  /* NOTE: Keep default argument types in sync with `MatchingGridSpec` */
+  template< typename TTargetExecSpace,
+            typename TExecSpace1, typename TGridSpec1,
+            typename TExecSpace2=void, typename TGridSpec2=grid::Auto >
+  using MatchingGridSpecType =
+      typename MatchingGridSpec< TTargetExecSpace, TExecSpace1, TGridSpec1,
+                                 TExecSpace2, TGridSpec2 >::type;
+
+  template< typename TExecSpace, typename TExecSpace2,
+            typename TGridSpec1, typename TGridSpec2 >
+  struct MatchingGridSpec< TExecSpace, TExecSpace, TGridSpec1,
+                           TExecSpace2, TGridSpec2 >
+  {
+    using type = TGridSpec1;
+  };
+
+  template< typename TExecSpace, typename TExecSpace1,
+            typename TGridSpec1, typename TGridSpec2 >
+  struct MatchingGridSpec< TExecSpace, TExecSpace1, TGridSpec1,
+                           TExecSpace, TGridSpec2 >
+  {
+    using type = TGridSpec2;
+  };
+
+  template< typename TExecSpace, typename TGridSpec1, typename TGridSpec2 >
+  struct MatchingGridSpec< TExecSpace, TExecSpace, TGridSpec1,
+                           TExecSpace, TGridSpec2 >
+  {
+    using type = TGridSpec1;  // prefer the first match
+  };
+
+  template< typename TExecSpace, typename TGridSpec1, typename TGridSpec2 >
+  struct MatchingGridSpec< TExecSpace, TExecSpace, TGridSpec1,
+                           void, TGridSpec2 > {
+    using type = TGridSpec1;
+  };
+
+  template< typename TExecSpace, typename TExecSpace1,
+            typename TGridSpec1, typename TGridSpec2 >
+  struct MatchingGridSpec< TExecSpace, TExecSpace1, TGridSpec1,
+                           void, TGridSpec2 > {
+    using type = TGridSpec2;  // use default
+  };
+
   /* === End of ExecGrid meta-functions === */
 
   // Configuration tag
