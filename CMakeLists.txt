@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.10)
+# Recommanded CMake version 3.21
+cmake_minimum_required(VERSION 3.16)
 
 # Adding CMake module path.
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
@@ -43,8 +44,8 @@ find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
-find_package(gum 2.0.1 QUIET)
-find_package(kseq++ 1.0.0 QUIET)
+find_package(gum 2.0.2 QUIET)
+find_package(kseq++ 1.1.2 QUIET)
 find_package(pairg 0.3.0 QUIET)
 # Handle bundled dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)

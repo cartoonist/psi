@@ -1,6 +1,13 @@
 # Include external modules
 include(GNUInstallDirs)
 
+if(CMAKE_VERSION VERSION_LESS "3.18.0")
+  set(PSI_LD_HAS_LD_CLASSIC FALSE)
+else()
+  include(CheckLinkerFlag)
+  check_linker_flag(CXX -Wl,-ld_classic PSI_LD_HAS_LD_CLASSIC)
+endif()
+
 # Setting the build type if it is not already set
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -17,7 +24,10 @@ endif()
 # Default compile option
 set(PSIKT_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
 # Default link option
-set(PSIKT_DEFAULT_LDOPS -Wl,-ld_classic)
+set(PSIKT_DEFAULT_LDOPS)
+if (PSI_LD_HAS_LD_CLASSIC)
+  list(APPEND PSIKT_DEFAULT_LDOPS -Wl,-ld_classic)
+endif (PSI_LD_HAS_LD_CLASSIC)
 
 if (EASY_PSI_EASY)
   list(REMOVE_ITEM PSIKT_DEFAULT_CXXOPS -Werror)

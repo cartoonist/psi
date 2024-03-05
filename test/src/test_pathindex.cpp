@@ -18,11 +18,11 @@
 #include <fstream>
 #include <string>
 
+#include <gum/seqgraph.hpp>
+#include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
 #include <psi/pathindex.hpp>
 #include <psi/index.hpp>
-#include <gum/seqgraph.hpp>
-#include <gum/io_utils.hpp>
 
 #include "vg/vg.pb.h"
 #include "vg/stream.hpp"

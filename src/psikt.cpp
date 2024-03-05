@@ -23,9 +23,9 @@
 #include <functional>
 #include <unordered_set>
 
+#include <gum/io_utils.hpp>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
-#include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
 #include <psi/seed_finder.hpp>
 #include <psi/sequence.hpp>

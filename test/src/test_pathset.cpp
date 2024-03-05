@@ -18,10 +18,10 @@
 #include <fstream>
 #include <string>
 
-#include <psi/graph.hpp>
-#include <psi/pathset.hpp>
 #include <gum/seqgraph.hpp>
 #include <gum/io_utils.hpp>
+#include <psi/graph.hpp>
+#include <psi/pathset.hpp>
 
 #include "vg/vg.pb.h"
 #include "vg/stream.hpp"

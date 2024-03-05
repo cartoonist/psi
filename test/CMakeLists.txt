@@ -1,3 +1,10 @@
+if(CMAKE_VERSION VERSION_LESS "3.18.0")
+  set(PSI_LD_HAS_LD_CLASSIC FALSE)
+else()
+  include(CheckLinkerFlag)
+  check_linker_flag(CXX -Wl,-ld_classic PSI_LD_HAS_LD_CLASSIC)
+endif()
+
 # Enabling `assert` by setting the build type to 'Debug' for test module
 set(CMAKE_BUILD_TYPE "Debug")
 
@@ -15,7 +22,10 @@ configure_file(src/test_config.hpp.in ${PROJECT_BINARY_DIR}/test/src/test_config
 # Default compile option
 set(PSI_TESTS_DEFAULT_CXXOPS -g -Wall -Wpedantic -Werror)
 # Default link option
-set(PSI_TESTS_DEFAULT_LDOPS -Wl,-ld_classic)
+set(PSI_TESTS_DEFAULT_LDOPS)
+if (PSI_LD_HAS_LD_CLASSIC)
+  list(APPEND PSI_TESTS_DEFAULT_LDOPS -Wl,-ld_classic)
+endif (PSI_LD_HAS_LD_CLASSIC)
 
 if (EASY_PSI_EASY)
   list(REMOVE_ITEM PSI_TESTS_DEFAULT_CXXOPS -Werror)

@@ -19,13 +19,13 @@
 #include <vector>
 #include <string>
 
+#include <gum/seqgraph.hpp>
+#include <gum/io_utils.hpp>
 #include <psi/sequence.hpp>
 #include <psi/index.hpp>
 #include <psi/graph.hpp>
 #include <psi/traverser.hpp>
 #include <psi/utils.hpp>
-#include <gum/seqgraph.hpp>
-#include <gum/io_utils.hpp>
 #include <seqan/seq_io.h>
 
 #include "vg/vg.pb.h"
