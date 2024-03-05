@@ -92,12 +92,44 @@ namespace psi {
   };
 
   namespace grid {
+    template< int TTeamSize, int TVectorSize, int TTeamWorkSize=0 >
+    struct Fixed {};
     struct Auto {};
     struct Suggested {};
   }
 
   template< typename TExecSpace, typename TSpec >
   struct ExecGrid;
+
+  template< typename TExecSpace,
+            int TTeamSize,
+            int TVectorSize,
+            int TTeamWorkSize >
+  struct ExecGrid< TExecSpace, grid::Fixed< TTeamSize, TVectorSize, TTeamWorkSize > > {
+    static constexpr inline int
+    vector_size( const int=0 )
+    {
+      return TVectorSize;
+    }
+
+    static constexpr inline int
+    vector_size( const int nnz, const int nr )
+    {
+      return TVectorSize;
+    }
+
+    static constexpr inline int
+    team_size( const int=0 )
+    {
+      return TTeamSize;
+    }
+
+    static constexpr inline int
+    team_work_size( const int=0 )
+    {
+      return TTeamWorkSize;
+    }
+  };
 
   /**
    *   @brief Suggested grid dimensions as a form of config class.
