@@ -267,7 +267,15 @@ benchmark_range_spgemm_graph( const std::string& graph_path, int d, bool verbose
 {
   typedef TScalar scalar_t;
   typedef TOrdinal ordinal_t;
-  typedef Kokkos::DefaultExecutionSpace execution_space;
+  using accumulator_type = HBitVectorAccumulator< 8192 >;
+  using partition_type = typename AccumulatorDefaultPartition< accumulator_type >::type;
+#if defined(KOKKOS_ENABLE_CUDA)
+  using grid_type = MatchingGridSpecType< execution_space, Kokkos::Cuda, grid::Fixed< 16, 32 > >;  // otherwise choose grid::Auto
+#else
+  using grid_type = grid::Auto;
+#endif
+  using config_type = SparseConfig< grid_type, accumulator_type, partition_type >;
+  typedef config_type::execution_space execution_space;
   typedef execution_space::device_type device_t;
   typedef KokkosSparse::CrsMatrix< scalar_t, ordinal_t, device_t > xcrsmatrix_t;
   typedef typename xcrsmatrix_t::HostMirror xcrs_host_mirror;
@@ -307,7 +315,7 @@ benchmark_range_spgemm_graph( const std::string& graph_path, int d, bool verbose
   auto avi = kokkos_kernels_spadd( a, I );
 
   range_crsmatrix_t ra( h_a );
-  auto rI = create_range_identity_matrix< range_crsmatrix_t >( a.numRows() );
+  auto rI = create_range_identity_matrix< range_crsmatrix_t >( h_a.numRows() );
   auto ravi = range_spadd( ra, rI );
 
   auto c = kokkos_kernels_power( avi, d );
@@ -318,7 +326,8 @@ benchmark_range_spgemm_graph( const std::string& graph_path, int d, bool verbose
   //  psi::print( c );
   //}
 
-  auto rc = range_power( ravi, d );
+  config_type config;
+  auto rc = range_power( ravi, d, config );
   execution_space{}.fence();
 
   double comp_rate = static_cast< double >( rc.nnz() ) / rc.rowMap( rc.numRows() );
