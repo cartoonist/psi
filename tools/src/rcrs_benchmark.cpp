@@ -362,7 +362,7 @@ struct Options {
   int d;
   bool verbose;
 
-  Options() : graph_path( "" ), n( 0 ), nnz( 0 ), verbose( false ) {}
+  Options() : graph_path( "" ), n( 0 ), nnz( 0 ), d( 0 ), verbose( false ) {}
 };
 
 template< typename TOrdinal=int32_t, typename TSize=std::size_t >
@@ -374,12 +374,12 @@ parse_arguments( int argc, char* argv[] )
   option_type opts;
 
   // Parse command line arguments
-  for ( int i = 0; i < argc; i++ ) {
+  for ( int i = 1; i < argc; i++ ) {
     if ( ( strcmp( argv[ i ], "-g" ) == 0 ) || ( strcmp( argv[ i ], "--graph" ) == 0 ) ) {
       opts.graph_path = argv[ ++i ];
       std::cout << "graph <- " << opts.graph_path << std::endl;
     }
-    if ( ( strcmp( argv[ i ], "-n" ) == 0 ) || ( strcmp( argv[ i ], "--order" ) == 0 ) ) {
+    else if ( ( strcmp( argv[ i ], "-n" ) == 0 ) || ( strcmp( argv[ i ], "--order" ) == 0 ) ) {
       opts.n = pow( 2, atoi( argv[ ++i ] ) );
       std::cout << "n <- " << opts.n << std::endl;
     }
@@ -399,14 +399,18 @@ parse_arguments( int argc, char* argv[] )
       std::cout << "  Options:\n"
                 << "  * Adjacency matrix as input\n"
                 << "    --graph (-g) <path>: file path, determines input graph file path (gfa, vg)\n"
+                << "    --dist (-d) <int>:   outer distance, i.e. fragment size (required)\n"
                 << "  * Random matrix as input\n"
                 << "    --order (-n) <int>:  exponent num, determines number of rows 2^num (default: 2^12 = 4096)\n"
                 << "    --nnz (-z) <int>:    exponent num, determines total matrix size 2^num (default: 2^22 = 4096*1024)\n"
-                << "    --dist (-d) <int>:   outer distance, i.e. fragment size (default: 100)\n"
-                << "  --verbose (-v):        enable verbose output"
+                << "  --verbose (-v):        enable verbose output\n"
                 << "  --help (-h):           print this message"
                 << std::endl;
-      exit( 1 );
+      exit( EXIT_FAILURE );
+    }
+    else {
+      std::cerr << "Unknown argument '" << argv[ i ] << "'" << std::endl;
+      exit( EXIT_FAILURE );
     }
   }
 
@@ -434,16 +438,19 @@ check_options( Options< TOrdinal, TSize >& opts )
 
   // Check sizes
   if ( opts.n < 0 || opts.nnz < 0 ) {
-    std::cout << "nnz must be greater than zero" << std::endl;
+    std::cerr << "nnz must be greater than zero" << std::endl;
     exit( EXIT_FAILURE );
   }
 
   if ( opts.nnz / opts.n > static_cast< TSize >( opts.n ) ) {
-    std::cout << "Non-zero values cannot be fit (nnz > n*n)" << std::endl;
+    std::cerr << "Non-zero values cannot be fit (nnz > n*n)" << std::endl;
     exit( EXIT_FAILURE );
   }
 
-  if ( opts.d == 0 ) opts.d = 100;
+  if ( opts.d == 0 && !opts.graph_path.empty() ) {
+    std::cerr << "Too few arguments (required argument: '-d')" << std::endl;
+    exit( EXIT_FAILURE );
+  }
 }
 
 int
