@@ -56,7 +56,7 @@ Otherwise, in Release mode, it should be fine.
 
 Configuring the source code and/or building auxiliary tools requires:
 
-- CMake >=3.10
+- CMake >=3.25
 
 #### Bundled dependencies
 

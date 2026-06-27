@@ -1,5 +1,5 @@
-# Recommanded CMake version 3.21
-cmake_minimum_required(VERSION 3.16)
+# `add_subdirectory(... SYSTEM)` (used for bundled spdlog) requires CMake >= 3.25.
+cmake_minimum_required(VERSION 3.25)
 
 # Adding CMake module path.
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
