@@ -22,12 +22,17 @@
 #include <string>
 #include <random>
 
-#include "catch2/catch.hpp"
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_template_test_macros.hpp"
+#include "catch2/catch_approx.hpp"
 
 #include "test_config.hpp"
 
 #define TEMPLATE_SCENARIO TEMPLATE_TEST_CASE
 #define TEMPLATE_SCENARIO_SIG TEMPLATE_TEST_CASE_SIG
+
+// Catch2 v3 moved `Approx` into the `Catch` namespace.
+using Catch::Approx;
 
 #ifndef TEST_DATA_DIR
 #define TEST_DATA_DIR PROJECT_SOURCE_DIR "/test/data"

@@ -35,6 +35,9 @@ endif(EASY_PSI_EASY)
 file(GLOB TEST_SOURCES "src/*.cpp")
 add_executable(psi-tests ${TEST_SOURCES})
 target_compile_options(psi-tests PRIVATE ${PSI_TESTS_DEFAULT_CXXOPS})
+# Make Catch2 derive unique names from `__LINE__` instead of the non-standard
+# `__COUNTER__`, otherwise Clang complains under `-Wpedantic -Werror`
+target_compile_definitions(psi-tests PRIVATE CATCH_CONFIG_NO_COUNTER)
 target_link_options(psi-tests PRIVATE ${PSI_TESTS_DEFAULT_LDOPS})
 target_include_directories(psi-tests
   PRIVATE ${PROJECT_BINARY_DIR}/test/src

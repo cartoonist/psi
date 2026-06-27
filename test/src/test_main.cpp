@@ -18,19 +18,23 @@
  *  See LICENSE file for more information.
  */
 
-#include<Kokkos_Core.hpp>
+#include <iostream>
 
-#define CATCH_CONFIG_MAIN
-#include "catch2/catch.hpp"
+#include <Kokkos_Core.hpp>
+
+#include "catch2/catch_session.hpp"
+#include "catch2/catch_get_random_seed.hpp"
+#include "catch2/reporters/catch_reporter_event_listener.hpp"
+#include "catch2/reporters/catch_reporter_registrars.hpp"
 
 #include "test_base.hpp"
 
-class MyTestEventListener : public Catch::TestEventListenerBase {
+class MyTestEventListener : public Catch::EventListenerBase {
 public:
-    using Catch::TestEventListenerBase::TestEventListenerBase;
+    using Catch::EventListenerBase::EventListenerBase;
 
     void set_rnd_seed() {
-      auto seed = Catch::rngSeed();
+      auto seed = Catch::getSeed();
       if ( seed != 0 ) {
         std::cout << "Setting random generator seed to " << seed << "..." << std::endl;
         rnd::set_seed( seed );
@@ -39,18 +43,18 @@ public:
 
     void testRunStarting( Catch::TestRunInfo const& ) override {
       this->set_rnd_seed();
-      /*
-      // For debugging
-      Kokkos::InitializationSettings args;
-      args.set_num_threads( 1 );
-      Kokkos::initialize( args );
-      */
-      Kokkos::initialize();
-    }
-
-    void testRunEnded( Catch::TestRunStats const& testRunStats ) override {
-      Kokkos::finalize();
     }
 };
 
 CATCH_REGISTER_LISTENER(MyTestEventListener)
+
+int main( int argc, char* argv[] )
+{
+  Kokkos::initialize( argc, argv );
+
+  int result = Catch::Session().run( argc, argv );
+
+  Kokkos::finalize();
+
+  return result;
+}
