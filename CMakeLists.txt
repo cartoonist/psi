@@ -36,7 +36,7 @@ if(PSI_USE_VCPKG)
     CACHE FILEPATH "Vcpkg toolchain file")
 endif(PSI_USE_VCPKG)
 
-project(psi VERSION 0.9.2 LANGUAGES CXX)
+project(psi VERSION 1.0.0 LANGUAGES CXX)
 
 # Include external modules
 include(GNUInstallDirs)
