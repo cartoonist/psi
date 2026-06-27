@@ -27,10 +27,10 @@
 #include <iterator>
 #include <functional>
 #include <algorithm>
+#include <stdexcept>
 
 #include <sdsl/bit_vectors.hpp>
-#include <pairg/reachability.hpp>
-#include <KokkosKernels_IOUtils.hpp>
+#include <diverg/dindex.hpp>
 
 #include "graph.hpp"
 #include "traverser.hpp"
@@ -38,12 +38,15 @@
 #include "index.hpp"
 #include "index_iter.hpp"
 #include "pathindex.hpp"
-#include "crs_matrix.hpp"
 #include "utils.hpp"
 #include "stats.hpp"
 
 
 namespace psi {
+  /* Tags selecting the pairwise distance index construction strategy. */
+  struct PerComponent { };  // build block-diagonal dindex one connected component at a time
+  struct Whole { };         // build dindex for the whole graph in a single pass
+
   struct SeedFinderStatsBase {
     enum progress_type : int {
       finder_off,
@@ -774,19 +777,17 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
-        typedef char     crsmat_scalar_type;
         typedef uint32_t crsmat_ordinal_type;
         typedef uint64_t crsmat_size_type;
-        // KokkosKernels requires signed ordinal type
-        typedef std::make_signed_t< crsmat_ordinal_type > crsmat_signed_ordinal_type;
-        typedef pairg::matrixOps< crsmat_scalar_type, crsmat_signed_ordinal_type > crs_traits_type;
-        // typedef KokkosSparse::CrsMatrix< crsmat_scalar_type, crsmat_ordinal_type,
-        //                                  Kokkos::DefaultHostExecutionSpace >
-        //     kk_crsmat_type;
-        typedef crs_traits_type::crsMat_t kk_crsmat_type;
-        typedef CRSMatrix< crs_matrix::RangeCompressed, bool, crsmat_ordinal_type, crsmat_size_type > crsmat_type;
-        typedef crs_matrix::RangeDynamic mutable_crsmat_spec_type;
-        typedef make_spec_t< mutable_crsmat_spec_type, crsmat_type > mutable_crsmat_type;
+        // Range-sparse execution space following the Kokkos backend:
+        // CUDA when built with CUDA, host otherwise.
+        typedef diverg::DefaultSparseConfiguration rsparse_config_type;
+        // Mutable range matrix used while assembling the (block-diagonal) index.
+        typedef diverg::CRSMatrix< diverg::crs_matrix::RangeDynamic, bool,
+                                   crsmat_ordinal_type, crsmat_size_type > mut_crsmat_type;
+        // Compressed range matrix used for storing and querying the distance index.
+        typedef diverg::CRSMatrix< diverg::crs_matrix::RangeCompressed, bool,
+                                   crsmat_ordinal_type, crsmat_size_type > crsmat_type;
 
         class KokkosHandler {
         public:
@@ -1175,7 +1176,13 @@ namespace psi {
         }
 
       /**
-       *  @brief  Create distance index matrix.
+       *  @brief  Create distance index matrix one component (region) at a time.
+       *
+       *  The distance index is built for each component and placed as a
+       *  diagonal block at its char-order offset; the blocks are stitched
+       *  together to construct the final graph. This keeps peak memory bounded
+       *  by the largest component, at the cost of building the index component
+       *  by component.
        *
        *  NOTE: This method assumes that the input graph is sorted such that node rank
        *  ranges in components are disjoint.
@@ -1184,7 +1191,7 @@ namespace psi {
        *        and nothing more.
        */
         inline void
-        create_distance_index( unsigned int dmin=0, unsigned int dmax=0,
+        create_distance_index( unsigned int dmin, unsigned int dmax, PerComponent,
                                std::function< void( std::string const& ) > info=nullptr,
                                std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1194,23 +1201,25 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
 
-          auto provider = [this, dmin, dmax, info]( auto callback ) {
-            /* Extract component boundary nodes */
-            auto comp_ranks = util::components_ranks( *this->graph_ptr );
-            comp_ranks.push_back( 0 );  // add the upper bound of the last component
+          /* Extract component boundary node ranks. */
+          auto comp_ranks = util::components_ranks( *this->graph_ptr );
+          comp_ranks.push_back( 0 );  // add the upper bound of the last component
 
-            if ( info ) {
-              info( "Constructing distance index for " +
-                    std::to_string( comp_ranks.size()-1 ) + " regions..." );
-            }
+          if ( info ) {
+            info( "Constructing distance index for " +
+                  std::to_string( comp_ranks.size()-1 ) + " regions..." );
+          }
 
+          auto provider = [this, dmin, dmax, &comp_ranks, info]( auto partial ) {
             for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
-              auto adj_mat = util::adjacency_matrix< kk_crsmat_type >(
+              auto ra = diverg::util::range_adjacency_matrix< mut_crsmat_type >(
                   *this->graph_ptr, comp_ranks[ idx ], comp_ranks[ idx + 1 ] );
-              auto dist_mat = pairg::buildValidPairsMatrix< crs_traits_type >( adj_mat, dmin, dmax );
-              auto sid = this->graph_ptr->rank_to_id( comp_ranks[idx] );
-              auto srow = gum::util::id_to_charorder( *this->graph_ptr, sid );
-              callback( dist_mat, srow, srow );
+              auto rc = diverg::util::create_distance_index( ra, dmin, dmax,
+                                                             rsparse_config_type{} );
+              auto sid = this->graph_ptr->rank_to_id( comp_ranks[ idx ] );
+              auto soff = static_cast< crsmat_ordinal_type >(
+                  gum::util::id_to_charorder( *this->graph_ptr, sid ) );
+              partial( rc, soff, soff );
               if ( info ) {
                 info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
               }
@@ -1219,8 +1228,39 @@ namespace psi {
           auto nrows = gum::util::total_nof_loci( *this->graph_ptr );
           auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
                            this->graph_ptr->get_edge_count() ) * 4;
-          mutable_crsmat_type udindex( nrows, nrows, provider, nnz_est );
+          mut_crsmat_type udindex( nrows, nrows, provider, nnz_est );
           this->distance_mat.assign( udindex );
+
+          this->d = std::make_pair( dmin, dmax );
+        }
+
+      /**
+       *  @brief  Create distance index matrix.
+       *
+       *  NOTE: This method assumes that the input graph is sorted such that node rank
+       *  ranges in components are disjoint.
+       *
+       *  NOTE: This function assumes that the graph is augmented by one path per region
+       *        and nothing more.
+       */
+        inline void
+        create_distance_index( unsigned int dmin, unsigned int dmax, Whole,
+                               std::function< void( std::string const& ) > info=nullptr,
+                               std::function< void( std::string const& ) > warn=nullptr )
+        {
+          if ( dmin == 0 || dmax < dmin ) return;  // not constructible
+          if ( dmax == 0 ) dmax = dmin;
+
+          this->stats_ptr->set_progress( progress_type::create_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
+
+          if ( info ) info( "Constructing distance index for the whole graph..." );
+          auto ra = diverg::util::range_adjacency_matrix< mut_crsmat_type >(
+              *this->graph_ptr );
+          auto rc = diverg::util::create_distance_index( ra, dmin, dmax,
+                                                         rsparse_config_type{} );
+          this->distance_mat.assign( rc );
+
           this->d = std::make_pair( dmin, dmax );
         }
 
@@ -1287,10 +1327,12 @@ namespace psi {
          *  @param  dmax  The distance index maximum read insert size.
          *  @param  progress A callback function reporting the progress of path selection.
          */
+        template< typename TDIndexMode = PerComponent >
         inline void
         create_path_index( unsigned int n, bool patched=true,
             unsigned int context=0, unsigned int step_size=1,
             unsigned int dmin=0, unsigned int dmax=0,
+            TDIndexMode mode={},
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1309,7 +1351,7 @@ namespace psi {
           if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
           if ( info ) info( "Constructing distance index for pair distance queries..." );
-          this->create_distance_index( dmin, dmax, info, warn );
+          this->create_distance_index( dmin, dmax, mode, info, warn );
         }
 
         inline bool
@@ -1361,7 +1403,10 @@ namespace psi {
             this->save_starts( fpath, this->seed_len, step_size );
           }
           if ( !this->open_distance_index( fpath, dmin, dmax ) ) {
-            this->create_distance_index( dmin, dmax );
+            // TODO: The fallback strategy for constructing distance index is
+            // always `PerComponent` for now since `dindex-mode` is not
+            // propagated into here.
+            this->create_distance_index( dmin, dmax, PerComponent{} );
             this->save_distance_index( fpath );
           }
           return true;
@@ -1450,7 +1495,7 @@ namespace psi {
             auto bt_end = end( *this->graph_ptr, Backtracker() );
             Path< graph_type > trav_path( this->graph_ptr );
             Path< graph_type > current_path( this->graph_ptr );
-            sdsl::bit_vector bv_starts( util::max_node_len( *this->graph_ptr ), 0 );
+            sdsl::bit_vector bv_starts( gum::util::max_node_len( *this->graph_ptr ), 0 );
 
             this->graph_ptr->for_each_node(
                 [&]( rank_type rank, id_type id ) {

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <cxxopts.hpp>
+#include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
 #include <psi/utils.hpp>

@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <psi/seed_finder.hpp>
 #include <psi/traverser.hpp>
@@ -269,7 +270,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     WHEN( "Creating distance index" )
     {
-      finder.create_distance_index( dmin, dmax );
+      finder.create_distance_index( dmin, dmax, PerComponent{} );
 
       THEN( "It should rejects nodes not complying with distance constraints" )
       {
@@ -370,7 +371,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     WHEN( "Creating distance index" )
     {
-      finder.create_distance_index( dmin, dmax );
+      finder.create_distance_index( dmin, dmax, PerComponent{} );
 
       THEN( "It should rejects nodes not complying with distance constraints" )
       {

@@ -866,25 +866,25 @@ namespace psi {
       }
     }
 
-  template< typename TGraph, typename TSpec, typename TVGPath,
+  template< typename TGraph, typename TSpec, typename TVGPath, typename TPosition,
             typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
                                                         decltype( TVGPath().mapping()[0].position().node_id() ) > >
       inline void
     convert( Path< TGraph, TSpec > const& path, TVGPath* vgpath,
-        std::vector< Position<> > const& loci, TCoordinate&& coord={} )
+        std::vector< TPosition > const& loci, TCoordinate&& coord={} )
     {
       TGraph const* graph_ptr = path.get_graph_ptr();
       typename TGraph::rank_type rank = 1;
 
       auto comp_id =
-          [graph_ptr]( Position<> const& elem, Position<> const& value ) {
+          [graph_ptr]( TPosition const& elem, TPosition const& value ) {
             auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
             auto value_rank = graph_ptr->id_to_rank( value.node_id() );
             return elem_rank < value_rank;
           };
 
       auto comp_both =
-          [graph_ptr]( Position<> const& elem, Position<> const& value ) {
+          [graph_ptr]( TPosition const& elem, TPosition const& value ) {
             auto elem_rank = graph_ptr->id_to_rank( elem.node_id() );
             auto value_rank = graph_ptr->id_to_rank( value.node_id() );
             return elem_rank < value_rank ||
@@ -900,10 +900,10 @@ namespace psi {
         mapping->mutable_position()->set_node_id( coord( *it ) );
         mapping->mutable_position()->set_offset( coffset );
 
-        Position<> cpos;
+        TPosition cpos;
         cpos.set_node_id( *it );
         cpos.set_offset( coffset );
-        std::vector< Position<> >::const_iterator nextedit, lastedit;
+        typename std::vector< TPosition >::const_iterator nextedit, lastedit;
         if ( it == path.end()-1 ) {
           nextedit = std::lower_bound( loci.begin(), loci.end(), cpos, comp_id );
           lastedit = std::upper_bound( loci.begin(), loci.end(), cpos, comp_both );

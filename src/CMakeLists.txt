@@ -18,7 +18,8 @@ if(NOT TARGET spdlog::spdlog)
   set(SPDLOG_SOURCE_DIR ext/spdlog)
   execute_process(COMMAND git submodule update --init -- ${SPDLOG_SOURCE_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_subdirectory(${SPDLOG_SOURCE_DIR} EXCLUDE_FROM_ALL)
+  # SYSTEM: keep spdlog's (bundled fmt) headers out of PSI's `-Werror`.
+  add_subdirectory(${SPDLOG_SOURCE_DIR} EXCLUDE_FROM_ALL SYSTEM)
 endif()
 
 # Default compile option

@@ -19,12 +19,13 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <stdexcept>
 
 #include <cxxopts.hpp>
 #include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
-#include <psi/crs_matrix.hpp>
+#include <diverg/dindex.hpp>
 #include <psi/seed_finder.hpp>
 
 #include "vg/vg.pb.h"
@@ -32,6 +33,7 @@
 
 
 using namespace psi;
+namespace crs_matrix = diverg::crs_matrix;
 
 constexpr const char* LONG_DESC = ( "dindexctl\n"
                                     "---------\n"
@@ -383,7 +385,7 @@ compress( cxxopts::ParseResult& res, crs_matrix::BasicGroup /* tag */ )
   else {
     std::cout << "Compressing distance index..." << std::endl;
     crsmat_type cindex;
-    cindex.assign( util::compress_distance_index< mutable_crsmat_type >( dindex, graph ) );
+    cindex.assign( diverg::util::compress_distance_index< mutable_crsmat_type >( dindex, graph ) );
     std::cout << "Compressed distance index ("
               << cindex.numRows() << "x" << cindex.numCols() << ") has " << cindex.nnz()
               << " non-zero elements." << std::endl;
@@ -489,7 +491,7 @@ merge( cxxopts::ParseResult& res )
     }
 
     std::cout << "Merging distance indices..." << std::endl;
-    bmerged = merge_distance_index< crsmat_mutable_type >( dindex1, dindex2 );
+    bmerged = diverg::util::merge_distance_index< crsmat_mutable_type >( dindex1, dindex2 );
   }
 
   mindex.assign( bmerged );
@@ -553,10 +555,10 @@ main( int argc, char* argv[] )
     bool dynamic = res["dynamic"].as< bool >();
 
     typedef typename SeedFinder<>::crsmat_type crsmat_type;
-    typedef make_basic_t< crsmat_type > crsmat_basic_type;
+    typedef diverg::make_basic_t< crsmat_type > crsmat_basic_type;
 
-    typedef typename SeedFinder<>::mutable_crsmat_type crsmat_mut_type;
-    typedef make_buffered_t< crsmat_basic_type > crsmat_basic_mut_type;
+    typedef typename SeedFinder<>::mut_crsmat_type crsmat_mut_type;
+    typedef diverg::make_buffered_t< crsmat_basic_type > crsmat_basic_mut_type;
 
     if ( command == "compress" ) {
       if ( basic_mode ) compress< crsmat_basic_type, crsmat_basic_mut_type >( res );

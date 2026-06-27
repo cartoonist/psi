@@ -82,6 +82,7 @@ namespace psi {
     std::string output_path;
     std::string log_path;
     std::string pindex_path;
+    std::string dindex_mode;
     bool patched;
     bool indexonly;
     bool nologfile;

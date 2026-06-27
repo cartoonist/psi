@@ -28,7 +28,8 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "Kokkos_ENABLE_OPENMP": true
+                "DIVERG_ENABLE_OPENMP": true,
+                "DIVERG_ENABLE_CUDA": false
             }
         },
         {
@@ -46,7 +47,8 @@
             "binaryDir": "${sourceDir}/build/Release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "Kokkos_ENABLE_OPENMP": true
+                "DIVERG_ENABLE_OPENMP": true,
+                "DIVERG_ENABLE_CUDA": false
             }
         },
         {
@@ -65,7 +67,8 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": true,
-                "Kokkos_ENABLE_CUDA": true
+                "DIVERG_ENABLE_CUDA": true,
+                "DIVERG_ENABLE_OPENMP": true
             }
         },
         {
@@ -83,7 +86,8 @@
             "binaryDir": "${sourceDir}/build/ReleaseCuda",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "Kokkos_ENABLE_CUDA": true
+                "DIVERG_ENABLE_CUDA": true,
+                "DIVERG_ENABLE_OPENMP": true
             }
         },
         {

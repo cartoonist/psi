@@ -18,7 +18,8 @@ if(NOT TARGET spdlog::spdlog)
   set(SPDLOG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src/ext/spdlog)
   execute_process(COMMAND git submodule update --init -- ${SPDLOG_SOURCE_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  add_subdirectory(${SPDLOG_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/ext/spdlog EXCLUDE_FROM_ALL)
+  # SYSTEM: keep spdlog's (bundled fmt) headers out of PSI's `-Werror`.
+  add_subdirectory(${SPDLOG_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/ext/spdlog EXCLUDE_FROM_ALL SYSTEM)
 endif()
 
 # Prepare "cxxopts" dependency
@@ -148,21 +149,3 @@ target_link_libraries(alice
   PRIVATE psi::minivgio)
 # Install targets
 install(TARGETS alice DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-# Defining target 'rcrs_benchmark': Range CRS matrix operations benchmark
-set(RCRS_BENCH_SOURCES "src/rcrs_benchmark.cpp")
-add_executable(rcrs_benchmark ${RCRS_BENCH_SOURCES})
-target_compile_options(rcrs_benchmark PRIVATE ${PSI_TOOLS_DEFAULT_CXXOPS})
-target_link_options(rcrs_benchmark PRIVATE ${PSI_TOOLS_DEFAULT_LDOPS})
-target_include_directories(rcrs_benchmark
-  PRIVATE psi::psi
-  PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only
-  PRIVATE psi::minivgio)
-target_link_libraries(rcrs_benchmark
-  PRIVATE psi::psi
-  PRIVATE cxxopts::cxxopts
-  PRIVATE spdlog::spdlog_header_only
-  PRIVATE psi::minivgio)
-# Install targets
-install(TARGETS rcrs_benchmark DESTINATION ${CMAKE_INSTALL_BINDIR})

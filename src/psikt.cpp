@@ -22,7 +22,9 @@
 #include <string>
 #include <functional>
 #include <unordered_set>
+#include <stdexcept>
 
+#include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
@@ -122,15 +124,25 @@ template< class TGraph, typename TReadsIndexSpec >
     else {
       log->info( "No valid path index found. Creating the path index..." );
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
-      finder.create_path_index( params.path_num, params.patched,
-                                params.context, params.step_size,
-                                params.dindex_min_ris, params.dindex_max_ris,
-                                [&log]( std::string const& msg ) {
-                                  log->info( msg );
-                                },
-                                [&log]( std::string const& msg ) {
-                                  log->warn( msg );
-                                } );
+      auto info_cb = [&log]( std::string const& msg ) -> void { log->info( msg ); };
+      auto warn_cb = [&log]( std::string const& msg ) -> void { log->warn( msg ); };
+      /* Dispatch the (validated) `--dindex-mode` string to the construction tag. */
+      if ( params.dindex_mode == "whole" ) {
+        finder.create_path_index( params.path_num, params.patched,
+                                  params.context, params.step_size,
+                                  params.dindex_min_ris, params.dindex_max_ris,
+                                  psi::Whole{}, info_cb, warn_cb );
+      }
+      else if ( params.dindex_mode == "per-component" ) {
+        finder.create_path_index( params.path_num, params.patched,
+                                  params.context, params.step_size,
+                                  params.dindex_min_ris, params.dindex_max_ris,
+                                  psi::PerComponent{}, info_cb, warn_cb );
+      }
+      else {
+        throw std::runtime_error( "Unknown distance index construction mode: "
+                                  + params.dindex_mode );
+      }
       log->info( "Picked paths in {}.", stats.get_timer( "pick-paths", tid ).str() );
       log->info( "Indexed paths in {}.", stats.get_timer( "index-paths", tid ).str() );
       log->info( "Found uncovered loci in {}.", stats.get_timer( "find-uncovered", tid ).str() );
@@ -218,6 +230,7 @@ startup( const Options & options )
   log->info( "- Maximum number of MEMs on paths: {}", options.max_mem );
   log->info( "- Distance index minimum read insert size: {}", options.dindex_min_ris );
   log->info( "- Distance index maximum read insert size: {}", options.dindex_max_ris );
+  log->info( "- Distance index construction mode: {}", options.dindex_mode );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
   log->info( "- Output file: '{}'", options.output_path );
 
@@ -373,6 +386,15 @@ setup_argparser( seqan2::ArgumentParser& parser )
                                     "Distance index maximum read insert size (minimum insert size by default).",
                                     seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "M", 0 );
+  // distance index construction mode
+  addOption( parser,
+             seqan2::ArgParseOption( "", "dindex-mode",
+                                    "Distance index construction mode: 'per-component' "
+                                    "(lower memory; required for large graphs) or 'whole' "
+                                    "(faster; higher peak memory).",
+                                    seqan2::ArgParseArgument::STRING, "MODE" ) );
+  setValidValues( parser, "dindex-mode", "per-component whole" );
+  setDefaultValue( parser, "dindex-mode", "per-component" );
   // index
   addOption( parser,
       seqan2::ArgParseOption( "i", "index",
@@ -430,6 +452,7 @@ get_option_values( Options & options, seqan2::ArgumentParser & parser )
   getOptionValue( options.max_mem, parser, "max-mem" );
   getOptionValue( options.dindex_min_ris, parser, "min-insert-size" );
   getOptionValue( options.dindex_max_ris, parser, "max-insert-size" );
+  getOptionValue( options.dindex_mode, parser, "dindex-mode" );
   options.patched = !isSet( parser, "no-patched" );
   getOptionValue( options.pindex_path, parser, "path-index" );
   getOptionValue( indexname, parser, "index" );
