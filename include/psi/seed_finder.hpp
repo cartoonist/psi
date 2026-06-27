@@ -27,6 +27,7 @@
 #include <iterator>
 #include <functional>
 #include <algorithm>
+#include <stdexcept>
 
 #include <sdsl/bit_vectors.hpp>
 #include <diverg/dindex.hpp>
@@ -1494,7 +1495,7 @@ namespace psi {
             auto bt_end = end( *this->graph_ptr, Backtracker() );
             Path< graph_type > trav_path( this->graph_ptr );
             Path< graph_type > current_path( this->graph_ptr );
-            sdsl::bit_vector bv_starts( util::max_node_len( *this->graph_ptr ), 0 );
+            sdsl::bit_vector bv_starts( gum::util::max_node_len( *this->graph_ptr ), 0 );
 
             this->graph_ptr->for_each_node(
                 [&]( rank_type rank, id_type id ) {

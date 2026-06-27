@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <psi/seed_finder.hpp>
 #include <psi/traverser.hpp>

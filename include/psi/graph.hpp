@@ -19,7 +19,6 @@
 #define PSI_GRAPH_HPP__
 
 #include <algorithm>
-#include <stdexcept>
 #include <functional>
 #include <random>
 #include <cstdint>
@@ -83,25 +82,6 @@ namespace psi {
   using Position = psi::PositionBase< TId, TOffset >;
 
   namespace util {
-    template< class TGraph >
-    inline typename TGraph::offset_type
-    max_node_len( TGraph const& graph )
-    {
-      typedef TGraph graph_type;
-      typedef typename graph_type::id_type id_type;
-      typedef typename graph_type::rank_type rank_type;
-      typedef typename graph_type::offset_type offset_type;
-
-      offset_type max = 1;
-      graph.for_each_node(
-          [&graph, &max]( rank_type rank , id_type id ) {
-            auto len = graph.node_length( id );
-            if ( max < len ) max = len;
-            return true;
-          } );
-      return max;
-    }
-
     template< class TGraph, typename TNodeIter, typename TEdgeIter, typename TVGGraph,
               typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
                                                           decltype( TVGGraph().node(0).id() ) > >
@@ -304,46 +284,6 @@ namespace psi {
       }
 
       return equally_covered ? 0 : lc_id;
-    }
-
-    /**
-     *  @brief  Count the nodes of a subgraph in the graph or of the whole graph.
-     *
-     *  The subgraph is indicated by the node range [lower, upper).
-     */
-    template< class TGraph >
-    inline typename TGraph::rank_type
-    node_count( TGraph const& graph, typename TGraph::rank_type lower=1,
-                typename TGraph::rank_type upper=0 )
-    {
-      if ( upper == 0 ) upper = graph.get_node_count() + 1;
-      assert( lower <= graph.get_node_count() && lower > 0 );
-      assert( upper <= graph.get_node_count()+1 && upper > lower );
-      return upper - lower;
-    }
-
-    /**
-     *  @brief  Count the edges of a graph component or of the whole graph.
-     *
-     *  The component is indicated by the node range [lower, upper).
-     */
-    template< class TGraph >
-    inline typename TGraph::rank_type
-    edge_count( TGraph const& graph, typename TGraph::rank_type lower=1,
-                typename TGraph::rank_type upper=0 )
-    {
-      typedef typename TGraph::id_type id_type;
-      typedef typename TGraph::rank_type rank_type;
-
-      rank_type edge_count = 0;
-      graph.for_each_node(
-          [&graph, &edge_count, &upper]( rank_type rank, id_type id ){
-            edge_count += graph.outdegree( id );
-            if ( rank + 1 == upper ) return false;
-            return true;
-          },
-          lower );
-      return edge_count;
     }
 
     /**

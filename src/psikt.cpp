@@ -22,7 +22,9 @@
 #include <string>
 #include <functional>
 #include <unordered_set>
+#include <stdexcept>
 
+#include <gum/graph.hpp>
 #include <gum/io_utils.hpp>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>

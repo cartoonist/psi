@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <stdexcept>
 
 #include "sequence.hpp"
 #include "index.hpp"

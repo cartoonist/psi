@@ -20,6 +20,7 @@
 #define  PSI_PATHSET_HPP__
 
 #include <vector>
+#include <stdexcept>
 
 #include <sdsl/bit_vectors.hpp>
 
