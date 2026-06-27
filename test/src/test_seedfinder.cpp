@@ -269,7 +269,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     WHEN( "Creating distance index" )
     {
-      finder.create_distance_index( dmin, dmax );
+      finder.create_distance_index( dmin, dmax, PerComponent{} );
 
       THEN( "It should rejects nodes not complying with distance constraints" )
       {
@@ -370,7 +370,7 @@ SCENARIO( "Distance constraints verification", "[seedfinder]" )
 
     WHEN( "Creating distance index" )
     {
-      finder.create_distance_index( dmin, dmax );
+      finder.create_distance_index( dmin, dmax, PerComponent{} );
 
       THEN( "It should rejects nodes not complying with distance constraints" )
       {
