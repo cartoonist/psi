@@ -46,7 +46,7 @@
 #define PSI_DEFAULT_TMPDIR "/tmp"
 #define PSI_TMPFILE_TEMPLATE "/psi-XXXXXX"
 
-#define BINARY_NAME "psi"
+#define PSI_BINARY_NAME "psi"
 
 #ifdef __ASSERT_VOID_CAST
 #define PSI_ASSERT_VOID_CAST __ASSERT_VOID_CAST
@@ -57,7 +57,7 @@
 #define ASSERT(expr)							\
   ((expr)								\
    ? PSI_ASSERT_VOID_CAST (0)						\
-   : assert_fail (#expr, BINARY_NAME, __FILE__, __LINE__, __PRETTY_FUNCTION__))
+   : assert_fail (#expr, PSI_BINARY_NAME, __FILE__, __LINE__, __PRETTY_FUNCTION__))
 
 /**
  *  @brief  Assert fail function
@@ -508,7 +508,7 @@ namespace psi {
   }
 
 
-  typedef uint64_t TContainerSize;
+  typedef uint64_t DefaultContainerSize;
 
   /**
    *  @brief  Simple object serialization implementation.
@@ -557,7 +557,7 @@ namespace psi {
    *  by writing each item to the stream following the size of the container. The
    *  `TSize` represents the size type.
    */
-  template< typename TIter, typename TSize = TContainerSize >
+  template< typename TIter, typename TSize = DefaultContainerSize >
     inline void
   serialize( std::ostream& out, TIter begin, TIter end )
   {
@@ -579,7 +579,7 @@ namespace psi {
    *  `TSize` represents the size type. Since the container is unordered, it needs
    *  container itself to infer the size.
    */
-  template< typename TContainer, typename TIter, typename TSize = TContainerSize >
+  template< typename TContainer, typename TIter, typename TSize = DefaultContainerSize >
     inline void
   serialize( std::ostream& out, const TContainer& container, TIter begin, TIter end )
   {
@@ -1119,7 +1119,7 @@ namespace psi {
    *  It gets an output container, and an output iterator. Then reads from input stream
    *  and populate the container from serialized data.
    */
-  template< typename TContainer, typename TOutIter, typename TSize = TContainerSize >
+  template< typename TContainer, typename TOutIter, typename TSize = DefaultContainerSize >
     inline void
   deserialize( std::istream& in, TContainer& container, TOutIter itr )
   {
