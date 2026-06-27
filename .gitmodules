@@ -1,21 +1,18 @@
 [submodule "test/ext/catch2"]
 	path = test/ext/catch2
-	url = https://github.com/philsquared/Catch.git
+	url = https://github.com/catchorg/Catch2.git
 [submodule "src/ext/spdlog"]
 	path = src/ext/spdlog
-	url = https://github.com/gabime/spdlog.git
+	url = https://github.com/cartoonist/spdlog.git
 [submodule "ext/seqan"]
 	path = ext/seqan
 	url = https://github.com/seqan/seqan
 [submodule "ext/kseq++"]
 	path = ext/kseq++
 	url = https://github.com/cartoonist/kseqpp.git
-[submodule "ext/gum"]
-	path = ext/gum
-	url = https://github.com/cartoonist/gum.git
-[submodule "ext/PairG"]
-	path = ext/PairG
-	url = https://github.com/cartoonist/PairG.git
 [submodule "tools/ext/cxxopts"]
 	path = tools/ext/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "ext/diverg"]
+	path = ext/diverg
+	url = https://github.com/cartoonist/diverg.git

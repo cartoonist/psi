@@ -35,8 +35,8 @@ namespace psi {
     FM                    /**< @brief FM index. */
   };
 
-  typedef seqan::IndexWotd<> UsingIndexWotd;
-  typedef seqan::IndexEsa<> UsingIndexEsa;
+  typedef seqan2::IndexWotd<> UsingIndexWotd;
+  typedef seqan2::IndexEsa<> UsingIndexEsa;
 
     inline IndexType
   index_from_str(std::string str)
@@ -73,6 +73,7 @@ namespace psi {
     unsigned int path_num;
     unsigned int context;
     unsigned int gocc_threshold;
+    unsigned int max_mem;
     unsigned int dindex_min_ris;
     unsigned int dindex_max_ris;
     IndexType index;
@@ -81,6 +82,7 @@ namespace psi {
     std::string output_path;
     std::string log_path;
     std::string pindex_path;
+    std::string dindex_mode;
     bool patched;
     bool indexonly;
     bool nologfile;

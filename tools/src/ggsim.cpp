@@ -79,7 +79,7 @@ reads_dist( std::unordered_map< std::string, Path< TGraph > > const& haplotypes,
   auto extra = numreads - sum;
   assert( extra < haplotypes.size() );
   for ( unsigned long int i = 0; i < extra; ++i ) ++dist[i];
-  assert( std::accumulate( dist.begin(), dist.end(), 0 ) == numreads );
+  assert( static_cast< unsigned long int >( std::accumulate( dist.begin(), dist.end(), 0 ) ) == numreads );
   return dist;
 }
 
@@ -181,7 +181,7 @@ _simulate_read( klibpp::KSeq& read, vg::Path& read_path, klibpp::KSeq const& hap
     auto offset = position_to_offset( haplotype, cursor );
     auto label_len = graph_ptr->node_length( id );
     auto range = std::min< std::size_t >( label_len - offset, remaining );
-    assert( hapseq.seq.end() - start >= range );
+    assert( hapseq.seq.end() >= range + start );
     next = start + range;
     map_ptr = read_path.add_mapping();
     vg::Position* p = map_ptr->mutable_position();
@@ -374,21 +374,21 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
   // `graph` option (positional)
   if ( ! result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph file must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph file must be specified" );
   }
   if ( ! readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
   // `type` option
   if ( ! result.count( "type" ) &&
       result[ "output" ].as< std::string >() == DEFAULT_OUTPUT ) {
-    throw cxxopts::OptionParseException( "File type must be specified" );
+    throw cxxopts::exceptions::parsing( "File type must be specified" );
   }
   // `read-length` and `num-reads` options
   bool has_readlen = result[ "read-length" ].as< unsigned int >();
   bool has_numreads = result[ "num-reads" ].as< unsigned long int >();
   if ( has_readlen != has_numreads ) {
-    throw cxxopts::OptionParseException(
+    throw cxxopts::exceptions::parsing(
         "Options `read-length` and `num-reads` should be either both defined "
         "indicating to output simulated reads or not defined at all, in which case it "
         "outputs simulated haplotypes." );
@@ -422,8 +422,19 @@ main( int argc, char* argv[] )
     params.fwd = res[ "forward-only" ].as< bool >();
     params.allow_ns = res[ "allow-Ns" ].as< bool >();
 
+    auto parse_vg = []( std::istream& in ) -> vg::Graph {
+      vg::Graph merged;
+      std::function< void( vg::Graph& ) > handle_chunks =
+        [&]( vg::Graph& other ) {
+          gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+        };
+      stream::for_each( in, handle_chunks );
+      return merged;
+    };
+
     gum::SeqGraph< gum::Succinct > graph;
-    gum::util::load( graph, graph_path, true );
+    gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+    gum::util::load( graph, graph_path, loader, true );
     std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
     std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
               << std::endl;
@@ -431,7 +442,7 @@ main( int argc, char* argv[] )
     if ( params.distance != 0 ) simulate< PairedEnd >( type, graph, params );
     else simulate< SingleEnd >( type, graph, params );
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }

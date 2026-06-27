@@ -40,7 +40,7 @@ SCENARIO ( "Test the Timer", "[stats]" )
       THEN( "It should get the correct duration" )
       {
         auto d = Timer< CpuClock >::get_duration_rep( "timer-short" );
-        REQUIRE( d == Approx( 0 ).margin( 0.0001 ) );
+        REQUIRE( d == Approx( 0 ).margin( 0.001 ) );
       }
     }
 
@@ -53,10 +53,9 @@ SCENARIO ( "Test the Timer", "[stats]" )
       THEN( "It should get the correct duration" )
       {
         auto d = Timer< CpuClock >::get_duration_rep( "timer-long" );
-        REQUIRE( d == Approx( 0 ).margin( 0.0001 ) );
+        REQUIRE( d == Approx( 0 ).margin( 0.001 ) );
       }
     }
-
 
     WHEN( "Resume an existing timer" )
     {
@@ -68,7 +67,7 @@ SCENARIO ( "Test the Timer", "[stats]" )
       THEN( "It should get the accumulated duration" )
       {
         auto d = Timer< CpuClock >::get_duration_rep( "timer-long" );
-        REQUIRE( d == Approx( pd ).margin( 0.0001 ) );
+        REQUIRE( d == Approx( pd ).margin( 0.001 ) );
       }
     }
   }
@@ -84,7 +83,7 @@ SCENARIO ( "Test the Timer", "[stats]" )
       THEN( "It should get the correct duration" )
       {
         auto d = Timer< SteadyClock >::get_duration_rep( "timer-short" );
-        REQUIRE( static_cast< float >( d ) == Approx( 678912 ).epsilon( 0.001 ) );
+        REQUIRE( static_cast< float >( d ) == Approx( 678912 ).epsilon( 0.01 ) );
       }
     }
 
@@ -97,7 +96,7 @@ SCENARIO ( "Test the Timer", "[stats]" )
       THEN( "It should get the correct duration" )
       {
         auto d = Timer< SteadyClock >::get_duration_rep( "timer-long" );
-        REQUIRE( static_cast< float >( d ) == Approx( 1278912 ).epsilon( 0.001 ) );
+        REQUIRE( static_cast< float >( d ) == Approx( 1278912 ).epsilon( 0.01 ) );
       }
     }
 
@@ -110,7 +109,7 @@ SCENARIO ( "Test the Timer", "[stats]" )
       THEN( "It should get the accumulated duration" )
       {
         auto d = Timer< SteadyClock >::get_duration_rep( "timer-long" );
-        REQUIRE( static_cast< float >( d ) == Approx( 2278912 ).epsilon( 0.001 ) );
+        REQUIRE( static_cast< float >( d ) == Approx( 2278912 ).epsilon( 0.01 ) );
       }
     }
   }

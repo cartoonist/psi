@@ -19,19 +19,32 @@
 #include <vector>
 #include <string>
 
+#include <gum/seqgraph.hpp>
+#include <gum/io_utils.hpp>
 #include <psi/sequence.hpp>
 #include <psi/index.hpp>
 #include <psi/graph.hpp>
 #include <psi/traverser.hpp>
 #include <psi/utils.hpp>
-#include <gum/seqgraph.hpp>
-#include <gum/io_utils.hpp>
 #include <seqan/seq_io.h>
+
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
 
 #include "test_base.hpp"
 
 
 using namespace psi;
+
+static const gum::ExternalLoader< vg::Graph > vg_loader { []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  } };
 
 SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
 {
@@ -40,21 +53,21 @@ SCENARIO ( "Find reads in the graph using a Traverser (exact)", "[traverser]" )
 
   GIVEN ( "A small graph and a set of reads" )
   {
-    typedef seqan::IndexWotd<> TIndexSpec;
-    typedef seqan::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
+    typedef seqan2::IndexWotd<> TIndexSpec;
+    typedef seqan2::Index< Dna5QStringSet<>, TIndexSpec > TIndex;
 
     std::string vgpath = test_data_dir + "/small/x.vg";
     graph_type graph;
-    gum::util::extend( graph, vgpath, true );
+    gum::util::extend( graph, vgpath, vg_loader, true );
     std::string readspath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
-    seqan::SeqFileIn reads_file;
+    seqan2::SeqFileIn reads_file;
     if ( !open( reads_file, readspath.c_str() ) ) {
       throw std::runtime_error( "cannot open file " + readspath );
     }
 
     Records< Dna5QStringSet<> > reads;
     readRecords( reads, reads_file, 10 );
-    seqan::Index< Dna5QStringSet<>, TIndexSpec > reads_index( reads.str );
+    seqan2::Index< Dna5QStringSet<>, TIndexSpec > reads_index( reads.str );
 
     unsigned int seed_len = 10;
 

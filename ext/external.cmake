@@ -20,24 +20,6 @@ endif()
 
 include(SeqAnTarget)
 
-# When `gum` is not found
-if(NOT TARGET gum::gum)
-  if(NOT USE_BUNDLED_GUM)
-    message(FATAL_ERROR "gum library not found. "
-      "Pass in `-DUSE_BUNDLED_GUM=on` when running cmake to use the bundled version. "
-      "It will be installed alongside the library.")
-  endif()
-  message(STATUS "Using bundled gum library")
-  set(GUM_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/gum)
-  execute_process(
-    COMMAND git submodule update --init --recursive -- ${GUM_SOURCE_DIR}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
-  set(BUILD_TESTING OFF)
-  add_subdirectory(${GUM_SOURCE_DIR})
-  set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
-endif()
-
 # When `kseq++` is not found
 if(NOT TARGET kseq++::kseq++)
   if(NOT USE_BUNDLED_KSEQPP)
@@ -56,23 +38,33 @@ if(NOT TARGET kseq++::kseq++)
   set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
 endif()
 
-# When `PairG` is not found
-if(NOT TARGET pairg::libpairg)
-  if(NOT USE_BUNDLED_PAIRG)
-    message(FATAL_ERROR "PairG library not found. "
-      "Pass in `-DUSE_BUNDLED_PAIRG=on` when running cmake to use the bundled version. "
+# When `diverg` is not found
+# NOTE: PSI uses gum library provided transitively by DiVerG.
+if(NOT TARGET diverg::diverg)
+  if(NOT USE_BUNDLED_DIVERG)
+    message(FATAL_ERROR "DiVerG library not found. "
+      "Pass in `-DUSE_BUNDLED_DIVERG=on` when running cmake to use the bundled version. "
       "It will be installed alongside the library.")
   endif()
-  message(STATUS "Using bundled PairG library")
-  set(PairG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/PairG)
+  message(STATUS "Using bundled DiVerG library")
+  set(DIVERG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/ext/diverg)
   execute_process(
-    COMMAND git submodule update --init --recursive -- ${PairG_SOURCE_DIR}
+    COMMAND git submodule update --init --recursive -- ${DIVERG_SOURCE_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   set(BUILD_TESTING_SAVED "${BUILD_TESTING}")
-  set(BUILD_LIBRARY_ONLY_SAVED "${BUILD_LIBRARY_ONLY}")
   set(BUILD_TESTING OFF)
-  set(BUILD_LIBRARY_ONLY ON)
-  add_subdirectory(${PairG_SOURCE_DIR})
+  # Always build DiVerG with ETI: the header-only variant might fail under nvcc.
+  set(DIVERG_ETI ON)
+  # PSI does not use DiVerG's KokkosKernels-backed utilities, so keep them (and the
+  # KokkosKernels dependency) out of the build.
+  set(DIVERG_ENABLE_UTILS OFF)
+  # Request the gum features PSI needs so DiVerG builds its bundled gum with them.
+  set(GUM_WITH_VG ON)
+  set(GUM_WITH_VGIO OFF)
+  set(GUM_WITH_HG ON)
+  set(GUM_WITH_BDSG OFF)
+  # `DIVERG_ENABLE_OPENMP`/`DIVERG_ENABLE_CUDA`/`DIVERG_STATS` are forwarded via the
+  # PSI cache variables of the same name. DiVerG handles its Kokkos and gum deps.
+  add_subdirectory(${DIVERG_SOURCE_DIR})
   set(BUILD_TESTING "${BUILD_TESTING_SAVED}")
-  set(BUILD_LIBRARY_ONLY "${BUILD_LIBRARY_ONLY_SAVED}")
 endif()

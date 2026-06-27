@@ -19,57 +19,87 @@
 #define PSI_GRAPH_HPP__
 
 #include <algorithm>
-#include <stdexcept>
 #include <functional>
 #include <random>
 #include <cstdint>
 #include <vector>
 
 #include <gum/graph.hpp>
-#include <vg/vg.pb.h>
-#include <vg/io/stream.hpp>
 
 #include "utils.hpp"
 
 
 namespace psi {
+  template< typename TId, typename TOffset >
+  class PositionBase {
+    public:
+      /* === TYPE MEMBERS === */
+      using id_type = TId;
+      using offset_type = TOffset;
+      /* === LIFECYCLE === */
+      PositionBase( id_type id=0, offset_type offset=0 )
+        : m_id( id ), m_offset( offset )
+      { }
+
+      PositionBase( const PositionBase& ) = default;
+      PositionBase( PositionBase&& ) = default;
+      ~PositionBase( ) = default;
+      /* === OPERATORS === */
+      PositionBase& operator=( const PositionBase& ) = default;
+      PositionBase& operator=( PositionBase&& ) = default;
+      /* === ACCESSORS === */
+      inline id_type
+      node_id( ) const
+      {
+        return this->m_id;
+      }
+
+      inline offset_type
+      offset( ) const
+      {
+        return this->m_offset;
+      }
+      /* === MUTATORS === */
+      inline void
+      set_node_id( id_type e_id )
+      {
+        this->m_id = e_id;
+      }
+
+      inline void
+      set_offset( offset_type e_offset )
+      {
+        this->m_offset = e_offset;
+      }
+    private:
+      /* === DATA MEMBERS === */
+      TId m_id;
+      TOffset m_offset;
+  };
+
+  template< typename TId = typename gum::GraphBaseTrait< gum::Dynamic >::id_type,
+            typename TOffset = typename gum::GraphBaseTrait< gum::Dynamic >::offset_type >
+  using Position = psi::PositionBase< TId, TOffset >;
+
   namespace util {
-    template< class TGraph >
-    inline typename TGraph::offset_type
-    max_node_len( TGraph const& graph )
-    {
-      typedef TGraph graph_type;
-      typedef typename graph_type::id_type id_type;
-      typedef typename graph_type::rank_type rank_type;
-      typedef typename graph_type::offset_type offset_type;
-
-      offset_type max = 1;
-      graph.for_each_node(
-          [&graph, &max]( rank_type rank , id_type id ) {
-            auto len = graph.node_length( id );
-            if ( max < len ) max = len;
-            return true;
-          } );
-      return max;
-    }
-
-    template< class TGraph, typename TNodeIter, typename TEdgeIter,
+    template< class TGraph, typename TNodeIter, typename TEdgeIter, typename TVGGraph,
               typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
-                                                          decltype( vg::Node().id() ) > >
+                                                          decltype( TVGGraph().node(0).id() ) > >
     inline void
     induced_graph( TGraph const& graph,
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
-                   vg::Graph* induced, TCoordinate&& coord={} )
+                   TVGGraph* induced, TCoordinate&& coord={} )
     {
       for ( ; nbegin != nend; ++nbegin ) {
-        vg::Node* new_node = induced->add_node();
+        auto new_node = induced->add_node();
         new_node->set_id( coord( *nbegin ) );
-        new_node->set_sequence( graph.node_sequence( *nbegin ) );
+        std::string label = graph.node_sequence( *nbegin );
+        new_node->set_sequence( label );
       }
 
       for ( ; ebegin != eend; ++ebegin ) {
-        vg::Edge* new_edge = induced->add_edge();
+        auto new_edge = induced->add_edge();
         new_edge->set_from( coord( graph.from_id( *ebegin ) ) );
         new_edge->set_to( coord( graph.to_id( *ebegin ) ) );
         new_edge->set_from_start( graph.is_from_start( *ebegin ) );
@@ -91,14 +121,14 @@ namespace psi {
      *  :TODO:Sat Apr 20 12:29:\@cartoonist: add ability of including path in the
      *  `vg::Graph`.
      */
-    template< class TGraph, typename TNodeIter, typename TEdgeIter,
+    template< class TGraph, typename TNodeIter, typename TEdgeIter, typename TVGGraph,
               typename TCoordinate = gum::CoordinateType< TGraph, gum::coordinate::Identity,
-                                                          decltype( vg::Node().id() ) > >
+                                                          decltype( TVGGraph().node(0).id() ) > >
     inline void
     induced_graph( TGraph const& graph,
                    TNodeIter nbegin, TNodeIter nend,
                    TEdgeIter ebegin, TEdgeIter eend,
-                   std::function< void( vg::Graph& ) > callback,
+                   std::function< void( TVGGraph& ) > callback,
                    std::ptrdiff_t chunk_size, TCoordinate&& coord={} )
     {
       assert( chunk_size < PTRDIFF_MAX );
@@ -111,7 +141,7 @@ namespace psi {
         nodes_r = nodes_l + std::min( chunk_size, nend - nodes_l );
         auto maxid = *( nodes_r - 1 );
         while ( edges_r != eend && graph.from_id( *edges_r ) <= maxid ) ++edges_r;
-        vg::Graph g;
+        TVGGraph g;
         induced_graph( graph, nodes_l, nodes_r, edges_l, edges_r, &g, coord );
         callback( g );
         nodes_l = nodes_r;
@@ -230,7 +260,7 @@ namespace psi {
       std::size_t lc_value = UINTMAX_MAX;
       bool equally_covered = true;
       auto cov =
-          [&graph, &paths_set]( TPath const& tail ) {
+          [&paths_set]( TPath const& tail ) {
             return path_coverage( tail.begin(), tail.end(), paths_set );
           };
 
@@ -254,46 +284,6 @@ namespace psi {
       }
 
       return equally_covered ? 0 : lc_id;
-    }
-
-    /**
-     *  @brief  Count the nodes of a subgraph in the graph or of the whole graph.
-     *
-     *  The subgraph is indicated by the node range [lower, upper).
-     */
-    template< class TGraph >
-    inline typename TGraph::rank_type
-    node_count( TGraph const& graph, typename TGraph::rank_type lower=1,
-                typename TGraph::rank_type upper=0 )
-    {
-      if ( upper == 0 ) upper = graph.get_node_count() + 1;
-      assert( lower <= graph.get_node_count() && lower > 0 );
-      assert( upper <= graph.get_node_count()+1 && upper > lower );
-      return upper - lower;
-    }
-
-    /**
-     *  @brief  Count the edges of a graph component or of the whole graph.
-     *
-     *  The component is indicated by the node range [lower, upper).
-     */
-    template< class TGraph >
-    inline typename TGraph::rank_type
-    edge_count( TGraph const& graph, typename TGraph::rank_type lower=1,
-                typename TGraph::rank_type upper=0 )
-    {
-      typedef typename TGraph::id_type id_type;
-      typedef typename TGraph::rank_type rank_type;
-
-      rank_type edge_count = 0;
-      graph.for_each_node(
-          [&graph, &edge_count, &upper]( rank_type rank, id_type id ){
-            edge_count += graph.outdegree( id );
-            if ( rank + 1 == upper ) return false;
-            return true;
-          },
-          lower );
-      return edge_count;
     }
 
     /**
@@ -321,134 +311,6 @@ namespace psi {
           } );
       std::sort( result.begin(), result.end() );
       return result;
-    }
-
-    /**
-     *  @brief  Get the adjacency matrix of the graph in CRS format.
-     *
-     *  @param[in]  graph The graph.
-     *  @param[in]  tag  The CRS trait tag.
-     *  @param[in]  lower  The lower node rank (inclusive).
-     *  @param[in]  upper  The upper node rank (exclusive).
-     *  @return  The adjacency matrix.
-     *
-     *  Compute adjacency matrix of a component in the given `graph` or of the whole
-     *  graph. The component is indicated by nodes whose ranks are in the range [lower,
-     *  upper). The resulting adjacency matrix is stored in CRS format.
-     */
-    template< class TGraph, typename TCrsTraits >
-    inline typename TCrsTraits::crsMat_t
-    adjacency_matrix( TGraph const& graph, TCrsTraits /* tag */,
-                      typename TGraph::rank_type lower=1,
-                      typename TGraph::rank_type upper=0 )
-    {
-      typedef TGraph graph_type;
-      typedef typename graph_type::id_type id_type;
-      typedef typename graph_type::offset_type offset_type;
-      typedef typename graph_type::rank_type rank_type;
-      typedef typename graph_type::linktype_type linktype_type;
-
-      typedef typename TCrsTraits::lno_t lno_t;
-      typedef typename TCrsTraits::size_type size_type;
-      typedef typename TCrsTraits::lno_nnz_view_t lno_nnz_view_t;
-      typedef typename TCrsTraits::scalar_view_t scalar_view_t;
-      typedef typename TCrsTraits::lno_view_t lno_view_t;
-      typedef typename TCrsTraits::crsMat_t crsMat_t;
-
-      if ( upper == 0 ) upper = graph.get_node_count() + 1;
-      lno_t nrows = gum::util::total_nof_loci( graph, lower, upper );
-      size_type nnz = nrows - node_count( graph, lower, upper ) +
-          edge_count( graph, lower, upper );
-
-      lno_nnz_view_t entries( "entries", nnz );
-      scalar_view_t values( "values", nnz );
-      lno_view_t rowmap( "rowmap", nrows + 1 );
-
-      for ( size_type i = 0; i < nnz; ++i ) values( i ) = 1;  // boolean
-
-      offset_type cursor = 0;
-      offset_type start = gum::util::id_to_charorder( graph, graph.rank_to_id( lower ) );
-      size_type i = 0;
-      size_type irow = 0;
-      rowmap( irow++ ) = i;
-      graph.for_each_node(
-          [&]( rank_type rank, id_type id ) {
-            assert( gum::util::id_to_charorder( graph, id ) == cursor + start );
-            for ( offset_type offset = 1; offset < graph.node_length( id ); ++offset ) {
-              entries( i++ ) = ++cursor;
-              rowmap( irow++ ) = i;
-            }
-            ++cursor;
-            graph.for_each_edges_out(
-                id,
-                [&graph, &entries, &i, start]( id_type to, linktype_type ) {
-                  entries( i++ ) = gum::util::id_to_charorder( graph, to ) - start;
-                  return true;
-                } );
-            rowmap( irow++ ) = i;
-            if ( rank + 1 == upper ) return false;
-            return true;
-          },
-          lower );
-      assert( i == nnz );
-      assert( irow == static_cast< unsigned int >( nrows + 1 ) );
-
-      return crsMat_t( "adjacency matrix", nrows, nrows, nnz, values, rowmap, entries );
-    }
-
-    /**
-     *  @brief Compress a distance index by removing intra-node loci pairs
-     *
-     *  @param  dindex input distance index
-     *  @param  graph underlying graph
-     *  @return a mutable compressed distance index of type `TMutableCRSMatrix`
-     *
-     *  NOTE: The resulting mutable matrix can be assigned to a immutable compressed
-     *        matrix afterwards.
-     *
-     *  NOTE: The input uncompressed distance index is passed by non-const reference,
-     *        since containers in const Buffered specialisations cannot be iterated.
-     */
-    template< typename TMutableCRSMatrix,
-              typename TCRSMatrix,
-              typename TGraph >
-    inline TMutableCRSMatrix
-    compress_distance_index( TCRSMatrix& dindex, TGraph const& graph )
-    {
-      typedef TGraph graph_type;
-      typedef typename graph_type::rank_type rank_type;
-
-      typedef TMutableCRSMatrix crsmat_mutable_type;
-      typedef TCRSMatrix crsmat_type;
-      typedef typename crsmat_type::ordinal_type ordinal_type;
-
-      typename crsmat_mutable_type::entries_type entries;
-      typename crsmat_mutable_type::rowmap_type rowmap;
-      crsmat_mutable_type::base_type::traits_type::init( entries );
-      crsmat_mutable_type::base_type::traits_type::init( rowmap );
-      rank_type cnode_rank = 0;  // current node rank
-      ordinal_type start = 0;    // row start index
-      ordinal_type end;          // row end index
-      ordinal_type cloc = 0;     // current node loci index
-      ordinal_type nloc = 0;     // next node loci index
-      for ( ordinal_type nrow = 0; nrow < dindex.numRows(); ++nrow ) {
-        rowmap.push_back( entries.size() );
-        if ( nrow == nloc ) {
-          ++cnode_rank;
-          cloc = nloc;
-          nloc += graph.node_length( graph.rank_to_id( cnode_rank ) );
-        }
-        assert( nrow < nloc );
-        end = dindex.rowMap( nrow + 1 );
-        for ( ; start < end; ++start ) {
-          if ( cloc <= dindex.entry( start ) && dindex.entry( start ) < nloc ) continue;
-          else entries.push_back( dindex.entry( start ) );
-        }
-      }
-      rowmap.push_back( entries.size() );
-      assert( start == dindex.nnz() );
-
-      return crsmat_mutable_type( dindex.numCols(), std::move( entries ), std::move( rowmap ) );
     }
   }  /* --- end of namespace util --- */
 }  /* --- end of namespace psi --- */

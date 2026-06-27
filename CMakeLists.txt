@@ -1,38 +1,60 @@
-cmake_minimum_required(VERSION 3.10)
-project(psi VERSION 0.9.2 LANGUAGES CXX)
+# `add_subdirectory(... SYSTEM)` (used for bundled spdlog) requires CMake >= 3.25.
+cmake_minimum_required(VERSION 3.25)
+
+# Adding CMake module path.
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 # Options
 option(BUILD_PSIKT "Build PSI seeding/indexing command-line tool (`psikt`)" ON)
 option(BUILD_PSI_AUX_TOOLS "Build PSI auxiliary tools" OFF)
 option(BUILD_TESTING "Build test programs" OFF)
 option(BUILD_DOC "Build documentation" OFF)
+option(EASY_PSI_EASY "Turn off '-Werror' (no worries; just warnings!)" OFF)
 option(USE_BUNDLED_SEQAN "Use bundled SeqAn library" OFF)
 option(USE_BUNDLED_GUM "Use bundled gum library" OFF)
 option(USE_BUNDLED_KSEQPP "Use bundled kseq++ library" OFF)
-option(USE_BUNDLED_PAIRG "Use bundled PairG library" OFF)
+option(USE_BUNDLED_DIVERG "Use bundled DiVerG library" OFF)
 option(USE_BUNDLED_ALL "Use all bundled dependencies" OFF)
+option(PSI_USE_VCPKG "Use vcpkg for installing dependencies" OFF)
+# DiVerG execution backend; must match the underlying Kokkos backend
+# (`Kokkos_ENABLE_OPENMP`/`Kokkos_ENABLE_CUDA`).
+option(DIVERG_ENABLE_OPENMP "Enable OpenMP backend in DiVerG" ON)
+option(DIVERG_ENABLE_CUDA "Enable CUDA backend in DiVerG" OFF)
 
 if(USE_BUNDLED_ALL)
   set(USE_BUNDLED_SEQAN on)
   set(USE_BUNDLED_GUM on)
   set(USE_BUNDLED_KSEQPP on)
-  set(USE_BUNDLED_PAIRG on)
+  set(USE_BUNDLED_DIVERG on)
 endif(USE_BUNDLED_ALL)
+
+# Load AutoVcpkg module
+if(PSI_USE_VCPKG)
+  include(AutoVcpkg)
+  vcpkg_lazy_configure()
+  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    CACHE FILEPATH "Vcpkg toolchain file")
+endif(PSI_USE_VCPKG)
+
+project(psi VERSION 1.0.0 LANGUAGES CXX)
 
 # Include external modules
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
-# Adding CMake module path.
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
+
 # Finding dependencies.
 find_package(ZLIB REQUIRED)   # required by SeqAn
 find_package(BZip2 REQUIRED)  # required by SeqAn
 find_package(OpenMP)          # required by SeqAn
 # Bundled dependencies
 find_package(SeqAn QUIET)
-find_package(gum 0.1.1 QUIET)
-find_package(kseq++ 0.2.3 QUIET)
-find_package(pairg 0.2.0 QUIET)
+find_package(kseq++ 1.1.2 QUIET)
+# NOTE: `gum` is provided by DiVerG.
+find_package(diverg 1.1.4 QUIET)
+# Forward PSI stats setting to DiVerG.
+if(PSI_STATS)
+  set(DIVERG_STATS ON)
+endif(PSI_STATS)
 # Handle bundled dependencies
 include(${PROJECT_SOURCE_DIR}/ext/external.cmake)
 
@@ -41,27 +63,34 @@ if(BUILD_DOC)
   include(BuildDoxygen)
 endif(BUILD_DOC)
 
-# Load `CheckGitRevision` module
+# Load project cmake modules
 include(CheckGitRevision)
+include(StdAtomic)
+
+# NOTE: (temporarily) go easy on warnings for Release builds
+if (CMAKE_BUILD_TYPE MATCHES Release)
+  set(EASY_PSI_EASY on)
+endif()
 
 # Creating the INTERFACE library
 add_library(psi INTERFACE)
 # Defining include directories
 target_include_directories(psi
   INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>;$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/gum::gum>;$<INSTALL_INTERFACE:gum::gum>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
-  INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>)
+  INTERFACE $<TARGET_PROPERTY:gum::gum,INTERFACE_INCLUDE_DIRECTORIES>
+  INTERFACE $<TARGET_PROPERTY:kseq++::kseq++,INTERFACE_INCLUDE_DIRECTORIES>
+  INTERFACE $<TARGET_PROPERTY:SeqAn::SeqAn,INTERFACE_INCLUDE_DIRECTORIES>
+  INTERFACE $<TARGET_PROPERTY:diverg::diverg,INTERFACE_INCLUDE_DIRECTORIES>)
 # Defining link libraries
 target_link_libraries(psi
   INTERFACE $<BUILD_INTERFACE:gum::gum>;$<INSTALL_INTERFACE:gum::gum>
   INTERFACE $<BUILD_INTERFACE:kseq++::kseq++>;$<INSTALL_INTERFACE:kseq++::kseq++>
   INTERFACE $<BUILD_INTERFACE:SeqAn::SeqAn>;$<INSTALL_INTERFACE:SeqAn::SeqAn>
-  INTERFACE $<BUILD_INTERFACE:pairg::libpairg>;$<INSTALL_INTERFACE:pairg::libpairg>
-  INTERFACE "atomic")
+  INTERFACE $<BUILD_INTERFACE:diverg::diverg>;$<INSTALL_INTERFACE:diverg::diverg>)
+# Add atomic dependency using `target_link_atomic` custom function from `StdAtomic` module
+target_link_atomic(psi INTERFACE)
 # Define `PSI_DEBUG`
-if(CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   target_compile_definitions(psi INTERFACE PSI_DEBUG)
 endif()
 # Define `PSI_STATS`
@@ -110,6 +139,14 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/psi-config.cmake"
   "${CMAKE_CURRENT_BINARY_DIR}/psi-config-version.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/psi)
 
+if(BUILD_PSIKT OR BUILD_PSI_AUX_TOOLS OR BUILD_TESTING)
+  set(Protobuf_USE_STATIC_LIBS ON)
+  find_package(Threads REQUIRED)
+  find_package(Protobuf REQUIRED)
+  # Prepare `psi::minivgio` library
+  add_subdirectory(vg)
+endif()
+
 # Adding `psikt` submodule
 if(BUILD_PSIKT)
   add_subdirectory(src)
@@ -129,7 +166,6 @@ endif(BUILD_TESTING)
 include(CTest)
 add_test(NAME TestUtils COMMAND psi-tests "[utils]")
 add_test(NAME TestGraph COMMAND psi-tests "[graph]")
-add_test(NAME TestCRSMatrix COMMAND psi-tests "[crsmatrix]")
 add_test(NAME TestGraphIter COMMAND psi-tests "[graph][iterator]")
 add_test(NAME TestStats COMMAND psi-tests "[stats]")
 add_test(NAME TestSequence COMMAND psi-tests "[sequence]")

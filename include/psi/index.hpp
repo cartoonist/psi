@@ -31,9 +31,9 @@ namespace psi {
 
   // Configured FMIndex template specialization tags.
   // :TODO:Mon Oct 23 02:11:\@cartoonist: Change all `typedef`s to `using`.
-  using TFMIndexConfig = seqan::FastFMIndexConfig< void, uint64_t, 2, 1 >;
-  using CFMIndex = seqan::FMIndex< void, TFMIndexConfig >;
-  using CBiFMIndex = seqan::BidirectionalIndex< psi::CFMIndex >;
+  using TFMIndexConfig = seqan2::FastFMIndexConfig< void, uint64_t, 2, 1 >;
+  using CFMIndex = seqan2::FMIndex< void, TFMIndexConfig >;
+  using CBiFMIndex = seqan2::BidirectionalIndex< psi::CFMIndex >;
 
   template< >
     class is_fmindex< CFMIndex > : public std::true_type {
@@ -43,57 +43,57 @@ namespace psi {
 
   template< typename TText >
       inline void
-    create_index( seqan::Index< TText, seqan::IndexEsa<> >& index )
+    create_index( seqan2::Index< TText, seqan2::IndexEsa<> >& index )
     {
-      indexRequire( index, seqan::FibreSA() );
-      indexRequire( index, seqan::FibreLcp() );
-      indexRequire( index, seqan::FibreChildtab() );
+      indexRequire( index, seqan2::FibreSA() );
+      indexRequire( index, seqan2::FibreLcp() );
+      indexRequire( index, seqan2::FibreChildtab() );
     }
 
   template< typename TIndex >
       inline void
     _create_fm_index( TIndex& index )
     {
-      indexRequire( index, seqan::FibreSALF() );
+      indexRequire( index, seqan2::FibreSALF() );
     }
 
   template< typename TText >
       inline void
-    create_index( seqan::Index< TText, psi::CFMIndex >& index )
+    create_index( seqan2::Index< TText, psi::CFMIndex >& index )
     {
       _create_fm_index( index );
     }
 
   template< typename TText >
       inline void
-    create_index( seqan::Index< TText, psi::CBiFMIndex >& index )
+    create_index( seqan2::Index< TText, psi::CBiFMIndex >& index )
     {
       _create_fm_index( index );
     }
 
   template< typename TText, class TWT, uint32_t TDens, uint32_t TInvDens >
       inline void
-    create_index( seqan::Index< TText, FMIndex< TWT, TDens, TInvDens > >& index )
+    create_index( seqan2::Index< TText, FMIndex< TWT, TDens, TInvDens > >& index )
     {
       _create_fm_index( index );
     }
 
   template< typename TText, typename TIndexSpec >
       inline bool
-    open( seqan::Index< TText, TIndexSpec >& index, const std::string& file_name )
+    open( seqan2::Index< TText, TIndexSpec >& index, const std::string& file_name )
     {
-      return seqan::open( index, file_name.c_str() );
+      return seqan2::open( index, file_name.c_str() );
     }
 
   template< typename TText, typename TIndexSpec >
       inline bool
-    save( seqan::Index< TText, TIndexSpec >& index, const std::string& file_name )
+    save( seqan2::Index< TText, TIndexSpec >& index, const std::string& file_name )
     {
-      return seqan::save( index, file_name.c_str() );
+      return seqan2::save( index, file_name.c_str() );
     }
 }  /* --- end of namespace psi --- */
 
-namespace seqan {
+namespace seqan2 {
   /**
    *  @brief  Saving memory by overriding SAValue type.
    *
@@ -105,6 +105,6 @@ namespace seqan {
     {
       typedef Pair< long unsigned int, long unsigned int, Tag<Pack_> > Type;
     };
-}  /* -----  end of namespace seqan  ----- */
+}  /* -----  end of namespace seqan2  ----- */
 
 #endif  /* --- #ifndef PSI_INDEX_HPP__ --- */

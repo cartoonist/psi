@@ -43,17 +43,17 @@ namespace psi {
   struct MicroStrategy;
   struct CompactStrategy;
   struct HaplotypeStrategy;
-  typedef seqan::Tag< DefaultStrategy > Default;
-  typedef seqan::Tag< DynamicStrategy > Dynamic;
-  typedef seqan::Tag< CompactStrategy > Compact;
-  typedef seqan::Tag< MicroStrategy > Micro;
-  typedef seqan::Tag< HaplotypeStrategy > Haplotype;
+  typedef seqan2::Tag< DefaultStrategy > Default;
+  typedef seqan2::Tag< DynamicStrategy > Dynamic;
+  typedef seqan2::Tag< CompactStrategy > Compact;
+  typedef seqan2::Tag< MicroStrategy > Micro;
+  typedef seqan2::Tag< HaplotypeStrategy > Haplotype;
 
   /* Path node existence query strategies */
   struct OrderedStrategy;
   struct UnorderedStrategy;
-  typedef seqan::Tag< OrderedStrategy > Ordered;
-  typedef seqan::Tag< UnorderedStrategy > Unordered;
+  typedef seqan2::Tag< OrderedStrategy > Ordered;
+  typedef seqan2::Tag< UnorderedStrategy > Unordered;
 
   template< typename TGraph, typename TSpec >
     struct PathTraits;
@@ -72,7 +72,7 @@ namespace psi {
 
   template< typename TGraph >
     struct PathTraits< TGraph, Compact > {
-      typedef sdsl::enc_vector< sdsl::coder::elias_delta > TNodeSequence;
+      typedef sdsl::enc_vector< sdsl::coder::elias_delta<> > TNodeSequence;
       typedef TNodeSequence::int_vector_type TNodeVector;
     };
 
@@ -398,8 +398,10 @@ namespace psi {
               this->seq.erase( 0, -diff );
             }
             else {
-              auto nstr = this->graph_ptr->node_sequence( this->front() );
-              this->seq.insert( 0, nstr.substr( front_len - value, diff ) );
+              std::string nstr
+                  = this->graph_ptr->node_sequence( this->front() )
+                        .substr( front_len - value, diff );
+              this->seq.insert( 0, nstr );
             }
           }
           this->left = ( value == front_len ) ? 0 : value;
@@ -426,8 +428,9 @@ namespace psi {
               this->seq.resize( this->seqlen );
             }
             else {
-              auto nstr = this->graph_ptr->node_sequence( this->back() );
-              this->seq += nstr.substr( this->right, diff );  /**< @brief `right` is always non-zero here */
+              std::string nstr = this->graph_ptr->node_sequence( this->back() )
+                                     .substr( this->right, diff );
+              this->seq += nstr; /**< @brief `right` is always non-zero here */
             }
           }
           this->right = ( value == back_len ) ? 0 : value;

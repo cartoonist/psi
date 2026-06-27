@@ -94,8 +94,8 @@ namespace psi {
             // Cross out the state.
             state.mismatches = 0;
             // Process the seed hit.
-            seqan::String< TSAValue > saPositions = getOccurrences( state.iter.get_iter_() );
-            typename seqan::Size< decltype( saPositions ) >::Type i;
+            seqan2::String< TSAValue > saPositions = getOccurrences( state.iter.get_iter_() );
+            typename seqan2::Size< decltype( saPositions ) >::Type i;
             stats_type::inc_total_seeds_off_paths( length( saPositions ) );
             for ( i = 0; i < length( saPositions ); ++i )
             {

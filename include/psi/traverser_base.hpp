@@ -52,12 +52,12 @@ namespace psi {
     struct MatchingTraits {
       static const std::size_t max_mismatches = MaxMismatches;
       typedef struct State {
-        typedef typename seqan::Container< TIter >::Type TIndex;
+        typedef typename seqan2::Container< TIter >::Type TIndex;
 
         TIter iter;
         unsigned char mismatches;
-        vg::Position spos;
-        vg::Position cpos;
+        Position<> spos;
+        Position<> cpos;
         size_t depth;
         bool end;
 
@@ -78,19 +78,19 @@ namespace psi {
         { }
 
         State( TIndex* index, unsigned char mm,
-            vg::Position sp, vg::Position cp, size_t d )
+            Position<> sp, Position<> cp, size_t d )
           : iter( *index ), mismatches( mm ),
           spos( sp ), cpos( cp ), depth( d ), end( false )
         { }
 
-        State( TIndex* index, unsigned char mm, vg::Position sp, size_t d )
+        State( TIndex* index, unsigned char mm, Position<> sp, size_t d )
           : State( index, mm, sp, sp, d )
         { }
 
         State( State const& ) = default;
-        State( State&& ) = delete;
+        State( State&& ) = default;
         State& operator=( State const& ) = default;
-        State& operator=( State&& ) = delete;
+        State& operator=( State&& ) = default;
         ~State( ) = default;
       } TState;
     };
@@ -162,7 +162,7 @@ namespace psi {
             auto peek_sum = get_partial_pathlen_sum().load();
             if ( peek_sum >= PARTIAL_PATHLEN_SUM_UBOUND ) {
               UniqWriterLock reducer( get_rws_lock() );
-              if ( reducer ) {
+              if ( reducer && peek_sum == get_partial_pathlen_sum().load() ) {
                 update_avg_pathlen();
               }
               continue;
@@ -295,14 +295,14 @@ namespace psi {
         typedef TIndex index_type;
         typedef typename graph_type::id_type id_type;
         typedef typename graph_type::offset_type offset_type;
-        typedef typename seqan::Spec< TIndex >::Type indexspec_type;
-        typedef typename seqan::Fibre< TIndex, seqan::FibreText >::Type stringset_type;
-        typedef typename seqan::Value< stringset_type >::Type text_type;
+        typedef typename seqan2::Spec< TIndex >::Type indexspec_type;
+        typedef typename seqan2::Fibre< TIndex, seqan2::FibreText >::Type stringset_type;
+        typedef typename seqan2::Value< stringset_type >::Type text_type;
         typedef Records< stringset_type > records_type;
         typedef TopDownFine< > iterspec_type;
         typedef TIndexIter< TIndex, iterspec_type > iterator_type;
         typedef TMatchingTraits< graph_type, iterator_type > traits_type;
-        typedef typename seqan::SAValue< TIndex >::Type TSAValue;
+        typedef typename seqan2::SAValue< TIndex >::Type TSAValue;
         typedef typename Stats< TraverserBase >::Type stats_type;
         /* ====================  DATA MEMBERS  ======================================= */
         static const auto max_mismatches = traits_type::max_mismatches;
@@ -393,7 +393,7 @@ namespace psi {
         }
 
           inline void
-        add_locus( vg::Position p )
+        add_locus( Position<> p )
         {
           this->states.emplace_back(
               this->reads_index,

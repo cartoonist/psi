@@ -30,10 +30,15 @@
 #include <memory>
 #include <cassert>
 #include <limits>
+#include <algorithm> 
+#include <cctype>
+#include <locale>
+#include <random>
 
 #include <seqan/basic.h>
 #include <sdsl/enc_vector.hpp>
 #include <sdsl/int_vector_buffer.hpp>
+#include <gum/iterators.hpp>
 
 #include "base.hpp"
 
@@ -41,11 +46,18 @@
 #define PSI_DEFAULT_TMPDIR "/tmp"
 #define PSI_TMPFILE_TEMPLATE "/psi-XXXXXX"
 
-#define BINARY_NAME "psi"
+#define PSI_BINARY_NAME "psi"
+
+#ifdef __ASSERT_VOID_CAST
+#define PSI_ASSERT_VOID_CAST __ASSERT_VOID_CAST
+#else
+#define PSI_ASSERT_VOID_CAST static_cast<void>
+#endif  // ifdef __ASSERT_VOID_CAST
+
 #define ASSERT(expr)							\
   ((expr)								\
-   ? __ASSERT_VOID_CAST (0)						\
-   : assert_fail (#expr, BINARY_NAME, __FILE__, __LINE__, __PRETTY_FUNCTION__))
+   ? PSI_ASSERT_VOID_CAST (0)						\
+   : assert_fail (#expr, PSI_BINARY_NAME, __FILE__, __LINE__, __PRETTY_FUNCTION__))
 
 /**
  *  @brief  Assert fail function
@@ -68,6 +80,10 @@ assert_fail( std::string const& expr, std::string const& outfile,
   std::exit( 134 );
 }
 
+#define PSI_MACRO_MIN(x, y) ((x) < (y) ? (x) : (y))
+#define PSI_MACRO_MAX(x, y) ((x) < (y) ? (y) : (x))
+
+
 namespace psi {
   /**
    *  @brief  Check whether a string ends with another string.
@@ -82,7 +98,7 @@ namespace psi {
       inline bool
     ends_with( const TText& str, const TText& suf )
     {
-      typedef typename seqan::Size< TText >::Type TSize;
+      typedef typename seqan2::Size< TText >::Type TSize;
       bool retval = false;
       if( length( suf ) <= length( str ) ) {
         retval = true;
@@ -132,7 +148,7 @@ namespace psi {
       inline bool
     starts_with( const TText& str, const TText& pre )
     {
-      typedef typename seqan::Size< TText >::Type TSize;
+      typedef typename seqan2::Size< TText >::Type TSize;
       bool retval = false;
       if( length( pre ) <= length( str ) ) {
         retval = true;
@@ -168,6 +184,71 @@ namespace psi {
     }
     return false;
   }  /* -----  end of function starts_with  ----- */
+
+  // From: https://stackoverflow.com/a/217605/357257
+  /**
+   *  @brief  Trim a string from left (in place)
+   */
+    inline void
+  ltrim( std::string& s )
+  {
+    s.erase( s.begin(), std::find_if( s.begin(), s.end(),
+                                      []( unsigned char ch ) {
+                                        return !std::isspace(ch);
+                                      } ) );
+  }
+
+  /**
+   *  @brief  Trim a string from right (in place)
+   */
+    inline void
+  rtrim( std::string& s )
+  {
+    s.erase( std::find_if( s.rbegin(), s.rend(),
+                           []( unsigned char ch ) {
+                             return !std::isspace(ch);
+                           } ).base(), s.end() );
+  }
+
+  /**
+   *  @brief  Trim a string from both ends (in place)
+   */
+    inline void
+  trim( std::string& s )
+  {
+    ltrim( s );
+    rtrim( s );
+  }
+
+  /**
+   *  @brief  Trim a string from left (copying)
+   */
+    inline std::string
+  ltrim_copy( std::string s )
+  {
+    ltrim( s );
+    return s;
+  }
+
+  /**
+   *  @brief  Trim a string from right (copying)
+   */
+    inline std::string
+  rtrim_copy( std::string s )
+  {
+    rtrim( s );
+    return s;
+  }
+
+  /**
+   *  @brief  Trim a string from both ends (copying)
+   */
+    inline std::string
+  trim_copy( std::string s )
+  {
+    trim( s );
+    return s;
+  }
 
 
   /**
@@ -427,7 +508,7 @@ namespace psi {
   }
 
 
-  typedef uint64_t TContainerSize;
+  typedef uint64_t DefaultContainerSize;
 
   /**
    *  @brief  Simple object serialization implementation.
@@ -476,7 +557,7 @@ namespace psi {
    *  by writing each item to the stream following the size of the container. The
    *  `TSize` represents the size type.
    */
-  template< typename TIter, typename TSize = TContainerSize >
+  template< typename TIter, typename TSize = DefaultContainerSize >
     inline void
   serialize( std::ostream& out, TIter begin, TIter end )
   {
@@ -498,7 +579,7 @@ namespace psi {
    *  `TSize` represents the size type. Since the container is unordered, it needs
    *  container itself to infer the size.
    */
-  template< typename TContainer, typename TIter, typename TSize = TContainerSize >
+  template< typename TContainer, typename TIter, typename TSize = DefaultContainerSize >
     inline void
   serialize( std::ostream& out, const TContainer& container, TIter begin, TIter end )
   {
@@ -744,11 +825,33 @@ namespace psi {
    *
    *  @overload for `sdsl::enc_vector`.
    */
-  template< typename TCoder, typename TContainer, uint32_t TDens = 128, uint8_t TWidth=0 >
+  template< typename TCoder,
+            typename TContainer,
+            typename std::enable_if_t< std::is_unsigned< typename TContainer::value_type >::value >,
+            uint32_t TDens = 128, uint8_t TWidth=0 >
       inline void
     assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
     {
       sdsl::util::assign( a, b );
+    }
+
+  template< typename TCoder,
+            typename TContainer,
+            typename=std::enable_if_t< std::is_signed< typename TContainer::value_type >::value >,
+            uint32_t TDens = 128, uint8_t TWidth=0 >
+      inline void
+    assign( sdsl::enc_vector< TCoder, TDens, TWidth >& a, const TContainer& b )
+    {
+      typedef TContainer container_type;
+      typedef typename container_type::const_reference const_reference;
+      typedef typename container_type::value_type value_type;
+      typedef std::make_unsigned_t< value_type > unsigned_value_type;
+
+      gum::RandomAccessProxyContainer bproxy( &b,
+                                              []( const_reference x ) -> unsigned_value_type {
+                                                return static_cast< unsigned_value_type >( x );
+                                              } );
+      sdsl::util::assign( a, bproxy );
     }
 
 
@@ -1016,7 +1119,7 @@ namespace psi {
    *  It gets an output container, and an output iterator. Then reads from input stream
    *  and populate the container from serialized data.
    */
-  template< typename TContainer, typename TOutIter, typename TSize = TContainerSize >
+  template< typename TContainer, typename TOutIter, typename TSize = DefaultContainerSize >
     inline void
   deserialize( std::istream& in, TContainer& container, TOutIter itr )
   {
@@ -1286,44 +1389,95 @@ namespace psi {
   template< typename T1, typename T2 >
     using enable_if_not_equal_t = typename enable_if_not_equal< T1, T2 >::type;
 
+  namespace functional {
+    struct NoopFunctor {
+      void operator()() { /* NOOP */ }
+    };
+  }  /* --- end of namespace functional --- */
+
   namespace random {
     /* Adapted from here: https://stackoverflow.com/q/440133/357257 */
     thread_local static std::random_device rd;
     thread_local static std::mt19937 gen( rd() );
+
+    template< typename TFloat, typename TGenerator >
+    inline TFloat
+    random_real( TFloat low, TFloat high, TGenerator&& rgen )
+    {
+      assert( low < high );  // half-open range: [low, high) imposed by std::uniform_real_distribution<>
+      std::uniform_real_distribution< TFloat > dis( low, high );
+      return dis( rgen );
+    }
+
+    template< typename TFloat >
+    inline TFloat
+    random_real( TFloat low=0, TFloat high=1 )
+    {
+      return random_real( low, high, gen );
+    }
+
+    template< typename TInteger, typename TGenerator >
+    inline TInteger
+    random_integer( TInteger low,
+                    TInteger high,
+                    TGenerator&& rgen )
+    {
+      assert( low <= high );  // closed range: [low, high] imposed by std::uniform_int_distribution<>
+      std::uniform_int_distribution< TInteger > dis( low, high );
+      return dis( rgen );
+    }
 
     template< typename TInteger >
     inline TInteger
     random_integer( TInteger low=std::numeric_limits< TInteger >::min(),
                     TInteger high=std::numeric_limits< TInteger >::max() )
     {
-      assert( low <= high );
-      std::uniform_int_distribution< TInteger > dis( low, high );
-      return dis( gen );
+      return random_integer( low, high, gen );
+    }
+
+    template< typename TInteger, typename TGenerator >
+    inline TInteger
+    random_index( TInteger length, TGenerator&& rgen )
+    {
+      assert( 0 < length );
+      return random_integer< TInteger >( 0, length - 1, rgen );
     }
 
     template< typename TInteger >
     inline TInteger
     random_index( TInteger length )
     {
-      assert( 0 < length );
-      return random_integer< TInteger >( 0, length - 1 );
+      return random_index( length, gen );
     }
 
+    template< typename TInteger, typename TGenerator >
     inline std::string
-    random_string( std::size_t length )
+    random_string( TInteger length, TGenerator&& rgen,
+                   const char* charset=nullptr, std::size_t charset_len=0 )
     {
-      auto randchar = []() -> char
+      const char alphanum_charset[] = "0123456789"
+                                      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                      "abcdefghijklmnopqrstuvwxyz";
+      if ( charset == nullptr ) {
+        charset = alphanum_charset;
+        charset_len = sizeof( alphanum_charset ) - 1 /* null-terminated */;
+      }
+
+      auto randchar = [&rgen, &charset, &charset_len]() -> char
       {
-        const char charset[] =
-            "0123456789"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = ( sizeof( charset ) - 1 );
-        return charset[ random_index( max_index ) ];
+        return charset[ random_index( charset_len, rgen ) ];
       };
       std::string str( length, 0 );
       std::generate_n( str.begin(), length, randchar );
       return str;
+    }
+
+    template< typename TInteger >
+    inline std::string
+    random_string( TInteger length,
+                   const char* charset=nullptr, std::size_t charset_len=0 )
+    {
+      return random_string( length, gen, charset, charset_len );
     }
   }  /* --- end of namespace random --- */
 }  /* --- end of namespace psi --- */

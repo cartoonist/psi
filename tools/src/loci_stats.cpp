@@ -26,8 +26,11 @@
 #include <psi/seed_finder.hpp>
 #include <psi/utils.hpp>
 
-using namespace psi;
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
 
+
+using namespace psi;
 
 /* ====== Constants ====== */
 constexpr const char* const LONG_DESC = "Report statistics about starting loci";
@@ -64,25 +67,25 @@ parse_opts( cxxopts::Options& options, int& argc, char**& argv )
   }
 
   if ( ! result.count( "prefix" ) ) {
-    throw cxxopts::OptionParseException( "Index prefix must be specified" );
+    throw cxxopts::exceptions::parsing( "Index prefix must be specified" );
   }
   if ( !readable( result[ "prefix" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Index file not found" );
+    throw cxxopts::exceptions::parsing( "Index file not found" );
   }
 
   if ( !result.count( "graph" ) ) {
-    throw cxxopts::OptionParseException( "Graph must be specified" );
+    throw cxxopts::exceptions::parsing( "Graph must be specified" );
   }
   if ( !readable( result[ "graph" ].as< std::string >() ) ) {
-    throw cxxopts::OptionParseException( "Graph file not found" );
+    throw cxxopts::exceptions::parsing( "Graph file not found" );
   }
 
   if ( ! result.count( "seed-length" ) ) {
-    throw cxxopts::OptionParseException( "Seed length must be specified" );
+    throw cxxopts::exceptions::parsing( "Seed length must be specified" );
   }
 
   if ( ! result.count( "step-size" ) ) {
-    throw cxxopts::OptionParseException( "Step size must be specified" );
+    throw cxxopts::exceptions::parsing( "Step size must be specified" );
   }
 
   return result;
@@ -107,15 +110,26 @@ main( int argc, char* argv[] )
     unsigned int num = res["number"].as< unsigned int >();
     std::string prefix = res["prefix"].as< std::string >();
 
+    auto parse_vg = []( std::istream& in ) -> vg::Graph {
+      vg::Graph merged;
+      std::function< void( vg::Graph& ) > handle_chunks =
+        [&]( vg::Graph& other ) {
+          gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+        };
+      stream::for_each( in, handle_chunks );
+      return merged;
+    };
+
     gum::SeqGraph< gum::Succinct > graph;
-    gum::util::load( graph, graph_path, true );
+    gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+    gum::util::load( graph, graph_path, loader, true );
     std::string sort_status = gum::util::ids_in_topological_order( graph ) ? "" : "not ";
     std::cout << "Input graph node IDs are " << sort_status << "in topological sort order."
               << std::endl;
     TFinder finder( graph, seedlen );
 
     if ( ! finder.open_starts( prefix, seedlen, stepsize ) )
-      throw cxxopts::OptionException( "Index file seems corrupted" );
+      throw cxxopts::exceptions::exception( "Index file seems corrupted" );
 
     std::cout << "Number of loci: " << finder.get_starting_loci().size() << std::endl;
 
@@ -137,7 +151,7 @@ main( int argc, char* argv[] )
       std::cout << "---------------" << std::endl;
     }
   }
-  catch ( const cxxopts::OptionException& e ) {
+  catch ( const cxxopts::exceptions::exception& e ) {
     std::cerr << "Error: " << e.what() << std::endl;
     return EXIT_FAILURE;
   }

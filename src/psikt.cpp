@@ -22,10 +22,12 @@
 #include <string>
 #include <functional>
 #include <unordered_set>
+#include <stdexcept>
 
+#include <gum/graph.hpp>
+#include <gum/io_utils.hpp>
 #include <seqan/seq_io.h>
 #include <seqan/arg_parse.h>
-#include <gum/io_utils.hpp>
 #include <psi/graph.hpp>
 #include <psi/seed_finder.hpp>
 #include <psi/sequence.hpp>
@@ -34,11 +36,13 @@
 #include <psi/stats.hpp>
 #include <psi/release.hpp>
 
+#include "vg/vg.pb.h"
+#include "vg/stream.hpp"
+
 #include "options.hpp"
 #include "logger.hpp"
 
 using namespace klibpp;
-using namespace seqan;
 using namespace psi;
 
 // TODO: Documentation.
@@ -50,7 +54,7 @@ using namespace psi;
 // TODO: comments' first letter?
 // TODO: fix code style: spacing.
 // TODO: inconsistency: some public methods are interface functions, some are members.
-// TODO: Add value_t< T > typedef as typename seqan::Value< T >::Type
+// TODO: Add value_t< T > typedef as typename seqan2::Value< T >::Type
 
 template< typename TSeedFinder, typename TSet >
     void
@@ -78,7 +82,7 @@ template< typename TSeedFinder, typename TSet >
 
 template< class TGraph, typename TReadsIndexSpec >
     void
-  find_seeds( TGraph& graph, SeqStreamIn& reads_iss, seqan::File<>& output_file,
+  find_seeds( TGraph& graph, SeqStreamIn& reads_iss, seqan2::File<>& output_file,
               Options const& params, TReadsIndexSpec const )
   {
     /* typedefs */
@@ -101,7 +105,7 @@ template< class TGraph, typename TReadsIndexSpec >
     std::signal( SIGUSR1, finder_type::stats_type::signal_handler );
 
     /* The seed finder for the input graph. */
-    finder_type finder( graph, params.seed_len, params.gocc_threshold );
+    finder_type finder( graph, params.seed_len, params.gocc_threshold, params.max_mem );
     auto const& stats = finder.get_stats();
     /* Prepare (load or create) genome-wide paths. */
     log->info( "Looking for an existing path index..." );
@@ -120,15 +124,25 @@ template< class TGraph, typename TReadsIndexSpec >
     else {
       log->info( "No valid path index found. Creating the path index..." );
       log->info( "Selecting {} different path(s) in the graph...", params.path_num );
-      finder.create_path_index( params.path_num, params.patched,
-                                params.context, params.step_size,
-                                params.dindex_min_ris, params.dindex_max_ris,
-                                [&log]( std::string const& msg ) {
-                                  log->info( msg );
-                                },
-                                [&log]( std::string const& msg ) {
-                                  log->warn( msg );
-                                } );
+      auto info_cb = [&log]( std::string const& msg ) -> void { log->info( msg ); };
+      auto warn_cb = [&log]( std::string const& msg ) -> void { log->warn( msg ); };
+      /* Dispatch the (validated) `--dindex-mode` string to the construction tag. */
+      if ( params.dindex_mode == "whole" ) {
+        finder.create_path_index( params.path_num, params.patched,
+                                  params.context, params.step_size,
+                                  params.dindex_min_ris, params.dindex_max_ris,
+                                  psi::Whole{}, info_cb, warn_cb );
+      }
+      else if ( params.dindex_mode == "per-component" ) {
+        finder.create_path_index( params.path_num, params.patched,
+                                  params.context, params.step_size,
+                                  params.dindex_min_ris, params.dindex_max_ris,
+                                  psi::PerComponent{}, info_cb, warn_cb );
+      }
+      else {
+        throw std::runtime_error( "Unknown distance index construction mode: "
+                                  + params.dindex_mode );
+      }
       log->info( "Picked paths in {}.", stats.get_timer( "pick-paths", tid ).str() );
       log->info( "Indexed paths in {}.", stats.get_timer( "index-paths", tid ).str() );
       log->info( "Found uncovered loci in {}.", stats.get_timer( "find-uncovered", tid ).str() );
@@ -180,8 +194,8 @@ template< class TGraph, typename TReadsIndexSpec >
           /* Load a chunk from reads set. */
           if ( !readRecords( chunk, reads_iss, params.chunk_size ) ) break;
         }
-        log->info( "Fetched {} reads in {}.", length( chunk ),
-                   timer_type::get_duration_str( "load-chunk" ) );
+        log->info( "Fetched {} reads with total length of {}bp in {}.", length( chunk ),
+                   lengthSum( chunk.str ), timer_type::get_duration_str( "load-chunk" ) );
         /* Give the current chunk to the finder. */
         finder.get_seeds( seeds, chunk, params.distance );
         auto seeds_index = finder.index_reads( seeds );
@@ -213,14 +227,28 @@ startup( const Options & options )
   log->info( "- Reads index type: {}", index_to_str(options.index) );
   log->info( "- Step size: {}", options.step_size );
   log->info( "- Seed genome occurrence count threshold: {}", options.gocc_threshold );
+  log->info( "- Maximum number of MEMs on paths: {}", options.max_mem );
   log->info( "- Distance index minimum read insert size: {}", options.dindex_min_ris );
   log->info( "- Distance index maximum read insert size: {}", options.dindex_max_ris );
+  log->info( "- Distance index construction mode: {}", options.dindex_mode );
   log->info( "- Temporary directory: '{}'", get_tmpdir() );
   log->info( "- Output file: '{}'", options.output_path );
 
   log->info( "Loading input graph from file '{}'...", options.rf_path );
+
+  auto parse_vg = []( std::istream& in ) -> vg::Graph {
+    vg::Graph merged;
+    std::function< void( vg::Graph& ) > handle_chunks =
+      [&]( vg::Graph& other ) {
+        gum::util::merge_vg( merged, static_cast< vg::Graph const& >( other ) );
+      };
+    stream::for_each( in, handle_chunks );
+    return merged;
+  };
+
   gum::SeqGraph< gum::Succinct > graph;
-  gum::util::load( graph, options.rf_path, true );
+  gum::ExternalLoader< vg::Graph > loader{ parse_vg };
+  gum::util::load( graph, options.rf_path, loader, true );
   if ( gum::util::ids_in_topological_order( graph ) ) {
     log->info( "Input graph node IDs are in topological sort order." );
   }
@@ -234,8 +262,8 @@ startup( const Options & options )
     throw std::runtime_error( msg );
   }
 
-  seqan::File<> output_file;
-  auto mode = seqan::OPEN_CREATE | seqan::OPEN_WRONLY;
+  seqan2::File<> output_file;
+  auto mode = seqan2::OPEN_CREATE | seqan2::OPEN_WRONLY;
   if ( !open( output_file, options.output_path.c_str(), mode ) ) {
     std::string msg = "could not open file '" + options.output_path + "'!";
     log->error( msg );
@@ -262,138 +290,153 @@ startup( const Options & options )
 
 
   inline void
-setup_argparser( seqan::ArgumentParser& parser )
+setup_argparser( seqan2::ArgumentParser& parser )
 {
   // positional arguments.
-  std::string POSARG1 = "VG_FILE";
+  std::string POSARG1 = "GRAPH_FILE";
   // add usage line.
   addUsageLine( parser, "[\\fIOPTIONS\\fP] \"\\fI" + POSARG1 + "\\fP\"" );
 
   // graph file -- positional argument.
-  seqan::ArgParseArgument vgfile_arg( seqan::ArgParseArgument::INPUT_FILE, POSARG1 );
+  seqan2::ArgParseArgument vgfile_arg( seqan2::ArgParseArgument::INPUT_FILE, POSARG1 );
   setValidValues( vgfile_arg, "vg gfa" );
   addArgument( parser, vgfile_arg );
 
   // Options
   // reads in FASTQ format -- **required** option.
   addOption( parser,
-      seqan::ArgParseOption( "f", "fastq",
+      seqan2::ArgParseOption( "f", "fastq",
         "Reads in FASTQ format.",
-        seqan::ArgParseArgument::INPUT_FILE, "FASTQ_FILE" ) );
-  setValidValues( parser, "f", "fq fastq" );
+        seqan2::ArgParseArgument::INPUT_FILE, "FASTQ_FILE" ) );
+  setValidValues( parser, "f", "fq fastq fq.gz fastq.gz" );
   setRequired( parser, "f" );
   // output file
   // :TODO:Sat Oct 21 00:06:\@cartoonist: output should be alignment in the GAM format.
   addOption( parser,
-      seqan::ArgParseOption( "o", "output",
+      seqan2::ArgParseOption( "o", "output",
         "Output file.",
-        seqan::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" ) );
+        seqan2::ArgParseArgument::OUTPUT_FILE, "OUTPUT_FILE" ) );
   setDefaultValue( parser, "o", "out.gam" );
   // path index file
   addOption( parser,
-      seqan::ArgParseOption( "I", "path-index",
+      seqan2::ArgParseOption( "I", "path-index",
         "Path index file.",
-        seqan::ArgParseArgument::STRING, "PATH_INDEX_FILE" ) );
+        seqan2::ArgParseArgument::STRING, "PATH_INDEX_FILE" ) );
   // seed length -- **required** option.
   addOption( parser,
-      seqan::ArgParseOption( "l", "seed-length",
+      seqan2::ArgParseOption( "l", "seed-length",
         "Seed length.",
-        seqan::ArgParseArgument::INTEGER, "INT" ) );
+        seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setRequired( parser, "l" );
   // chunk size -- **required** option.
   addOption( parser,
-      seqan::ArgParseOption( "c", "chunk-size",
+      seqan2::ArgParseOption( "c", "chunk-size",
         "Reads chunk size. Set it to 0 to consider all reads as one chunk (default).",
-        seqan::ArgParseArgument::INTEGER, "INT" ) );
+        seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "c", 0 );
   // step size
   addOption( parser,
-      seqan::ArgParseOption( "e", "step-size",
+      seqan2::ArgParseOption( "e", "step-size",
         "Minimum approximate distance allowed between two consecutive loci.",
-        seqan::ArgParseArgument::INTEGER, "INT" ) );
+        seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "e", 1 );
   // seed distance
   addOption( parser,
-      seqan::ArgParseOption( "d", "distance",
+      seqan2::ArgParseOption( "d", "distance",
         "Distance between seeds",
-        seqan::ArgParseArgument::INTEGER, "INT" ) );
+        seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "d", 0 );  /* Default value is seed length. */
   // number of paths
   addOption( parser,
-      seqan::ArgParseOption( "n", "path-num",
+      seqan2::ArgParseOption( "n", "path-num",
         "Number of paths from the graph included in the path index.",
-        seqan::ArgParseArgument::INTEGER, "INT" ) );
+        seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "n", 0 );
   // whether use patched paths or full genome-wide paths
   addOption( parser,
-      seqan::ArgParseOption( "P", "no-patched",
+      seqan2::ArgParseOption( "P", "no-patched",
         "Use full genome-wide paths." ) );
   // context in patching the paths
   addOption( parser,
-      seqan::ArgParseOption( "t", "context",
+      seqan2::ArgParseOption( "t", "context",
         "Context length in patching.",
-        seqan::ArgParseArgument::INTEGER, "INT" ) );
+        seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "t", 0 );
   // seed genome occurrence count threshold
   addOption( parser,
-             seqan::ArgParseOption( "r", "gocc-threshold",
+             seqan2::ArgParseOption( "r", "gocc-threshold",
                                     "Seed genome occurrence count threshold (no threshold by default).",
-                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+                                    seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "r", 0 );
+  // maximum number of MEMs on paths
+  addOption( parser,
+             seqan2::ArgParseOption( "E", "max-mem",
+                                    "Maximum number of MEMs on paths (default: find all).",
+                                    seqan2::ArgParseArgument::INTEGER, "INT" ) );
+  setDefaultValue( parser, "E", 0 );
   // distance index minimum read insert size
   addOption( parser,
-             seqan::ArgParseOption( "m", "min-insert-size",
+             seqan2::ArgParseOption( "m", "min-insert-size",
                                     "Distance index minimum read insert size (no distance indexing by default).",
-                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+                                    seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "m", 0 );
   // distance index maximum read insert size
   addOption( parser,
-             seqan::ArgParseOption( "M", "max-insert-size",
+             seqan2::ArgParseOption( "M", "max-insert-size",
                                     "Distance index maximum read insert size (minimum insert size by default).",
-                                    seqan::ArgParseArgument::INTEGER, "INT" ) );
+                                    seqan2::ArgParseArgument::INTEGER, "INT" ) );
   setDefaultValue( parser, "M", 0 );
+  // distance index construction mode
+  addOption( parser,
+             seqan2::ArgParseOption( "", "dindex-mode",
+                                    "Distance index construction mode: 'per-component' "
+                                    "(lower memory; required for large graphs) or 'whole' "
+                                    "(faster; higher peak memory).",
+                                    seqan2::ArgParseArgument::STRING, "MODE" ) );
+  setValidValues( parser, "dindex-mode", "per-component whole" );
+  setDefaultValue( parser, "dindex-mode", "per-component" );
   // index
   addOption( parser,
-      seqan::ArgParseOption( "i", "index",
+      seqan2::ArgParseOption( "i", "index",
         "Index type for indexing reads.",
-        seqan::ArgParseArgument::STRING, "INDEX" ) );
+        seqan2::ArgParseArgument::STRING, "INDEX" ) );
   setValidValues( parser, "i", "SA ESA WOTD DFI QGRAM FM" );
   setDefaultValue( parser, "i", "WOTD" );
   // index only
   addOption( parser,
-      seqan::ArgParseOption( "x", "index-only",
+      seqan2::ArgParseOption( "x", "index-only",
         "Only build path index and skip seed finding." ) );
   // log file
   addOption( parser,
-      seqan::ArgParseOption( "L", "log-file",
+      seqan2::ArgParseOption( "L", "log-file",
         "Sets default log file for existing and future loggers.",
-        seqan::ArgParseArgument::OUTPUT_FILE, "LOG_FILE" ) );
+        seqan2::ArgParseArgument::OUTPUT_FILE, "LOG_FILE" ) );
   setDefaultValue( parser, "L", "psi.log" );
   // no log to file
   addOption( parser,
-      seqan::ArgParseOption( "Q", "no-log-file",
+      seqan2::ArgParseOption( "Q", "no-log-file",
         "Disable writing logs to file (overrides \\fB-L\\fP)." ) );
   // quiet -- no output to console
   addOption( parser,
-      seqan::ArgParseOption( "q", "quiet",
+      seqan2::ArgParseOption( "q", "quiet",
         "Quiet mode. No output will be printed to console." ) );
   // no colored output
   addOption( parser,
-      seqan::ArgParseOption( "C", "no-color",
+      seqan2::ArgParseOption( "C", "no-color",
         "Do not use a colored output." ) );
   // disable logging
   addOption( parser,
-      seqan::ArgParseOption( "D", "disable-log",
+      seqan2::ArgParseOption( "D", "disable-log",
         "Disable logging completely." ) );
   // verbosity option
   addOption( parser,
-      seqan::ArgParseOption( "v", "verbose",
+      seqan2::ArgParseOption( "v", "verbose",
         "Activates maximum verbosity." ) );
 }
 
 
   inline void
-get_option_values( Options & options, seqan::ArgumentParser & parser )
+get_option_values( Options & options, seqan2::ArgumentParser & parser )
 {
   std::string indexname;
 
@@ -406,8 +449,10 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
   getOptionValue( options.path_num, parser, "path-num" );
   getOptionValue( options.context, parser, "context" );
   getOptionValue( options.gocc_threshold, parser, "gocc-threshold" );
+  getOptionValue( options.max_mem, parser, "max-mem" );
   getOptionValue( options.dindex_min_ris, parser, "min-insert-size" );
   getOptionValue( options.dindex_max_ris, parser, "max-insert-size" );
+  getOptionValue( options.dindex_mode, parser, "dindex-mode" );
   options.patched = !isSet( parser, "no-patched" );
   getOptionValue( options.pindex_path, parser, "path-index" );
   getOptionValue( indexname, parser, "index" );
@@ -426,11 +471,11 @@ get_option_values( Options & options, seqan::ArgumentParser & parser )
 }
 
 
-  inline seqan::ArgumentParser::ParseResult
+  inline seqan2::ArgumentParser::ParseResult
 parse_args( Options& options, int argc, char* argv[] )
 {
   // setup ArgumentParser.
-  seqan::ArgumentParser parser( "psikt" );
+  seqan2::ArgumentParser parser( "psikt" );
   setup_argparser( parser );
 
   // Embedding program's meta data and build information.
@@ -448,10 +493,10 @@ parse_args( Options& options, int argc, char* argv[] )
   std::ostringstream hold_buf_stdout;
   std::ostringstream hold_buf_stderr;
   // parse command line.
-  auto res = seqan::parse( parser, argc, argv, hold_buf_stdout, hold_buf_stderr );
+  auto res = seqan2::parse( parser, argc, argv, hold_buf_stdout, hold_buf_stderr );
   // print the banner in help or version messages.
-  if ( res == seqan::ArgumentParser::PARSE_HELP ||
-      res == seqan::ArgumentParser::PARSE_VERSION ) {
+  if ( res == seqan2::ArgumentParser::PARSE_HELP ||
+      res == seqan2::ArgumentParser::PARSE_VERSION ) {
     std::cout << BANNER << std::endl;
   }
   // print the buffer.
@@ -459,11 +504,11 @@ parse_args( Options& options, int argc, char* argv[] )
   std::cout << hold_buf_stdout.str();
 
   // only extract options if the program will continue after parse_args()
-  if ( res != seqan::ArgumentParser::PARSE_OK ) return res;
+  if ( res != seqan2::ArgumentParser::PARSE_OK ) return res;
 
   get_option_values( options, parser );
 
-  return seqan::ArgumentParser::PARSE_OK;
+  return seqan2::ArgumentParser::PARSE_OK;
 }
 
 
@@ -476,8 +521,8 @@ main( int argc, char *argv[] )
   /* If parsing was not successful then exit with code 1 if there were errors.
    * Otherwise, exit with code 0 (e.g. help was printed).
    */
-  if ( res != seqan::ArgumentParser::PARSE_OK ) {
-    return res == seqan::ArgumentParser::PARSE_ERROR;
+  if ( res != seqan2::ArgumentParser::PARSE_OK ) {
+    return res == seqan2::ArgumentParser::PARSE_ERROR;
   }
 
   /* Verify that the version of the library that we linked against is

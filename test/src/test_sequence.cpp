@@ -34,7 +34,7 @@ SCENARIO( "Subsetting a reads chunk from a reads set", "[sequence]" )
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
     std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
-    seqan::SeqFileIn infile;
+    seqan2::SeqFileIn infile;
     if ( !open( infile, fqpath.c_str() ) ) {
       throw std::runtime_error( "cannot open file '" + fqpath + "'" );
     }
@@ -78,7 +78,7 @@ SCENARIO( "Load reads to an owner Records with non-zero offset", "[sequence]" )
   {
     std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
     klibpp::SeqStreamIn iss( fqpath.c_str() );
-    Records< seqan::StringSet< MemString > > records;
+    Records< seqan2::StringSet< MemString > > records;
     unsigned int subset_len = 4;
     unsigned int offset = 2;
     readRecords( records, iss, offset );
@@ -314,7 +314,7 @@ SCENARIO( "Constructing a DiskString", "[sequence]" )
 SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
 {
   auto check_content =
-    []( seqan::StringSet< DiskString >& d, const std::string& data ) {
+    []( seqan2::StringSet< DiskString >& d, const std::string& data ) {
       std::ifstream in( d.get_file_path() );
       std::string content;
       std::string buffer;
@@ -333,7 +333,7 @@ SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
 
     WHEN( "The strings are added to string set by const reference" )
     {
-      seqan::StringSet< DiskString, seqan::Owner<> > dstrset;
+      seqan2::StringSet< DiskString, seqan2::Owner<> > dstrset;
       dstrset.reserve( 3 );
       appendValue( dstrset, str1 );
       push_back( dstrset, str2 );
@@ -370,7 +370,7 @@ SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
     WHEN( "The strings are added to string set by const reference (specific file)" )
     {
       std::string tmpfile = SEQAN_TEMP_FILENAME();
-      seqan::StringSet< DiskString, seqan::Owner<> > dstrset( tmpfile );
+      seqan2::StringSet< DiskString, seqan2::Owner<> > dstrset( tmpfile );
       dstrset.reserve( 3 );
       appendValue( dstrset, str1 );
       push_back( dstrset, str2 );
@@ -442,7 +442,7 @@ SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
     WHEN( "The strings are added to string set by const reference (specific file with C-Style string)" )
     {
       std::string tmpfile = SEQAN_TEMP_FILENAME();
-      seqan::StringSet< DiskString, seqan::Owner<> > dstrset( tmpfile.c_str() );
+      seqan2::StringSet< DiskString, seqan2::Owner<> > dstrset( tmpfile.c_str() );
       dstrset.reserve( 3 );
       appendValue( dstrset, str1 );
       push_back( dstrset, str2 );
@@ -478,7 +478,7 @@ SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
 
     WHEN( "The strings are added to string set by r-value reference" )
     {
-      seqan::StringSet< DiskString, seqan::Owner<> > dstrset;
+      seqan2::StringSet< DiskString, seqan2::Owner<> > dstrset;
       reserve( dstrset, 3 );
       appendValue( dstrset, std::move( str1 ) );
       push_back( dstrset, std::move( str2 ) );
@@ -549,13 +549,13 @@ SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
 
     GIVEN( "A disk-based string set containing two of those strings" )
     {
-      seqan::StringSet< DiskString > dstrset;
+      seqan2::StringSet< DiskString > dstrset;
       dstrset.push_back( str1 );
       push_back( dstrset, str2 );
 
       WHEN( "It is moved to another string set" )
       {
-        seqan::StringSet< DiskString > another_strset = std::move( dstrset );
+        seqan2::StringSet< DiskString > another_strset = std::move( dstrset );
 
         THEN( "It should contains the same strings" )
         {
@@ -679,7 +679,7 @@ SCENARIO( "Constructing a set of disk-based string", "[sequence]" )
 SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
 {
   auto check_content =
-    []( seqan::StringSet< MemString >& d, const std::string& data ) {
+    []( seqan2::StringSet< MemString >& d, const std::string& data ) {
       REQUIRE( ( data == d ) );
     };
 
@@ -694,7 +694,7 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
 
     WHEN( "The strings are added to string set by const reference" )
     {
-      seqan::StringSet< MemString, seqan::Owner<> > dstrset;
+      seqan2::StringSet< MemString, seqan2::Owner<> > dstrset;
       dstrset.reserve( 3 );
       appendValue( dstrset, str1 );
       push_back( dstrset, str2 );
@@ -768,7 +768,7 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
 
     WHEN( "The strings are added to string set by r-value reference" )
     {
-      seqan::StringSet< MemString, seqan::Owner<> > dstrset;
+      seqan2::StringSet< MemString, seqan2::Owner<> > dstrset;
       reserve( dstrset, 3 );
       appendValue( dstrset, std::move( str1 ) );
       push_back( dstrset, std::move( str2 ) );
@@ -839,13 +839,13 @@ SCENARIO( "Constructing a set of in-memory string", "[sequence]" )
 
     GIVEN( "A in-memory string set containing two of those strings" )
     {
-      seqan::StringSet< MemString > dstrset;
+      seqan2::StringSet< MemString > dstrset;
       dstrset.push_back( str1 );
       push_back( dstrset, str2 );
 
       WHEN( "It is moved to another string set" )
       {
-        seqan::StringSet< MemString > another_strset = std::move( dstrset );
+        seqan2::StringSet< MemString > another_strset = std::move( dstrset );
 
         THEN( "It should contains the same strings" )
         {
@@ -1079,7 +1079,7 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
     unsigned int k = 6;
     WHEN( "Enumerating non-overlapping " + std::to_string( k ) + "-mers in the records" )
     {
-      typename seqan::Iterator< decltype( reads ), NonOverlapping >::Type iter( &reads, k );
+      typename seqan2::Iterator< decltype( reads ), NonOverlapping >::Type iter( &reads, k );
 
       THEN( "It should yield all non-overlapping " + std::to_string( k ) + "-mers in the records" )
       {
@@ -1112,7 +1112,7 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
     unsigned int k = 6;
     WHEN( "Enumerating overlapping " + std::to_string( k ) + "-mers in the records" )
     {
-      typename seqan::Iterator< decltype( reads ), GreedyOverlapping >::Type iter( &reads, k );
+      typename seqan2::Iterator< decltype( reads ), GreedyOverlapping >::Type iter( &reads, k );
 
       THEN( "It should yield all overlapping " + std::to_string( k ) + "-mers in the records" )
       {
@@ -1151,7 +1151,7 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
     klibpp::SeqStreamIn iss( fqpath.c_str() );
     if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
 
-    typedef seqan::StringSet< seqan::DnaQString > TStringSet;
+    typedef seqan2::StringSet< seqan2::DnaQString > TStringSet;
     typedef Records< TStringSet > TRecords;
 
     TRecords reads;
@@ -1162,7 +1162,7 @@ SCENARIO( "Enumerate k-mers in a Records using RecordsIter class", "[sequence]" 
     WHEN( "Seeding by non-greedy overlapping strategy with length "
         + std::to_string( k ) + " and step size " + std::to_string( step ) )
     {
-      typedef typename seqan::Iterator< TRecords, Overlapping >::Type TIter;
+      typedef typename seqan2::Iterator< TRecords, Overlapping >::Type TIter;
       TIter reads_itr( &reads, k, step );
 
       THEN( "Seed should be correct" )
@@ -1196,7 +1196,7 @@ SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
   unsigned int k = 20;
   GIVEN( "A k-mer of length " + std::to_string( k ) + " with all 'A'" )
   {
-    seqan::DnaString kmer;
+    seqan2::DnaString kmer;
     for ( unsigned int i = 0; i < k; ++i ) appendValue( kmer, 'A' );
 
     WHEN( "It is incremented" )
@@ -1224,7 +1224,7 @@ SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
 
   GIVEN( "A k-mer of length " + std::to_string( k ) )
   {
-    seqan::DnaString kmer;
+    seqan2::DnaString kmer;
     for ( unsigned int i = 0; i < k/2; ++i ) appendValue( kmer, 'A' );
     for ( unsigned int i = k/2; i < k; ++i ) appendValue( kmer, 'T' );
 
@@ -1254,7 +1254,7 @@ SCENARIO( "Increment a k-mer lexicographically", "[sequence]" )
 
   GIVEN( "A k-mer of length " + std::to_string( k ) + " with all 'T'" )
   {
-    seqan::DnaString kmer;
+    seqan2::DnaString kmer;
     for ( unsigned int i = 0; i < k; ++i ) appendValue( kmer, 'T' );
 
     WHEN( "It is incremented" )
@@ -1275,7 +1275,7 @@ SCENARIO( "Seeding", "[seeding][sequence]" )
   GIVEN( "Read records from a file containing " + std::to_string( reads_num ) + " reads" )
   {
     std::string fqpath = test_data_dir + "/small/reads_n10l10e0i0.fastq";
-    seqan::SeqFileIn infile;
+    seqan2::SeqFileIn infile;
     if ( !open( infile, fqpath.c_str() ) ) {
       throw std::runtime_error( "cannot open file '" + fqpath + "'" );
     }
@@ -1362,7 +1362,7 @@ SCENARIO( "Seeding", "[seeding][sequence]" )
     klibpp::SeqStreamIn iss( fqpath.c_str() );
     if ( !iss ) throw std::runtime_error( "cannot open file '" + fqpath + "'" );
 
-    typedef seqan::StringSet< std::string > TStringSet;
+    typedef seqan2::StringSet< std::string > TStringSet;
 
     Records< TStringSet > reads;
     readRecords( reads, iss );

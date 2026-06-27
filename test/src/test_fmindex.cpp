@@ -29,15 +29,15 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
   GIVEN( "An index based on a disk-based string" )
   {
     typedef YaString< DiskBased > string_type;
-    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef seqan2::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
-      seqan::Finder< index_type > finder( index );
+      seqan2::Finder< index_type > finder( index );
 
       WHEN( "An existing pattern is searched using that Finder" )
       {
@@ -86,15 +86,15 @@ SCENARIO( "Find occurrences of a pattern in a text using FM-index", "[fmindex]" 
   GIVEN( "An index based on a in-memory string" )
   {
     typedef YaString< InMemory > string_type;
-    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef seqan2::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
-      seqan::Finder< index_type > finder( index );
+      seqan2::Finder< index_type > finder( index );
 
       WHEN( "An existing pattern is searched using that Finder" )
       {
@@ -145,8 +145,8 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
 {
   GIVEN( "An index based on a disk-based string set" )
   {
-    typedef seqan::StringSet< DiskString > stringset_type;
-    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef seqan2::StringSet< DiskString > stringset_type;
+    typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -156,11 +156,11 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index( text );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
-      seqan::Finder< index_type > finder( index );
+      seqan2::Finder< index_type > finder( index );
 
       WHEN( "An existing pattern is searched using that Finder" )
       {
@@ -208,8 +208,8 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
 
   GIVEN( "An index based on a in-memory string set" )
   {
-    typedef seqan::StringSet< MemString > stringset_type;
-    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef seqan2::StringSet< MemString > stringset_type;
+    typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -219,11 +219,11 @@ SCENARIO( "Find occurrences of a pattern in a string set using FM-index", "[fmin
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index( text );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
 
     GIVEN( "A Finder based on that index" )
     {
-      seqan::Finder< index_type > finder( index );
+      seqan2::Finder< index_type > finder( index );
 
       WHEN( "An existing pattern is searched using that Finder" )
       {
@@ -275,11 +275,11 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
   GIVEN( "An index based on a disk-based string serialized to the disk" )
   {
     typedef YaString< DiskBased > string_type;
-    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef seqan2::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index1( text );
-    indexRequire( index1, seqan::FibreSALF() );
+    indexRequire( index1, seqan2::FibreSALF() );
     std::string fpath = SEQAN_TEMP_FILENAME();
     save( index1, fpath );
 
@@ -293,7 +293,7 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
 
         THEN( "Requesting for construction should be ignored without throwing exception" )
         {
-          REQUIRE_NOTHROW( indexRequire( index2, seqan::FibreSALF() ) );
+          REQUIRE_NOTHROW( indexRequire( index2, seqan2::FibreSALF() ) );
         }
       }
     }
@@ -305,7 +305,7 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
 
       GIVEN( "A Finder based on that index" )
       {
-        seqan::Finder< index_type > finder( index2 );
+        seqan2::Finder< index_type > finder( index2 );
 
         WHEN( "An existing pattern is searched using that Finder" )
         {
@@ -355,11 +355,11 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
   GIVEN( "An index based on a in-memory string serialized to the disk" )
   {
     typedef YaString< InMemory > string_type;
-    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef seqan2::Index< string_type, psi::FMIndex<> > index_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index1( text );
-    indexRequire( index1, seqan::FibreSALF() );
+    indexRequire( index1, seqan2::FibreSALF() );
     std::string fpath = SEQAN_TEMP_FILENAME();
     save( index1, fpath );
 
@@ -373,7 +373,7 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
 
         THEN( "Requesting for construction should be ignored without throwing exception" )
         {
-          REQUIRE_NOTHROW( indexRequire( index2, seqan::FibreSALF() ) );
+          REQUIRE_NOTHROW( indexRequire( index2, seqan2::FibreSALF() ) );
         }
       }
     }
@@ -385,7 +385,7 @@ SCENARIO( "Save and load FM-index on string", "[fmindex]" )
 
       GIVEN( "A Finder based on that index" )
       {
-        seqan::Finder< index_type > finder( index2 );
+        seqan2::Finder< index_type > finder( index2 );
 
         WHEN( "An existing pattern is searched using that Finder" )
         {
@@ -437,8 +437,8 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 {
   GIVEN( "An index based on a disk-based string set serialized to the disk" )
   {
-    typedef seqan::StringSet< DiskString > stringset_type;
-    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef seqan2::StringSet< DiskString > stringset_type;
+    typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -448,7 +448,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index1( text );
-    indexRequire( index1, seqan::FibreSALF() );
+    indexRequire( index1, seqan2::FibreSALF() );
     std::string fpath = SEQAN_TEMP_FILENAME();
     save( index1, fpath );
 
@@ -462,7 +462,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 
         THEN( "Requesting for construction should be ignored without throwing exception" )
         {
-          REQUIRE_NOTHROW( indexRequire( index2, seqan::FibreSALF() ) );
+          REQUIRE_NOTHROW( indexRequire( index2, seqan2::FibreSALF() ) );
         }
       }
     }
@@ -474,7 +474,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 
       GIVEN( "A Finder based on that index" )
       {
-        seqan::Finder< index_type > finder( index2 );
+        seqan2::Finder< index_type > finder( index2 );
 
         WHEN( "An existing pattern is searched using that Finder" )
         {
@@ -523,8 +523,8 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 
   GIVEN( "An index based on a in-memory string set serialized to the disk" )
   {
-    typedef seqan::StringSet< MemString > stringset_type;
-    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef seqan2::StringSet< MemString > stringset_type;
+    typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
     std::string str2 = "another-brazilian-cute-beaver-builds-a-dam";
@@ -534,7 +534,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index1( text );
-    indexRequire( index1, seqan::FibreSALF() );
+    indexRequire( index1, seqan2::FibreSALF() );
     std::string fpath = SEQAN_TEMP_FILENAME();
     save( index1, fpath );
 
@@ -548,7 +548,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 
         THEN( "Requesting for construction should be ignored without throwing exception" )
         {
-          REQUIRE_NOTHROW( indexRequire( index2, seqan::FibreSALF() ) );
+          REQUIRE_NOTHROW( indexRequire( index2, seqan2::FibreSALF() ) );
         }
       }
     }
@@ -560,7 +560,7 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 
       GIVEN( "A Finder based on that index" )
       {
-        seqan::Finder< index_type > finder( index2 );
+        seqan2::Finder< index_type > finder( index2 );
 
         WHEN( "An existing pattern is searched using that Finder" )
         {
@@ -609,21 +609,21 @@ SCENARIO( "Save and load FM-index on stringset", "[fmindex]" )
 }
 
 TEMPLATE_SCENARIO( "Traverse prefix tree of a string using FM-index index iterator", "[fmindex][iterator]",
-                   ( seqan::TopDown< seqan::ParentLinks<> > ), ( seqan::TopDown<> ) )
+                   ( seqan2::TopDown< seqan2::ParentLinks<> > ), ( seqan2::TopDown<> ) )
 {
   GIVEN( "An index based on a disk-based string" )
   {
     typedef YaString< DiskBased > string_type;
-    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef seqan2::Index< string_type, psi::FMIndex<> > index_type;
     typedef TestType spec_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
 
     GIVEN( "A top-down iterator for virtual prefix tree of the string" )
     {
-      typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
+      typedef typename seqan2::Iterator< index_type, spec_type >::Type iterator_type;
 
       iterator_type it( index );
 
@@ -780,7 +780,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string using FM-index index iterat
 
             THEN( "It should point root node" )
             {
-              if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+              if ( std::is_same< spec_type, seqan2::TopDown< seqan2::ParentLinks<> > >::value ) {
                 REQUIRE( isRoot( it ) );
                 REQUIRE( !goUp( it ) );
                 REQUIRE( !goRight( it ) );
@@ -797,16 +797,16 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string using FM-index index iterat
   GIVEN( "An index based on a in-memory string" )
   {
     typedef YaString< InMemory > string_type;
-    typedef seqan::Index< string_type, psi::FMIndex<> > index_type;
+    typedef seqan2::Index< string_type, psi::FMIndex<> > index_type;
     typedef TestType spec_type;
 
     string_type text( "a-mississippian-lazy-fox-sits-on-a-pie" );
     index_type index( text );
-    indexRequire( index, seqan::FibreSALF() );
+    indexRequire( index, seqan2::FibreSALF() );
 
     GIVEN( "A top-down iterator for virtual prefix tree of the string" )
     {
-      typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
+      typedef typename seqan2::Iterator< index_type, spec_type >::Type iterator_type;
 
       iterator_type it( index );
 
@@ -963,7 +963,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string using FM-index index iterat
 
             THEN( "It should point root node" )
             {
-              if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+              if ( std::is_same< spec_type, seqan2::TopDown< seqan2::ParentLinks<> > >::value ) {
                 REQUIRE( isRoot( it ) );
                 REQUIRE( !goUp( it ) );
                 REQUIRE( !goRight( it ) );
@@ -979,12 +979,12 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string using FM-index index iterat
 }
 
 TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index iterator", "[fmindex][iterator]",
-                   ( seqan::TopDown< seqan::ParentLinks<> > ), ( seqan::TopDown<> ) )
+                   ( seqan2::TopDown< seqan2::ParentLinks<> > ), ( seqan2::TopDown<> ) )
 {
   GIVEN( "An index based on a disk-based string set serialized to the disk" )
   {
-    typedef seqan::StringSet< DiskString > stringset_type;
-    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef seqan2::StringSet< DiskString > stringset_type;
+    typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
     typedef TestType spec_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
@@ -995,7 +995,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index1( text );
-    indexRequire( index1, seqan::FibreSALF() );
+    indexRequire( index1, seqan2::FibreSALF() );
     std::string fpath = SEQAN_TEMP_FILENAME();
     save( index1, fpath );
 
@@ -1006,7 +1006,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
 
       GIVEN( "A top-down iterator for virtual prefix tree of the string" )
       {
-        typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
+        typedef typename seqan2::Iterator< index_type, spec_type >::Type iterator_type;
 
         iterator_type it( index2 );
 
@@ -1162,7 +1162,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
 
               THEN( "It should point root node" )
               {
-                if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+                if ( std::is_same< spec_type, seqan2::TopDown< seqan2::ParentLinks<> > >::value ) {
                   REQUIRE( isRoot( it ) );
                   REQUIRE( !goUp( it ) );
                   REQUIRE( !goRight( it ) );
@@ -1179,8 +1179,8 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
 
   GIVEN( "An index based on a in-memory string set serialized to the disk" )
   {
-    typedef seqan::StringSet< MemString > stringset_type;
-    typedef seqan::Index< stringset_type, psi::FMIndex<> > index_type;
+    typedef seqan2::StringSet< MemString > stringset_type;
+    typedef seqan2::Index< stringset_type, psi::FMIndex<> > index_type;
     typedef TestType spec_type;
 
     std::string str1 = "a-mississippian-lazy-fox-sits-on-a-pie";
@@ -1191,7 +1191,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
     text.push_back( str2 );
     text.push_back( str3 );
     index_type index1( text );
-    indexRequire( index1, seqan::FibreSALF() );
+    indexRequire( index1, seqan2::FibreSALF() );
     std::string fpath = SEQAN_TEMP_FILENAME();
     save( index1, fpath );
 
@@ -1202,7 +1202,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
 
       GIVEN( "A top-down iterator for virtual prefix tree of the string" )
       {
-        typedef typename seqan::Iterator< index_type, spec_type >::Type iterator_type;
+        typedef typename seqan2::Iterator< index_type, spec_type >::Type iterator_type;
 
         iterator_type it( index2 );
 
@@ -1358,7 +1358,7 @@ TEMPLATE_SCENARIO( "Traverse prefix tree of a string set using FM-index index it
 
               THEN( "It should point root node" )
               {
-                if ( std::is_same< spec_type, seqan::TopDown< seqan::ParentLinks<> > >::value ) {
+                if ( std::is_same< spec_type, seqan2::TopDown< seqan2::ParentLinks<> > >::value ) {
                   REQUIRE( isRoot( it ) );
                   REQUIRE( !goUp( it ) );
                   REQUIRE( !goRight( it ) );

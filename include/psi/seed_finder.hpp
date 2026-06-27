@@ -27,10 +27,10 @@
 #include <iterator>
 #include <functional>
 #include <algorithm>
+#include <stdexcept>
 
 #include <sdsl/bit_vectors.hpp>
-#include <pairg/reachability.hpp>
-#include <KokkosKernels_IOUtils.hpp>
+#include <diverg/dindex.hpp>
 
 #include "graph.hpp"
 #include "traverser.hpp"
@@ -38,12 +38,15 @@
 #include "index.hpp"
 #include "index_iter.hpp"
 #include "pathindex.hpp"
-#include "crs_matrix.hpp"
 #include "utils.hpp"
 #include "stats.hpp"
 
 
 namespace psi {
+  /* Tags selecting the pairwise distance index construction strategy. */
+  struct PerComponent { };  // build block-diagonal dindex one connected component at a time
+  struct Whole { };         // build dindex for the whole graph in a single pass
+
   struct SeedFinderStatsBase {
     enum progress_type : int {
       finder_off,
@@ -724,13 +727,13 @@ namespace psi {
 
   template< typename TGraphSpec = gum::Succinct,
             typename TReadsStringSet = Dna5QStringSet<>,
-            typename TReadsIndexSpec = seqan::IndexWotd<>,
+            typename TReadsIndexSpec = seqan2::IndexWotd<>,
             typename TPathsStringSetSpec = DiskBased,
             typename TStrategy = BFS,
             template<typename, typename> class TMatchingTraits = ExactMatching >
   struct SeedFinderTraits {
     typedef gum::SeqGraph< TGraphSpec > graph_type;
-    typedef seqan::Index< TReadsStringSet, TReadsIndexSpec > seedindex_type;
+    typedef seqan2::Index< TReadsStringSet, TReadsIndexSpec > seedindex_type;
 
     template< typename TStatsSpec = NoStats >
       using traverser_type = typename Traverser< graph_type, seedindex_type,
@@ -774,15 +777,23 @@ namespace psi {
         typedef typename traverser_type::index_type readsindex_type;
         typedef YaString< pathstrsetspec_type > text_type;
         typedef PathIndex< graph_type, text_type, psi::FMIndex<>, Reversed > pathindex_type;
-        typedef pairg::matrixOps crs_traits_type;
-        typedef CRSMatrix< crs_matrix::Compressed, bool, uint32_t, uint64_t > crsmat_type;
-        typedef crs_matrix::Buffered mutable_crsmat_spec_type;
-        typedef make_spec_t< mutable_crsmat_spec_type, crsmat_type > mutable_crsmat_type;
+        typedef uint32_t crsmat_ordinal_type;
+        typedef uint64_t crsmat_size_type;
+        // Range-sparse execution space following the Kokkos backend:
+        // CUDA when built with CUDA, host otherwise.
+        typedef diverg::DefaultSparseConfiguration rsparse_config_type;
+        // Mutable range matrix used while assembling the (block-diagonal) index.
+        typedef diverg::CRSMatrix< diverg::crs_matrix::RangeDynamic, bool,
+                                   crsmat_ordinal_type, crsmat_size_type > mut_crsmat_type;
+        // Compressed range matrix used for storing and querying the distance index.
+        typedef diverg::CRSMatrix< diverg::crs_matrix::RangeCompressed, bool,
+                                   crsmat_ordinal_type, crsmat_size_type > crsmat_type;
 
         class KokkosHandler {
         public:
           /* === LIFECYCLE === */
-          KokkosHandler( bool fin=true ) : finaliser( fin )
+          KokkosHandler( bool fin=true,
+                         Kokkos::InitializationSettings settings={} ) : finaliser( fin )
           {
             /* Ensure no concurrent dtor is running */
             ReaderLock constructor( KokkosHandler::get_final_lock() );
@@ -791,7 +802,7 @@ namespace psi {
               UniqWriterLock initialiser( KokkosHandler::get_init_lock() );
               if ( initialiser ) {
                 /* Initialise Kokkos */
-                Kokkos::initialize();
+                Kokkos::initialize( settings );
               }
             }
             /* Sync ctors with the initialiser ctor to ensure that the object is ready */
@@ -821,6 +832,12 @@ namespace psi {
           }
           /* === STATIC MEMBERS === */
           static inline void
+          initialise(  )
+          {
+            if ( !Kokkos::is_initialized() ) Kokkos::initialize();
+          }
+
+          static inline void
           finalise( )
           {
             Kokkos::finalize();
@@ -842,14 +859,85 @@ namespace psi {
           /* === DATA MEMBERS === */
           bool finaliser;
         };
+        /* === STATIC MEMBERS === */
+          static inline std::atomic_bool&
+        get_kokkos_handling_status( )
+        {
+          static std::atomic_bool kokkos_handling_enabled = true;
+          return kokkos_handling_enabled;
+        }
+
+          static inline void
+        set_kokkos_handling_status( bool value=true )
+        {
+          get_kokkos_handling_status().store( value );
+        }
+
+          static inline std::string
+        get_distance_index_path( std::string prefix, unsigned int dmin, unsigned int dmax )
+        {
+          return prefix + "_dist_mat_" +
+            "m" + std::to_string( dmin ) +
+            "M" + std::to_string( dmax );
+        }
+
+          static inline std::string
+        get_sloci_filepath( const std::string& prefix, unsigned int seed_len,
+                            unsigned int step_size )
+        {
+          std::string filepath = prefix + "_loci_"
+            "e" + std::to_string( step_size ) +
+            "l" + std::to_string( seed_len );
+          return filepath;
+        }
+
+        /**
+         *  @brief  Deserialize dumped starting loci from input stream
+         *
+         *  NOTE: This static function wraps deserialization procedure and provides an
+         *  interface for class users to parse starting loci index file without a finder
+         *  indstance.
+         *
+         *  NOTE: The node ids in the resulting vector is not converted to the graph's
+         *  internal coordinate system.
+         */
+        template< typename TContainer >
+          static inline bool
+        deserialize_starts( std::istream& in, TContainer& sloci )
+        {
+          deserialize( in, sloci );
+          return true;
+        }
+
+        /**
+         *  @brief  Serialize starting loci to output stream
+         *
+         *  NOTE: This static function wraps serialization procedure and provides an
+         *  interface for class users to write starting loci to an index file without a
+         *  finder instance.
+         *
+         *  NOTE: The node ids in the input vector are assumed converted to the external
+         *  coordinate system.
+         */
+        template< typename TContainer >
+          static inline bool
+        serialize_starts( std::ostream& out, TContainer const& sloci )
+        {
+          serialize( out, sloci, sloci.begin(), sloci.end() );
+          return true;
+        }
         /* ====================  LIFECYCLE      ====================================== */
         SeedFinder( const graph_type& g,
             unsigned int len,
             unsigned int gocc_thr = 0,
-            unsigned char mismatches = 0 )
-          : graph_ptr( &g ), pindex( g, true ), handler( true ), seed_len( len ),
-          seed_mismatches( mismatches ),
+            unsigned int mxmem = 0,
+            unsigned char mismatches = 0,
+            Kokkos::InitializationSettings kokkos_settings = {} )
+          : graph_ptr( &g ), pindex( g, true ),
+          handler( get_kokkos_handling_status(), kokkos_settings ),
+          seed_len( len ), seed_mismatches( mismatches ),
           gocc_threshold( ( gocc_thr != 0 ? gocc_thr : UINT_MAX ) ),
+          max_mem( ( mxmem != 0 ? mxmem : UINT_MAX ) ),
           stats_ptr( std::make_unique< stats_type >( this ) )
         { }
         /* ====================  ACCESSORS      ====================================== */
@@ -865,7 +953,7 @@ namespace psi {
         /**
          *  @brief  getter function for starting_loci.
          */
-          inline const std::vector< vg::Position >&
+          inline const std::vector< Position<> >&
         get_starting_loci( ) const
         {
           return this->starting_loci;
@@ -946,22 +1034,9 @@ namespace psi {
 
         /**
          *  @brief  setter function for starting_loci.
-         *
-         *  Copy assignment.
          */
           inline void
-        set_starting_loci( const std::vector< vg::Position >& loci )
-        {
-          this->starting_loci = loci;
-        }
-
-        /**
-         *  @brief  setter function for starting_loci.
-         *
-         *  Move assignment.
-         */
-          inline void
-        set_starting_loci( std::vector< vg::Position >&& loci )
+        set_starting_loci( std::vector< Position<> > loci )
         {
           this->starting_loci = std::move( loci );
         }
@@ -1034,7 +1109,7 @@ namespace psi {
         }
 
           inline void
-        add_start( const vg::Position& locus )
+        add_start( const Position<>& locus )
         {
           this->starting_loci.push_back( locus );
         }
@@ -1042,7 +1117,7 @@ namespace psi {
           inline void
         add_start( id_type node_id, offset_type offset )
         {
-          vg::Position locus;
+          Position<> locus;
           locus.set_node_id( node_id );
           locus.set_offset( offset );
           this->add_start( locus );
@@ -1067,6 +1142,9 @@ namespace psi {
               std::function< void( std::string const& ) > warn=nullptr )
           {
             if ( n == 0 ) return;
+            if ( this->graph_ptr->get_path_count() == 0 ) {
+              throw std::runtime_error( "no reference path found in the input graph" );
+            }
 
             this->stats_ptr->set_progress( progress_type::select_paths );
             [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "pick-paths" );
@@ -1076,7 +1154,7 @@ namespace psi {
             auto hp_end = end( *this->graph_ptr, Haplotyper<>() );
             context = this->set_context( context, patched, info, warn );
             this->graph_ptr->for_each_path(
-                [&]( auto path_rank, auto path_id ) {
+                [&]( rank_type path_rank, id_type path_id ) {
                   auto path_name = this->graph_ptr->path_name( path_id );
                   id_type s = *this->graph_ptr->path( path_id ).begin();
                   hp_itr.reset( s );
@@ -1098,7 +1176,13 @@ namespace psi {
         }
 
       /**
-       *  @brief  Create distance index matrix.
+       *  @brief  Create distance index matrix one component (region) at a time.
+       *
+       *  The distance index is built for each component and placed as a
+       *  diagonal block at its char-order offset; the blocks are stitched
+       *  together to construct the final graph. This keeps peak memory bounded
+       *  by the largest component, at the cost of building the index component
+       *  by component.
        *
        *  NOTE: This method assumes that the input graph is sorted such that node rank
        *  ranges in components are disjoint.
@@ -1107,7 +1191,7 @@ namespace psi {
        *        and nothing more.
        */
         inline void
-        create_distance_index( unsigned int dmin=0, unsigned int dmax=0,
+        create_distance_index( unsigned int dmin, unsigned int dmax, PerComponent,
                                std::function< void( std::string const& ) > info=nullptr,
                                std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1117,23 +1201,25 @@ namespace psi {
           this->stats_ptr->set_progress( progress_type::create_dindex );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
 
-          auto provider = [this, dmin, dmax, info]( auto callback ) {
-            /* Extract component boundary nodes */
-            auto comp_ranks = util::components_ranks( *this->graph_ptr );
-            comp_ranks.push_back( 0 );  // add the upper bound of the last component
+          /* Extract component boundary node ranks. */
+          auto comp_ranks = util::components_ranks( *this->graph_ptr );
+          comp_ranks.push_back( 0 );  // add the upper bound of the last component
 
-            if ( info ) {
-              info( "Constructing distance index for " +
-                    std::to_string( comp_ranks.size()-1 ) + " regions..." );
-            }
+          if ( info ) {
+            info( "Constructing distance index for " +
+                  std::to_string( comp_ranks.size()-1 ) + " regions..." );
+          }
 
+          auto provider = [this, dmin, dmax, &comp_ranks, info]( auto partial ) {
             for ( std::size_t idx = 0; idx < comp_ranks.size()-1; ++idx ) {
-              auto adj_mat = util::adjacency_matrix( *this->graph_ptr, crs_traits_type(),
-                                                     comp_ranks[idx], comp_ranks[idx+1] );
-              auto dist_mat = pairg::buildValidPairsMatrix( adj_mat, dmin, dmax );
-              auto sid = this->graph_ptr->rank_to_id( comp_ranks[idx] );
-              auto srow = gum::util::id_to_charorder( *this->graph_ptr, sid );
-              callback( dist_mat, srow, srow );
+              auto ra = diverg::util::range_adjacency_matrix< mut_crsmat_type >(
+                  *this->graph_ptr, comp_ranks[ idx ], comp_ranks[ idx + 1 ] );
+              auto rc = diverg::util::create_distance_index( ra, dmin, dmax,
+                                                             rsparse_config_type{} );
+              auto sid = this->graph_ptr->rank_to_id( comp_ranks[ idx ] );
+              auto soff = static_cast< crsmat_ordinal_type >(
+                  gum::util::id_to_charorder( *this->graph_ptr, sid ) );
+              partial( rc, soff, soff );
               if ( info ) {
                 info( "Created distance index for region " + std::to_string( idx+1 ) + "." );
               }
@@ -1141,11 +1227,40 @@ namespace psi {
           };
           auto nrows = gum::util::total_nof_loci( *this->graph_ptr );
           auto nnz_est = ( nrows - this->graph_ptr->get_node_count() +
-                           this->graph_ptr->get_edge_count() ) * ( dmax - dmin );
-          mutable_crsmat_type udindex( nrows, nrows, provider, nnz_est );
-          this->distance_mat.assign(
-              util::compress_distance_index< mutable_crsmat_type >( udindex,
-                                                                    *this->graph_ptr ) );
+                           this->graph_ptr->get_edge_count() ) * 4;
+          mut_crsmat_type udindex( nrows, nrows, provider, nnz_est );
+          this->distance_mat.assign( udindex );
+
+          this->d = std::make_pair( dmin, dmax );
+        }
+
+      /**
+       *  @brief  Create distance index matrix.
+       *
+       *  NOTE: This method assumes that the input graph is sorted such that node rank
+       *  ranges in components are disjoint.
+       *
+       *  NOTE: This function assumes that the graph is augmented by one path per region
+       *        and nothing more.
+       */
+        inline void
+        create_distance_index( unsigned int dmin, unsigned int dmax, Whole,
+                               std::function< void( std::string const& ) > info=nullptr,
+                               std::function< void( std::string const& ) > warn=nullptr )
+        {
+          if ( dmin == 0 || dmax < dmin ) return;  // not constructible
+          if ( dmax == 0 ) dmax = dmin;
+
+          this->stats_ptr->set_progress( progress_type::create_dindex );
+          [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "index-distances" );
+
+          if ( info ) info( "Constructing distance index for the whole graph..." );
+          auto ra = diverg::util::range_adjacency_matrix< mut_crsmat_type >(
+              *this->graph_ptr );
+          auto rc = diverg::util::create_distance_index( ra, dmin, dmax,
+                                                         rsparse_config_type{} );
+          this->distance_mat.assign( rc );
+
           this->d = std::make_pair( dmin, dmax );
         }
 
@@ -1154,8 +1269,7 @@ namespace psi {
         {
           if ( this->distance_mat.numCols() == 0 ) return true;  // empty distance index
 
-          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
-              "M" + std::to_string( this->d.second );
+          auto fname = SeedFinder::get_distance_index_path( prefix, this->d.first, this->d.second );
           std::ofstream ofs( fname, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 
@@ -1172,8 +1286,7 @@ namespace psi {
           if ( dmax == 0 ) dmax = dmin;
           this->d = std::make_pair( dmin, dmax );
 
-          auto fname = prefix + "_dist_mat_" + "m" + std::to_string( this->d.first ) +
-              "M" + std::to_string( this->d.second );
+          auto fname = SeedFinder::get_distance_index_path( prefix, this->d.first, this->d.second );
           std::ifstream ifs( fname, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
@@ -1214,10 +1327,12 @@ namespace psi {
          *  @param  dmax  The distance index maximum read insert size.
          *  @param  progress A callback function reporting the progress of path selection.
          */
+        template< typename TDIndexMode = PerComponent >
         inline void
         create_path_index( unsigned int n, bool patched=true,
             unsigned int context=0, unsigned int step_size=1,
             unsigned int dmin=0, unsigned int dmax=0,
+            TDIndexMode mode={},
             std::function< void( std::string const& ) > info=nullptr,
             std::function< void( std::string const& ) > warn=nullptr )
         {
@@ -1236,7 +1351,7 @@ namespace psi {
           if ( info ) info( "Detecting uncovered loci..." );
           this->add_uncovered_loci( step_size );
           if ( info ) info( "Constructing distance index for pair distance queries..." );
-          this->create_distance_index( dmin, dmax, info, warn );
+          this->create_distance_index( dmin, dmax, mode, info, warn );
         }
 
         inline bool
@@ -1288,7 +1403,10 @@ namespace psi {
             this->save_starts( fpath, this->seed_len, step_size );
           }
           if ( !this->open_distance_index( fpath, dmin, dmax ) ) {
-            this->create_distance_index( dmin, dmax );
+            // TODO: The fallback strategy for constructing distance index is
+            // always `PerComponent` for now since `dindex-mode` is not
+            // propagated into here.
+            this->create_distance_index( dmin, dmax, PerComponent{} );
             this->save_distance_index( fpath );
           }
           return true;
@@ -1309,9 +1427,9 @@ namespace psi {
           seeds_on_paths( readsrecord_type const& reads, readsindex_type& reads_index,
                           std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
-            typedef TopDownFine< seqan::ParentLinks<> > TIterSpec;
-            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
-            typedef typename seqan::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
+            typedef TopDownFine< seqan2::ParentLinks<> > TIterSpec;
+            typedef typename seqan2::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+            typedef typename seqan2::Iterator< readsindex_type, TIterSpec >::Type TRIterator;
 
             auto context = this->pindex.get_context();
             if (  context != 0 /* means patched */ && context < this->seed_len ) {
@@ -1344,7 +1462,7 @@ namespace psi {
                           std::function< void(typename traverser_type::output_type const &) > callback ) const
           {
             typedef TopDownFine<> TIterSpec;
-            typedef typename seqan::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
+            typedef typename seqan2::Iterator< typename pathindex_type::index_type, TIterSpec >::Type TPIterator;
 
             if ( length( indexText( this->pindex.index ) ) == 0 ) return;
 
@@ -1357,7 +1475,7 @@ namespace psi {
             TPIterator piter( this->pindex.index );
             auto context = this->pindex.get_context();
             find_mems( sequence, piter, &this->pindex, this->seed_len, context, callback,
-                       this->gocc_threshold );
+                       this->gocc_threshold, this->max_mem );
           }
 
             inline void
@@ -1377,7 +1495,7 @@ namespace psi {
             auto bt_end = end( *this->graph_ptr, Backtracker() );
             Path< graph_type > trav_path( this->graph_ptr );
             Path< graph_type > current_path( this->graph_ptr );
-            sdsl::bit_vector bv_starts( util::max_node_len( *this->graph_ptr ), 0 );
+            sdsl::bit_vector bv_starts( gum::util::max_node_len( *this->graph_ptr ), 0 );
 
             this->graph_ptr->for_each_node(
                 [&]( rank_type rank, id_type id ) {
@@ -1480,7 +1598,7 @@ namespace psi {
             unsigned long long int uncovered = 0;
 
             long long int prev_id = 0;
-            for ( const vg::Position& l : this->starting_loci ) {
+            for ( const Position<>& l : this->starting_loci ) {
               if ( prev_id == l.node_id() ) continue;
               prev_id = l.node_id();
               auto label_len = this->graph_ptr->node_length( l.node_id() );
@@ -1520,27 +1638,21 @@ namespace psi {
         open_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          std::string filepath = prefix + "_loci_"
-            "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
+          std::string filepath = SeedFinder::get_sloci_filepath( prefix, seed_len, step_size );
           std::ifstream ifs( filepath, std::ifstream::in | std::ifstream::binary );
           if ( !ifs ) return false;
 
           this->stats_ptr->set_progress( progress_type::load_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "load-starts" );
 
-          std::function< void( vg::Position& ) > push_back =
-              [this]( vg::Position& pos ) {
-                pos.set_node_id( this->graph_ptr->id_by_coordinate( pos.node_id() ) );
-                this->starting_loci.push_back( pos );
-              };
+          SeedFinder::deserialize_starts( ifs, this->starting_loci );
 
-          try {
-            vg::io::for_each( ifs, push_back );
-          }
-          catch ( const std::runtime_error& ) {
-            return false;
-          }
-
+          auto callback = [this]( Position<> pos ) -> Position<> {
+            pos.set_node_id( this->graph_ptr->id_by_coordinate( pos.node_id() ) );
+            return pos;
+          };
+          std::transform( this->starting_loci.begin(), this->starting_loci.end(),
+                          this->starting_loci.begin(), callback );
           return true;
         }
 
@@ -1548,28 +1660,21 @@ namespace psi {
         save_starts( const std::string& prefix, unsigned int seed_len,
             unsigned int step_size )
         {
-          std::string filepath = prefix + "_loci_"
-            "e" + std::to_string( step_size ) + "l" + std::to_string( seed_len );
+          std::string filepath = SeedFinder::get_sloci_filepath( prefix, seed_len, step_size );
           std::ofstream ofs( filepath, std::ofstream::out | std::ofstream::binary );
           if ( !ofs ) return false;
 
           this->stats_ptr->set_progress( progress_type::write_starts );
           [[maybe_unused]] auto timer = this->stats_ptr->timeit_ts( "save-starts" );
 
-          std::function< vg::Position( uint64_t ) > lambda =
-              [this]( uint64_t i ) {
-                auto pos = this->starting_loci.at( i );
-                pos.set_node_id( this->graph_ptr->coordinate_id( pos.node_id() ) );
-                return pos;
-              };
-
-          try {
-            vg::io::write( ofs, this->starting_loci.size(), lambda );
-          }
-          catch ( const std::runtime_error& ) {
-            return false;
-          }
-
+          auto lambda =
+            [this]( const Position<>& pos ) -> Position<> {
+              Position<> p = pos;
+              p.set_node_id( this->graph_ptr->coordinate_id( p.node_id() ) );
+              return p;
+            };
+          gum::RandomAccessProxyContainer sloci( &this->starting_loci, lambda );
+          SeedFinder::serialize_starts( ofs, sloci );
           return true;
         }
 
@@ -1640,13 +1745,14 @@ namespace psi {
       private:
         /* ====================  DATA MEMBERS  ======================================= */
         const graph_type* graph_ptr;
-        std::vector< vg::Position > starting_loci;
+        std::vector< Position<> > starting_loci;
         pathindex_type pindex;  /**< @brief Genome-wide path index in lazy mode. */
         KokkosHandler handler;
         crsmat_type distance_mat;
         unsigned int seed_len;
         unsigned char seed_mismatches;  /**< @brief Allowed mismatches in a seed hit. */
         unsigned int gocc_threshold;  /**< @brief Seed genome occurrence count threshold. */
+        unsigned int max_mem;  /**< @brief Maximum required number of MEMs on paths. */
         std::pair< unsigned int, unsigned int > d; /**< @brief distance constraints. */
         std::unique_ptr< stats_type > stats_ptr;
         /* ====================  METHODS       ======================================= */

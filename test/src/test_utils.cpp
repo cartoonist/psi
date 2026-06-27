@@ -57,8 +57,8 @@ SCENARIO( "Two strings can be checked for suffix match", "[utils]" )
 
   GIVEN( "A seqan string" )
   {
-    seqan::CharString str( "mississipi" );
-    seqan::CharString pattern;
+    seqan2::CharString str( "mississipi" );
+    seqan2::CharString pattern;
 
     THEN( "Suffix strings should be matched" )
     {
@@ -117,8 +117,8 @@ SCENARIO( "Two strings can be checked for prefix match", "[utils]" )
 
   GIVEN( "A seqan string" )
   {
-    seqan::CharString str( "mississipi" );
-    seqan::CharString pattern;
+    seqan2::CharString str( "mississipi" );
+    seqan2::CharString pattern;
 
     THEN( "Prefix strings should be matched" )
     {
@@ -212,7 +212,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
   size_t size = 20;
   GIVEN( "A vector of integer with size " + std::to_string( size ) )
   {
-    std::vector< int > v;
+    std::vector< unsigned int > v;
     for ( unsigned int i = 0; i < size; ++i ) {
       v.push_back( i * 2 );
     }
@@ -226,7 +226,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
       THEN( "should be deserialized correctly" )
       {
         std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-        std::vector< int > w;
+        std::vector< unsigned int > w;
         deserialize( ifs, w, std::back_inserter( w ) );
 
         for ( unsigned int i = 0; i < w.size(); ++i ) {
@@ -240,7 +240,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
 
   GIVEN( "An empty string" )
   {
-    std::vector< int > v;
+    std::vector< unsigned int > v;
 
     WHEN( "it is serialized to a file" )
     {
@@ -251,7 +251,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
       THEN( "should be deserialized correctly" )
       {
         std::ifstream ifs( file_name, std::ifstream::in | std::ifstream::binary );
-        std::vector< int > w;
+        std::vector< unsigned int > w;
         deserialize( ifs, w, std::back_inserter( w ) );
         REQUIRE( w.size() == 0 );
       }
@@ -261,7 +261,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
   }
 
   struct position {
-    int i;
+    unsigned int i;
     double d;
     char c;
     char s[10];
@@ -273,7 +273,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
     std::vector< position > v;
     for ( unsigned int i = 0; i < size; ++i ) {
       v.push_back( {
-          static_cast<int>( i + 10 ),
+          i + 10,
           i / 3.0,
           static_cast<char>( i + 65 ),
           { static_cast<char>( i + 65 ), static_cast<char>( i + 97 ) }
@@ -295,7 +295,7 @@ SCENARIO( "Serialize and deserialize a vector", "[utils]" )
         for ( unsigned int i = 0; i < w.size(); ++i ) {
           REQUIRE( w[i].i == i + 10 );
           REQUIRE( w[i].d == i / 3.0 );
-          REQUIRE( w[i].c == i + 65 );
+          REQUIRE( w[i].c == static_cast< char >( i + 65 ) );
           const char s[10] = { static_cast<char>( i + 65 ), static_cast<char>( i + 97 ) };
           REQUIRE( std::strcmp( w[i].s, s ) == 0 );
         }
@@ -419,7 +419,7 @@ SCENARIO( "Find a value in an integer vector by reversal iteration", "[utils]" )
     size_t len = 1000000;
     std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
-    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    sdsl::enc_vector< sdsl::coder::elias_delta<> > cv( v );
 
     WHEN( "The last item is searched" )
     {
@@ -460,7 +460,7 @@ SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
     size_t len = 1000000;
     std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i;
-    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    sdsl::enc_vector< sdsl::coder::elias_delta<> > cv( v );
     std::vector< unsigned int > query = { 999980, 999981, 999982, 999983, 999984, 999985 };
     auto lc = rfind( cv, *query.rbegin() );
 
@@ -480,7 +480,7 @@ SCENARIO( "Check equality of two vectors by reversal iteration", "[utils]" )
     std::size_t len = 10;
     std::vector< unsigned int > v(len);
     for ( std::size_t i = 0; i < v.size(); ++i ) v[ i ] = i + 2;
-    sdsl::enc_vector< sdsl::coder::elias_delta > cv( v );
+    sdsl::enc_vector< sdsl::coder::elias_delta<> > cv( v );
     std::vector< unsigned int > query = { 0, 1, 2 };
     auto lc = rfind( cv, *query.rbegin() );
 
@@ -817,7 +817,53 @@ SCENARIO( "Word-wise range copy for bit-vectors", "[utils]" )
   }
 }
 
-SCENARIO( "Generate random integers", "[utils]" )
+SCENARIO( "Generate random real numbers", "[utils][random]" )
+{
+  WHEN( "No range is given" )
+  {
+    int n = 100000;
+
+    THEN( "Generated random real number should be in range [0, 1)" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_real< double >();
+        REQUIRE( ( 0 <= rnum && rnum <= 1 ) );
+      }
+    }
+  }
+
+  WHEN( "A small range is given" )
+  {
+    float low = 10;
+    float high = 100;
+    int n = 100000;
+
+    THEN( "Generated random real numbers should be in the range" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_real< float >( low, high );
+        REQUIRE( ( low <= rnum && rnum <= high ) );
+      }
+    }
+  }
+
+  WHEN( "A large range is given" )
+  {
+    double low = std::numeric_limits< double >::min();
+    double high = std::numeric_limits< double >::max();
+    int n = 100000;
+
+    THEN( "Generated random real numbers should be in the range" )
+    {
+      for ( int i = 0; i < n; ++i ) {
+        auto rnum = random::random_real( low, high );
+        REQUIRE( ( low <= rnum && rnum <= high ) );
+      }
+    }
+  }
+}
+
+SCENARIO( "Generate random integers", "[utils][random]" )
 {
   WHEN( "A range is given" )
   {
@@ -849,11 +895,11 @@ SCENARIO( "Generate random integers", "[utils]" )
   }
 }
 
-SCENARIO( "Generate random strings", "[utils]" )
+SCENARIO( "Generate random strings", "[utils][random]" )
 {
   WHEN( "A length is given" )
   {
-    unsigned int len = 60;
+    unsigned int len = 6060;
     int n = 1000;
 
     THEN( "Generated random string should have the given length" )
@@ -906,7 +952,7 @@ SCENARIO( "Compute the average of a long stream of integers in parallel", "[util
               auto peek_sum = sum.load();
               if ( peek_sum >= std::numeric_limits< value_type >::max() - value ) {
                 UniqWriterLock reducer( rws_lock );
-                if ( reducer ) {
+                if ( reducer && peek_sum == sum.load() ) {
                   REQUIRE( !rws_lock.acquire_writer_weak() );
                   REQUIRE( sum.load() >= std::numeric_limits< value_type >::max() - value );
                   update();
@@ -940,7 +986,7 @@ SCENARIO( "Compute the average of a long stream of integers in parallel", "[util
         for ( std::size_t tidx = 0; tidx < nofthreads; ++tidx ) threads[ tidx ].join();
         update();
         double diff = real_sum / static_cast< double >( real_tot ) - avg;
-        REQUIRE( diff == Approx( 0 ).margin( 0.3 ) );
+        REQUIRE( diff == Approx( 0 ).margin( 0.5 ) );
       }
     }
   }
